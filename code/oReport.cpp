@@ -340,7 +340,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   CurrentSortOrder=SortByName;
   Runners.sort();
 
-  int lVacId = getVacantClub();
+  int lVacId = getVacantClub(false);
 
   oRunnerList::iterator r_it;
   oTeamList::iterator t_it;

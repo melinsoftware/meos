@@ -1395,9 +1395,10 @@ pTeam IOF30Interface::getCreateTeam(gdioutput &gdi, const xmlobject &xTeam, bool
 
   if (id)
     t = oe.getTeam(id);
-  else
+  else {
     t = oe.getTeamByName(name);
-
+    // XXX Check class
+  }
   if (!t) {
     if (id > 0) {
       oTeam tr(&oe, id);
@@ -1628,7 +1629,7 @@ pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
   if (pid) {
     r = oe.getRunner(pid, 0);
     while (r) { // Check that the exact match is OK
-      if (extId != r->getExtIdentifier())
+      if (extId == r->getExtIdentifier())
         break;
       pid++;
       r = oe.getRunner(pid, 0);

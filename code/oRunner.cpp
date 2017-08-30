@@ -2694,7 +2694,7 @@ const vector< pair<string, size_t> > &oEvent::fillRunners(vector< pair<string, s
 
   synchronizeList(oLRunnerId);
   oRunnerList::iterator it;
-  int lVacId = getVacantClub();
+  int lVacId = getVacantClubIfExist(false);
   if (getNameMode() == LastFirst)
     CurrentSortOrder = SortByLastName;
   else
@@ -2742,7 +2742,7 @@ const vector< pair<string, size_t> > &oEvent::fillRunners(vector< pair<string, s
         continue;
 
       if (!it->skip() || (showAll && !it->isRemoved())) {
-        if ( it->getClubId() != lVacId )
+        if ( it->getClubId() != lVacId || lVacId == 0)
           out.push_back(make_pair(it->getUIName(), it->Id));
         else {
           sprintf_s(bf, "%s (%s)", it->getUIName().c_str(), it->getClass().c_str());
@@ -3328,7 +3328,7 @@ string oRunner::getPunchTimeS(int controlNumber, bool normalized) const
 
 bool oAbstractRunner::isVacant() const
 {
-  return getClubId()==oe->getVacantClubIfExist();
+  return getClubId()==oe->getVacantClubIfExist(false);
 }
 
 bool oRunner::needNoCard() const {

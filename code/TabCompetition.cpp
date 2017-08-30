@@ -1688,7 +1688,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="BrowseExport" || bi.id=="BrowseExportResult") {
       int filterIndex = gdi.getSelectedItem("Type").first;
       vector< pair<string, string> > ext;
-      ImportFormats::getExportFilters(bi.id=="BrowseExport", ext);
+      ImportFormats::getExportFilters(bi.id!="BrowseExport", ext);
       /*if (bi.id=="BrowseExport") {
         ext.push_back(make_pair("IOF Startlista (xml)", "*.xml"));
         ext.push_back(make_pair("OE Semikolonseparerad (csv)", "*.csv"));

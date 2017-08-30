@@ -28,7 +28,7 @@
 //V31: a
 //V33: abcde
 int getMeosBuild() {
-  string revision("$Rev: 543 $");
+  string revision("$Rev: 608 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -38,14 +38,14 @@ int getMeosBuild() {
 //V31: abcde
 //V32: abcdefgh
 //V33: abcdefghij
-//V34: abcdfg
+//V34: abcdfgh
 string getMeosDate() {
-  string date("$Date: 2017-03-25 20:00:02 +0100 (lÃ¶, 25 mar 2017) $");
+  string date("$Date: 2017-08-27 21:13:26 +0200 (sÃ¶, 27 aug 2017) $");
   return date.substr(7,10);
 }
 
 string getBuildType() {
-  return ""; // No parantheses (...)
+  return "U2"; // No parantheses (...)
 }
 
 string getMajorVersion() {
@@ -169,4 +169,10 @@ void getSupporters(vector<string> &supp)
   supp.push_back("O-travel");
   supp.push_back("Bengt Bengtsson");
   supp.push_back("OK Landehof");
+  supp.push_back("OK Orinto");
+  supp.push_back("Bredaryds SOK");
+  supp.push_back("Thore Nilsson, Uddevalla OK");
+  supp.push_back("Timrå SOK");
+  supp.push_back("Åke Larsson, OK Hedströmmen");
+  supp.push_back("Avesta OK");
 }

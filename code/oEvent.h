@@ -50,6 +50,7 @@
 #include <hash_map>
 
 #define cVacantId 888888888
+#define cNoClubId 999999999
 
 class MeOSFileLock;
 class RunnerDB;
@@ -237,10 +238,9 @@ protected:
   void generateFixedList(gdioutput &gdi, const oListInfo &li);
 
   void startReconnectDaemon();
-  int getVacantClub(); // Create vacant club if it does not exist
-  int getVacantClubIfExist() const;
-
+  
   mutable int vacantId; //Cached vacant id
+  mutable int noClubId; //Cached no club id
 
   string Name;
   string Annotation;
@@ -472,6 +472,9 @@ protected:
   // Temporarily disable recaluclate leader times
   bool disableRecalculate;
 public:
+  
+  int getVacantClub(bool returnNoClubClub); // Create vacant club if it does not exist
+  int getVacantClubIfExist(bool returnNoClubClub) const;
 
   enum NameMode {
     FirstLast,

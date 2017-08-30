@@ -116,6 +116,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   hMod=0;
   ZeroTime=0;
   vacantId = 0;
+  noClubId = 0;
   dataRevision = 0;
   sqlCounterRunners=0;
   sqlCounterClasses=0;
@@ -1665,7 +1666,7 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
 }
 
 pRunner oEvent::addRunnerVacant(int classId) {
-  pRunner r=addRunner(lang.tl("Vakant"), getVacantClub(), classId, 0,0, true);
+  pRunner r=addRunner(lang.tl("Vakant"), getVacantClub(false), classId, 0,0, true);
   if (r) {
     r->apply(false, 0, false);
     r->synchronize(true);
@@ -1771,7 +1772,7 @@ void oEvent::updateFreeId(oBase *obj)
     qFreeControlId=max(obj->Id, qFreeControlId);
   }
   else if (typeid(*obj)==typeid(oClub)){
-    if (obj->Id != cVacantId)
+    if (obj->Id != cVacantId && obj->Id != cNoClubId)
       qFreeClubId=max(obj->Id, qFreeClubId);
   }
   else if (typeid(*obj)==typeid(oCard)){
@@ -1822,7 +1823,7 @@ void oEvent::updateFreeId()
     oClubList::iterator it;
     qFreeClubId=0;
     for (it=Clubs.begin(); it != Clubs.end(); ++it) {
-      if (it->Id != cVacantId)
+      if (it->Id != cVacantId && it->Id != cNoClubId)
         qFreeClubId=max(qFreeClubId, it->Id);
     }
   }
@@ -1847,42 +1848,89 @@ void oEvent::updateFreeId()
   }
 }
 
-int oEvent::getVacantClub()
-{
-  if (vacantId > 0)
+int oEvent::getVacantClub(bool returnNoClubClub) {
+  if (returnNoClubClub) {
+    if (noClubId > 0) {
+      pClub pc = getClub(noClubId);
+      if (pc != 0 && !pc->isRemoved())
+        return noClubId;
+    }
+    pClub pc = getClub("Klubblös");
+    if (pc == 0)
+      pc = getClub("No club"); //eng
+    if (pc == 0)
+      pc = getClub(lang.tl("Klubblös")); //other lang?
+
+    if (pc == 0)
+      pc=getClubCreate(cNoClubId, lang.tl("Klubblös"));
+
+    noClubId = pc->getId();
+    return noClubId;
+  }
+  else {
+    if (vacantId > 0) {
+      pClub pc = getClub(vacantId);
+      if (pc != 0 && !pc->isRemoved())
+        return vacantId;
+    }
+    pClub pc = getClub("Vakant");
+    if (pc == 0)
+      pc = getClub("Vacant"); //eng
+    if (pc == 0)
+      pc = getClub(lang.tl("Vakant")); //other lang?
+
+    if (pc == 0)
+      pc=getClubCreate(cVacantId, lang.tl("Vakant"));
+
+    vacantId = pc->getId();
     return vacantId;
-
-  pClub pc = getClub("Vakant");
-  if (pc == 0)
-    pc = getClub("Vacant"); //eng
-  if (pc == 0)
-    pc = getClub(lang.tl("Vakant")); //other lang?
-
-  if (pc == 0)
-    pc=getClubCreate(cVacantId, lang.tl("Vakant"));
-
-  vacantId = pc->getId();
-  return vacantId;
+  }
 }
 
-int oEvent::getVacantClubIfExist() const
+int oEvent::getVacantClubIfExist(bool returnNoClubClub) const
 {
-  if (vacantId > 0)
-    return vacantId;
-  if (vacantId == -1)
-    return 0;
-  pClub pc=getClub("Vakant");
-  if (pc == 0)
-    pc = getClub("Vacant");
-  if (pc == 0)
-    pc = getClub(lang.tl("Vakant")); //other lang?
+  if (returnNoClubClub) {
+    if (noClubId > 0) {
+      pClub pc = getClub(noClubId);
+      if (pc != 0 && !pc->isRemoved())
+        return noClubId;
+    }
+    if (noClubId == -1)
+      return 0;
+    pClub pc=getClub("Klubblös");
+    if (pc == 0)
+      pc = getClub("Klubblös");
+    if (pc == 0)
+      pc = getClub(lang.tl("Klubblös")); //other lang?
 
-  if (!pc) {
-    vacantId = -1;
-    return 0;
+    if (!pc) {
+      noClubId = -1;
+      return 0;
+    }
+    noClubId = pc->getId();
+    return noClubId;
   }
-  vacantId = pc->getId();
-  return vacantId;
+  else {
+    if (vacantId > 0) {
+      pClub pc = getClub(vacantId);
+      if (pc != 0 && !pc->isRemoved())
+        return vacantId;
+    }
+    if (vacantId == -1)
+      return 0;
+    pClub pc=getClub("Vakant");
+    if (pc == 0)
+      pc = getClub("Vacant");
+    if (pc == 0)
+      pc = getClub(lang.tl("Vakant")); //other lang?
+
+    if (!pc) {
+      vacantId = -1;
+      return 0;
+    }
+    vacantId = pc->getId();
+    return vacantId;
+  }
 }
 
 pCard oEvent::allocateCard(pRunner owner)
@@ -2417,6 +2465,9 @@ void oEvent::removeClub(int Id)
   }
   if (vacantId == Id)
     vacantId = 0; // Clear vacant id
+
+  if (noClubId == Id)
+    noClubId = 0;
 }
 
 void oEvent::removeCard(int Id)
@@ -3371,6 +3422,7 @@ void oEvent::clear()
   sqlUpdateTeams.clear();
 
   vacantId = 0;
+  noClubId = 0;
   oEventData->initData(this, sizeof(oData));
   timelineClasses.clear();
   timeLineEvents.clear();

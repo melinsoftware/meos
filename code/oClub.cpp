@@ -53,7 +53,7 @@ oClub::oClub(oEvent *poe, int id): oBase(poe)
 {
   getDI().initData();
   Id=id;
-  if (id != cVacantId)
+  if (id != cVacantId && id != cNoClubId)
     oe->qFreeClubId = max(id, oe->qFreeClubId);
 }
 
@@ -191,8 +191,9 @@ pClub oEvent::getClubCreate(int Id, const string &CreateName)
     }
   }
   if (CreateName.empty()) {
+    int id = oe->getVacantClub(true);
     //Not found. Auto add...
-    return getClubCreate(Id, lang.tl("Klubblös"));
+    return getClubCreate(id, lang.tl("Klubblös"));
   }
   else	{
     oClubList::iterator it;
@@ -1053,7 +1054,7 @@ void oEvent::setupClubInfoData() {
 
 
 bool oClub::isVacant() const {
-  return getId() == oe->getVacantClubIfExist();
+  return getId() == oe->getVacantClubIfExist(false);
 }
 
 void oClub::changeId(int newId) {

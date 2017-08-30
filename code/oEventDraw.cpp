@@ -673,7 +673,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   assert(pairSize > 0);
   oRunnerList::iterator it;
 
-  int VacantClubId=getVacantClub();
+  int VacantClubId=getVacantClub(false);
   map<int, int> clsId2Ix;
   set<int> clsIdClearVac;
 

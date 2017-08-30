@@ -632,8 +632,16 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         //We have a match!
         string club = gdi.getText("Club", true);
 
-        if (club.length()==0 && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs))
-          club=lang.tl("Klubblös");
+        if (club.length()==0 && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+          pClub noClub = oe->getClub(oe->getVacantClub(true));
+          if (noClub) {
+            noClub->synchronize();
+            club = noClub->getName();
+          }
+          else
+            club=lang.tl("Klubblös");
+        }
+
         int year = 0;
         pRunner r=gEvent->addRunner(gdi.getText("Runners"), club,
                                     classes[0]->getId(), activeSIC.CardNumber, year, true);
@@ -833,7 +841,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
           string cname = gdi.getText("Club", true);
 
-          if (cname.empty()) {
+          if (!cname.empty()) {
             pClub club = oe->getClubCreate(0, cname);
             clubId = club->getId();
           }
@@ -860,7 +868,8 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       di.setInt("Fee", lastFeeNum);
       r->setFlag(oRunner::FlagFeeSpecified, true);
       
-      writePayMode(gdi, lastFeeNum + (cardFee > 0 ? cardFee : 0), *r);
+      int totFee = lastFeeNum + (cardFee > 0 ? cardFee : 0);
+      writePayMode(gdi, totFee, *r);
 
       di.setString("Phone", gdi.getText("Phone"));
       r->setFlag(oRunner::FlagTransferSpecified, gdi.hasField("AllStages"));
@@ -897,6 +906,11 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       if (r->getDI().getInt("Paid")>0)
         info += lang.tl(", Betalat") + pm;
 
+      bool warnPayment = r->getDI().getInt("Paid") < totFee && (
+                          r->getClubRef() == 0 ||
+                          r->getClubId() == oe->getVacantClubIfExist(true) ||
+                          r->getClubId() == oe->getVacantClubIfExist(false));
+
       if (bib.length()>0)
         info+=bib;
 
@@ -909,6 +923,10 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       gdi.fillDown();
       gdi.addStringUT(0, info, 0);
       gdi.popX();
+
+      if (warnPayment) {
+        gdi.addString("", fontMediumPlus, "Varning: avgiften kan ej faktureras").setColor(colorRed);
+      }
 
       generateStartInfo(gdi, *r);
 

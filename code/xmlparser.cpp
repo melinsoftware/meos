@@ -717,9 +717,9 @@ string &xmlobject::getObjectString(const char *pname, string &out) const
 {
   xmlobject x=getObject(pname);
   if (x) {
-    const char *bf = x.get();
+    const char *bf = x.getRaw();
     if (bf) {
-      parser->convertString(x.get(), parser->strbuff, buff_pre_alloc);
+      parser->convertString(x.getRaw(), parser->strbuff, buff_pre_alloc);
       out = parser->strbuff;
       return out;
     }
@@ -740,7 +740,7 @@ char *xmlobject::getObjectString(const char *pname, char *out, int maxlen) const
 {
   xmlobject x=getObject(pname);
   if (x) {
-    const char *bf = x.get();
+    const char *bf = x.getRaw();
     if (bf) {
       parser->convertString(bf, out, maxlen);
       return out;
@@ -756,6 +756,28 @@ char *xmlobject::getObjectString(const char *pname, char *out, int maxlen) const
   }
   return out;
 }
+
+const char *xmlobject::get() const
+{
+  const char *ptr = getRaw();
+  if (ptr == 0)
+    return 0;
+  static char buff[buff_pre_alloc];
+  if (parser->isUTF) {
+    int len = strlen(ptr);
+    len = min(len+1, buff_pre_alloc-10);
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, ptr, len, parser->strbuffw, buff_pre_alloc);
+    parser->strbuffw[wlen-1] = 0;
+    for (int k = 0; k< wlen; k++) {
+      buff[k] = parser->strbuffw[k] & 0xFF; 
+    }
+  }
+  else {
+    return ptr;
+  }
+  return buff;
+}
+
 
 const char *xmlattrib::get() const
 {

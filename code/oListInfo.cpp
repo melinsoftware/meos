@@ -2536,12 +2536,12 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         continue;
 
       if (li.filter(EFilterVacant)) {
-        if (it->getId() == getVacantClub())
+        if (it->getId() == getVacantClub(false))
           continue;
       }
 
       if (li.filter(EFilterOnlyVacant)) {
-        if (it->getId() != getVacantClub())
+        if (it->getId() != getVacantClub(false))
           continue;
       }
 

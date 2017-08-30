@@ -285,7 +285,7 @@ bool csvparser::ImportOE_CSV(oEvent &event, const char *file)
         pr = event.getRunner(id, 0);
 
       while (pr) { // Check that the exact match is OK
-        if (extId != pr->getExtIdentifier())
+        if (extId == pr->getExtIdentifier())
           break;
         id++;
         pr = event.getRunner(id, 0);

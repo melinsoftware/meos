@@ -103,6 +103,7 @@ protected:
 
   bool isUTF;
   char strbuff[buff_pre_alloc]; // Temporary buffer for processing (no threading allowed)
+  wchar_t strbuffw[buff_pre_alloc]; // Temporary buffer for processing (no threading allowed)
 
   ProgressWindow *progress;
   int lastIndex;
@@ -204,7 +205,8 @@ public:
     return n[0] == pname[0] && strcmp(n, pname)==0;
   }
 
-  const char *get() const {return parser->xmlinfo[index].data;}
+  const char *getRaw() const {return parser->xmlinfo[index].data;}
+  const char *get() const;
   int getInt() const {const char *d = parser->xmlinfo[index].data;
                       return d ? atoi(d) : 0;}
   __int64 getInt64() const {const char *d = parser->xmlinfo[index].data;

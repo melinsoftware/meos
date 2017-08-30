@@ -645,13 +645,16 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
     const TextInfo &text = *it;
     if (text.format == 10)
       continue;
+    if (text.format != pageNewPage && text.format != pagePageInfo) {
+      if (currentYP > text.yp) {
+        needSort = true;
+      }
 
-    if (currentYP > text.yp) {
-      needSort = true;
+      minX = min(minX, (float)it->textRect.left);
+      top = min(top, text.yp);
     }
-    minX = min(minX, (float)it->textRect.left);
-    top = min(top, text.yp);
     currentYP = text.yp;
+    
     indexedTL.push_back(PrintItemInfo(currentYP, &text));
   }
 
