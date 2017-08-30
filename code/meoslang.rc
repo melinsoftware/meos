@@ -1,0 +1,19 @@
+#define IDR_3001                        103
+#define IDR_3002                        104
+#define IDR_3003                        105
+#define IDR_3004                        106
+#define IDR_3005                        107
+#define IDR_3006                        108
+#define IDR_3007                        109
+#define IDR_3008                        110
+
+IDR_3001                300     DISCARDABLE     "swedish.lng"
+IDR_3002                300     DISCARDABLE     "english.lng"
+IDR_3003                300     DISCARDABLE     "german.lng"
+IDR_3004                300     DISCARDABLE     "danish.lng"
+IDR_3005                300     DISCARDABLE     "russian.lng"
+IDR_3006                300     DISCARDABLE     "cp1250.lng"
+IDR_3007                300     DISCARDABLE     "cp1255.lng"
+IDR_3008                300     DISCARDABLE     "french.lng"
+/////////////////////////////////////////////////////////////////////////////
+
