@@ -31,7 +31,7 @@ class oWordList;
 class Localizer {
   class LocalizerInternal {
   private:
-    map<string, string> langResource;
+    map<wstring, wstring> langResource;
     LocalizerImpl *impl;
     LocalizerImpl *implBase;
 
@@ -40,14 +40,14 @@ class Localizer {
 
   public:
 
-    void debugDump(const string &untranslated, const string &translated) const;
+    void debugDump(const wstring &untranslated, const wstring &translated) const;
 
-    vector<string> getLangResource() const;
-    void loadLangResource(const string &name);
-    void addLangResource(const string &name, const string &resource);
+    vector<wstring> getLangResource() const;
+    void loadLangResource(const wstring &name);
+    void addLangResource(const wstring &name, const wstring &resource);
 
     /** Translate string */
-    const string &tl(const string &str) const;
+    const wstring &tl(const wstring &str) const;
 
     void set(Localizer &li);
 
@@ -64,7 +64,9 @@ public:
   bool capitalizeWords() const;
 
   LocalizerInternal &get() {return *linternal;}
-  const string &tl(const string &str) const {return linternal->tl(str);};
+  const wstring &tl(const string &str) const;
+  const wstring &tl(const wstring &str) const {return linternal->tl(str);}
+  //const wstring &tlw(const wstring &str) const;
 
   void init() {linternal = new LocalizerInternal();}
   void unload() {delete linternal; linternal = 0;}

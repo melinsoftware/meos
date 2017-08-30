@@ -96,15 +96,15 @@ string TimeStamp::getStamp() const
   return bf;
 }
 
-string TimeStamp::getStampString() const
+wstring TimeStamp::getStampString() const
 {
   __int64 ft64=(__int64(Time)+minYearConstant*365*24*3600)*10000000;
   FILETIME &ft=*(FILETIME*)&ft64;
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
 
-  char bf[32];
-  sprintf_s(bf, "%d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+  wchar_t bf[32];
+  swprintf_s(bf, L"%d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 
   return bf;
 }

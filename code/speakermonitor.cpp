@@ -32,12 +32,14 @@
 #include "speakermonitor.h"
 #include "oListInfo.h"
 
+extern gdioutput *gdi_main;
+
 SpeakerMonitor::SpeakerMonitor(oEvent &oe) : oe(oe) {
   placeLimit = 0;
   numLimit = 0;
 
   maxClassNameWidth = 0;
-
+  totalResults = false;
   classWidth = 0;
   timeWidth = 0;
   totWidth = 0;
@@ -51,7 +53,7 @@ void SpeakerMonitor::setClassFilter(const set<int> &filter, const set<int> &cfil
   classFilter = filter;
   controlIdFilter = cfilter;
   oListInfo li;
-  maxClassNameWidth = li.getMaxCharWidth(&oe, classFilter, lClassName, "", normalText, false);
+  maxClassNameWidth = li.getMaxCharWidth(&oe, classFilter, lClassName, L"", normalText, false);
 }
 
 void SpeakerMonitor::setLimits(int place, int num) {
@@ -65,22 +67,22 @@ bool orderResultsInTime(const oEvent::ResultEvent &a,
     return a.time > b.time;
  
   if (a.time > 0) {
-    const string &na = a.r->getName();
-    const string &nb = b.r->getName();
+    const wstring &na = a.r->getName();
+    const wstring &nb = b.r->getName();
   
     return CompareString(LOCALE_USER_DEFAULT, 0,
-                         na.c_str(), na.length(),
-                         nb.c_str(), nb.length()) == CSTR_LESS_THAN;
+                          na.c_str(), na.length(),
+                          nb.c_str(), nb.length()) == CSTR_LESS_THAN;
   }
   return a.r->getId() < b.r->getId();
 }
 
 void SpeakerMonitor::show(gdioutput &gdi) {
-  classWidth = gdi.scaleLength(1.5*maxClassNameWidth);
+  classWidth = gdi.scaleLength(int(1.5*maxClassNameWidth));
   timeWidth = gdi.scaleLength(60);
   totWidth = gdi.scaleLength(600);
   extraWidth = gdi.scaleLength(200);
-  dash = MakeDash("- ");
+  dash = makeDash(L"- ");
 
   oe.getResultEvents(classFilter, controlIdFilter, results);
   calculateResults();
@@ -170,7 +172,7 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
   const int extra = 5;
 
   int t = res.time;
-  string msg = t>0 ? oe.getAbsTime(t) : MakeDash("--:--:--");
+  wstring msg = t>0 ? oe.getAbsTime(t) : makeDash(L"--:--:--");
   pRunner r = res.r;
 
   RECT rc;
@@ -183,8 +185,8 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
   bool largeFormat = res.status == StatusOK &&
     ((res.control == oPunch::PunchFinish && res.place <= finishLargePlaceLimit) || 
                                             res.place <= radioLargePlaceLimit);
-  string message;
-  deque<string> details;
+  wstring message;
+  deque<wstring> details;
   getMessage(res,message, details);
 
   if (largeFormat) {
@@ -199,11 +201,11 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
       }
     }
 
-    string bib = r->getBib();
+    wstring bib = r->getBib();
     if (!bib.empty())
-      msg = bib + ", ";
+      msg = bib + L", ";
     else
-      msg = "";
+      msg = L"";
     
     msg += r->getCompleteIdentification(false);
     int xlimit = totWidth + extraWidth - (timeWidth + dx);
@@ -243,14 +245,14 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
     if (showClass) {
       pClass pc = res.r->getClassRef();
       if (pc)
-        msg += " (" + pc->getName() + ") ";
+        msg += L" (" + pc->getName() + L") ";
       else
-        msg += " ";
+        msg += L" ";
     }
     else
-      msg += " ";
+      msg += L" ";
 
-    msg += r->getCompleteIdentification(false) + " ";
+    msg += r->getCompleteIdentification(false) + L" ";
     
     msg += lang.tl(message);
     gdi.addStringUT(gdi.getCY(), gdi.getCX(), breakLines, msg, totWidth);
@@ -289,22 +291,10 @@ void SpeakerMonitor::calculateResults() {
   // TODO Result modules
 
   for (size_t k = 0; k < results.size(); k++) {
-    /*int t = results[k].time;
-    if (t == 16016 || t == 15610) {
-      pRunner r = results[k].r;
-      pTeam tm = r->getTeam();
-      int rt = t - r->getStartTime();
-      int start = r->getStartTime();
-      int rtIn = tm->getLegRunningTime(r->getLegNumber() - 1, true);
-      int ttt = rtIn + rt;
-      string x = r->getName() + ":" + formatTime(rt) + "/" + formatTimeHMS(start)
-                 + "/" + formatTime(rtIn) + "/" + formatTime(ttt) + "\n";
-
-      OutputDebugString(x.c_str());
-
-      int tttt = r->getTotalRunningTime(t);
-    }*/
-    results[k].runTime = results[k].r->getTotalRunningTime(results[k].time);
+    results[k].runTime = results[k].r->getTotalRunningTime(results[k].time, totalResults);
+    if (results[k].status == StatusOK && totalResults)
+      results[k].status = results[k].r->getTotalStatus();
+    
     if (results[k].status == StatusOK)
       results[k].resultScore = results[k].runTime;
     else
@@ -327,7 +317,8 @@ void SpeakerMonitor::calculateResults() {
   for (size_t k = 0; k < results.size(); k++) {
     if (results[k].partialCount > 0)
       continue; // Skip in result calculation
-    int totTime = results[k].r->getTotalRunningTime(results[k].time);
+    int totTime = results[k].r->getTotalRunningTime(results[k].time, totalResults);
+    assert(totTime == results[k].runTime);
     int leg = results[k].leg();
     
     if (clsId != results[k].classId() || ctrlId != results[k].control || legId != leg) {
@@ -372,7 +363,7 @@ void SpeakerMonitor::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
 void SpeakerMonitor::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r) {
   vector<int> delta;
   r->getSplitAnalysis(delta);
-  string timeloss = lang.tl("Bommade kontroller: ");
+  wstring timeloss = lang.tl("Bommade kontroller: ");
   pCourse pc = 0;
   bool first = true;
   const int charlimit = 90;
@@ -385,16 +376,16 @@ void SpeakerMonitor::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r) {
       }
 
       if (!first)
-        timeloss += " | ";
+        timeloss += L" | ";
       else
         first = false;
 
-      timeloss += pc->getControlOrdinal(j) + ". " + formatTime(delta[j]);
+      timeloss += pc->getControlOrdinal(j) + L". " + formatTimeW(delta[j]);
     }
     if (timeloss.length() > charlimit || (!timeloss.empty() && !first && j+1 == delta.size())) {
       gdi.addStringUT(yp, xp, 0, timeloss).setColor(colorDarkRed);
       yp += gdi.getLineHeight();
-      timeloss = "";
+      timeloss = L"";
     }
   }
   if (first) {
@@ -402,30 +393,30 @@ void SpeakerMonitor::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r) {
   }
 }
 
-string getOrder(int k);
-string getNumber(int k);
-void getTimeAfterDetail(string &detail, int timeAfter, int deltaTime, bool wasAfter);
+wstring getOrder(int k);
+wstring getNumber(int k);
+void getTimeAfterDetail(wstring &detail, int timeAfter, int deltaTime, bool wasAfter);
 
-string getTimeDesc(int t1, int t2) {
+wstring getTimeDesc(int t1, int t2) {
   int tb = abs(t1 - t2);
-  string stime;
+  wstring stime;
   if (tb == 1)
-    stime = "1" + lang.tl(" sekund");
+    stime = L"1" + lang.tl(L" sekund");
   else if (tb <= 60)
-    stime = itos(tb) + lang.tl(" sekunder");
+    stime = itow(tb) + lang.tl(L" sekunder");
   else
-    stime = formatTime(tb);
+    stime = formatTimeW(tb);
 
   return stime;
 }
 
 void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res, 
-                                string &message, deque<string> &details) {
+                                wstring &message, deque<wstring> &details) {
   pClass cls = res.r->getClassRef();
   if (!cls)
     return;
 
-  string &msg = message;
+  wstring &msg = message;
 
   int totTime = res.runTime;
   int leaderTime = getLeaderTime(res);
@@ -466,9 +457,9 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
 
   if (res.status != StatusOK) {
     if (res.status != StatusDQ)
-      msg = "är inte godkänd.";
+      msg = L"är inte godkänd.";
     else
-      msg = "är diskvalificerad.";
+      msg = L"är diskvalificerad.";
 
     return;
   }
@@ -513,11 +504,10 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
     deltaTime = after - prevAfter; // Positive -> more after.
   }
 
-  string timeS = formatTime(res.runTime);
+  wstring timeS = formatTimeW(res.runTime);
 
-  
-  string detail;
-  const string *cname = 0;
+  wstring detail;
+  const wstring *cname = 0;
   if (timeAfter > 0 && ahead)
     cname = &ahead->r->getName();
   else if (timeAfter < 0 && behind)
@@ -533,7 +523,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
 
   pCourse crs = res.r->getCourse(false);
 
-  string location, locverb, thelocation;
+  wstring location, locverb, thelocation;
   
   bool finish = res.control == oPunch::PunchFinish;
   bool changeover = false;
@@ -549,17 +539,17 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   }
 
   if (finish) {
-    location = "i mål";
-    locverb = "går i mål";
-    thelocation = lang.tl("målet") + "#";
+    location = L"i mål";
+    locverb = L"går i mål";
+    thelocation = lang.tl(L"målet") + L"#";
   }
   else if (changeover) {
-    location = "vid växeln";
-    locverb = "växlar";
-    thelocation = lang.tl("växeln") + "#";
+    location = L"vid växeln";
+    locverb = L"växlar";
+    thelocation = lang.tl(L"växeln") + L"#";
   }
   else {
-    thelocation = crs ? (crs->getRadioName(res.control) + "#") : "#";
+    thelocation = crs ? (crs->getRadioName(res.control) + L"#") : L"#";
   }
 
   
@@ -568,55 +558,55 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   if (finish || changeover) {
     if (res.place == 1) {
       if ((ahead == 0 && behind == 0) || firstTimes[key] == res.time)
-        msg = "är först " + location + " med tiden X.#" + timeS;
+        msg = L"är först " + location + L" med tiden X.#" + timeS;
       else if (!sharedPlace) {
-        msg = "tar ledningen med tiden X.#" + timeS;
+        msg = L"tar ledningen med tiden X.#" + timeS;
         if (behind  && res.place>2) {
-          string stime(getTimeDesc(behind->runTime, totTime));
-          details.push_back("är X före Y#" + stime + "#" + behind->r->getCompleteIdentification(false));
+          wstring stime(getTimeDesc(behind->runTime, totTime));
+          details.push_back(L"är X före Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
         }
       }
       else
-        msg = "går upp i delad ledning med tiden X.#" + timeS;
+        msg = L"går upp i delad ledning med tiden X.#" + timeS;
     }
     else {
       if (firstTimes[key] == res.time) {
-        msg = "var först " + location + " med tiden X.#" + timeS;
+        msg = L"var först " + location + L" med tiden X.#" + timeS;
 
         if (!sharedPlace) {
-          details.push_front("är nu på X plats med tiden Y.#" +
-                      getOrder(res.place) + "#" + timeS);
+          details.push_front(L"är nu på X plats med tiden Y.#" +
+                      getOrder(res.place) + L"#" + timeS);
           if (ahead && res.place != 2) {
-            string stime(getTimeDesc(ahead->runTime, totTime));
-            details.push_back("är X efter Y#" + stime + "#" + ahead->r->getCompleteIdentification(false));
+            wstring stime(getTimeDesc(ahead->runTime, totTime));
+            details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
           }
         }
         else {
-          details.push_back("är nu på delad X plats med tiden Y.#" + getOrder(res.place) +
-                                                        "#" + timeS);
-          string share;
+          details.push_back(L"är nu på delad X plats med tiden Y.#" + getOrder(res.place) +
+                                                        L"#" + timeS);
+          wstring share;
           getSharedResult(res, share);
           details.push_back(share);
         }
       }
       else if (!sharedPlace) {
-        msg = locverb + " på X plats med tiden Y.#" +
-                  getOrder(res.place) + "#" + timeS;
+        msg = locverb + L" på X plats med tiden Y.#" +
+                  getOrder(res.place) + L"#" + timeS;
         if (ahead && res.place != 2) {
-          string stime(getTimeDesc(ahead->runTime, totTime));
-          details.push_back("är X efter Y#" + stime + "#" + ahead->r->getCompleteIdentification(false));
+          wstring stime(getTimeDesc(ahead->runTime, totTime));
+          details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
         }
       }
       else {
-        msg = locverb + " på delad X plats med tiden Y.#" + getOrder(res.place) +
-                                                      "#" + timeS;
-        string share;
+        msg = locverb + L" på delad X plats med tiden Y.#" + getOrder(res.place) +
+                                                      L"#" + timeS;
+        wstring share;
         getSharedResult(res, share);
         details.push_back(share);
       }
     }
     if (changeover && res.r->getTeam() && res.r->getTeam()->getClassRef() != 0) {
-      string vxl = "skickar ut X.#";
+      wstring vxl = L"skickar ut X.#";
       pTeam t = res.r->getTeam();
       pClass cls = t->getClassRef();
       bool second = false;
@@ -627,9 +617,9 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
           if (!r && !vxl.empty())
             continue;
           if (second)
-            vxl += ", ";
+            vxl += L", ";
           second = true;
-          vxl += r ? r->getName() : "?";
+          vxl += r ? r->getName() : L"?";
           if (!(cls->isParallel(k) || cls->isOptional(k)))
             break;
         }
@@ -640,50 +630,50 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   else {
     if (res.place == 1) {
       if ((ahead == 0 && behind == 0) || res.time == firstTimes[key])
-        msg = "är först vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"är först vid X med tiden Y.#" + thelocation + timeS;
       else if (!sharedPlace) {
-        msg = "tar ledningen vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"tar ledningen vid X med tiden Y.#" + thelocation + timeS;
         if (behind) {
-          string stime(getTimeDesc(behind->runTime, totTime));
-          details.push_back("är X före Y#" + stime + "#" + behind->r->getCompleteIdentification(false));
+          wstring stime(getTimeDesc(behind->runTime, totTime));
+          details.push_back(L"är X före Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
         }
       }
       else
-        msg = "går upp i delad ledning vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"går upp i delad ledning vid X med tiden Y.#" + thelocation + timeS;
     }
     else {
       if (firstTimes[key] == res.time) {
-        msg = "var först vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"var först vid X med tiden Y.#" + thelocation + timeS;
 
         if (!sharedPlace) {
-          details.push_front("är nu på X plats med tiden Y.#" +
-                        getOrder(res.place) + "#" + timeS);
+          details.push_front(L"är nu på X plats med tiden Y.#" +
+                        getOrder(res.place) + L"#" + timeS);
           if (ahead) {
-            string stime(getTimeDesc(ahead->runTime, totTime));
-            details.push_back("är X efter Y#" + stime + "#" + ahead->r->getCompleteIdentification(false));
+            wstring stime(getTimeDesc(ahead->runTime, totTime));
+            details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
           }
         }
         else {
-          details.push_back("är nu på delad X plats med tiden Y.#" + getOrder(res.place) +
-                                                        "#" + timeS);
-          string share;
+          details.push_back(L"är nu på delad X plats med tiden Y.#" + getOrder(res.place) +
+                                                        L"#" + timeS);
+          wstring share;
           getSharedResult(res, share);
           details.push_back(share);
         }
       }
       else if (!sharedPlace) {
-        msg = "stämplar vid X som Y, på tiden Z.#" +
+        msg = L"stämplar vid X som Y, på tiden Z.#" +
                       thelocation + getNumber(res.place) +
-                      "#" + timeS;
+                      L"#" + timeS;
         if (ahead && res.place>2) {
-          string stime(getTimeDesc(ahead->runTime, totTime));
-          details.push_back("är X efter Y#" + stime + "#" + ahead->r->getCompleteIdentification(false));
+          wstring stime(getTimeDesc(ahead->runTime, totTime));
+          details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
         }
       }
       else {
-        msg = "stämplar vid X som delad Y med tiden Z.#" + thelocation + getNumber(res.place) +
-                                                      "#" + timeS;
-        string share;
+        msg = L"stämplar vid X som delad Y med tiden Z.#" + thelocation + getNumber(res.place) +
+                                                      L"#" + timeS;
+        wstring share;
         getSharedResult(res, share);
         details.push_back(share);
       }
@@ -692,17 +682,17 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   return;
 }
 
-void SpeakerMonitor::getSharedResult(const oEvent::ResultEvent &res, string &detail) const {
+void SpeakerMonitor::getSharedResult(const oEvent::ResultEvent &res, wstring &detail) const {
   vector<pRunner> shared;
   getSharedResult(res, shared);
   if (!shared.empty())
-    detail = "delar placering med X.#";
+    detail = L"delar placering med X.#";
   else 
-    detail = "";
+    detail = L"";
 
   for (size_t k = 0; k < shared.size(); k++) {
     if (k > 0)
-      detail += ", ";
+      detail += L", ";
     
     detail += shared[k]->getCompleteIdentification(false);
   }

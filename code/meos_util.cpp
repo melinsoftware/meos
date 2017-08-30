@@ -27,6 +27,7 @@
 #include "localizer.h"
 #include "oFreeImport.h"
 #include "meosexception.h"
+#include <WinInet.h>
 
 StringCache globalStringCache;
 
@@ -44,8 +45,7 @@ StringCache &StringCache::getInstance() {
   return globalStringCache;
 }
 
-string getLocalTime()
-{
+string getLocalTime() {
   SYSTEMTIME st;
   GetLocalTime(&st);
   return convertSystemTime(st);
@@ -58,6 +58,17 @@ string getLocalDate()
   return convertSystemDate(st);
 }
 
+wstring getLocalTimeW() {
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  return convertSystemTimeW(st);
+}
+
+wstring getLocalDateW() {
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  return convertSystemDateW(st);
+}
 
 int getThisYear() {
   static int thisYear = 0;
@@ -91,18 +102,17 @@ int extendYear(int year) {
     return (thisYear - cLast) + year;
 }
 
-string getLocalTimeFileName()
+wstring getLocalTimeFileName()
 {
   SYSTEMTIME st;
   GetLocalTime(&st);
 
-  char bf[32];
-  sprintf_s(bf, "%d%02d%02d_%02d%02d%02d", st.wYear, st.wMonth, st.wDay,
+  wchar_t bf[32];
+  swprintf_s(bf, L"%d%02d%02d_%02d%02d%02d", st.wYear, st.wMonth, st.wDay,
     st.wHour, st.wMinute, st.wSecond);
 
   return bf;
 }
-
 
 string getLocalTimeOnly()
 {
@@ -111,6 +121,12 @@ string getLocalTimeOnly()
   return convertSystemTimeOnly(st);
 }
 
+wstring getLocalTimeOnlyW()
+{
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  return convertSystemTimeOnlyW(st);
+}
 
 int getRelativeDay() {
   SYSTEMTIME st;
@@ -162,6 +178,15 @@ string convertSystemTime(const SYSTEMTIME &st)
   return bf;
 }
 
+//2014-11-03 07:02:00
+wstring convertSystemTimeW(const SYSTEMTIME &st)
+{
+  wchar_t bf[32];
+  swprintf_s(bf, L"%d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay,
+    st.wHour, st.wMinute, st.wSecond);
+
+  return bf;
+}
 
 string convertSystemTimeOnly(const SYSTEMTIME &st)
 {
@@ -171,11 +196,25 @@ string convertSystemTimeOnly(const SYSTEMTIME &st)
   return bf;
 }
 
+wstring convertSystemTimeOnlyW(const SYSTEMTIME &st) {
+  wchar_t bf[32];
+  swprintf_s(bf, L"%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
+
+  return bf;
+}
 
 string convertSystemDate(const SYSTEMTIME &st)
 {
   char bf[32];
   sprintf_s(bf, "%d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
+
+  return bf;
+}
+
+wstring convertSystemDateW(const SYSTEMTIME &st)
+{
+  wchar_t bf[32];
+  swprintf_s(bf, L"%d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
 
   return bf;
 }
@@ -192,6 +231,22 @@ string formatDate(int m, bool useIsoFormat) {
   return bf;
 }
 
+wstring formatDateW(int m, bool useIsoFormat) {
+  wchar_t bf[24];
+  if (m > 0 && m < 30000101) {
+    swprintf_s(bf, 24, L"%d-%02d-%02d", m/(100*100), (m/100)%100, m%100);
+  }
+  else {
+    bf[0] = '-';
+    bf[1] = 0;
+  }
+  return bf;
+}
+
+int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid) {
+  string ms(m.begin(), m.end());
+  return convertDateYMS(ms, st, checkValid);
+}
 //Absolute time string to SYSTEM TIME
 int convertDateYMS(const string &m, SYSTEMTIME &st, bool checkValid) {
   memset(&st, 0, sizeof(st));
@@ -255,9 +310,20 @@ int convertDateYMS(const string &m, bool checkValid)
   return convertDateYMS(m, st, checkValid);
 }
 
+int convertDateYMS(const wstring &m, bool checkValid)
+{
+  SYSTEMTIME st;
+  return convertDateYMS(m, st, checkValid);
+}
 
-bool myIsSpace(BYTE b) {
-  return isspace(b) || BYTE(b)==BYTE(160);
+bool myIsSpace(wchar_t b) {
+  return iswspace(b) != 0 || b == 0x00A0 || b == 0x2007 || b == 0x202F;
+}
+
+//Absolute time string to absolute time int
+int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime) {
+  string sm(m.begin(), m.end());
+  return convertAbsoluteTimeHMS(sm, daysZeroTime);
 }
 
 //Absolute time string to absolute time int
@@ -294,7 +360,7 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
   int plusIndex = -1;
   for (int k=0;k<len;k++) {
     BYTE b=m[k];
-    if ( !(myIsSpace(b) || b==':' || (b>='0' && b<='9')) ) {
+    if ( !(isspace(b) || b==':' || (b>='0' && b<='9')) ) {
       if (b=='+' && plusIndex ==-1 && k>0)
         plusIndex = k;
       else
@@ -342,6 +408,11 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
   return t;
 }
 
+
+int convertAbsoluteTimeISO(const wstring &m) {
+  string mn(m.begin(), m.end());
+  return convertAbsoluteTimeISO(mn);
+}
 
 //Absolute time string to absolute time int
 int convertAbsoluteTimeISO(const string &m)
@@ -398,6 +469,10 @@ int convertAbsoluteTimeISO(const string &m)
   return t;
 }
 
+int convertAbsoluteTimeMS(const wstring &m) {
+  string mn(m.begin(), m.end());
+  return convertAbsoluteTimeMS(mn);
+}
 
 // Parse +-MM:SS or +-HH:MM:SS
 int convertAbsoluteTimeMS(const string &m)
@@ -450,6 +525,15 @@ int convertAbsoluteTimeMS(const string &m)
 }
 
 //Generate +-MM:SS or +-HH:MM:SS
+const wstring &getTimeMSW(int m) {
+  wstring &res = StringCache::getInstance().wget();
+  const string tr = getTimeMS(m);
+  res.clear();
+  res.insert(res.begin(), tr.begin(), tr.end());
+  return res;
+}
+
+//Generate +-MM:SS or +-HH:MM:SS
 const string &getTimeMS(int m) {
   char bf[32];
   int am = abs(m);
@@ -471,7 +555,24 @@ const string &getTimeMS(int m) {
   return res;
 }
 
-const string &formatTime(int rt) {
+const wstring &formatTimeW(int rt) {
+  wstring &res = StringCache::getInstance().wget();
+  if (rt>0 && rt<3600*999) {
+    wchar_t bf[16];
+    if (rt>=3600 && MeOSUtil::useHourFormat)
+      swprintf_s(bf, 16, L"%d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
+    else
+      swprintf_s(bf, 16, L"%d:%02d", (rt/60), rt%60);
+
+    res = bf;
+    return res;
+  }
+  wchar_t ret[2] = {0x2013, 0};
+  res = ret;
+  return res;
+}
+
+const string &formatTimeN(int rt) {
   string &res = StringCache::getInstance().get();
   if (rt>0 && rt<3600*999) {
     char bf[16];
@@ -483,8 +584,15 @@ const string &formatTime(int rt) {
     res = bf;
     return res;
   }
-  char ret[2] = {BYTE(0x96), 0};
-  res = ret;
+  res = "-";
+  return res;
+}
+
+const wstring &formatTimeHMSW(int m) {
+  wstring &res = StringCache::getInstance().wget();
+  const string tr = formatTimeHMS(m);
+  res.clear();
+  res.insert(res.begin(), tr.begin(), tr.end());
   return res;
 }
 
@@ -498,21 +606,33 @@ const string &formatTimeHMS(int rt) {
     res = bf;
     return res;
   }
-  char ret[2] = {BYTE(0x96), 0};
+  char ret[2] = {char(0x96), 0};
   res = ret;
   return res;
 }
 
-string formatTimeIOF(int rt, int zeroTime)
+wstring formatTimeIOF(int rt, int zeroTime)
 {
-  if (rt>0 && rt<(3600*48)) {
+  if (rt>0 && rt<(3600*24*10)) {
     rt+=zeroTime;
-    char bf[16];
-    sprintf_s(bf, 16, "%02d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
+    wchar_t bf[16];
+    swprintf_s(bf, 16, L"%02d:%02d:%02d", (rt/3600)%24,(rt/60)%60, rt%60);
 
     return bf;
   }
-  return "--:--:--";
+  return L"--:--:--";
+}
+
+size_t find(const wstring &str, const wstring &separator, size_t startpos)
+{
+  size_t seplen = separator.length();
+
+  for (size_t m = startpos; m<str.length(); m++) {
+    for (size_t n = 0; n<seplen; n++)
+      if (str[m] == separator[n])
+        return m;
+  }
+  return str.npos;
 }
 
 size_t find(const string &str, const string &separator, size_t startpos)
@@ -546,6 +666,26 @@ const vector<string> & split(const string &line, const string &separators, vecto
   return split_vector;
 }
 
+const vector<wstring> & split(const wstring &line, const wstring &separators, vector<wstring> &split_vector) {
+  split_vector.clear();
+
+  if (line.empty())
+    return split_vector;
+
+  size_t startpos=0;
+  size_t nextp=find(line, separators, startpos);
+  split_vector.push_back(line.substr(startpos, nextp-startpos));
+
+  while(nextp!=line.npos) {
+    startpos=nextp+1;
+    nextp=find(line, separators, startpos);
+    split_vector.push_back(line.substr(startpos, nextp-startpos));
+  }
+
+  return split_vector;
+}
+
+
 const string &unsplit(const vector<string> &split_vector, const string &separators, string &line) {
   size_t s = split_vector.size() * separators.size();
   for (size_t k = 0; k < split_vector.size(); k++) {
@@ -562,26 +702,66 @@ const string &unsplit(const vector<string> &split_vector, const string &separato
   return line;
 }
 
-
-const string &MakeDash(const string &t) {
-  return MakeDash(t.c_str());
+const wstring &unsplit(const vector<wstring> &split_vector, const wstring &separators, wstring &line) {
+  size_t s = split_vector.size() * separators.size();
+  for (size_t k = 0; k < split_vector.size(); k++) {
+    s += split_vector[k].size();
+  }
+  
+  line.clear();
+  line.reserve(s);
+  for (size_t k = 0; k < split_vector.size(); k++) {
+    if (k != 0)
+      line += separators;
+    line += split_vector[k];
+  }
+  return line;
 }
 
-const string &MakeDash(const char *t) {
-  string &out = StringCache::getInstance().get();
+const wstring &makeDash(const wstring &t) {
+  return makeDash(t.c_str());
+}
+
+const wstring &makeDash(const wchar_t *t) {
+  wstring &out = StringCache::getInstance().wget();
   out = t;
   for (size_t i=0;i<out.length(); i++) {
     if (t[i]=='-')
-      out[i]=BYTE(0x96);
+      out[i]= 0x2013;
   }
   return out;
 }
 
-string FormatRank(int rank)
-{
-  char r[16];
-  sprintf_s(r, "(%04d)", rank);
+wstring formatRank(int rank) {
+  wchar_t r[16];
+  swprintf_s(r, L"(%04d)", rank);
   return r;
+}
+
+const wstring &itow(int i) {
+  wchar_t bf[32];
+  _itow_s(i, bf, 10);
+  wstring &res = StringCache::getInstance().wget();
+  res = bf;
+  return res;
+}
+
+wstring itow(unsigned int i) {
+  wchar_t bf[32];
+  _ultow_s(i, bf, 10);
+  return bf;
+}
+
+wstring itow(unsigned long i) {
+  wchar_t bf[32];
+  _ultow_s(i, bf, 10);
+  return bf;
+}
+
+wstring itow(__int64 i) {
+  wchar_t bf[32];
+  _i64tow_s(i, bf, 32, 10);
+  return bf;
 }
 
 const string &itos(int i)
@@ -620,21 +800,32 @@ bool filterMatchString(const string &c, const char *filt_lc)
     return true;
   char key[2048];
   strcpy_s(key, c.c_str());
-  CharLowerBuff(key, c.length());
+  CharLowerBuffA(key, c.length());
 
   return strstr(key, filt_lc)!=0;
 }
 
-int countWords(const char *p) {
+bool filterMatchString(const wstring &c, const wchar_t *filt_lc) {
+  if (filt_lc[0] == 0)
+    return true;
+  wchar_t key[2048];
+  wcscpy_s(key, c.c_str());
+  CharLowerBuff(key, c.length());
+
+  return wcsstr(key, filt_lc)!=0;
+}
+
+
+int countWords(const wchar_t *p) {
   int nwords=0;
-  const unsigned char *ep=LPBYTE(p);
+  const wchar_t *ep=p;
   while (*ep) {
-    if (!isspace(*ep)) {
+    if (!myIsSpace(*ep)) {
       nwords++;
-      while ( *ep && !isspace(*ep) )
+      while ( *ep && !myIsSpace(*ep) )
         ep++;
     }
-    while (*ep && isspace(*ep))
+    while (*ep && myIsSpace(*ep))
         ep++;
   }
   return nwords;
@@ -659,14 +850,32 @@ string trim(const string &s)
   else return "";
 }
 
-bool fileExist(const char *file)
+wstring trim(const wstring &s) {
+  const wchar_t *ptr = s.c_str();
+  int len = s.length();
+
+  int i=0;
+  while(i<len && myIsSpace(ptr[i])) i++;
+
+  int k=len-1;
+
+  while(k>=0 && myIsSpace(ptr[k])) k--;
+
+  if (i == 0 && k == len-1)
+    return s;
+  else if (k>=i && i<len)
+    return s.substr(i, k-i+1);
+  else return L"";
+}
+
+bool fileExist(const wchar_t *file)
 {
   return GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES;
 }
 
-bool stringMatch(const string &a, const string &b) {
-  string aa = trim(a);
-  string bb = trim(b);
+bool stringMatch(const wstring &a, const wstring &b) {
+  wstring aa = trim(a);
+  wstring bb = trim(b);
 
   return CompareString(LOCALE_USER_DEFAULT, NORM_IGNORECASE, aa.c_str(), aa.length(), bb.c_str(), bb.length())==2;
 }
@@ -698,6 +907,79 @@ const string &encodeXML(const string &in)
       out+="&#13;";
     else if (bf[k] == 0)
       out+=' ';
+    else
+      out+=bf[k];
+  }
+  return out;
+}
+
+
+const wstring &encodeXML(const wstring &in)
+{
+  static wstring out;//WCS
+  const wchar_t *bf = in.c_str();
+  int len = in.length();
+  bool needEncode = false;
+  for (int k=0;k<len ;k++)
+    needEncode |=  (bf[k]=='&') | (bf[k]=='>') | (bf[k]=='<') | (bf[k]=='"') | (bf[k]==0) | (bf[k]=='\n') | (bf[k]=='\r');
+
+  if (!needEncode)
+    return in;
+  out.clear();
+  for (int k=0;k<len ;k++) {
+    if (bf[k]=='&')
+      out+=L"&amp;";
+    else if (bf[k]=='<')
+      out+=L"&lt;";
+    else if (bf[k]=='>')
+      out+=L"&gt;";
+    else if (bf[k]=='"')
+      out+=L"&quot;";
+    else if (bf[k]=='\n')
+      out+=L"&#10;";
+    else if (bf[k]=='\r')
+      out+=L"&#13;";
+    else if (bf[k] == 0)
+      out+=' ';
+    else
+      out+=bf[k];
+  }
+  return out;
+}
+
+const wstring &encodeHTML(const wstring &in)
+{
+  static wstring out;//WCS
+  const wchar_t *bf = in.c_str();
+  int len = in.length();
+  bool needEncode = false;
+  for (int k=0;k<len ;k++)
+    needEncode |=  (bf[k]==' ') | (bf[k]=='&') | (bf[k]=='>') | (bf[k]=='<') | (bf[k]=='"') | (bf[k]==0) | (bf[k]=='\n') | (bf[k]=='\r') | (bf[k]==0x2013);
+
+  if (!needEncode)
+    return in;
+  out.clear();
+  for (int k=0;k<len ;k++) {
+    if (bf[k]=='&')
+      out+=L"&amp;";
+    else if (bf[k]=='<')
+      out+=L"&lt;";
+    else if (bf[k]=='>')
+      out+=L"&gt;";
+    else if (bf[k]=='"')
+      out+=L"&quot;";
+    else if (bf[k]=='\n')
+      out+=L"&#10;";
+    else if (bf[k]=='\r')
+      out+=L"&#13;";
+    else if (bf[k] == 0)
+      out+=' ';
+    else if (bf[k] == 0x2013) {
+      out+=L"&ndash;";
+    }
+    else if (bf[k] == ' ') {
+      out+=L"&nbsp;";
+    }
     else
       out+=bf[k];
   }
@@ -769,6 +1051,7 @@ const string &decodeXML(const string &in)
   return out;
 }
 
+
 void inplaceDecodeXML(char *in)
 {
   char *bf = in;
@@ -833,96 +1116,96 @@ const char *decodeXML(const char *in)
   return out.c_str();
 }
 
-void static setChar(unsigned char *map, unsigned char pos, unsigned char value)
+void static setChar(wchar_t *map, wchar_t pos, wchar_t value)
 {
   map[pos] = value;
 }
 
-int toLowerStripped(int c) {
-  const unsigned cc = c&0xFF;
-  if (cc>='A' && cc<='Z')
-    return cc + ('a' - 'A');
-  else if (cc<128)
-    return cc;
+int toLowerStripped(wchar_t c) {
+  if (c>='A' && c<='Z')
+    return c + ('a' - 'A');
+  else if (c<128)
+    return c;
 
-  static unsigned char map[256] = {0, 0};
-  if (map[1] == 0) {
-    for (unsigned i = 0; i < 256; i++)
-      map[i] = unsigned char(i);
+  static wchar_t *map = 0;
+  if (map == 0) {
+    map = new wchar_t[65536];
+    for (int i = 0; i < 65536; i++)
+      map[i] = i;
 
-    setChar(map, 'Å', 'å');
-    setChar(map, 'Ä', 'ä');
-    setChar(map, 'Ö', 'ö');
+    setChar(map, L'Å', L'å');
+    setChar(map, L'Ä', L'ä');
+    setChar(map, L'Ö', L'ö');
 
-    setChar(map, 'É', 'e');
-    setChar(map, 'é', 'e');
-    setChar(map, 'è', 'e');
-    setChar(map, 'È', 'e');
-    setChar(map, 'ë', 'e');
-    setChar(map, 'Ë', 'e');
-    setChar(map, 'ê', 'e');
-    setChar(map, 'Ê', 'e');
+    setChar(map, L'É', L'e');
+    setChar(map, L'é', L'e');
+    setChar(map, L'è', L'e');
+    setChar(map, L'È', L'e');
+    setChar(map, L'ë', L'e');
+    setChar(map, L'Ë', L'e');
+    setChar(map, L'ê', L'e');
+    setChar(map, L'Ê', L'e');
 
-    setChar(map, 'û', 'u');
-    setChar(map, 'Û', 'u');
-    setChar(map, 'ü', 'u');
-    setChar(map, 'Ü', 'u');
-    setChar(map, 'ú', 'u');
-    setChar(map, 'Ú', 'u');
-    setChar(map, 'ù', 'u');
-    setChar(map, 'Ù', 'u');
+    setChar(map, L'û', L'u');
+    setChar(map, L'Û', L'u');
+    setChar(map, L'ü', L'u');
+    setChar(map, L'Ü', L'u');
+    setChar(map, L'ú', L'u');
+    setChar(map, L'Ú', L'u');
+    setChar(map, L'ù', L'u');
+    setChar(map, L'Ù', L'u');
 
-    setChar(map, 'ñ', 'n');
-    setChar(map, 'Ñ', 'n');
+    setChar(map, L'ñ', L'n');
+    setChar(map, L'Ñ', L'n');
 
-    setChar(map, 'á', 'a');
-    setChar(map, 'Á', 'a');
-    setChar(map, 'à', 'a');
-    setChar(map, 'À', 'a');
-    setChar(map, 'â', 'a');
-    setChar(map, 'Â', 'a');
-    setChar(map, 'ã', 'a');
-    setChar(map, 'Ã', 'a');
+    setChar(map, L'á', L'a');
+    setChar(map, L'Á', L'a');
+    setChar(map, L'à', L'a');
+    setChar(map, L'À', L'a');
+    setChar(map, L'â', L'a');
+    setChar(map, L'Â', L'a');
+    setChar(map, L'ã', L'a');
+    setChar(map, L'Ã', L'a');
 
-    setChar(map, 'ï', 'i');
-    setChar(map, 'Ï', 'i');
-    setChar(map, 'î', 'i');
-    setChar(map, 'Î', 'i');
-    setChar(map, 'í', 'i');
-    setChar(map, 'Í', 'i');
-    setChar(map, 'ì', 'i');
-    setChar(map, 'Ì', 'i');
+    setChar(map, L'ï', L'i');
+    setChar(map, L'Ï', L'i');
+    setChar(map, L'î', L'i');
+    setChar(map, L'Î', L'i');
+    setChar(map, L'í', L'i');
+    setChar(map, L'Í', L'i');
+    setChar(map, L'ì', L'i');
+    setChar(map, L'Ì', L'i');
 
-    setChar(map, 'ó', 'o');
-    setChar(map, 'Ó', 'o');
-    setChar(map, 'ò', 'o');
-    setChar(map, 'Ò', 'o');
-    setChar(map, 'õ', 'o');
-    setChar(map, 'Õ', 'o');
-    setChar(map, 'ô', 'o');
-    setChar(map, 'Ô', 'o');
+    setChar(map, L'ó', L'o');
+    setChar(map, L'Ó', L'o');
+    setChar(map, L'ò', L'o');
+    setChar(map, L'Ò', L'o');
+    setChar(map, L'õ', L'o');
+    setChar(map, L'Õ', L'o');
+    setChar(map, L'ô', L'o');
+    setChar(map, L'Ô', L'o');
 
-    setChar(map, 'ý', 'y');
-    setChar(map, 'Ý', 'Y');
-    setChar(map, 'ÿ', 'y');
+    setChar(map, L'ý', L'y');
+    setChar(map, L'Ý', L'Y');
+    setChar(map, L'ÿ', L'y');
 
-    setChar(map, 'Æ', 'ä');
-    setChar(map, 'æ', 'ä');
+    setChar(map, L'Æ', L'ä');
+    setChar(map, L'æ', L'ä');
 
-    setChar(map, 'Ø', 'ö');
-    setChar(map, 'ø', 'ö');
+    setChar(map, L'Ø', L'ö');
+    setChar(map, L'ø', L'ö');
 
-    setChar(map, 'Ç', 'c');
-    setChar(map, 'ç', 'c');
+    setChar(map, L'Ç', L'c');
+    setChar(map, L'ç', L'c');
   }
-  int a = map[cc];
+  int a = map[c];
   return a;
 }
 
-const char *canonizeName(const char *name)
+const wchar_t *canonizeName(const wchar_t *name)
 {
-  static char out[70];
-  static char tbf[70];
+  static wchar_t out[70];
+  static wchar_t tbf[70];
   
   for (int i = 0; i<63 && name[i]; i++) {
     if (name[i] == ',') {
@@ -971,7 +1254,7 @@ const char *canonizeName(const char *name)
 
 const int notFound = 1000000;
 
-int charDist(const char *b, int len, int origin, char c)
+int charDist(const wchar_t *b, int len, int origin, wchar_t c)
 {
   int i;
   int bound = max(1, min(len/2, 4));
@@ -986,7 +1269,7 @@ int charDist(const char *b, int len, int origin, char c)
   return notFound;
 }
 
-static double stringDistance(const char *a, int al, const char *b, int bl)
+static double stringDistance(const wchar_t *a, int al, const wchar_t *b, int bl)
 {
   al = min (al, 256);
   int d1[256];
@@ -1017,14 +1300,13 @@ static double stringDistance(const char *a, int al, const char *b, int bl)
     dist += ld*ld;
   }
 
-
   return (sqrt(dist)+mfactor*mfactor)/double(al);
 }
 
-double stringDistance(const char *a, const char *b)
+double stringDistance(const wchar_t *a, const wchar_t *b)
 {
-  int al = strlen(a);
-  int bl = strlen(b);
+  int al = wcslen(a);
+  int bl = wcslen(b);
 
   double d1 = stringDistance(a, al, b, bl);
   if (d1 >= 1)
@@ -1050,14 +1332,27 @@ int getNumberSuffix(const string &str)
   return atoi(str.c_str() + pos);
 }
 
-int extractAnyNumber(const string &str, string &prefix, string &suffix)
+int getNumberSuffix(const wstring &str)
 {
-  const unsigned char *ptr = (const unsigned char*)str.c_str();
+  int pos = str.length();
+
+  while (pos>1 && (str[pos-1] & (~127)) == 0  && (isspace(str[pos-1]) || isdigit(str[pos-1]))) {
+    pos--;
+  }
+
+  if (pos == str.length())
+    return 0;
+  return _wtoi(str.c_str() + pos);
+}
+
+int extractAnyNumber(const wstring &str, wstring &prefix, wstring &suffix)
+{
+  const wchar_t *ptr = (const wchar_t*)str.c_str();
   for (size_t k = 0; k<str.length(); k++) {
     if (isdigit(ptr[k])) {
       prefix = str.substr(0, k);
-      int num = atoi(str.c_str() + k);
-      while(k<str.length() && (str[++k] & 128) == 0 && isdigit(str[k]));
+      int num = _wtoi(str.c_str() + k);
+      while(k<str.length() && (str[++k] & ~0x7F) == 0 && isdigit(str[k]));
         suffix = str.substr(k);
 
       return num;
@@ -1066,17 +1361,17 @@ int extractAnyNumber(const string &str, string &prefix, string &suffix)
   return -1;
 }
 
-static void decompseClassName(const string &name, vector<string> &dec) {
+static void decomposeClassName(const wstring &name, vector<wstring> &dec) {
   if (name.empty())
     return;
 
-  dec.push_back(string());
+  dec.push_back(wstring());
   
   for (size_t i = 0; i < name.size(); i++) {
     int bchar = toLowerStripped(name[i]);
     if (isspace(bchar) || bchar == '-' || bchar == 160) {
       if (!dec.back().empty())
-        dec.push_back(string());
+        dec.push_back(wstring());
       continue;
     }
     if (!dec.back().empty()) {
@@ -1085,7 +1380,7 @@ static void decompseClassName(const string &name, vector<string> &dec) {
       bool isNum = bchar >= '0' && bchar <= '9';
 
       if (lastNum^isNum)
-        dec.push_back(string()); // Change num/ non-num
+        dec.push_back(wstring()); // Change num/ non-num
     }
     dec.back().push_back(bchar);
   }
@@ -1098,16 +1393,16 @@ static void decompseClassName(const string &name, vector<string> &dec) {
 /** Matches H21 L with H21 Lång and H21L 
  but not Violet with Violet Court, which is obviously wrong.
  */
-bool compareClassName(const string &a, const string &b)
+bool compareClassName(const wstring &a, const wstring &b)
 {
   if (a == b)
     return true;
 
-	vector<string> acanon;
-	vector<string> bcanon;
+	vector<wstring> acanon;
+	vector<wstring> bcanon;
 
-  decompseClassName(a, acanon);
-  decompseClassName(b, bcanon);
+  decomposeClassName(a, acanon);
+  decomposeClassName(b, bcanon);
 
   if (acanon.size() != bcanon.size())
     return false;
@@ -1129,8 +1424,13 @@ bool compareClassName(const string &a, const string &b)
   return true; // All parts matched
 }
 
-string getErrorMessage(int code) {
+wstring getErrorMessage(int code) {
   LPVOID msg;
+
+  if (code == ERROR_INTERNET_TIMEOUT) {
+    return L"Timeout";
+  }
+
   int s = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL,
                 code,
@@ -1138,17 +1438,17 @@ string getErrorMessage(int code) {
                 (LPTSTR) &msg, 0, NULL);
   if (s==0 || !msg) {
     if (code != 0) {
-      char ch[128];
-      sprintf_s(ch, "Error code: %d", code);
+      wchar_t ch[128];
+      swprintf_s(ch, L"Error code: %d", code);
       return ch;
     }
-    return "";
+    return L"";
   }
 
-  string str = LPCTSTR(msg);
+  wstring str = LPCTSTR(msg);
   if (str.empty() && code>0) {
-    char ch[128];
-    sprintf_s(ch, "Error code: %d", code);
+    wchar_t ch[128];
+    swprintf_s(ch, L"Error code: %d", code);
     str = ch;
   }
 
@@ -1298,7 +1598,23 @@ bool isNumber(const string &s) {
   return len > 0;
 }
 
-int convertDynamicBase(const string &s, long long &out) {
+bool isAscii(const wstring &s) {
+  for (size_t k = 0; k<s.length(); k++)
+    if (!iswascii(s[k]))
+      return false;
+  return true;
+}
+
+bool isNumber(const wstring &s) {
+  int len = s.length();
+  for (int k = 0; k < len; k++) {
+    if ( (s[k]&127)!=s[k] || !isdigit(s[k]))
+      return false;
+  }
+  return len > 0;
+}
+
+int convertDynamicBase(const wstring &s, long long &out) {
   out = 0;
   if (s.empty())
     return 0;
@@ -1340,7 +1656,7 @@ int convertDynamicBase(const string &s, long long &out) {
   return base;
 }
 
-void convertDynamicBase(long long val, int base, char out[16]) {
+void convertDynamicBase(long long val, int base, wchar_t out[16]) {
   int len = 0;
   while (val != 0) {
     unsigned int c = val % base;
@@ -1363,25 +1679,25 @@ void convertDynamicBase(long long val, int base, char out[16]) {
   reverse(out, out+len);
 }
 
-bool expandDirectory(const char *file, const char *filetype, vector<string> &res)
+bool expandDirectory(const wchar_t *file, const wchar_t *filetype, vector<wstring> &res)
 {
   WIN32_FIND_DATA fd;
 
-  char dir[MAX_PATH];
-  char fullPath[MAX_PATH];
+  wchar_t dir[MAX_PATH];
+  wchar_t fullPath[MAX_PATH];
 
   if (file[0] == '.') {
     GetCurrentDirectory(MAX_PATH, dir);
-    strcat_s(dir, file+1);
+    wcscat_s(dir, file+1);
   }
   else
-    strcpy_s(dir, MAX_PATH, file);
+    wcscpy_s(dir, MAX_PATH, file);
 
-  if (dir[strlen(dir)-1]!='\\')
-    strcat_s(dir, MAX_PATH, "\\");
+  if (dir[wcslen(dir)-1]!='\\')
+    wcscat_s(dir, MAX_PATH, L"\\");
 
-  strcpy_s(fullPath, MAX_PATH, dir);
-  strcat_s(dir, MAX_PATH, filetype);
+  wcscpy_s(fullPath, MAX_PATH, dir);
+  wcscat_s(dir, MAX_PATH, filetype);
 
   HANDLE h=FindFirstFile(dir, &fd);
 
@@ -1393,9 +1709,9 @@ bool expandDirectory(const char *file, const char *filetype, vector<string> &res
   while (more) {
     if (fd.cFileName[0] != '.') {
       //Avoid .. and .
-      char fullPathFile[MAX_PATH];
-      strcpy_s(fullPathFile, MAX_PATH, fullPath);
-      strcat_s(fullPathFile, MAX_PATH, fd.cFileName);
+      wchar_t fullPathFile[MAX_PATH];
+      wcscpy_s(fullPathFile, MAX_PATH, fullPath);
+      wcscat_s(fullPathFile, MAX_PATH, fd.cFileName);
       res.push_back(fullPathFile);
     }
     more=FindNextFile(h, &fd)!=0;
@@ -1405,34 +1721,34 @@ bool expandDirectory(const char *file, const char *filetype, vector<string> &res
   return true;
 }
 
-string encodeSex(PersonSex sex) {
+wstring encodeSex(PersonSex sex) {
   if (sex == sFemale)
-    return "F";
+    return L"F";
   else if (sex == sMale)
-    return "M";
+    return L"M";
   else if (sex == sBoth)
-    return "B";
+    return L"B";
   else
-    return "";
+    return L"";
 }
 
-PersonSex interpretSex(const string &sex) {
-  if (sex == "F" || sex == "K" || sex == "W")
+PersonSex interpretSex(const wstring &sex) {
+  if (sex == L"F" || sex == L"K" || sex == L"W")
     return sFemale;
-  else if (sex == "M" || sex == "H")
+  else if (sex == L"M" || sex == L"H")
     return sMale;
-  else if (sex == "B")
+  else if (sex == L"B")
     return sBoth;
   else
     return sUnknown;
 }
 
-bool matchNumber(int a, const char *b) {
+bool matchNumber(int a, const wchar_t *b) {
   if (a == 0 && b[0])
     return false;
 
-  char bf[32];
-  _itoa_s(a, bf, 10);
+  wchar_t bf[32];
+  _itow_s(a, bf, 10);
 
   // Check matching substring
   for (int k = 0; k < 12; k++) {
@@ -1445,36 +1761,39 @@ bool matchNumber(int a, const char *b) {
   return false;
 }
 
-string makeValidFileName(const string &input, bool strict) {
-  string out;
+wstring makeValidFileName(const wstring &input, bool strict) {
+  wstring out;
   out.reserve(input.size());
 
   if (strict) {
     for (size_t k = 0; k < input.length(); k++) {
-      int b = input[k];
+      wchar_t b = input[k];
       if ( (b>='0' && b<='9') || (b>='a' && b<='z') || (b>='A' && b<='Z') || b == '_' || b=='.' )
         out.push_back(b);
       else if (b == ' ' ||  b == ',')
         out.push_back('_');
       else {
         b = toLowerStripped(b);
-        if ( char(b) == 'ö')
+        
+        if (b >= 'a' && b <= 'z')
+          b = b;
+        else if ( b == L'ö')
           b = 'o';
-        else if (char(b) == 'ä' || char(b) == 'å' || char(b)== 'à' || char(b)== 'á' || char(b)== 'â' || char(b)== 'ã' || char(b)== 'æ')
+        else if (b == L'ä' || b == L'å' || b== L'à' || b == L'á' || b == L'â' || b == L'ã' || b == L'æ')
           b = 'a';
-        else if (char(b) == 'ç')
+        else if (b == L'ç')
           b = 'c';
-        else if (char(b) == 'è' || char(b) == 'é' || char(b) == 'ê' || char(b) == 'ë')
+        else if (b == L'è' || b == L'é' || b == L'ê' || b == L'ë')
           b = 'e';
-        else if (char(b) == 'ð')
+        else if (b == L'ð')
           b = 't';
-        else if (char(b) == 'ï' || char(b) == 'ì' || char(b) == 'ï' || char(b) == 'î' || char(b) == 'í')
+        else if (b == L'ï' || b == L'ì' || b == L'ï' || b == L'î' || b == L'í')
           b = 'i';
-        else if (char(b) == 'ò' || char(b) == 'ó' || char(b) == 'ô' || char(b) == 'õ' || char(b) == 'ø')
+        else if (b == L'ò' || b == L'ó' || b == L'ô' || b == L'õ' || b == L'ø')
           b = 'o';
-        else if (char(b) == 'ù' || char(b) == 'ú' || char(b) == 'û' || char(b) == 'ü')
+        else if (b == L'ù' || b == L'ú' || b == L'û' || b == L'ü')
           b = 'u';
-        else if (char(b) == 'ý')
+        else if (b == L'ý')
           b = 'y';
         else
           b = '-';
@@ -1485,7 +1804,7 @@ string makeValidFileName(const string &input, bool strict) {
   }
   else {
      for (size_t k = 0; k < input.length(); k++) {
-      unsigned b = input[k];
+      wchar_t b = input[k];
       if (b < 32 || b == '*' || b == '?' || b==':' || b=='/' || b == '\\')
         b = '_';
       out.push_back(b);
@@ -1494,34 +1813,22 @@ string makeValidFileName(const string &input, bool strict) {
   return out;
 }
 
-void capitalize(string &str) {
+void capitalize(wstring &str) {
   if (str.length() > 0) {
-    char c = str[0] & 0xFF;
-
-    if (c>='a' && c<='z')
-      c += ('A' - 'a');
-    else if (c == 'ö')
-      c = 'Ö';
-    else if (c == 'ä')
-      c = 'Ä';
-    else if (c == 'å')
-      c = 'Å';
-    else if (c == 'é')
-      c = 'É';
-
-    str[0] = c;
+    auto bf = str.c_str();
+    CharUpperBuff(const_cast<LPWSTR>(bf), 1);
   }
 }
 
 /** Return bias in seconds. UTC = local time + bias. */
-int getTimeZoneInfo(const string &date) {
-  static char lastDate[16] = {0};
+int getTimeZoneInfo(const wstring &date) {
+  static wchar_t lastDate[16] = {0};
   static int lastValue = -1;
   // Local cacheing
   if (lastValue != -1 && lastDate == date) {
     return lastValue;
   }
-  strcpy_s(lastDate, 16, date.c_str());
+  wcscpy_s(lastDate, 16, date.c_str());
 //  TIME_ZONE_INFORMATION tzi;
   SYSTEMTIME st;
   convertDateYMS(date, st, false);
@@ -1545,36 +1852,36 @@ int getTimeZoneInfo(const string &date) {
   return lastValue;
 }
 
-string getTimeZoneString(const string &date) {
+wstring getTimeZoneString(const wstring &date) {
   int a = getTimeZoneInfo(date);
   if (a == 0)
-    return "+00:00";
+    return L"+00:00";
   else if (a>0) {
-    char bf[12];
-    sprintf_s(bf, "-%02d:%02d", a/3600, (a/60)%60);
+    wchar_t bf[12];
+    swprintf_s(bf, L"-%02d:%02d", a/3600, (a/60)%60);
     return bf;
   }
   else {
-    char bf[12];
-    sprintf_s(bf, "+%02d:%02d", a/-3600, (a/-60)%60);
+    wchar_t bf[12];
+    swprintf_s(bf, L"+%02d:%02d", a/-3600, (a/-60)%60);
     return bf;
   }
 }
 
-bool compareBib(const string &b1, const string &b2) {
+bool compareBib(const wstring &b1, const wstring &b2) {
   int l1 = b1.length();
   int l2 = b2.length();
   if (l1 != l2)
     return l1 < l2;
 
-  unsigned char maxc = 0, minc = 255;
+  wchar_t maxc = 0, minc = numeric_limits<wchar_t>::max(); 
   for (int k = 0; k < l1; k++) {
-    unsigned char b = b1[k];
+    wchar_t b = b1[k];
     maxc = max(maxc, b);
     minc = min(minc, b);
   }
   for (int k = 0; k < l2; k++) {
-    unsigned char b = b2[k];
+    wchar_t b = b2[k];
     maxc = max(maxc, b);
     minc = min(minc, b);
   }
@@ -1583,22 +1890,21 @@ bool compareBib(const string &b1, const string &b2) {
 
   unsigned z1 = 0;
   for (int k = 0; k < l1; k++) {
-    unsigned char b = b1[k]-minc;
+    wchar_t b = b1[k]-minc;
     z1 = coeff * z1 + b;
   }
 
   unsigned z2 = 0;
   for (int k = 0; k < l2; k++) {
-    unsigned char b = b2[k]-minc;
+    wchar_t b = b2[k]-minc;
     z2 = coeff * z2 + b;
   }
 
   return z1 < z2;
 }
 
-
 /// Split a name into first name and last name
-int getNameCommaSplitPoint(const string &name) {
+int getNameCommaSplitPoint(const wstring &name) {
   int commaSplit = -1;
 
   for (unsigned k = 1; k + 1 < name.size(); k++) {
@@ -1615,14 +1921,13 @@ int getNameCommaSplitPoint(const string &name) {
   return commaSplit;
 }
 
-
 /// Split a name into first name and last name
-int getNameSplitPoint(const string &name) {
+int getNameSplitPoint(const wstring &name) {
   int split[10];
   int nSplit = 0;
 
   for (unsigned k = 1; k + 1<name.size(); k++) {
-    if (name[k] == ' ' || name[k] == 0xA0) {
+    if (iswspace(name[k])) {
       split[nSplit++] = k;
       if ( nSplit>=9 )
         break;
@@ -1636,7 +1941,7 @@ int getNameSplitPoint(const string &name) {
     const oWordList &givenDB = lang.get().getGivenNames();
     int sp_ix = 0;
     for (int k = 1; k<nSplit; k++) {
-      string sn = name.substr(split[k-1]+1, split[k] - split[k-1]-1);
+      wstring sn = name.substr(split[k-1]+1, split[k] - split[k-1]-1);
       if (!givenDB.lookup(sn.c_str()))
         break;
       sp_ix = k;
@@ -1645,7 +1950,7 @@ int getNameSplitPoint(const string &name) {
   }
 }
 
-string getGivenName(const string &name) {
+wstring getGivenName(const wstring &name) {
   int sp = getNameCommaSplitPoint(name);
   if (sp != -1) {
     return trim(name.substr(sp));
@@ -1658,7 +1963,7 @@ string getGivenName(const string &name) {
     return trim(name.substr(0, sp));
 }
 
-string getFamilyName(const string &name) {
+wstring getFamilyName(const wstring &name) {
   int sp = getNameCommaSplitPoint(name);
   if (sp != -1) {
     return trim(name.substr(0, sp - 2));
@@ -1666,15 +1971,15 @@ string getFamilyName(const string &name) {
 
   sp = getNameSplitPoint(name);
   if (sp == -1)
-    return _EmptyString;
+    return _EmptyWString;
   else
     return trim(name.substr(sp));
 }
 
-static bool noCapitalize(const string &str, size_t pos) {
+static bool noCapitalize(const wstring &str, size_t pos) {
   string word;
   while (pos < str.length() && !myIsSpace(str[pos])) {
-    word.push_back(str[pos++]);
+    word.push_back(char(str[pos++]));
   }
 
   if (word == "of" || word == "for" || word == "at" || word == "by")
@@ -1692,13 +1997,13 @@ static bool noCapitalize(const string &str, size_t pos) {
   return false;
 }
 
-void capitalizeWords(string &str) {
+void capitalizeWords(wstring &str) {
   bool init = true;
   for (size_t i = 0; i < str.length(); i++) {
-    unsigned char c = str[i];
+    wchar_t c = str[i];
     if (init && c >= 'a' && c <= 'z' && !noCapitalize(str, i))
       str[i] = c + ('A' - 'a');
-    init = isspace(c) != 0;
+    init = iswspace(c) != 0;
   }
 }
 
@@ -1709,7 +2014,7 @@ void MeOSFileLock::unlockFile() {
   lockedFile = INVALID_HANDLE_VALUE;
 }
 
-void MeOSFileLock::lockFile(const string &file) {
+void MeOSFileLock::lockFile(const wstring &file) {
   unlockFile();
   lockedFile = CreateFile(file.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 
                           NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -1721,16 +2026,16 @@ void MeOSFileLock::lockFile(const string &file) {
     else {
       TCHAR buff[256];
       FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, err, 0, buff, sizeof(buff), 0);
-      throw meosException("open_error#" + file + "#" + buff);
+      throw meosException(L"open_error#" + file + L"#" + buff);
     }
   }
 }
 
-void processGeneralTime(const string &generalTime, string &meosTime, string &meosDate) {
-  meosTime = "";
-  meosDate = "";
-  vector<string> parts;
-  split(generalTime, ":-,. /\t", parts);
+void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &meosDate) {
+  meosTime = L"";
+  meosDate = L"";
+  vector<wstring> parts;
+  split(generalTime, L":-,. /\t", parts);
   
   // Indices into parts
   int year = -2;
@@ -1743,8 +2048,8 @@ void processGeneralTime(const string &generalTime, string &meosTime, string &meo
   int subsecond = -2;
   
   int found = 0, base = -1, iter = 0;
-  bool pm = strstr(generalTime.c_str(), "PM") != 0 || 
-            strstr(generalTime.c_str(), "pm") != 0;
+  bool pm = wcsstr(generalTime.c_str(), L"PM") != 0 || 
+            wcsstr(generalTime.c_str(), L"pm") != 0;
           
   while (iter < 2 && second==-2) {
     if (base == found)
@@ -1754,7 +2059,7 @@ void processGeneralTime(const string &generalTime, string &meosTime, string &meo
     for (size_t k = 0; k < parts.size(); k++) {
       if (parts[k].empty())
         continue;
-      int number = atoi(parts[k].c_str());
+      int number = _wtoi(parts[k].c_str());
       if (number == 0 && parts[k][0] != '0')
         number = -1; // Not a number
 
@@ -1809,26 +2114,26 @@ void processGeneralTime(const string &generalTime, string &meosTime, string &meo
 
   if (second >= 0 && minute >= 0 && hour>= 0) {
     if (!pm)
-      meosTime = parts[hour] + ":" + parts[minute] + ":" + parts[second];
+      meosTime = parts[hour] + L":" + parts[minute] + L":" + parts[second];
     else {
-      int rawHour = atoi(parts[hour].c_str());
+      int rawHour = _wtoi(parts[hour].c_str());
       if (rawHour < 12)
         rawHour+=12;
-      meosTime = itos(rawHour) + ":" + parts[minute] + ":" + parts[second];
+      meosTime = itow(rawHour) + L":" + parts[minute] + L":" + parts[second];
     }
   }
 
   if (year >= 0 && month >= 0 && day >= 0) {
     int y = -1, m = -1, d = -1;
     if (year != month) {
-      y = atoi(parts[year].c_str());
-      m = atoi(parts[month].c_str());
-      d = atoi(parts[day].c_str());
+      y = _wtoi(parts[year].c_str());
+      m = _wtoi(parts[month].c_str());
+      d = _wtoi(parts[day].c_str());
 
       //meosDate = parts[year] + "-" + parts[month] + "-" + parts[day];
     } 
     else {
-      int td = atoi(parts[year].c_str());
+      int td = _wtoi(parts[year].c_str());
       int y1 = td / 10000;
       int m1 = (td / 100) % 100;
       int d1 = td % 100;
@@ -1845,13 +2150,23 @@ void processGeneralTime(const string &generalTime, string &meosTime, string &meo
         m = m1;
         d = d1;
       }
-        meosDate = itos(y1) + "-" + itos(m1) + "-" + itos(d1);
+        meosDate = itow(y1) + L"-" + itow(m1) + L"-" + itow(d1);
     }
     if (y > 0) {
-      char bf[24];
-      sprintf_s(bf, 24, "%d-%02d-%02d", y, m, d);
+      wchar_t bf[24];
+      swprintf_s(bf, 24, L"%d-%02d-%02d", y, m, d);
       meosDate = bf;
     }
   }
 
+}
+
+void string2Wide(const string &in, wstring &out) {
+  out.clear();
+  out.insert(out.begin(), in.begin(), in.end());// XXX Simple extend
+}
+
+void wide2String(const wstring &in, string &out) {
+  out.clear();
+  out.insert(out.begin(), in.begin(), in.end());// XXX Simple extend
 }

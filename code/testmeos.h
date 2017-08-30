@@ -28,6 +28,7 @@ class BaseInfo;
 
 #include <vector>
 #include "TabBase.h"
+#include "subcommand.h"
 
 enum GDICOLOR;
 enum PropertyType;
@@ -45,7 +46,7 @@ struct meosAssertionFailure {
   string message;
 };
 
-class TestMeOS {
+class TestMeOS : public SubCommand {
 private:
   oEvent *oe_main;
   gdioutput *gdi_main;
@@ -53,7 +54,7 @@ private:
   vector<TestMeOS *> subTests;
   void runProtected(bool protect) const;
   mutable list<TestMeOS> subWindows;
-  mutable vector<string> tmpFiles;
+  mutable vector<wstring> tmpFiles;
 
   mutable TestStatus status;
   mutable string message;
@@ -68,6 +69,8 @@ protected:
   const oEvent &oe() const {return *oe_main;}
   
   TestMeOS &registerTest(const TestMeOS &test);
+
+  void registerSubCommand(const string &cmd) const;
 
   void showTab(TabType type) const;
   
@@ -132,12 +135,15 @@ public:
   bool runSpecific(int id) const;
 
   void publish(gdioutput &gdi) const;
-  void getTests(vector< pair<string, size_t> > &tl) const;
+  void getTests(vector< pair<wstring, size_t> > &tl) const;
 
   string getTestFile(const char *relPath) const;
-  string getTempFile() const;
+  wstring getTempFile() const;
 
   virtual void run() const;
+
+  // Run a test sub command
+  virtual void subCommand(const string &cmd) const override {}
 
   TestMeOS(oEvent *oe, const string &test);
   TestMeOS(TestMeOS &tmIn, const char *test);

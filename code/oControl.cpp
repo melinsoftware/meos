@@ -112,7 +112,7 @@ bool oControl::write(xmlparser &xml)
   return true;
 }
 
-void oControl::set(int pId, int pNumber, string pName)
+void oControl::set(int pId, int pNumber, wstring pName)
 {
   Id=pId;
   Numbers[0]=pNumber;
@@ -130,7 +130,7 @@ void oControl::setStatus(ControlStatus st){
   }
 }
 
-void oControl::setName(string name)
+void oControl::setName(wstring name)
 {
   if (name!=getName()){
     Name=name;
@@ -157,19 +157,19 @@ void oControl::set(const xmlobject *xo)
       nNumbers=1;
     }
     else if (it->is("Numbers")){
-      decodeNumbers(it->get());
+      decodeNumbers(it->getRaw());
     }
     else if (it->is("Status")){
       Status=(ControlStatus)it->getInt();
     }
     else if (it->is("Name")){
-      Name=it->get();
+      Name=it->getw();
       if (Name.size() > 1 && Name.at(0) == '%') {
         Name = lang.tl(Name.substr(1));
       }
     }
     else if (it->is("Updated")){
-      Modified.setStamp(it->get());
+      Modified.setStamp(it->getRaw());
     }
     else if (it->is("oData")){
       getDI().set(*it);
@@ -184,34 +184,34 @@ int oControl::getFirstNumber() const {
     return 0;
 }
 
-string oControl::getString() {
-  char bf[32];
+wstring oControl::getString() {
+  wchar_t bf[32];
   if (Status==StatusOK || Status==StatusNoTiming)
     return codeNumbers('|');
   else if (Status==StatusMultiple)
     return codeNumbers('+');
   else if (Status==StatusRogaining)
-    return codeNumbers('|') + ", " + itos(getRogainingPoints()) + "p";
+    return codeNumbers('|') + L", " + itow(getRogainingPoints()) + L"p";
   else
-    sprintf_s(bf, 32, "~%s", codeNumbers().c_str());
+    swprintf_s(bf, 32, L"~%s", codeNumbers().c_str());
   return bf;
 }
 
-string oControl::getLongString()
+wstring oControl::getLongString()
 {
   if (Status==StatusOK || Status==StatusNoTiming){
     if (nNumbers==1)
       return codeNumbers('|');
     else
-      return string(lang.tl("VALFRI("))+codeNumbers(',')+")";
+      return wstring(lang.tl("VALFRI("))+codeNumbers(',')+L")";
   }
   else if (Status == StatusMultiple) {
-    return string(lang.tl("ALLA("))+codeNumbers(',')+")";
+    return wstring(lang.tl("ALLA("))+codeNumbers(',')+L")";
   }
   else if (Status == StatusRogaining)
-    return string(lang.tl("RG("))+codeNumbers(',') + "|" + itos(getRogainingPoints()) +"p)";
+    return wstring(lang.tl("RG("))+codeNumbers(',') + L"|" + itow(getRogainingPoints()) + L"p)";
   else
-    return string(lang.tl("TRASIG("))+codeNumbers(',')+")";
+    return wstring(lang.tl("TRASIG("))+codeNumbers(',')+L")";
 }
 
 bool oControl::hasNumber(int i)
@@ -261,13 +261,13 @@ int oControl::getNumMulti()
 }
 
 
-string oControl::codeNumbers(char sep) const
+wstring oControl::codeNumbers(char sep) const
 {
-  string n;
-  char bf[16];
+  wstring n;
+  wchar_t bf[16];
 
   for(int i=0;i<nNumbers;i++){
-    _itoa_s(Numbers[i], bf, 16, 10);
+    _itow_s(Numbers[i], bf, 16, 10);
     n+=bf;
     if (i+1<nNumbers)
       n+=sep;
@@ -299,15 +299,15 @@ bool oControl::decodeNumbers(string s)
   else return true;
 }
 
-bool oControl::setNumbers(const string &numbers)
+bool oControl::setNumbers(const wstring &numbers)
 {
   int nn=nNumbers;
   int bf[32];
 
   if (unsigned(nNumbers)<32)
     memcpy(bf, Numbers, sizeof(int)*nNumbers);
-
-  bool success=decodeNumbers(numbers);
+  string nnumbers(numbers.begin(), numbers.end());
+  bool success=decodeNumbers(nnumbers);
 
   if (!success) {
     memcpy(Numbers, bf, sizeof(int)*nn);
@@ -322,24 +322,24 @@ bool oControl::setNumbers(const string &numbers)
   return success;
 }
 
-string oControl::getName() const
+wstring oControl::getName() const
 {
 	if (!Name.empty())
 		return Name;
 	else {
-		char bf[16];
-		sprintf_s(bf, "[%d]", Id);
+		wchar_t bf[16];
+		swprintf_s(bf, L"[%d]", Id);
 		return bf;
 	}
 }
 
-string oControl::getIdS() const
+wstring oControl::getIdS() const
 {
 	if (!Name.empty())
 		return Name;
 	else {
-		char bf[16];
-		sprintf_s(bf, "%d", Id);
+		wchar_t bf[16];
+		swprintf_s(bf, L"%d", Id);
 		return bf;
 	}
 }
@@ -351,7 +351,7 @@ oDataContainer &oControl::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr
   return *oe->oControlData;
 }
 
-const vector< pair<string, size_t> > &oEvent::fillControls(vector< pair<string, size_t> > &out, oEvent::ControlType type)
+const vector< pair<wstring, size_t> > &oEvent::fillControls(vector< pair<wstring, size_t> > &out, oEvent::ControlType type)
 {
   out.clear();
   oControlList::iterator it;
@@ -363,8 +363,8 @@ const vector< pair<string, size_t> > &oEvent::fillControls(vector< pair<string, 
     getControls(dmy, true);
   }
 
-  string b;
-  char bf[256];
+  wstring b;
+  wchar_t bf[256];
   for (it=Controls.begin(); it != Controls.end(); ++it) {
     if (!it->Removed){
       b.clear();
@@ -375,24 +375,24 @@ const vector< pair<string, size_t> > &oEvent::fillControls(vector< pair<string, 
         }
         else {
           if (it->Status == oControl::StatusOK || it->Status == oControl::StatusNoTiming)
-            b+="[OK]\t";
+            b += L"[OK]\t";
           else if (it->Status==oControl::StatusMultiple)
-            b+="[M]\t";
+            b += L"[M]\t";
           else if (it->Status==oControl::StatusRogaining)
-            b+="[R]\t";
+            b += L"[R]\t";
           else if (it->Status==oControl::StatusBad)
-            b += MakeDash("[-]\t");
+            b += makeDash(L"[-]\t");
           else if (it->Status==oControl::StatusOptional)
-            b += MakeDash("[O]\t");
-          else b+="[ ]\t";
+            b += makeDash(L"[O]\t");
+          else b += L"[ ]\t";
 
-          sprintf_s(bf, " %s", it->codeNumbers(' ').c_str());
+          swprintf_s(bf, L" %s", it->codeNumbers(' ').c_str());
           b+=bf;
 
           if (it->Status==oControl::StatusRogaining)
-            b+="\t(" + itos(it->getRogainingPoints()) + "p)";
+            b+=L"\t(" + itow(it->getRogainingPoints()) + L"p)";
           else if (it->Name.length()>0) {
-            b+="\t("+it->Name+")";
+            b+=L"\t(" + it->Name + L")";
           }
         }
         out.push_back(make_pair(b, it->Id));
@@ -401,11 +401,11 @@ const vector< pair<string, size_t> > &oEvent::fillControls(vector< pair<string, 
         if (it->Status == oControl::StatusFinish || it->Status == oControl::StatusStart)
           continue;
 
-        sprintf_s(bf, lang.tl("Kontroll %s").c_str(), it->codeNumbers(' ').c_str());
+        swprintf_s(bf, lang.tl("Kontroll %s").c_str(), it->codeNumbers(' ').c_str());
         b=bf;
 
         if (!it->Name.empty())
-          b+=" ("+it->Name+")";
+          b += L" (" + it->Name + L")";
 
         out.push_back(make_pair(b, it->Id));
       }
@@ -414,14 +414,14 @@ const vector< pair<string, size_t> > &oEvent::fillControls(vector< pair<string, 
           continue;
 
         for (int i = 0; i < it->getNumberDuplicates(); i++) {
-          sprintf_s(bf, lang.tl("Kontroll %s").c_str(), it->codeNumbers(' ').c_str());
+          swprintf_s(bf, lang.tl("Kontroll %s").c_str(), it->codeNumbers(' ').c_str());
           b = bf;
 
           if (it->getNumberDuplicates() > 1)
-            b += "-" + itos(i+1);
+            b += L"-" + itow(i+1);
 
           if (!it->Name.empty())
-            b += " ("+it->Name+")";
+            b += L" (" + it->Name + L")";
 
           out.push_back(make_pair(b, oControl::getCourseControlIdFromIdIndex(it->Id, i)));
         }
@@ -431,7 +431,7 @@ const vector< pair<string, size_t> > &oEvent::fillControls(vector< pair<string, 
   return out;
 }
 
-const vector< pair<string, size_t> > &oEvent::fillControlTypes(vector< pair<string, size_t> > &out)
+const vector< pair<wstring, size_t> > &oEvent::fillControlTypes(vector< pair<wstring, size_t> > &out)
 {
   oControlList::iterator it;
   synchronizeList(oLControlId);
@@ -448,7 +448,7 @@ const vector< pair<string, size_t> > &oEvent::fillControlTypes(vector< pair<stri
   }
 
   set<int>::iterator sit;
-  char bf[32];
+  wchar_t bf[32];
   /*gdi.addItem(name, lang.tl("Check"), oPunch::PunchCheck);
   gdi.addItem(name, lang.tl("Start"), oPunch::PunchStart);
   gdi.addItem(name, lang.tl("Mål"), oPunch::PunchFinish);*/
@@ -457,7 +457,7 @@ const vector< pair<string, size_t> > &oEvent::fillControlTypes(vector< pair<stri
   out.push_back(make_pair(lang.tl("Mål"), oPunch::PunchFinish));
 
   for (sit = sicodes.begin(); sit!=sicodes.end(); ++sit) {
-    sprintf_s(bf, lang.tl("Kontroll %s").c_str(), itos(*sit).c_str());
+    swprintf_s(bf, lang.tl("Kontroll %s").c_str(), itow(*sit).c_str());
     //gdi.addItem(name, bf, *sit);
     out.push_back(make_pair(bf, *sit));
   }
@@ -486,17 +486,17 @@ int oControl::getTimeAdjust() const
   return tCache.timeAdjust;
 }
 
-string oControl::getTimeAdjustS() const
+wstring oControl::getTimeAdjustS() const
 {
-  return getTimeMS(getTimeAdjust());
+  return getTimeMSW(getTimeAdjust());
 }
 
-string oControl::getMinTimeS() const
+wstring oControl::getMinTimeS() const
 {
   if (getMinTime()>0)
-    return getTimeMS(getMinTime());
+    return getTimeMSW(getMinTime());
   else
-    return "-";
+    return makeDash(L"-");
 }
 
 int oControl::getRogainingPoints() const
@@ -504,10 +504,10 @@ int oControl::getRogainingPoints() const
   return getDCI().getInt("Rogaining");
 }
 
-string oControl::getRogainingPointsS() const
+wstring oControl::getRogainingPointsS() const
 {
   int pt = getRogainingPoints();
-  return pt != 0 ? itos(pt) : "";
+  return pt != 0 ? itow(pt) : L"";
 }
 
 void oControl::setTimeAdjust(int v)
@@ -530,7 +530,7 @@ bool oControl::isValidRadio() const
     return flag == 1;
 }
 
-void oControl::setTimeAdjust(const string &s)
+void oControl::setTimeAdjust(const wstring &s)
 {
   setTimeAdjust(convertAbsoluteTimeMS(s));
 }
@@ -542,7 +542,7 @@ void oControl::setMinTime(int v)
   getDI().setInt("MinTime", v);
 }
 
-void oControl::setMinTime(const string &s)
+void oControl::setMinTime(const wstring &s)
 {
   setMinTime(convertAbsoluteTimeMS(s));
 }
@@ -564,7 +564,7 @@ void oControl::startCheckControl()
     checkedNumbers[k]=false;
 }
 
-string oControl::getInfo() const
+wstring oControl::getInfo() const
 {
   return getName();
 }
@@ -747,7 +747,7 @@ bool oEvent::hasRogaining() const
   return false;
 }
 
-const string oControl::getStatusS() const {
+const wstring oControl::getStatusS() const {
   //enum ControlStatus {StatusOK=0, StatusBad=1, StatusMultiple=2,
   //                    StatusStart = 4, StatusFinish = 5, StatusRogaining = 6};
 
@@ -775,23 +775,23 @@ const string oControl::getStatusS() const {
 
 void oEvent::fillControlStatus(gdioutput &gdi, const string& id) const
 {
-  vector< pair<string, size_t> > d;
+  vector< pair<wstring, size_t> > d;
   oe->fillControlStatus(d);
   gdi.addItem(id, d);
 }
 
 
-const vector< pair<string, size_t> > &oEvent::fillControlStatus(vector< pair<string, size_t> > &out) const
+const vector< pair<wstring, size_t> > &oEvent::fillControlStatus(vector< pair<wstring, size_t> > &out) const
 {
   out.clear();
-  out.push_back(make_pair(lang.tl("OK"), oControl::StatusOK));
-  out.push_back(make_pair(lang.tl("Multipel"), oControl::StatusMultiple));
+  out.push_back(make_pair(lang.tl(L"OK"), oControl::StatusOK));
+  out.push_back(make_pair(lang.tl(L"Multipel"), oControl::StatusMultiple));
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining))
-    out.push_back(make_pair(lang.tl("Rogaining"), oControl::StatusRogaining));
-  out.push_back(make_pair(lang.tl("Utan tidtagning"), oControl::StatusNoTiming));
-  out.push_back(make_pair(lang.tl("Trasig"), oControl::StatusBad));
-  out.push_back(make_pair(lang.tl("Valfri"), oControl::StatusOptional));
+    out.push_back(make_pair(lang.tl(L"Rogaining"), oControl::StatusRogaining));
+  out.push_back(make_pair(lang.tl(L"Utan tidtagning"), oControl::StatusNoTiming));
+  out.push_back(make_pair(lang.tl(L"Trasig"), oControl::StatusBad));
+  out.push_back(make_pair(lang.tl(L"Valfri"), oControl::StatusOptional));
 
   return out;
 }
@@ -799,7 +799,7 @@ const vector< pair<string, size_t> > &oEvent::fillControlStatus(vector< pair<str
 Table *oEvent::getControlTB()//Table mode
 {
   if (tables.count("control") == 0) {
-    Table *table=new Table(this, 20, "Kontroller", "controls");
+    Table *table=new Table(this, 20, L"Kontroller", "controls");
 
     table->addColumn("Id", 70, true, true);
     table->addColumn("Ändrad", 70, false);
@@ -845,7 +845,7 @@ void oControl::addTableRow(Table &table) const {
   table.addRow(getId(), &it);
 
   int row = 0;
-  table.set(row++, it, TID_ID, itos(getId()), false);
+  table.set(row++, it, TID_ID, itow(getId()), false);
   table.set(row++, it, TID_MODIFIED, getTimeStamp(), false);
 
   table.set(row++, it, TID_CONTROL, getName(), true);
@@ -854,16 +854,16 @@ void oControl::addTableRow(Table &table) const {
   table.set(row++, it, TID_CODES, codeNumbers(), true);
 
   int nv = getNumVisitors(true);
-  table.set(row++, it, 50, itos(nv), false);
-  table.set(row++, it, 51, nv > 0 ? formatTime(getMissedTimeMax()) : "-", false);
-  table.set(row++, it, 52, nv > 0 ? formatTime(getMissedTimeTotal()/nv) : "-", false);
-  table.set(row++, it, 53, nv > 0 ? formatTime(getMissedTimeMedian()) : "-", false);
+  table.set(row++, it, 50, itow(nv), false);
+  table.set(row++, it, 51, nv > 0 ? formatTimeW(getMissedTimeMax()) : L"-", false);
+  table.set(row++, it, 52, nv > 0 ? formatTimeW(getMissedTimeTotal()/nv) : L"-", false);
+  table.set(row++, it, 53, nv > 0 ? formatTimeW(getMissedTimeMedian()) : L"-", false);
 
   oe->oControlData->fillTableCol(it, table, true);
 }
 
-bool oControl::inputData(int id, const string &input,
-                       int inputId, string &output, bool noUpdate)
+bool oControl::inputData(int id, const wstring &input,
+                       int inputId, wstring &output, bool noUpdate)
 {
   synchronize(false);
 
@@ -892,7 +892,7 @@ bool oControl::inputData(int id, const string &input,
   return false;
 }
 
-void oControl::fillInput(int id, vector< pair<string, size_t> > &out, size_t &selected)
+void oControl::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected)
 {
   if (id>1000) {
     oe->oControlData->fillInput(oData, id, 0, out, selected);
@@ -920,7 +920,7 @@ void oEvent::getControls(vector<pControl> &c, bool calculateCourseControls) cons
   c.clear();
 
   if (calculateCourseControls) {
-    stdext::hash_map<int, pControl> cById;
+    unordered_map<int, pControl> cById;
     for (oControlList::const_iterator it = Controls.begin(); it != Controls.end(); ++it) {
       if (it->isRemoved())
         continue;
@@ -933,7 +933,7 @@ void oEvent::getControls(vector<pControl> &c, bool calculateCourseControls) cons
         ++count[it->Controls[i]->getId()];
       }
       for (map<int, int>::iterator it = count.begin(); it != count.end(); ++it) {
-        stdext::hash_map<int, pControl>::iterator res = cById.find(it->first);
+        unordered_map<int, pControl>::iterator res = cById.find(it->first);
         if (res != cById.end()) {
           res->second->tNumberDuplicates = max(res->second->tNumberDuplicates, it->second);
         }

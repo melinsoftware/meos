@@ -100,11 +100,11 @@ __int64 oBase::getExtIdentifier() const
   return getDCI().getInt64("ExtId");
 }
 
-string oBase::getExtIdentifierString() const {
+wstring oBase::getExtIdentifierString() const {
   __int64 raw = getExtIdentifier();
-  char res[16];
+  wchar_t res[16];
   if (raw == 0)
-    return "";
+    return L"";
   if (raw & BaseGenStringFlag)
     convertDynamicBase(raw & ExtStringMask, 256-32, res);
   else if (raw & Base36StringFlag)
@@ -114,7 +114,7 @@ string oBase::getExtIdentifierString() const {
   return res;
 }
 
-void oBase::converExtIdentifierString(__int64 raw, char bf[16])  {
+void oBase::converExtIdentifierString(__int64 raw, wchar_t bf[16])  {
   if (raw & BaseGenStringFlag)
     convertDynamicBase(raw & ExtStringMask, 256-32, bf);
   else if (raw & Base36StringFlag)
@@ -123,7 +123,7 @@ void oBase::converExtIdentifierString(__int64 raw, char bf[16])  {
     convertDynamicBase(raw, 10, bf);
 }
 
-__int64 oBase::converExtIdentifierString(const string &str) {
+__int64 oBase::converExtIdentifierString(const wstring &str) {
   __int64 val;
     int base = convertDynamicBase(str, val);
   if (base == 36)
@@ -133,7 +133,7 @@ __int64 oBase::converExtIdentifierString(const string &str) {
   return val;
 }
 
-void oBase::setExtIdentifier(const string &str) {
+void oBase::setExtIdentifier(const wstring &str) {
   __int64 val = converExtIdentifierString(str);
   setExtIdentifier(val);
 }
@@ -157,9 +157,11 @@ bool oBase::isStringIdentifier() const {
   return (raw & (BaseGenStringFlag|Base36StringFlag)) != 0;
 }
 
-string oBase::getTimeStamp() const {
-  if (oe && oe->isClient() && !sqlUpdated.empty())
-    return sqlUpdated;
+wstring oBase::getTimeStamp() const {
+  if (oe && oe->isClient() && !sqlUpdated.empty()) {
+    wstring sqlW(sqlUpdated.begin(), sqlUpdated.end());
+    return sqlW;
+  }
   else return Modified.getStampString();
 }
 

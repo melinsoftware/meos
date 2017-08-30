@@ -62,17 +62,17 @@ void PrefsEditor::showPrefs(gdioutput &gdi) {
     gdi.addStringUT(boldLarge, it->first);
     for (size_t k = 0; k < prefs.size(); k++) {
       int y = gdi.getCY();
-      gdi.addStringUT(y, basePos, 0, prefs[k].first, 0, 0, "Consolas;1.1");
-      string rawVal = oe->getPropertyString(prefs[k].first.c_str(), "");
-      string val = codeValue(rawVal, prefs[k].second);
+      gdi.addStringUT(y, basePos, 0, prefs[k].first, 0, 0, L"Consolas;1.1");
+      wstring rawVal = oe->getPropertyString(prefs[k].first.c_str(), L"");
+      wstring val = codeValue(rawVal, prefs[k].second);
       
-      gdi.addString("value" + prefs[k].first, y, valuePos, 0, "#" +  val, editPos - valuePos, 0, "Consolas;1").
+      gdi.addString("value" + prefs[k].first, y, valuePos, 0, L"#" +  val, editPos - valuePos, 0, L"Consolas;1").
         setColor(selectColor(rawVal, prefs[k].second)).setExtra(prefs[k].second);
     
       gdi.addButton(editPos, y - gdi.getLineHeight()/4, "Edit_" + prefs[k].first, "Ändra").setHandler(this);
     
-      string dkey = "prefs" + prefs[k].first;
-      string desc = lang.tl(dkey);
+      wstring dkey = L"prefs" + gdi.widen(prefs[k].first);
+      wstring desc = lang.tl(dkey);
       if (desc != dkey) {
         gdi.addStringUT(y, descPos, 0, desc).setColor(colorDarkGreen);
       }
@@ -100,22 +100,22 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
       gdi.setData("EditPrefs", type);
       gdi.dropLine();
       gdi.addString("", fontMediumPlus, "Ändra X#" + pref);
-      string dkey = "prefs" + pref;
-      string desc = lang.tl(dkey);
+      wstring dkey = L"prefs" + gdi.widen(pref);
+      wstring desc = lang.tl(dkey);
       gdi.dropLine();
       if (desc != dkey) {
-        gdi.addStringUT(0, desc +":");
+        gdi.addStringUT(0, desc +L":");
       }
-      string val = oe->getPropertyString(pref.c_str(), "");
+      wstring val = oe->getPropertyString(pref.c_str(), L"");
       if (type == String)
         gdi.addInput("Value", val, 48);
       else if (type == Integer)
         gdi.addInput("Value", val, 16);
       else {
         gdi.addSelection("ValueBoolean", 200, 50, 0);
-        gdi.addItem("ValueBoolean", codeValue("0", Boolean), 0);
-        gdi.addItem("ValueBoolean", codeValue("1", Boolean), 1);
-        gdi.selectItemByData("ValueBoolean", val == "0" ? 0 : 1);
+        gdi.addItem("ValueBoolean", codeValue(L"0", Boolean), 0);
+        gdi.addItem("ValueBoolean", codeValue(L"1", Boolean), 1);
+        gdi.selectItemByData("ValueBoolean", val == L"0" ? 0 : 1);
       }
       gdi.dropLine();
       gdi.fillRight();
@@ -131,11 +131,11 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
     } 
     else if (bi.id.substr(0, 5) == "Save_") {
       string pref = bi.id.substr(5);
-      string value;
+      wstring value;
       if (gdi.hasField("ValueBoolean")) {
         ListBoxInfo lbi;
         gdi.getSelectedItem("ValueBoolean", lbi);
-        value = itos(lbi.data);
+        value = itow(lbi.data);
       }
       else
         value = gdi.getText("Value");
@@ -155,24 +155,24 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
   return;
 }
 
-string PrefsEditor::codeValue(const string &val, PropertyType p) const {
+wstring PrefsEditor::codeValue(const wstring &val, PropertyType p) const {
   if (p == Boolean) {
-    if (atoi(val.c_str()) != 0) {
-      return lang.tl("true[boolean]");
+    if (_wtoi(val.c_str()) != 0) {
+      return lang.tl(L"true[boolean]");
     }
     else {
-      return lang.tl("false[boolean]");
+      return lang.tl(L"false[boolean]");
     }
   }
   else if (p == Integer)
-    return itos(atoi(val.c_str()));
+    return itow(_wtoi(val.c_str()));
   else
     return val;
 }
 
-GDICOLOR PrefsEditor::selectColor(const string &val, PropertyType p) const {
+GDICOLOR PrefsEditor::selectColor(const wstring &val, PropertyType p) const {
   if (p == Boolean) {
-    if (atoi(val.c_str()) != 0) {
+    if (_wtoi(val.c_str()) != 0) {
       return colorDarkGreen;
     }
     else {

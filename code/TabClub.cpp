@@ -78,12 +78,11 @@ void TabClub::readFeeFilter(gdioutput &gdi) {
   gdi.getSelectedItem("ClassType", lbi);
 
   if (lbi.data == -5)
-    typeS = "*";
+    typeS = L"*";
   else if (lbi.data > 0)
-    typeS = "::" + itos(lbi.data);
+    typeS = L"::" + itow(lbi.data);
   else
     typeS = lbi.text;
-
 }
 
 void TabClub::selectClub(gdioutput &gdi,  pClub pc)
@@ -123,7 +122,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
     if (bi.id=="Save") {
     }
     else if (bi.id == "EraseClubs") {
-      if (gdi.ask("Vill du ta bort alla klubbar från tävlingen? Alla deltagare blir klubblösa.")) {
+      if (gdi.ask(L"Vill du ta bort alla klubbar från tävlingen? Alla deltagare blir klubblösa.")) {
         oClub::clearClubs(*oe);
       }
     }
@@ -140,7 +139,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
         int pay, paid;
         {
           map<int, int> ppm;
-          map<int, string> dpm;
+          map<int, wstring> dpm;
           oClub::definedPayModes(*oe, dpm);
           pc->generateInvoice(gdi, pay, paid, dpm, ppm);
         }
@@ -159,7 +158,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.clearPage(false);
       gdi.addString("", boldLarge, "Skapa fakturor");
 
-      gdi.addSelection("Type", 300, 100, 0, "Val av export:");
+      gdi.addSelection("Type", 300, 100, 0, L"Val av export:");
 
       gdi.addItem("Type", lang.tl("Skriv ut alla"), oEvent::IPTAllPrint);
       gdi.addItem("Type", lang.tl("Exportera alla till HTML"), oEvent::IPTAllHTML);
@@ -183,7 +182,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="DoAllInvoice") {
       ListBoxInfo lbi;
       gdi.getSelectedItem("Type", lbi);
-      string path;
+      wstring path;
       if (lbi.data > 10)
         path = gdi.browseForFolder(path, 0);
       gdi.clearPage(false);
@@ -208,13 +207,16 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       }
     }
     else if (bi.id=="ImportAnswer") {
-      vector< pair<string, string> > ft;
-      ft.push_back(make_pair("Textfiler", "*.txt"));
-      string file = gdi.browseForOpen(ft, "txt");
+      vector< pair<wstring, wstring> > ft;
+      ft.push_back(make_pair(L"Textfiler", L"*.txt"));
+      wstring file = gdi.browseForOpen(ft, L"txt");
       if (!file.empty()) {
         gdi.clearPage(true);
         try {
           importAcceptedInvoice(gdi, file);
+        }
+        catch (meosException &ex) {
+          gdi.addString("", 0, ex.wwhat()).setColor(colorRed);
         }
         catch (std::exception &ex) {
           gdi.addString("", 0, ex.what()).setColor(colorRed);
@@ -244,7 +246,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id=="Summary") {
       gdi.clearPage(false);
-      string nn;
+      wstring nn;
       oe->printInvoices(gdi, oEvent::IPTAllPrint, nn, true);
       gdi.addButton(gdi.getWidth()+20, 15,  gdi.scaleLength(120), "Cancel",
                     "Återgå", ClubsCB, "", true, false);
@@ -260,12 +262,12 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
         gdi.clearPage(false);
         gdi.addString("", boldText, "Slå ihop klubb");
 
-        char bf[256];
-        sprintf_s(bf, lang.tl("help:12352").c_str(), pc->getName().c_str(), pc->getId());
+        wchar_t bf[256];
+        swprintf_s(bf, lang.tl("help:12352").c_str(), pc->getName().c_str(), pc->getId());
 
         gdi.addStringUT(10, bf);
 
-        gdi.addSelection("NewClub", 200, 300, 0, "Ny klubb:");
+        gdi.addSelection("NewClub", 200, 300, 0, L"Ny klubb:");
         oe->fillClubs(gdi, "NewClub");
         gdi.selectItemByData("NewClub", pc->getId());
         gdi.removeSelected("NewClub");
@@ -302,7 +304,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       if (firstInvoice == 0)
         firstInvoice = oe->getPropertyInt("FirstInvoice", 1000);
 
-      gdi.addInput("FirstInvoice", itos(firstInvoice), 5, 0, "Första fakturanummer:");
+      gdi.addInput("FirstInvoice", itow(firstInvoice), 5, 0, L"Första fakturanummer:");
 
       gdi.dropLine();
       gdi.addString("", boldText, "Organisatör");
@@ -335,12 +337,12 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
 
       gdi.fillRight();
       gdi.addString("", 0, "Koordinater (mm) för adressfält:");
-      string xc = oe->getPropertyString("addressxpos", "125");
-      string yc = oe->getPropertyString("addressypos", "50");
+      wstring xc = oe->getPropertyString("addressxpos", L"125");
+      wstring yc = oe->getPropertyString("addressypos", L"50");
       gdi.addStringUT(0, "x:");
-      gdi.addInput("XC", xc + " [mm]", 6);
+      gdi.addInput("XC", xc + L" [mm]", 6);
       gdi.addStringUT(0, "y:");
-      gdi.addInput("YC", yc + " [mm]", 6);
+      gdi.addInput("YC", yc + L" [mm]", 6);
 
       gdi.fillDown();
       gdi.popX();
@@ -365,7 +367,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       int fn = gdi.getTextNo("FirstInvoice");
 
       if (fn != firstInvoice && oClub::getFirstInvoiceNumber(*oe) > 0) {
-        if (gdi.ask("Tilldela nya fakturanummer till alla klubbar?")) {
+        if (gdi.ask(L"Tilldela nya fakturanummer till alla klubbar?")) {
           oe->setProperty("FirstInvoice", fn);
           oClub::assignInvoiceNumber(*oe, true);
         }
@@ -393,9 +395,9 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.dropLine();
       gdi.pushX();
 
-      gdi.addSelection("ClassType", 150, 300, 0, "Klass / klasstyp:");
-      vector< pair<string, size_t> > types;
-      vector< pair<string, size_t> > classes;
+      gdi.addSelection("ClassType", 150, 300, 0, L"Klass / klasstyp:");
+      vector< pair<wstring, size_t> > types;
+      vector< pair<wstring, size_t> > classes;
 
       oe->fillClassTypes(types);
       oe->fillClasses(classes, oEvent::extraNone, oEvent::filterNone);
@@ -412,9 +414,9 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.dropLine(-1);
 
       int px = gdi.getCX();
-      gdi.addInput("BaseFee", oe->formatCurrency(baseFee), 8, 0, "Avgift:");
-      gdi.addInput("FirstDate", firstDate, 10, 0, "Undre datumgräns:", "ÅÅÅÅ-MM-DD");
-      gdi.addInput("LastDate", lastDate, 10, 0, "Övre datumgräns:", "ÅÅÅÅ-MM-DD");
+      gdi.addInput("BaseFee", oe->formatCurrency(baseFee), 8, 0, L"Avgift:");
+      gdi.addInput("FirstDate", firstDate, 10, 0, L"Undre datumgräns:", L"ÅÅÅÅ-MM-DD");
+      gdi.addInput("LastDate", lastDate, 10, 0, L"Övre datumgräns:", L"ÅÅÅÅ-MM-DD");
 
       manualFees(gdi, useManualFee);
 
@@ -424,8 +426,8 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.addCheckbox("FilterAge", "Åldersfilter:", ClubsCB, filterAge);
 
       gdi.dropLine(-1);
-      gdi.addInput("LowLimit", lowAge > 0 ? itos(lowAge) : "", 5, 0, "Undre gräns (år):");
-      gdi.addInput("HighLimit", highAge > 0 ? itos(highAge) : "", 5, 0, "Övre gräns (år):");
+      gdi.addInput("LowLimit", lowAge > 0 ? itow(lowAge) : L"", 5, 0, L"Undre gräns (år):");
+      gdi.addInput("HighLimit", highAge > 0 ? itow(highAge) : L"", 5, 0, L"Övre gräns (år):");
       ageFilter(gdi, filterAge, useManualFee);
 
       gdi.popX();
@@ -480,7 +482,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       vector<pRunner> filtered;
 
       oe->sortRunners(ClassStartTimeClub);
-      string fdate, ldate;
+      wstring fdate, ldate;
       int lage = 0, hage = 0;
 
       if (useManualFee) {
@@ -526,9 +528,9 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
         else
           fee = di.getInt("Fee");
 
-        string info = filtered[k]->getClass() + ", " + filtered[k]->getCompleteIdentification();
+        wstring info = filtered[k]->getClass() + L", " + filtered[k]->getCompleteIdentification();
 
-        gdi.addStringUT(0,  info + " (" + oe->formatCurrency(fee) + ")");
+        gdi.addStringUT(0,  info + L" (" + oe->formatCurrency(fee) + L")");
         if (count % 5 == 0)
           gdi.dropLine();
       }
@@ -551,15 +553,15 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.print(oe);
     }
     else if (bi.id=="PDF") {
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("Portable Document Format (PDF)", "*.pdf"));
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Portable Document Format (PDF)", L"*.pdf"));
 
       int index;
-      string file=gdi.browseForSave(ext, "pdf", index);
+      wstring file=gdi.browseForSave(ext, L"pdf", index);
 
       if (!file.empty()) {
         pdfwriter pdf;
-        pdf.generatePDF(gdi, gdi.toWide(file), lang.tl("Faktura"), oe->getDCI().getString("Organizer"), gdi.getTL());
+        pdf.generatePDF(gdi, file, lang.tl("Faktura"), oe->getDCI().getString("Organizer"), gdi.getTL());
         gdi.openDoc(file.c_str());
       }
     }
@@ -668,28 +670,28 @@ bool TabClub::loadPage(gdioutput &gdi)
   return true;
 }
 
-void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
+void TabClub::importAcceptedInvoice(gdioutput &gdi, const wstring &file) {
 
   gdi.addString("", boldLarge, "Hämta svar om elektroniska fakturor");
 
   gdi.fillDown();
   gdi.dropLine(2);
   csvparser csv;
-  list< vector<string> > data;
+  list< vector<wstring> > data;
   csv.parse(file, data);
-  list< vector<string> >::iterator it;
-  map<int, pair<bool, string> > hasAccepted;
+  list< vector<wstring> >::iterator it;
+  map<int, pair<bool, wstring> > hasAccepted;
   for (it = data.begin(); it != data.end(); ++it) {
     if (it->size() == 3) {
-      int id = atoi((*it)[0].c_str());
-      bool accepted = trim((*it)[1]) == "OK";
+      int id = _wtoi((*it)[0].c_str());
+      bool accepted = trim((*it)[1]) == L"OK";
       pClub pc = oe->getClub(id);
       if (pc) {
         hasAccepted[id].first = accepted;
         if ( hasAccepted[id].second.empty())
           hasAccepted[id].second = (*it)[2];
         else
-          hasAccepted[id].second += ", " + (*it)[2];
+          hasAccepted[id].second += L", " + (*it)[2];
       }
       else
         gdi.addString("", 0, "Okänd klubb med id X#" + itos(id)).setColor(colorRed);
@@ -707,7 +709,7 @@ void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
   bool anyAccepted = false;
   int count = 0;
   for (size_t k = 0; k < clubs.size(); k++) {
-    map<int, pair<bool, string> >::iterator res = hasAccepted.find(clubs[k]->getId());
+    map<int, pair<bool, wstring> >::iterator res = hasAccepted.find(clubs[k]->getId());
 
     if (res != hasAccepted.end() && res->second.first) {
       if (!anyAccepted) {
@@ -717,10 +719,10 @@ void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
         gdi.popX();
         anyAccepted = true;
       }
-      clubs[k]->getDI().setString("Invoice", "A");
+      clubs[k]->getDI().setString("Invoice", L"A");
       gdi.addStringUT(0, itos(++count) + ".");
       gdi.setCX(margin);
-      gdi.addStringUT(0, clubs[k]->getName() + ", " + res->second.second);
+      gdi.addStringUT(0, clubs[k]->getName() + L", " + res->second.second);
       gdi.dropLine();
       gdi.popX();
     }
@@ -729,7 +731,7 @@ void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
   bool anyNotAccepted = false;
   count = 0;
   for (size_t k = 0; k < clubs.size(); k++) {
-    map<int, pair<bool, string> >::iterator res = hasAccepted.find(clubs[k]->getId());
+    map<int, pair<bool, wstring> >::iterator res = hasAccepted.find(clubs[k]->getId());
 
     if (res != hasAccepted.end() && !res->second.first) {
       if (!anyNotAccepted) {
@@ -739,10 +741,10 @@ void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
         gdi.popX();
         anyNotAccepted = true;
       }
-      clubs[k]->getDI().setString("Invoice", "P");
+      clubs[k]->getDI().setString("Invoice", L"P");
       gdi.addStringUT(0, itos(++count) + ".");
       gdi.setCX(margin);
-      gdi.addStringUT(0, clubs[k]->getName() + ", " + res->second.second);
+      gdi.addStringUT(0, clubs[k]->getName() + L", " + res->second.second);
       gdi.dropLine();
       gdi.popX();
 
@@ -752,10 +754,10 @@ void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
   bool anyNoAnswer = false;
   count = 0;
   for (size_t k = 0; k < clubs.size(); k++) {
-    string email = clubs[k]->getDCI().getString("EMail");
+    wstring email = clubs[k]->getDCI().getString("EMail");
     bool hasMail = !email.empty() && email.find_first_of('@') != email.npos;
 
-    map<int, pair<bool, string> >::iterator res = hasAccepted.find(clubs[k]->getId());
+    map<int, pair<bool, wstring> >::iterator res = hasAccepted.find(clubs[k]->getId());
 
     if (res == hasAccepted.end() ) {
       if (!anyNoAnswer) {
@@ -772,7 +774,7 @@ void TabClub::importAcceptedInvoice(gdioutput &gdi, const string &file) {
       if (hasMail)
         gdi.addStringUT(0, clubs[k]->getName());
       else
-        gdi.addString("", 0, "X (Saknar e-post)#" + clubs[k]->getName());
+        gdi.addString("", 0, L"X (Saknar e-post)#" + clubs[k]->getName());
 
       gdi.dropLine();
       gdi.popX();

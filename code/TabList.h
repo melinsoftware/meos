@@ -34,7 +34,7 @@ protected:
   EStdListType currentListType;
   oListInfo currentList;
   string SelectedList;
-  string lastInputNumber;
+  wstring lastInputNumber;
   int lastLimitPer;
   bool lastInterResult;
   bool lastSplitState;

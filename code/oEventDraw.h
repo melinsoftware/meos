@@ -117,5 +117,5 @@ struct DrawInfo {
   int minimalStartDepth;
 
   map<int, ClassInfo> classes;
-  string startName;
+  wstring startName;
 };

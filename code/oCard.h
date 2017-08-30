@@ -82,7 +82,7 @@ public:
 
   pair<int, int> getTimeRange() const;
 
-  string getInfo() const;
+  wstring getInfo() const;
 
   void addTableRow(Table &table) const;
 
@@ -96,7 +96,7 @@ public:
   /** Returns the number of real control punches on the course. */
   int getNumControlPunches(int startPunchType, int finishPunchType) const;
   
-  bool setPunchTime(const pPunch punch, const string &time);
+  bool setPunchTime(const pPunch punch, const wstring &time);
   bool isCardRead(const SICard &card) const;
   void setReadId(const SICard &card);
   // Get SI-Card from oCard (just punches)
@@ -117,13 +117,13 @@ public:
   // Get all punches
   void getPunches(vector<pPunch> &punches) const;
   // Return split time to previous matched control
-  string getRogainingSplit(int ix, int startTime) const;
+  wstring getRogainingSplit(int ix, int startTime) const;
 
   /** Adapt the 24-hours based time to a start time that may br larger that 24-hour after zero time. */
   void adaptTimes(int startTime);
 
   int getCardNo() const {return cardNo;}
-  const string &getCardNoString() const;
+  const wstring &getCardNoString() const;
   void setCardNo(int c);
   void importPunches(const string &s);
   string getPunchString();

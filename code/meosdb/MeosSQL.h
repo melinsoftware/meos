@@ -20,6 +20,7 @@
     Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
+#pragma warning( disable : 4251)
 
 #include <mysql++.h>
 

@@ -33,6 +33,7 @@ enum gdiFonts;
 class oEvent;
 
 const string &itos(int);
+const wstring &itow(int i);
 
 class Position
 {
@@ -79,8 +80,8 @@ private:
   void deserialize(const xmlobject &xml);
 
   EPostType type;
-  string text;
-  string alignWithText;
+  wstring text;
+  wstring alignWithText;
   string resultModule;
   EPostType alignType;
   int leg;
@@ -96,24 +97,24 @@ public:
   MetaListPost(EPostType type_, EPostType align_ = lNone, int leg_ = -1);
 
   MetaListPost &setBlock(int width) {blockWidth = width; return *this;}
-  MetaListPost &setText(const string &text_) {text = text_; return *this;}
+  MetaListPost &setText(const wstring &text_) {text = text_; return *this;}
   MetaListPost &setResultModule(const string &resMod) {resultModule = resMod; return *this;}
 
   MetaListPost &align(EPostType align_, bool alignBlock_ = true) {alignType = align_; alignBlock = alignBlock_; return *this;}
   MetaListPost &align(bool alignBlock_ = true) {return align(lAlignNext, alignBlock_);}
-  MetaListPost &alignText(const string &t) {alignWithText = t; return *this;}
+  MetaListPost &alignText(const wstring &t) {alignWithText = t; return *this;}
   MetaListPost &mergePrevious(bool m_=true) {mergeWithPrevious = m_; return *this;}
 
   MetaListPost &indent(int ind) {minimalIndent = ind; return *this;}
 
-  void getTypes(vector< pair<string, size_t> > &types, int &currentType) const;
+  void getTypes(vector< pair<wstring, size_t> > &types, int &currentType) const;
 
-  const string &getType() const;
+  const wstring &getType() const;
   MetaListPost &setType(EPostType type_) {type = type_; return *this;}
 
-  const string &getText() const {return text;}
+  const wstring &getText() const {return text;}
   const string &getResultModule() const {return resultModule;}
-  const string &getAlignText() const {return alignWithText;}
+  const wstring &getAlignText() const {return alignWithText;}
 
   int getLeg() const {return leg;}
   void setLeg(int leg_) {leg = leg_;}
@@ -127,7 +128,7 @@ public:
   const string &getFont() const;
   void setFont(gdiFonts font_) {font = font_;}
 
-  void getFonts(vector< pair<string, size_t> > &fonts, int &currentFont) const;
+  void getFonts(vector< pair<wstring, size_t> > &fonts, int &currentFont) const;
 
   const string &getTextAdjust() const;
   int getTextAdjustNum() const {return textAdjust;}
@@ -136,7 +137,7 @@ public:
   void setColor(GDICOLOR color);
   GDICOLOR getColorValue() const {return color;}
 
-  static void getAllFonts(vector< pair<string, size_t> > &fonts);
+  static void getAllFonts(vector< pair<wstring, size_t> > &fonts);
 
   friend class MetaList;
 };
@@ -152,17 +153,17 @@ class MetaList {
 private:
 
   struct FontInfo {
-    string font;
+    wstring font;
     int scale;
     int extraSpaceAbove;
 
     FontInfo() : scale(0), extraSpaceAbove(0) {}
 
-    const vector< pair<string, string> > &serialize(vector< pair<string, string> > &props) const {
+    const vector< pair<string, wstring> > &serialize(vector< pair<string, wstring> > &props) const {
       props[0].first = "scale";
-      props[0].second = itos(scale);
+      props[0].second = itow(scale);
       props[1].first = "above";
-      props[1].second = itos(extraSpaceAbove);
+      props[1].second = itow(extraSpaceAbove);
       return props;
     }
   };
@@ -170,8 +171,8 @@ private:
   vector< vector< vector<MetaListPost> > > data;
   vector<FontInfo> fontFaces;
 
-  string listName;
-  mutable string listOrigin;
+  wstring listName;
+  mutable wstring listOrigin;
   string tag;
   mutable string uniqueIndex;
 
@@ -192,11 +193,11 @@ private:
   enum ListIndex {MLHead = 0, MLSubHead = 1, MLList = 2, MLSubList=3};
   MetaListPost &add(ListIndex ix, const MetaListPost &post);
   void addRow(int ix);
-  string encode(const string &input) const;
+  wstring encode(const wstring &input) const;
   bool isBreak(int x) const;
 
-  static map<EPostType, string> typeToSymbol;
-  static map<string, EPostType> symbolToType;
+  static map<EPostType, wstring> typeToSymbol;
+  static map<wstring, EPostType> symbolToType;
 
   static map<oListInfo::EBaseType, string> baseTypeToSymbol;
   static map<string, oListInfo::EBaseType> symbolToBaseType;
@@ -228,7 +229,7 @@ public:
 
   bool supportClasses() const;
 
-  const string &getListInfo(const oEvent &oe) const;
+  const wstring &getListInfo(const oEvent &oe) const;
   void clearTag() {tag.clear();}
 
   void initUniqueIndex() const;
@@ -242,26 +243,26 @@ public:
   bool updateResultModule(const DynamicResult &dr, bool updateSimilar);
 
   void getDynamicResults(vector<DynamicResultRef> &resultModules) const;
-  void getFilters(vector< pair<string, bool> > &filters) const;
+  void getFilters(vector< pair<wstring, bool> > &filters) const;
   void setFilters(const vector<bool> &filters);
-  void getSubFilters(vector< pair<string, bool> > &filters) const;
+  void getSubFilters(vector< pair<wstring, bool> > &filters) const;
   void setSubFilters(const vector<bool> &filters);
 
-  void getResultModule(const oEvent &oe, vector< pair<string, size_t> > &modules, int &currentModule) const;
+  void getResultModule(const oEvent &oe, vector< pair<wstring, size_t> > &modules, int &currentModule) const;
   const string &getResultModule() const {return resultModule;}
 
   MetaList &setSupportFromTo(bool from, bool to);
   bool supportFrom() const {return supportFromControl;}
   bool supportTo() const {return supportToControl;}
-  void getSortOrder(bool forceIncludeCustom, vector< pair<string, size_t> > &orders, int &currentOrder) const;
-  void getBaseType(vector< pair<string, size_t> > &types, int &currentType) const;
-  void getSubType(vector< pair<string, size_t> > &types, int &currentType) const;
+  void getSortOrder(bool forceIncludeCustom, vector< pair<wstring, size_t> > &orders, int &currentOrder) const;
+  void getBaseType(vector< pair<wstring, size_t> > &types, int &currentType) const;
+  void getSubType(vector< pair<wstring, size_t> > &types, int &currentType) const;
 
-  const string &getFontFace(int type) const {return fontFaces[type].font;}
+  const wstring &getFontFace(int type) const {return fontFaces[type].font;}
   int getFontFaceFactor(int type) const {return fontFaces[type].scale;}
   int getExtraSpace(int type) const {return fontFaces[type].extraSpaceAbove;}
 
-  MetaList &setFontFace(int type, const string &face, int factor) {
+  MetaList &setFontFace(int type, const wstring &face, int factor) {
     fontFaces[type].font = face;
     fontFaces[type].scale = factor;
     return *this;
@@ -274,7 +275,7 @@ public:
 
   void getExistingTypes(vector< pair<string, size_t> > &types) const;
 
-  const string &getListName() const {return listName;}
+  const wstring &getListName() const {return listName;}
   oListInfo::EBaseType getListType() const;
 
   oListInfo::ResultType getResultType() const; // Classwise or global
@@ -282,7 +283,7 @@ public:
   bool hasResults() const {return hasResults_;}
   const string &getTag() const {return tag;}
 
-  void getAlignTypes(const MetaListPost &mlp, vector< pair<string, size_t> > &types, int &currentType) const;
+  void getAlignTypes(const MetaListPost &mlp, vector< pair<wstring, size_t> > &types, int &currentType) const;
   void getIndex(const MetaListPost &mlp, int &gix, int &lix, int &ix) const;
 
   MetaList &setResultModule(const oEvent &oe, int moduleIx);
@@ -294,8 +295,8 @@ public:
   MetaList &addFilter(EFilterList f) {filter.insert(f); return *this;}
   MetaList &addSubFilter(ESubFilterList f) {subFilter.insert(f); return *this;}
 
-  void save(const string &file, const oEvent *oe) const;
-  void load(const string &file);
+  void save(const wstring &file, const oEvent *oe) const;
+  void load(const wstring &file);
 
   bool isValidIx(size_t gIx, size_t lIx, size_t ix) const;
 
@@ -305,7 +306,7 @@ public:
   void interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
                  int lineHeight, oListInfo &li) const;
 
-  MetaList &setListName(const string &title) {listName = title; return *this;}
+  MetaList &setListName(const wstring &title) {listName = title; return *this;}
 
   MetaListPost &addNew(int groupIx, int lineIx, int &ix);
   MetaListPost &getMLP(int groupIx, int lineIx, int ix);
@@ -353,7 +354,7 @@ public:
 
   string getUniqueId(EStdListType code) const;
   EStdListType getCodeFromUnqiueId(const string &id) const;
-  string makeUniqueParamName(const string &nameIn) const;
+  wstring makeUniqueParamName(const wstring &nameIn) const;
 
   bool updateResultModule(const DynamicResult &res, bool updateSimilar);
  
@@ -375,7 +376,7 @@ public:
   MetaList &addExternal(const MetaList &ml);
   void clearExternal();
 
-  void getLists(vector< pair<string, size_t> > &lists, 
+  void getLists(vector< pair<wstring, size_t> > &lists, 
                 bool markBuiltIn, 
                 bool resultListOnly, 
                 bool noTeamList) const;
@@ -395,17 +396,17 @@ public:
   void setupListInfo(int firstIndex, map<EStdListType, oListInfo> &listMap, bool resultsOnly) const;
   void setupIndex(int firstIndex) const;
 
-  void getListParam( vector< pair<string, size_t> > &param) const;
+  void getListParam( vector< pair<wstring, size_t> > &param) const;
   void removeParam(int index);
   void addListParam(oListParam &listParam);
 
   void mergeParam(int toInsertAfter, int toMerge, bool showTitleBetween);
-  void getMergeCandidates(int toMerge, vector< pair<string, size_t> > &param) const;
+  void getMergeCandidates(int toMerge, vector< pair<wstring, size_t> > &param) const;
   bool canSplit(int index) const;
   void split(int index);
 
   bool interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
                  int lineHeight, oListInfo &li) const;
 
-  void enumerateLists(vector< pair<string, pair<string, string> > > &out) const;
+  void enumerateLists(vector< pair<wstring, pair<string, wstring> > > &out) const;
 };

@@ -36,7 +36,7 @@ class Toolbar {
 
   vector<TBBUTTON> btn;
   vector<string> btn_id;
-  list<string> tooltips;
+  list<wstring> tooltips;
   void *data;
 
   string toolbar_id;
@@ -57,7 +57,7 @@ public:
   void reset();
   void addButton(const string &id, int imgList, int icon, const string &tooltip);
 
-  void createToolbar(const string &id, const string &title);
+  void createToolbar(const string &id, const wstring &title);
   bool isLoaded(const string &id) const {return toolbar_id == id;}
   Toolbar(gdioutput &gdi_par);
   virtual ~Toolbar();

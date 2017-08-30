@@ -68,7 +68,7 @@ public:
   void remove();
   bool canRemove() const;
 
-  string getInfo() const;
+  wstring getInfo() const;
 
   bool isStart() const {return Type==PunchStart;}
   bool isStart(int startType) const {return Type==PunchStart || Type == startType;}
@@ -76,21 +76,21 @@ public:
   bool isFinish(int finishType) const {return Type==PunchFinish || Type == finishType;}
   bool isCheck() const {return Type==PunchCheck;}
   int getControlNumber() const {return Type>=30 ? Type : 0;}
-  const string &getType() const;
-  static const string &getType(int t);
+  const wstring &getType() const;
+  static const wstring &getType(int t);
   int getTypeCode() const {return Type;}
-  string getString() const ;
-  string getSimpleString() const;
+  wstring getString() const ;
+  wstring getSimpleString() const;
 
-  string getTime() const;
+  wstring getTime() const;
   int getAdjustedTime() const;
-  void setTime(const string &t);
+  void setTime(const wstring &t);
   virtual void setTimeInt(int newTime, bool databaseUpdate);
 
   void setTimeAdjust(int t) {tTimeAdjust=t;}
   void adjustTimeAdjust(int t) {tTimeAdjust+=t;}
 
-  string getRunningTime(int startTime) const;
+  wstring getRunningTime(int startTime) const;
 
   enum SpecialPunch {PunchStart=1, PunchFinish=2, PunchCheck=3};
   void decodeString(const string &s);

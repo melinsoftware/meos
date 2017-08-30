@@ -31,9 +31,9 @@ class OnlineInput :
   public AutoMachine
 {
 protected:
-  string url;
+  wstring url;
   int cmpId;
-  string unitId;
+  wstring unitId;
   int lastImportedId;
   int importCounter;
   int bytesImported;
@@ -42,10 +42,10 @@ protected:
   bool useROCProtocol;
   bool useUnitId;
 
-  deque<string> info;
+  deque<wstring> info;
   map<int, oPunch::SpecialPunch> specialPunches;
 
-  void addInfo(const string &line) {
+  void addInfo(const wstring &line) {
     if (info.size() >= 10)
       info.pop_back();
     info.push_front(line);
@@ -58,7 +58,7 @@ protected:
   void processEntries(oEvent &oe, const xmlList &entries);
 
   void processPunches(oEvent &oe, const xmlList &punches);
-  void processPunches(oEvent &oe, list< vector<string> > &rocData);
+  void processPunches(oEvent &oe, list< vector<wstring> > &rocData);
 public:
 
   int processButton(gdioutput &gdi, ButtonInfo &bi);

@@ -108,7 +108,7 @@ oDataInfo &oDataContainer::addVariableString(const char *name, int maxChar,
   strcpy_s(odi.Description,descr);
   if (maxChar > 0) {
     odi.Index = dataPointer;
-    odi.Size = maxChar+1;
+    odi.Size = sizeof(wchar_t)*(maxChar+1);
     odi.Type = oDTString;
     odi.SubType = oSSString;
 
@@ -128,10 +128,8 @@ oDataInfo &oDataContainer::addVariableString(const char *name, int maxChar,
   }
 }
 
-
-
 oDataInfo &oDataContainer::addVariableEnum(const char *name, int maxChar, const char *descr,
-                     const vector< pair<string, string> > enumValues) {
+                     const vector< pair<wstring, wstring> > enumValues) {
   oDataInfo &odi = addVariableString(name, maxChar, descr);
   odi.SubType = oSSEnum;
   for (size_t k = 0; k<enumValues.size(); k++)
@@ -198,13 +196,13 @@ void oDataContainer::initData(oBase *ob, int datasize) {
     throw std::exception("oDataContainer: Buffer too small.");
 
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
   memset(data, 0, dataPointer);
   memset(oldData, 0, dataPointer);
 
   if (stringIndexPointer > 0 || stringArrayIndexPointer>2) {
-    vector< vector<string> > &str = *strptr;
+    vector< vector<wstring> > &str = *strptr;
     str.clear();
     str.resize(stringArrayIndexPointer);
     str[0].resize(stringIndexPointer);
@@ -291,8 +289,7 @@ __int64 oDataContainer::getInt64(const void *data, const char *Name) const
   }
 }
 
-
-bool oDataContainer::setString(oBase *ob, const char *name, const string &V)
+bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v)
 {
   oDataInfo *odi=findVariable(name);
 
@@ -300,24 +297,24 @@ bool oDataContainer::setString(oBase *ob, const char *name, const string &V)
     throw std::exception("oDataContainer: Variable not found.");
 
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   if (odi->Type == oDTString) {
     LPBYTE vd=LPBYTE(data)+odi->Index;
 
-    if (strcmp((char *)vd, V.c_str())!=0){
-      strncpy_s((char *)vd, odi->Size, V.c_str(), odi->Size-1);
+    if (wcscmp((wchar_t *)vd, v.c_str())!=0){
+      wcsncpy_s((wchar_t *)vd, odi->Size/sizeof(wchar_t), v.c_str(), (odi->Size-1)/sizeof(wchar_t));
       return true;
     }
     else return false;//Not modified
   }
   else if (odi->Type == oDTStringDynamic) {
-    string &str = (*strptr)[0][odi->Index];
-    if (str == V)
+    wstring &str = (*strptr)[0][odi->Index];
+    if (str == v)
       return false; // Same string
 
-    str = V;
+    str = v;
     return true;
   }
   else
@@ -325,11 +322,11 @@ bool oDataContainer::setString(oBase *ob, const char *name, const string &V)
 
 }
 
-const string &oDataContainer::getString(const oBase *ob, const char *Name) const {
+const wstring &oDataContainer::getString(const oBase *ob, const char *Name) const {
   const oDataInfo *odi=findVariable(Name);
 
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   if (!odi)
@@ -337,12 +334,12 @@ const string &oDataContainer::getString(const oBase *ob, const char *Name) const
 
   if (odi->Type == oDTString) {
     LPBYTE vd=LPBYTE(data)+odi->Index;
-    string &res = StringCache::getInstance().get();
-    res = (char *) vd;
+    wstring &res = StringCache::getInstance().wget();
+    res = (wchar_t *) vd;
     return res;
   }
   else if (odi->Type == oDTStringDynamic) {
-    string &str = (*strptr)[0][odi->Index];
+    wstring &str = (*strptr)[0][odi->Index];
     return str;
   }
   else
@@ -350,7 +347,7 @@ const string &oDataContainer::getString(const oBase *ob, const char *Name) const
 }
 
 
-bool oDataContainer::setDate(void *data, const char *Name, const string &V)
+bool oDataContainer::setDate(void *data, const char *Name, const wstring &V)
 {
   oDataInfo *odi=findVariable(Name);
 
@@ -362,10 +359,9 @@ bool oDataContainer::setDate(void *data, const char *Name, const string &V)
 
   int year=0,month=0,day=0;
 
-  sscanf_s(V.c_str(), "%d-%d-%d", &year, &month, &day);
+  swscanf_s(V.c_str(), L"%d-%d-%d", &year, &month, &day);
 
   int C=year*10000+month*100+day;
-
 
   LPBYTE vd=LPBYTE(data)+odi->Index;
   if (*((int *)vd)!=C){
@@ -375,7 +371,7 @@ bool oDataContainer::setDate(void *data, const char *Name, const string &V)
   else return false;//Not modified
 }
 
-const string &oDataContainer::getDate(const void *data,
+const wstring &oDataContainer::getDate(const void *data,
                                const char *Name) const
 {
   const oDataInfo *odi=findVariable(Name);
@@ -389,20 +385,20 @@ const string &oDataContainer::getDate(const void *data,
   LPBYTE vd=LPBYTE(data)+odi->Index;
   int C=*((int *)vd);
 
-  char bf[24];
+  wchar_t bf[24];
   if (C%10000!=0 || C==0)
-    sprintf_s(bf, "%04d-%02d-%02d", C/10000, (C/100)%100, C%100);
+    swprintf_s(bf, L"%04d-%02d-%02d", C/10000, (C/100)%100, C%100);
   else
-    sprintf_s(bf, "%04d", C/10000);
+    swprintf_s(bf, L"%04d", C/10000);
 
-  string &res = StringCache::getInstance().get();
+  wstring &res = StringCache::getInstance().wget();
   res = bf;
   return res;
 }
 
 bool oDataContainer::write(const oBase *ob, xmlparser &xml) const {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   xml.startTag("oData");
@@ -425,10 +421,11 @@ bool oDataContainer::write(const oBase *ob, xmlparser &xml) const {
     }
     else if (di.Type == oDTString){
       LPBYTE vd=LPBYTE(data)+di.Index;
-      xml.write(di.Name, (char *)vd);
+      wstring out = (wchar_t*)vd;
+      xml.write(di.Name, out);
     }
     else if (di.Type == oDTStringDynamic) {
-      const string &str = (*strptr)[0][di.Index];
+      const wstring &str = (*strptr)[0][di.Index];
       xml.write(di.Name, str);
     }
   }
@@ -440,7 +437,7 @@ bool oDataContainer::write(const oBase *ob, xmlparser &xml) const {
 
 void oDataContainer::set(oBase *ob, const xmlobject &xo) {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   xmlList xl;
@@ -462,11 +459,11 @@ void oDataContainer::set(oBase *ob, const xmlobject &xo) {
       }
       else if (odi->Type == oDTString) {
         LPBYTE vd=LPBYTE(data)+odi->Index;
-        strncpy_s((char *)vd, odi->Size, it->get(), odi->Size-1);
+        wcsncpy_s((wchar_t *)vd, odi->Size/sizeof(wchar_t), it->getw(), (odi->Size-1)/sizeof(wchar_t));
       }
       else if (odi->Type == oDTStringDynamic) {
-        string &str = (*strptr)[0][odi->Index];
-        str = it->get();
+        wstring &str = (*strptr)[0][odi->Index];
+        str = it->getw();
       }
     }
   }
@@ -498,15 +495,15 @@ void oDataContainer::buildDataFields(gdioutput &gdi, const vector<string> &field
 
     if (di.Type==oDTInt){
       if (di.SubType == oISDate || di.SubType == oISTime)
-        gdi.addInput(Id, "", 10, 0, string(di.Description) + ":");
+        gdi.addInput(Id, L"", 10, 0, gdi.widen(di.Description) + L":");
       else
-        gdi.addInput(Id, "", 6, 0, string(di.Description) + ":");
+        gdi.addInput(Id, L"", 6, 0, gdi.widen(di.Description) + L":");
     }
     else if (di.Type==oDTString){
-      gdi.addInput(Id, "", min(di.Size+2, 30), 0, string(di.Description) +":");
+      gdi.addInput(Id, L"", min(di.Size+2, 30), 0, gdi.widen(di.Description) + L":");
     }
     else if (di.Type==oDTStringDynamic){
-      gdi.addInput(Id, "", 30, 0, string(di.Description) +":");
+      gdi.addInput(Id, L"", 30, 0, gdi.widen(di.Description) + L":");
     }
   }
 }
@@ -535,7 +532,7 @@ int oDataContainer::getDataAmountMeasure(const void *data) const
 void oDataContainer::fillDataFields(const oBase *ob, gdioutput &gdi) const
 {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   for (size_t kk = 0; kk < ordered.size(); kk++) {
@@ -554,7 +551,7 @@ void oDataContainer::fillDataFields(const oBase *ob, gdioutput &gdi) const
           gdi.setText(Id.c_str(), ob->getEvent()->formatCurrency(nr));
         }
         else {
-          char bf[64];
+          wchar_t bf[64];
           formatNumber(nr, di, bf);
           gdi.setText(Id.c_str(), bf);
         }
@@ -562,17 +559,17 @@ void oDataContainer::fillDataFields(const oBase *ob, gdioutput &gdi) const
       else {
         __int64 nr;
         memcpy(&nr, vd, sizeof(__int64));
-        char bf[16];
+        wchar_t bf[16];
         oBase::converExtIdentifierString(nr, bf);
         gdi.setText(Id.c_str(), bf);
       }
     }
     else if (di.Type==oDTString){
       LPBYTE vd=LPBYTE(data)+di.Index;
-      gdi.setText(Id.c_str(), (char *)vd);
+      gdi.setText(Id.c_str(), (wchar_t *)vd);
     }
     else if (di.Type==oDTStringDynamic){
-      const string &str = (*strptr)[0][di.Index];
+      const wstring &str = (*strptr)[0][di.Index];
       gdi.setText(Id.c_str(), str);
     }
   }
@@ -580,7 +577,7 @@ void oDataContainer::fillDataFields(const oBase *ob, gdioutput &gdi) const
 
 bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi) {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   for (size_t kk = 0; kk < ordered.size(); kk++) {
@@ -603,14 +600,14 @@ bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi) {
         no = convertAbsoluteTimeHMS(gdi.getText(Id.c_str()), -1);
       }
       else if (di.SubType == oISDecimal) {
-        string str = gdi.getText(Id.c_str());
+        wstring str = gdi.getText(Id.c_str());
         for (size_t k = 0; k < str.length(); k++) {
           if (str[k] == ',') {
             str[k] = '.';
             break;
           }
         }
-        double val = atof(str.c_str());
+        double val = _wtof(str.c_str());
         no = int(di.decimalScale * val);
       }
       else {
@@ -626,16 +623,16 @@ bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi) {
     }
     else if (di.Type == oDTString) {
       LPBYTE vd=LPBYTE(data)+di.Index;
-      string oldS = (char *)vd;
-      string newS = gdi.getText(Id.c_str());
+      wstring oldS = (wchar_t *)vd;
+      wstring newS = gdi.getText(Id.c_str());
       if (oldS != newS) {
-        strncpy_s((char *)vd, di.Size, newS.c_str(), di.Size-1);
+        wcsncpy_s((wchar_t *)vd, di.Size/sizeof(wchar_t), newS.c_str(), (di.Size-1)/sizeof(wchar_t));
         ob->updateChanged();
       }
     }
     else if (di.Type == oDTStringDynamic) {
-      string &oldS = (*strptr)[0][di.Index];
-      string newS = gdi.getText(Id.c_str());
+      wstring &oldS = (*strptr)[0][di.Index];
+      wstring newS = gdi.getText(Id.c_str());
       if (oldS != newS) {
         oldS = newS;
         ob->updateChanged();
@@ -688,23 +685,49 @@ string oDataContainer::C_STRING(const string &name, int len)
   }
 }
 
-string oDataContainer::SQL_quote(const char *in)
+string oDataContainer::SQL_quote(const wchar_t *in)
 {
-  char out[256];
-  int o=0;
-
-  while(*in && o<250){
-    if (*in=='\'')
-      out[o++]='\'';
-    if (*in=='\\')
-      out[o++]='\\';
-    out[o++]=*in;
-
-    in++;
+  int len = wcslen(in);
+  size_t alloc = len*4+4;
+  if (alloc < 500) {
+    char output[512];
+    int len8 = WideCharToMultiByte(CP_UTF8, 0, in, len+1, output, alloc, 0, 0);
+    output[len8] = 0;
+    const char *inutf = output;
+    char out[1024];
+    int o=0;
+    while(*inutf && o<1023){
+      if (*inutf=='\'')
+        out[o++]='\'';
+      if (*inutf=='\\')
+        out[o++]='\\';
+      out[o++]=*inutf;
+      inutf++;
+    }
+    out[o]=0;
+    return out;
   }
-  out[o]=0;
-
-  return out;
+  else {
+    vector<char> output;
+    output.resize(alloc);
+    int len8 = WideCharToMultiByte(CP_UTF8, 0, in, len+1, &output.front(), alloc, 0, 0);
+    output[len8] = 0;
+    const char *inutf = &output.front();
+  
+    vector<char> out;
+    out.reserve(alloc);
+    while(*inutf){
+      if (*inutf=='\'')
+        out.push_back('\'');
+      if (*inutf=='\\')
+        out.push_back('\\');
+      out.push_back(*inutf);
+      inutf++;
+    }
+    out.push_back(0);
+    string outs(&out[0]);
+    return outs;
+  }
 }
 
 string oDataContainer::generateSQLDefinition(const std::set<string> &exclude) const {
@@ -751,7 +774,7 @@ string oDataContainer::generateSQLDefinition(const std::set<string> &exclude) co
 bool oDataContainer::isModified(const oDataInfo &di,
                                 const void *data,
                                 const void *oldData,
-                                vector< vector<string> > *strptr) const {
+                                vector< vector<wstring> > *strptr) const {
 
   if (di.Type == oDTInt) {
     LPBYTE vd=LPBYTE(data)+di.Index;
@@ -769,13 +792,13 @@ bool oDataContainer::isModified(const oDataInfo &di,
     return strcmp(vd, vdOld) != 0;
   }
   else if (di.Type == oDTStringDynamic){
-    const string &newS = (*strptr)[0][di.Index];
-    const string &oldS = (*strptr)[1][di.Index];
+    const wstring &newS = (*strptr)[0][di.Index];
+    const wstring &oldS = (*strptr)[1][di.Index];
     return newS != oldS;
   }
   else if (di.Type == oDTStringArray){
-    const vector<string> &newS = (*strptr)[di.Index];
-    const vector<string> &oldS = (*strptr)[di.Index+1];
+    const vector<wstring> &newS = (*strptr)[di.Index];
+    const vector<wstring> &oldS = (*strptr)[di.Index+1];
     return newS != oldS;
   }
   else
@@ -784,7 +807,7 @@ bool oDataContainer::isModified(const oDataInfo &di,
 
 void oDataContainer::allDataStored(const oBase *ob) {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
   memcpy(oldData, data, ob->getDISize());
   if (stringIndexPointer > 0 || stringArrayIndexPointer > 2) {
@@ -796,7 +819,7 @@ void oDataContainer::allDataStored(const oBase *ob) {
 
 string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   string sql;
@@ -842,16 +865,16 @@ string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
     }
     else if (di.Type==oDTString) {
       LPBYTE vd=LPBYTE(data)+di.Index;
-      sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote((char *)vd).c_str());
+      sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote((wchar_t *)vd).c_str());
       sql+=bf;
     }
     else if (di.Type==oDTStringDynamic) {
-      const string &str = (*strptr)[0][di.Index];
+      const wstring &str = (*strptr)[0][di.Index];
       sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote(str.c_str()).c_str());
       sql+=bf;
     }
     else if (di.Type==oDTStringArray) {
-      const string str = encodeArray((*strptr)[di.Index]);
+      const wstring str = encodeArray((*strptr)[di.Index]);
       sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote(str.c_str()).c_str());
       sql+=bf;
     }
@@ -886,7 +909,7 @@ void oDataContainer::getVariableString(const oBase *ob,
                                        list<oVariableString> &var) const
 {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   var.clear();
@@ -895,9 +918,9 @@ void oDataContainer::getVariableString(const oBase *ob,
     const oDataInfo &di=ordered[kk];
 
     if (di.Type == oDTString){
-      char * vd=(char *)(data)+di.Index;
+      LPBYTE vd=(LPBYTE)(data)+di.Index;
 
-      oVariableString vs(vd, di.Size);
+      oVariableString vs((wchar_t *)vd, di.Size);
       memcpy(vs.name, di.Name, sizeof(vs.name));
       var.push_back(vs);
     }
@@ -994,10 +1017,10 @@ void oDataContainer::buildTableCol(Table *table)
   }
 }
 
-bool oDataContainer::formatNumber(int nr, const oDataInfo &di, char bf[64]) const {
+bool oDataContainer::formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) const {
   if (di.SubType == oISDate) {
     if (nr>0) {
-      sprintf_s(bf, 64, "%d-%02d-%02d", nr/(100*100), (nr/100)%100, nr%100);
+      swprintf_s(bf, 64, L"%d-%02d-%02d", nr/(100*100), (nr/100)%100, nr%100);
     }
     else {
       bf[0] = '-';
@@ -1008,11 +1031,11 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, char bf[64]) cons
   else if (di.SubType == oISTime) {
     if (nr>0 && nr<(30*24*3600)) {
       if (nr < 24*3600)
-        sprintf_s(bf, 64, "%02d:%02d:%02d", nr/3600, (nr/60)%60, nr%60);
+        swprintf_s(bf, 64, L"%02d:%02d:%02d", nr/3600, (nr/60)%60, nr%60);
       else {
         int days = nr / (24*3600);
         nr = nr % (24*3600);
-        sprintf_s(bf, 64, "%d+%02d:%02d:%02d", days, nr/3600, (nr/60)%60, nr%60);
+        swprintf_s(bf, 64, L"%d+%02d:%02d:%02d", days, nr/3600, (nr/60)%60, nr%60);
       }
     }
     else {
@@ -1025,9 +1048,9 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, char bf[64]) cons
     if (nr) {
       int whole = nr / di.decimalScale;
       int part = nr - whole * di.decimalScale;
-      string deci = ",";
-      string ptrn = "%d" + deci + "%0" + itos(di.decimalSize) + "d";
-      sprintf_s(bf, 64, ptrn.c_str(), whole, abs(part));
+      wstring deci = L",";
+      wstring ptrn = L"%d" + deci + L"%0" + itow(di.decimalSize) + L"d";
+      swprintf_s(bf, 64, ptrn.c_str(), whole, abs(part));
     }
     else
       bf[0] = 0;
@@ -1036,7 +1059,7 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, char bf[64]) cons
   }
   else {
     if (nr)
-      sprintf_s(bf, 64, "%d", nr);
+      swprintf_s(bf, 64, L"%d", nr);
     else
       bf[0] = 0;
     return true;
@@ -1045,11 +1068,11 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, char bf[64]) cons
 
 int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit) const {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   owner.getDataBuffers(data, oldData, strptr);
 
   int nextIndex = 0;
-  char bf[64];
+  wchar_t bf[64];
   oBase &ob = *(oBase *)&owner;
   for (size_t kk = 0; kk < ordered.size(); kk++) {
     const oDataInfo &di=ordered[kk];
@@ -1072,7 +1095,7 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
       else {
         __int64 nr;
         memcpy(&nr, vd, sizeof(__int64));
-        char bf[16];
+        wchar_t bf[16];
         oBase::converExtIdentifierString(nr, bf);
         table.set(di.tableIndex, ob, 1000+di.tableIndex, bf, canEdit);
       }
@@ -1080,10 +1103,10 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
     else if (di.Type==oDTString) {
       LPBYTE vd=LPBYTE(data)+di.Index;
       if (di.SubType == oSSString || !canEdit) {
-        table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, (char *)vd, canEdit, cellEdit);
+        table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, (wchar_t *)vd, canEdit, cellEdit);
       }
       else {
-        string str((char *)vd);
+        wstring str((wchar_t *)vd);
         for (size_t k = 0; k<di.enumDescription.size(); k++) {
           if ( str == di.enumDescription[k].first ) {
             str = lang.tl(di.enumDescription[k].second);
@@ -1094,7 +1117,7 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
       }
     }
     else if (di.Type == oDTStringDynamic) {
-      const string &str = (*strptr)[0][di.Index];
+      const wstring &str = (*strptr)[0][di.Index];
       table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, str, canEdit, cellEdit);
     }
     nextIndex = di.tableIndex + 1;
@@ -1103,11 +1126,11 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
 }
 
 bool oDataContainer::inputData(oBase *ob, int id,
-                               const string &input, int inputId,
-                               string &output, bool noUpdate)
+                               const wstring &input, int inputId,
+                               wstring &output, bool noUpdate)
 {
   void *data, *oldData;
-  vector< vector<string> > *strptr;
+  vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   for (size_t kk = 0; kk < ordered.size(); kk++) {
@@ -1115,7 +1138,7 @@ bool oDataContainer::inputData(oBase *ob, int id,
 
     if (di.tableIndex+1000==id) {
       if (di.dataDefiner) {
-        const string &src = di.dataDefiner->formatData(ob);
+        const wstring &src = di.dataDefiner->formatData(ob);
         output = di.dataDefiner->setData(ob, input);
         bool ch = output != src;
         if (ch && noUpdate == false)
@@ -1136,14 +1159,14 @@ bool oDataContainer::inputData(oBase *ob, int id,
           no = convertAbsoluteTimeHMS(input, -1);
         }
         else if (di.SubType == oISDecimal) {
-          string str = input;
+          wstring str = input;
           for (size_t k = 0; k < str.length(); k++) {
             if (str[k] == ',') {
               str[k] = '.';
               break;
             }
           }
-          double val = atof(str.c_str());
+          double val = _wtof(str.c_str());
           no = int(di.decimalScale * val);
         }
         else if (di.SubType == oIS64) {
@@ -1162,19 +1185,19 @@ bool oDataContainer::inputData(oBase *ob, int id,
             memcpy(&out64, vd, sizeof(__int64));
           }
           //output = itos(out64);
-          char outbf[16];
+          wchar_t outbf[16];
           oBase::converExtIdentifierString(out64, outbf);
           output = outbf;
 
           return k64 != no64;
         }
         else
-          no = atoi(input.c_str());
+          no = _wtoi(input.c_str());
 
         int k;
         memcpy(&k, vd, sizeof(int));
         memcpy(vd, &no, sizeof(int));
-        char bf[128];
+        wchar_t bf[128];
         int outN = no;
 
         if (k != no) {
@@ -1191,7 +1214,7 @@ bool oDataContainer::inputData(oBase *ob, int id,
       }
       else if (di.Type==oDTString) {
         LPBYTE vd=LPBYTE(data)+di.Index;
-        const char *str = input.c_str();
+        const wchar_t *str = input.c_str();
 
         if (di.SubType == oSSEnum) {
           size_t ix = inputId-1;
@@ -1200,8 +1223,8 @@ bool oDataContainer::inputData(oBase *ob, int id,
           }
         }
 
-        if (strcmp((char *)vd, str)!=0) {
-          strncpy_s((char *)vd, di.Size, str, di.Size-1);
+        if (wcscmp((wchar_t *)vd, str)!=0) {
+          wcsncpy_s((wchar_t *)vd, di.Size/sizeof(wchar_t), str, (di.Size-1)/sizeof(wchar_t));
 
           ob->updateChanged();
           if (noUpdate == false)
@@ -1216,10 +1239,10 @@ bool oDataContainer::inputData(oBase *ob, int id,
               // Anyway, the row will typically be reloaded
             }
             else
-              output=(char *)vd;
+              output=(wchar_t *)vd;
           }
           else
-            output=(char *)vd;
+            output=(wchar_t *)vd;
           return true;
         }
         else
@@ -1228,7 +1251,7 @@ bool oDataContainer::inputData(oBase *ob, int id,
         return false;
       }
       else if (di.Type == oDTStringDynamic) {
-        string &vd = (*strptr)[0][di.Index];
+        wstring &vd = (*strptr)[0][di.Index];
 
         if (vd != input) {
           vd = input;
@@ -1250,7 +1273,7 @@ bool oDataContainer::inputData(oBase *ob, int id,
 }
 
 void oDataContainer::fillInput(const void *data, int id, const char *name,
-                               vector< pair<string, size_t> > &out, size_t &selected) const {
+                               vector< pair<wstring, size_t> > &out, size_t &selected) const {
 
 
   const oDataInfo * info = findVariable(name);
@@ -1266,12 +1289,12 @@ void oDataContainer::fillInput(const void *data, int id, const char *name,
   }
 
   if (info && info->Type == oDTString && info->SubType == oSSEnum) {
-    char *vd = (char *)(LPBYTE(data)+info->Index);
+    wchar_t *vd = (wchar_t *)(LPBYTE(data)+info->Index);
 
     selected = -1;
     for (size_t k = 0; k < info->enumDescription.size(); ++k) {
       out.push_back(make_pair(lang.tl(info->enumDescription[k].second), k+1));
-      if (info->enumDescription[k].first == string(vd))
+      if (info->enumDescription[k].first == wstring(vd))
         selected = k+1;
     }
   }
@@ -1290,18 +1313,16 @@ bool oDataContainer::setEnum(oBase *ob, const char *name, int selectedIndex) {
   throw meosException("Invalid enum");
 }
 
-bool oVariableString::store(const char *in) {
+bool oVariableString::store(const wchar_t *in) {
   if (data) {
-    char cb[1024];
-    strncpy_s(cb, maxSize, in, maxSize-1);
-    if (strcmp(cb, data) != 0) {
-      strncpy_s(data, maxSize, cb, maxSize-1);
+    if (wcscmp(in, data) != 0) {
+      wcsncpy_s(data, maxSize/sizeof(wchar_t), in, (maxSize-1)/sizeof(wchar_t));
       return true;
     }
     return false;
   }
   else {
-    vector<string> &str = *strData;
+    vector<wstring> &str = *strData;
     if (strIndex>=0) {
       if (str[strIndex] != in) {
         str[strIndex] = in;
@@ -1315,9 +1336,9 @@ bool oVariableString::store(const char *in) {
   return false;
 }
 
-string oDataContainer::encodeArray(const vector<string> &input) {
-  return "";//XXX
+wstring oDataContainer::encodeArray(const vector<wstring> &input) {
+  return L"";//XXX
 }
 
-void oDataContainer::decodeArray(const string &input, vector<string> &output) {
+void oDataContainer::decodeArray(const string &input, vector<wstring> &output) {
 }

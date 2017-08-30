@@ -29,6 +29,7 @@
 #include "TabSI.h"
 #include "meos_util.h"
 #include "socket.h"
+#include "meosexception.h"
 
 const int SYNC_FACTOR = 4; 
 
@@ -48,7 +49,7 @@ AutoTask::AutoTask(HWND hWnd, oEvent &oeIn, gdioutput &gdiIn) : hWndMain(hWnd), 
 
 void AutoTask::autoSave() {
   if (!oe.empty()) {
-    string msg;
+    wstring msg;
     try {
       if (oe.getNumRunners() > 500)
         gdi.setWaitCursor(true);
@@ -66,18 +67,21 @@ void AutoTask::autoSave() {
         }
       }
     }
+    catch (meosException &ex) {
+      msg = ex.wwhat();
+    }
     catch(std::exception &ex) {
-      msg=ex.what();
+      msg = gdi.widen(ex.what());
     }
     catch(...) {
-      msg="Ett okänt fel inträffade.";
+      msg = L"Ett okänt fel inträffade.";
     }
 
     if (!msg.empty()) {
       gdi.alert(msg);
     }
     else
-      gdi.addInfoBox("", "Tävlingsdata har sparats.", 10);
+      gdi.addInfoBox("", L"Tävlingsdata har sparats.", 10);
 
     gdi.setWaitCursor(false);
 
@@ -102,7 +106,7 @@ void AutoTask::interfaceTimeout(const vector<gdioutput *> &windows) {
     return;
   lock = true;
 
-  string msg;
+  wstring msg;
   try {
     DWORD tick = GetTickCount();
     for (size_t k = 0; k<windows.size(); k++) {
@@ -116,11 +120,14 @@ void AutoTask::interfaceTimeout(const vector<gdioutput *> &windows) {
     if (tabSI)
       while(tabSI->checkpPrintQueue(gdi));
   }
+  catch (meosException &ex) {
+    msg = ex.wwhat();
+  }
   catch(std::exception &ex) {
-    msg=ex.what();
+    msg = gdi.widen(ex.what());
   }
   catch(...) {
-    msg="Ett okänt fel inträffade.";
+    msg = L"Ett okänt fel inträffade.";
   }
   if (!msg.empty()) {
     gdi.alert(msg);
@@ -246,7 +253,7 @@ bool AutoTask::synchronizeImpl(const vector<gdioutput *> &windows) {
     }
   }
 
-  string msg;
+  wstring msg;
   bool ret = false;
   try {
     if (doSync || (tabAuto && tabAuto->synchronize)) {
@@ -265,11 +272,14 @@ bool AutoTask::synchronizeImpl(const vector<gdioutput *> &windows) {
               try {
                 windows[k]->makeEvent("DataUpdate", "autosync", 0, 0, false);
               }
+              catch (meosException &ex) {
+                msg = ex.wwhat();
+              }
               catch(std::exception &ex) {
-                msg = ex.what();
+                msg = gdi.widen(ex.what());
               }
               catch(...) {
-                msg = "Ett okänt fel inträffade.";
+                msg = L"Ett okänt fel inträffade.";
               }
             }
           }
@@ -281,11 +291,14 @@ bool AutoTask::synchronizeImpl(const vector<gdioutput *> &windows) {
     }
     oe.resetSQLChanged(false, true);
   }
+  catch (meosException &ex) {
+    msg = ex.wwhat();
+  }
   catch (std::exception &ex) {
-    msg = ex.what();
+    msg = gdi.widen(ex.what());
   }
   catch (...) {
-    msg = "Ett okänt fel inträffade.";
+    msg = L"Ett okänt fel inträffade.";
   }
 
   currentRevision = oe.getRevision();
@@ -326,12 +339,16 @@ bool AutoTask::advancePunchInformationImpl(const vector<gdioutput *> &windows) {
       return ret;
     }
   }
+  catch (meosException &ex) {
+    wstring msg = ex.wwhat();
+    OutputDebugString(msg.c_str());
+  }
   catch (std::exception &ex) {
-    OutputDebugString(ex.what());
-    //msg = ex.what();
+    wstring str;
+    string2Wide(ex.what(), str);
+    OutputDebugString(str.c_str());
   }
   catch (...) {
-    //msg = "Ett okänt fel inträffade.";
   }
 
   return false;

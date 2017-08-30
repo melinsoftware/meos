@@ -1,3 +1,90 @@
+LibHaru:
+
+*
+* License
+*
+Haru is distributed under the ZLIB/LIBPNG License. Because ZLIB/LIBPNG License 
+is one of the freest licenses, You can use Haru for various purposes.
+
+The license of Haru is as follows.
+
+Copyright (C) 1999-2006 Takeshi Kanno
+Copyright (C) 2007-2009 Antony Dovgal
+
+This software is provided 'as-is', without any express or implied warranty.
+
+In no event will the authors be held liable for any damages arising from the 
+use of this software.
+
+Permission is granted to anyone to use this software for any purpose,including 
+commercial applications, and to alter it and redistribute it freely, subject 
+to the following restrictions:
+
+ 1. The origin of this software must not be misrepresented; you must not claim 
+    that you wrote the original software. If you use this software in a 
+    product, an acknowledgment in the product documentation would be 
+    appreciated but is not required.
+ 2. Altered source versions must be plainly marked as such, and must not be 
+    misrepresented as being the original software.
+ 3. This notice may not be removed or altered from any source distribution.
+
+
+*
+* Acknowledgment
+*
+1. Information-technology Promotion Agency(IPA)
+   The development of Haru has been supported by Exploratory Software Project 
+   of Information-technology Promotion Agency(IPA), Japan. 
+
+2. All users of libHaru.
+   We wish to thank all users of Haru.
+   In particular, we thank Thomas Nimstad, LeslieM, Par Hogberg, adenelson, 
+   Riccardo Cohen, sea_sbs, Andrew. 
+   They gave me very useful advices.
+
+3. Sourceforge.net
+   We would like to thank sourceForge.net for project hosting.
+
+4. Adobe Systems Inc.
+   We thank Adobe Systems Inc. for publishing PDF specification.
+
+
+
+RESTBED:
+
+        Copyright 2013-2017 Corvusoft Limited, United Kingdom.
+                     All rights reserved.
+
+ Everyone is permitted to copy and distribute verbatim copies of this
+ license document, but changing it is not allowed.
+
+
+ This work is part of Corvusoft's Restbed Framework (the "Software").
+
+ You may at your option receive a license to the Software under either 
+ the terms of the GNU Affero General Public License (AGPL) or the
+ Corvusoft Permissive License (CPL), as explained in the note below.
+
+ The Software may be used under the terms of the GNU Affero General Public
+ License version 3 or (at your option) any later version as published by 
+ the Free Software Foundation and appearing in the file LICENSE.AGPL 
+ included in the packaging of the Software.
+
+ The Software is provided AS IS WITHOUT WARRANTY OF ANY KIND; without even
+ the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ See the GNU Affero General Public License for more details.
+ 
+ **NOTE:**
+
+ Using the AGPL requires that your work based on the Software must be 
+ licensed under the AGPL. If you wish to develop a work based on the
+ Software but desire to license it under your own terms, e.g. a closed source
+ license, you MUST purchase a Corvusoft Permissive License.
+
+ Purchasing the CPL, gives you -- under certain conditions -- the rights
+ appearing in the file LICENSE.CPL included in the packaging of the Software.
+
+ For full terms and conditions of the CPL, please contact sales@corvusoft.co.uk.
 
 MySQL++:
 
@@ -112,3 +199,75 @@ mailing list, so questions sent there do get to us:
 The mailing list is superior to private email because the answers are
 archived for future questioners to find, and because you are likely to
 get answers from more people.
+
+LibPNG:
+
+This copy of the libpng notices is provided for your convenience.  In case of
+any discrepancy between this copy and the notices in the file png.h that is
+included in the libpng distribution, the latter shall prevail.
+
+COPYRIGHT NOTICE, DISCLAIMER, and LICENSE:
+
+If you modify libpng you may insert additional notices immediately following
+this sentence.
+
+This code is released under the libpng license.
+
+libpng versions 1.2.6, August 15, 2004, through 1.6.5, September 14, 2013, are
+Copyright (c) 2004, 2006-2013 Glenn Randers-Pehrson, and are
+distributed according to the same disclaimer and license as libpng-1.2.5
+with the following individual added to the list of Contributing Authors
+
+   Cosmin Truta
+
+libpng versions 1.0.7, July 1, 2000, through 1.2.5 - October 3, 2002, are
+Copyright (c) 2000-2002 Glenn Randers-Pehrson, and are
+distributed according to the same disclaimer and license as libpng-1.0.6
+with the following individuals added to the list of Contributing Authors
+
+   Simon-Pierre Cadieux
+   Eric S. Raymond
+   Gilles Vollant
+
+and with the following additions to the disclaimer:
+
+   There is no warranty against interference with your enjoyment of the
+   library or against infringement.  There is no warranty that our
+   efforts or the library will fulfill any of your particular purposes
+   or needs.  This library is provided with all faults, and the entire
+   risk of satisfactory quality, performance, accuracy, and effort is with
+   the user.
+
+libpng versions 0.97, January 1998, through 1.0.6, March 20, 2000, are
+Copyright (c) 1998, 1999 Glenn Randers-Pehrson, and are
+distributed according to the same disclaimer and license as libpng-0.96,
+with the following individuals added to the list of Contributing Authors:
+
+   Tom Lane
+   Glenn Randers-Pehrson
+   Willem van Schaik
+
+libpng versions 0.89, June 1996, through 0.96, May 1997, are
+Copyright (c) 1996, 1997 Andreas Dilger
+Distributed according to the same disclaimer and license as libpng-0.88,
+with the following individuals added to the list of Contributing Authors:
+
+   John Bowler
+   Kevin Bracey
+   Sam Bushell
+   Magnus Holmgren
+   Greg Roelofs
+   Tom Tanner
+
+libpng versions 0.5, May 1995, through 0.88, January 1996, are
+Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.
+
+For the purposes of this copyright and license, "Contributing Authors"
+is defined as the following set of individuals:
+
+   Andreas Dilger
+   Dave Martindale
+   Guy Eric Schalnat
+   Paul Schmidt
+   Tim Wegner
+   

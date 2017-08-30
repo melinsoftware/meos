@@ -31,10 +31,10 @@
 
 class oWordDatabase;
 typedef oWordDatabase* pWordDatabase;
-typedef map<char, pWordDatabase> MapTable;
+typedef map<wchar_t, pWordDatabase> MapTable;
 
-const char indexMapStart='a';
-const char indexMapEnd='z';
+const wchar_t indexMapStart='a';
+const wchar_t indexMapEnd='z';
 const int hashSplitSize=16;
 const int hashTableSize=indexMapEnd-indexMapStart+1;
 
@@ -48,25 +48,24 @@ public:
   virtual char *serialize(char *bf) const = 0;
   virtual int serialSize() const = 0;
   virtual pWordDatabase split() {return this;}
-  virtual void insert(const char *s) = 0;
-  virtual bool lookup(const char *s) const = 0;
+  virtual void insert(const wchar_t *s) = 0;
+  virtual bool lookup(const wchar_t *s) const = 0;
   virtual ~oWordDatabase() = 0 {}
 };
 
 class oWordDB : public oWordDatabase {
 protected:
   char getType() const {return 1;}
-  set<string> str;
+  set<wstring> str;
 public:
   const char *deserialize(const char *bf, const char *end);
   char *serialize(char *bf) const;
   int serialSize() const;
   pWordDatabase split();
-  void insert(const char *s);
-  bool lookup(const char *s) const;
+  void insert(const wchar_t *s);
+  bool lookup(const wchar_t *s) const;
   size_t size();
 };
-
 
 class oWordIndexHash : public oWordDatabase {
 protected:
@@ -78,8 +77,8 @@ public:
   const char *deserialize(const char *bf, const char *end);
   char *serialize(char *bf) const;
   int serialSize() const;
-  void insert(const char *s);
-  bool lookup(const char *s) const;
+  void insert(const wchar_t *s);
+  bool lookup(const wchar_t *s) const;
   void clear();
   ~oWordIndexHash();
   oWordIndexHash(bool hashAll_);
@@ -92,45 +91,45 @@ public:
   void serialize(vector<char> &serial) const;
   void deserialize(const vector<char> &serial);
 
-  void save(const char *file) const;
-  void load(const char *file);
+  void save(const wstring &file) const;
+  void load(const wstring &file);
 
-  void insert(const char *s);
-  bool lookup(const char *s) const;
+  void insert(const wchar_t *s);
+  bool lookup(const wchar_t *s) const;
   ~oWordList();
   oWordList();
 };
 
 struct oEntryPerson {
-  string name1;
-  string name2;
-  string club;
+  wstring name1;
+  wstring name2;
+  wstring club;
   int cardNo;
   void swap();
   int nameCount() const;
-  oEntryPerson(const string &clb);
+  oEntryPerson(const wstring &clb);
 };
 
 struct oEntryBlock {
   // Remember clear for additional data
   vector<oEntryPerson> ePersons;
-  string eClub;
-  string eClass;
+  wstring eClub;
+  wstring eClass;
   bool isClassSet;
-  string eStartTime;
+  wstring eStartTime;
   bool canInsertName;
   int nClubsSet;
   const oFreeImport &freeImporter;
 
   int nameCount();
 
-  void setClub(const char *s);
-  void setClass(const char *s);
+  void setClub(const wchar_t *s);
+  void setClass(const wchar_t *s);
   void setCardNo(int c);
-  void setStartTime(const char *s);
-  void addPerson(const char *s, bool complete);
-  vector<string> getPersons() const;
-  void clear(const string &rulingClub, const string &rulingClass);
+  void setStartTime(const wchar_t *s);
+  void addPerson(const wchar_t *s, bool complete);
+  vector<wstring> getPersons() const;
+  void clear(const wstring &rulingClub, const wstring &rulingClass);
 
   // Return true if more clubs can be accepted
   bool acceptMoreClubs(int expectedNumRunners) const;
@@ -149,9 +148,9 @@ struct oEntryBlock {
   void operator=(const oEntryBlock &eb);
   int getNumPersons() const {return ePersons.size();}
 
-  string getTeamName() const;
-  string getName(int k) const;
-  string getClub(int k) const;
+  wstring getTeamName() const;
+  wstring getName(int k) const;
+  wstring getClub(int k) const;
   int getCard(int k) const;
 
   /** Make name complete */
@@ -176,10 +175,9 @@ struct MatchPattern {
     nCard(0), nName(0), singleName(0) {}
 };
 
-
 class oFreeImport {
 protected:
-  BYTE separator[256];
+  set<int> separator;
   oWordList givenDB;
   oWordList familyDB;
   oWordList clubDB;
@@ -195,46 +193,46 @@ protected:
     Name = 4
   };
 
-  void analyzePart(char *part, const MatchPattern &ptrn, int nNamesPerPart,
+  void analyzePart(wchar_t *part, const MatchPattern &ptrn, int nNamesPerPart,
                    oEntryBlock &entry, vector<oEntryBlock> &entries, bool allowNames);
 
   //bool analyze(vector<bool> &b, int &offset, int &delta) const;
-  char *extractWord(char *&str, int &count) const;
-  char *extractPart(char *&str, int &wordCount) const;
-  char *extractLine(char *&str, int &count) const;
-  bool isNumber(const char *str, int &number) const;
+  wchar_t *extractWord(wchar_t *&str, int &count) const;
+  wchar_t *extractPart(wchar_t *&str, int &wordCount) const;
+  wchar_t *extractLine(wchar_t *&str, int &count) const;
+  bool isNumber(const wchar_t *str, int &number) const;
 
-  bool isTime(const string &m) const;
-  bool isName(const char *p) const;
-  bool isCard(const char *p) const;
-  bool isCrap(const char *p) const;
+  bool isTime(const wstring &m) const;
+  bool isName(const wchar_t *p) const;
+  bool isCard(const wchar_t *p) const;
+  bool isCrap(const wchar_t *p) const;
 
   bool loaded;
 
-  int preAnalyzeRow(vector<char *> &p,
+  int preAnalyzeRow(vector<wchar_t *> &p,
                     const vector<MatchPattern> &ptrn,
                     vector<int> &classified);
 
   // Runners per class in defined classes
-  map<string, int> runnersPerClass;
+  map<wstring, int> runnersPerClass;
 
   /** Must not return 0 */
-  int getExpectedNumRunners(const string &cls) const;
+  int getExpectedNumRunners(const wstring &cls) const;
   friend struct oEntryBlock;
 
   /** Check if a line is a header and remove header words,
       name: , class: etc. Returns true if the entire line
       is header (->ignore) */
-  bool analyzeHeaders(vector<char *> &line) const;
+  bool analyzeHeaders(vector<wchar_t *> &line) const;
 
   /** Returns true if the given word is a header word */
-  bool isHeaderWord(const string &word) const;
+  bool isHeaderWord(const wstring &word) const;
 
-  mutable set<string> headerWords;
+  mutable set<wstring> headerWords;
 
   // Expected club for all entries
-  string rulingClub;
-  string rulingClass;
+  wstring rulingClub;
+  wstring rulingClass;
   Types lastInsertedType;
 public:
   void load();
@@ -243,7 +241,9 @@ public:
 
   void init(const oRunnerList &r, const oClubList &clb, const oClassList &cls);
 
-  void extractEntries(char *bf, vector<oEntryBlock> &entries);
+  void buildDatabases(oEvent &oe);
+
+  void extractEntries(wchar_t *bf, vector<oEntryBlock> &entries);
   void showEntries(gdioutput &gdi, const vector<oEntryBlock> &entries);
   void addEntries(pEvent oe, const vector<oEntryBlock> &entries);
 

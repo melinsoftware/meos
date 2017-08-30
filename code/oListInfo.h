@@ -26,7 +26,8 @@
 #include <map>
 #include "oBase.h"
 #include "gdifonts.h"
-
+#include "gdioutput.h"
+#include "oEvent.h"
 class oClass;
 
 typedef oEvent *pEvent;
@@ -253,15 +254,16 @@ enum gdiFonts;
 
 struct oPrintPost {
   oPrintPost();
-  oPrintPost(EPostType type_, const string &format_,
+  oPrintPost(EPostType type_, const wstring &format_,
              int style_, int dx_, int dy_, 
              pair<int, bool> legIndex_=make_pair(0, true));
 
   static string encodeFont(const string &face, int factor);
+  static wstring encodeFont(const wstring &face, int factor);
 
   EPostType type;
-  string text;
-  string fontFace;
+  wstring text;
+  wstring fontFace;
   int resultModuleIndex;
   int format;
   GDICOLOR color;
@@ -270,7 +272,7 @@ struct oPrintPost {
   int legIndex;
   bool linearLegIndex;
   gdiFonts getFont() const {return gdiFonts(format & 0xFF);}
-  oPrintPost &setFontFace(const string &font, int factor) {
+  oPrintPost &setFontFace(const wstring &font, int factor) {
     fontFace = encodeFont(font, factor);
     return *this;
   }
@@ -300,25 +302,25 @@ struct oListParam {
   bool showSplitTimes;
   bool splitAnalysis;
   bool showInterTitle;
-  string title;
-  string name;
+  wstring title;
+  wstring name;
   int inputNumber;
   int nextList; // 1-based index of next list (in the container, MetaListParam::listParam) for linked lists
   int previousList; // 1-based index of previous list (in the container, MetaListParam::listParam) for linked lists. Not serialized
 
   mutable int relayLegIndex; // Current index of leg (or -1 for entire team)
-  mutable string defaultName; // Initialized when generating list
+  mutable wstring defaultName; // Initialized when generating list
   // Generate a large-size list (supported as input when supportLarge is true)
   bool useLargeSize;
   bool saved;
 
-  void updateDefaultName(const string &name) const {defaultName = name;}
-  void setCustomTitle(const string &t) {title = t;}
-  void getCustomTitle(char *t) const; // 256 size buffer required. Get title if set
-  const string &getCustomTitle(const string &t) const;
-  const string &getDefaultName() const {return defaultName;}
-  void setName(const string &n) {name = n;}
-  const string &getName() const {return name;}
+  void updateDefaultName(const wstring &pname) const {defaultName = pname;}
+  void setCustomTitle(const wstring &t) {title = t;}
+  void getCustomTitle(wchar_t *t) const; // 256 size buffer required. Get title if set
+  const wstring &getCustomTitle(const wstring &t) const;
+  const wstring &getDefaultName() const {return defaultName;}
+  void setName(const wstring &n) {name = n;}
+  const wstring &getName() const {return name;}
 
   int getInputNumber() const {return inputNumber;}
   void setInputNumber(int n) {inputNumber = n;}
@@ -339,7 +341,7 @@ struct oListParam {
   int getLegNumber(const pClass cls) const;
   pair<int, bool> getLegInfo(const pClass cls) const;
 
-  string getLegName() const;
+  wstring getLegName() const;
 
   const int getLegNumberCoded() const {
     return legNumber >= 0 ? legNumber : 1000;
@@ -377,9 +379,9 @@ public:
   static bool addTeams(EBaseType t) {return t == EBaseTypeTeam || t == EBaseTypeClub;}
   static bool addPatrols(EBaseType t) {return t == EBaseTypeTeam || t == EBaseTypeClub;}
 
-  const string &getName() const {return Name;}
+  const wstring &getName() const {return Name;}
 protected:
-  string Name;
+  wstring Name;
   EBaseType listType;
   EBaseType listSubType;
   SortOrder sortOrder;
@@ -470,10 +472,11 @@ public:
   friend class MetaListContainer;
 
   int getMaxCharWidth(const oEvent *oe,
+                      const gdioutput &gdi,
                       const set<int> &clsSel,
-                      const vector< pair<EPostType, string> > &typeFormats,
+                      const vector< pair<EPostType, wstring> > &typeFormats,
                       gdiFonts font,
-                      const char *fontFace = 0,
+                      const wchar_t *fontFace = 0,
                       bool large = false, 
                       int minSize = 0);
 
@@ -481,13 +484,13 @@ public:
   int getMaxCharWidth(const oEvent *oe, 
                       const set<int> &clsSel,
                       EPostType type, 
-                      string formats,
+                      wstring formats,
                       gdiFonts font,
-                      const char *fontFace = 0,
+                      const wchar_t *fontFace = 0,
                       bool large = false, 
                       int minSize = 0) {
-    vector< pair<EPostType, string> > typeFormats(1, make_pair(type, formats));
-    return getMaxCharWidth(oe, clsSel, typeFormats, font, fontFace, largeSize, minSize);
+    vector< pair<EPostType, wstring> > typeFormats(1, make_pair(type, formats));
+    return getMaxCharWidth(oe, oe->gdiBase(), clsSel, typeFormats, font, fontFace, largeSize, minSize);
   }
 
 

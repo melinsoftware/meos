@@ -39,7 +39,7 @@
 
 #include "pdfwriter.h"
 
-string getMeosCompectVersion();
+wstring getMeosCompectVersion();
 
 void  __stdcall pdfErrorhandler(HPDF_STATUS errorNo,
                                 HPDF_STATUS detailNo,
@@ -58,7 +58,7 @@ bool pdfwriter::getFontData(const HFONT fontHandle, std::vector<char>& data, int
   if (hdc != NULL) {
     SelectObject(hdc, fontHandle);
     SIZE s;
-    GetTextExtentPoint32(hdc, stdText, strlen(stdText), &s);
+    GetTextExtentPoint32A(hdc, stdText, strlen(stdText), &s);
     width = s.cx;
     const size_t size = GetFontData(hdc, 0, 0, NULL, 0);
     if (size > 0) {
@@ -75,17 +75,18 @@ bool pdfwriter::getFontData(const HFONT fontHandle, std::vector<char>& data, int
   return result;
 }
 
-HPDF_Font pdfwriter::getPDFFont(HFONT font, float hFontScale, string &tmp, float &fontScale) {
+HPDF_Font pdfwriter::getPDFFont(HFONT font, float hFontScale, wstring &tmp, float &fontScale) {
   fontScale = 1.0;
   vector<char> data;
   int stdSize;
   if (getFontData(font, data, stdSize)) {
     tmp = getTempFile();
+    string ntmp(tmp.begin(), tmp.end()); //XXX WCS
     ofstream out(tmp.c_str(), ios::binary|ios::out|ios::trunc);
     out.write(&data[0], data.size());
     out.close();
-    const char *detailName = HPDF_LoadTTFontFromFile(pdf, tmp.c_str(), HPDF_TRUE);
-    HPDF_Font font = HPDF_GetFont (pdf, detailName, "WinAnsiEncoding");
+    const char *detailName = HPDF_LoadTTFontFromFile(pdf, ntmp.c_str(), HPDF_TRUE);
+    HPDF_Font font = HPDF_GetFont (pdf, detailName, "UTF-8");
 
     HPDF_TextWidth res = HPDF_Font_TextWidth(font, (HPDF_BYTE *)stdText, strlen(stdText));
     if (res.width > 0)
@@ -143,28 +144,44 @@ void pdfwriter::selectFont(HPDF_Page page, const PDFFontSet &fs, int format, flo
 
 void pdfwriter::generatePDF(const gdioutput &gdi,
                             const wstring &file,
-                            const string &pageTitle,
-                            const string &author,
+                            const wstring &pageTitleW,
+                            const wstring &authorW,
                             const list<TextInfo> &tl) {
+  string pageTitle = gdi.narrow(pageTitleW); // XXX WCS
+  string author = gdi.narrow(authorW);
 
   pdf = HPDF_New(pdfErrorhandler, 0);
   if (!pdf)
     pdfErrorhandler(-1, -1, 0);
+  HPDF_UseUTFEncodings(pdf);
 
   // Set compression mode
   HPDF_SetCompressionMode (pdf, HPDF_COMP_ALL);
-  string creator = "MeOS " + getMeosCompectVersion();
+  string creator = "MeOS " + gdi.toUTF8(getMeosCompectVersion());
   HPDF_SetInfoAttr(pdf, HPDF_INFO_CREATOR, creator.c_str());
   HPDF_SetInfoAttr(pdf, HPDF_INFO_TITLE, pageTitle.c_str());
 
   // Map font name to pdf font sets
-  map<string, PDFFontSet> fonts;
+  map<wstring, PDFFontSet> fonts;
 
   // Create default-font
-  PDFFontSet &fs = fonts[""];
-  fs.font = HPDF_GetFont (pdf, "Helvetica", "WinAnsiEncoding");
-  fs.fontBold = HPDF_GetFont (pdf, "Helvetica-Bold", "WinAnsiEncoding");
-  fs.fontItalic = HPDF_GetFont (pdf, "Helvetica-Oblique", "WinAnsiEncoding");
+  PDFFontSet &fs = fonts[L""];
+  {
+    FontInfo fi;
+    TextInfo ti;
+    ti.format = 0;
+    ti.font = L"Arial";
+    gdi.getFontInfo(ti, fi);
+    float scale;
+    wstring tmp;
+    fs.font = getPDFFont(fi.normal, 1.0, tmp, scale);
+    fs.fontScale = scale;
+    fs.fontBold = getPDFFont(fi.bold, 1.0, tmp, scale);
+    fs.fontScaleBold = scale;
+    fs.fontItalic = getPDFFont(fi.italic, 1.0, tmp, scale);
+    fs.fontScaleItalic = scale;  
+  }
+
   fs.fontScale = 0.9f;
   fs.fontScaleBold = 0.9f;
   fs.fontScaleItalic = 0.9f;
@@ -204,13 +221,13 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   list<RectangleInfo> rectangles;
   pageInfo.renderPages(tl, rectangles, true, pages);
   for (size_t j = 0; j< pages.size(); j++) {
-    string pinfo = pageInfo.pageInfo(pages[j]);
+    wstring pinfo = pageInfo.pageInfo(pages[j]);
     if (!pinfo.empty()) {
       selectFont(page, fs, fontSmall, scale);
       HPDF_Page_BeginText (page);
       float df = min(w, h) * 0.02f;
-      float sw = HPDF_Page_TextWidth(page, pinfo.c_str());
-      HPDF_Page_TextOut (page, w - sw - df , h - df * 2.5f, pinfo.c_str());
+      float sw = HPDF_Page_TextWidth(page, gdi.toUTF8(pinfo).c_str());
+      HPDF_Page_TextOut (page, w - sw - df , h - df * 2.5f, gdi.toUTF8(pinfo).c_str());
       HPDF_Page_EndText(page);
     }
 
@@ -221,7 +238,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
         FontInfo fi;
         gdi.getFontInfo(info[k].ti, fi);
         float fontScale;
-        string tmpFile;
+        wstring tmpFile;
         fonts[info[k].ti.font] = fs; //Default fallback
         PDFFontSet &f = fonts[info[k].ti.font];
 
@@ -256,22 +273,23 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
       float g = GetGValue(info[k].ti.color);
       float b = GetBValue(info[k].ti.color);
       HPDF_Page_SetRGBFill (page, r/255.0f, g/255.0f, b/255.0f);
+      string nt = gdi.toUTF8(info[k].ti.text);
+        
       if (info[k].ti.format & textRight) {
         float w = float(info[k].ti.xlimit) * scale;
-        float sw = HPDF_Page_TextWidth(page, info[k].ti.text.c_str());
+        float sw = HPDF_Page_TextWidth(page, nt.c_str());
         float space = info[k].ti.xlimit > 0 ? 2 * HPDF_Page_GetCharSpace(page) : 0;
         HPDF_Page_TextOut (page, info[k].xp + w - sw - space, h - info[k].yp,
-                            info[k].ti.text.c_str());
+                            nt.c_str());
       }
       else if (info[k].ti.format & textCenter) {
         float w = float(info[k].ti.xlimit) * scale;
-        float sw = HPDF_Page_TextWidth(page, info[k].ti.text.c_str());
+        float sw = HPDF_Page_TextWidth(page, nt.c_str());
         HPDF_Page_TextOut (page, info[k].xp + w - sw/2, h - info[k].yp,
-                            info[k].ti.text.c_str());
+                            nt.c_str());
       }
       else {
-        HPDF_Page_TextOut (page, info[k].xp, h - info[k].yp,
-                          info[k].ti.text.c_str());
+        HPDF_Page_TextOut (page, info[k].xp, h - info[k].yp, nt.c_str());
       }
       HPDF_Page_EndText (page);
     }
@@ -286,11 +304,12 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   }
 
   // Save the document to a file
-  string tmpRes = getTempFile();
+  wstring tmpResW = getTempFile();
+  string tmpRes(tmpResW.begin(), tmpResW.end());
   HPDF_SaveToFile (pdf, tmpRes.c_str());
   DeleteFileW(file.c_str());
-  BOOL res = MoveFileW(gdi.toWide(tmpRes).c_str(), file.c_str());
-  removeTempFile(tmpRes);
+  BOOL res = MoveFile(tmpResW.c_str(), file.c_str());
+  removeTempFile(tmpResW);
 
   if (!res) {
     throw meosException("Failed to save pdf the specified file.");

@@ -39,7 +39,7 @@ class oClass;
 class oDataInterface;
 class oDataConstInterface;
 class oAbstractRunner;
-struct RunnerDBEntry;
+struct RunnerWDBEntry;
 class RunnerDB;
 
 typedef oRunner * pRunner;
@@ -78,13 +78,13 @@ class IOF30Interface {
     double taxable;
     double percentage; // Eventor / OLA stupidity
 
-    string currency;
+    wstring currency;
 
-    string fromTime;
-    string toTime;
+    wstring fromTime;
+    wstring toTime;
 
-    string fromBirthDate;
-    string toBirthDate;
+    wstring fromBirthDate;
+    wstring toBirthDate;
 
     bool includes(const FeeInfo &fo) const {
       if (toBirthDate != fo.toBirthDate || fromBirthDate != fo.fromBirthDate)
@@ -102,20 +102,20 @@ class IOF30Interface {
 
     void add(FeeInfo &fi);
 
-    string getDateKey() const {return fromTime + " - " + toTime;}
+    wstring getDateKey() const {return fromTime + L" - " + toTime;}
     FeeInfo() : fee(0), taxable(0), percentage(0) {}
 
     const bool operator<(const FeeInfo &fi) const {
       return fee < fi.fee || (fee == fi.fee && taxable < fi.taxable);
     }
   private:
-    bool includeFrom(const string &a, const string &b) const {
+    bool includeFrom(const wstring &a, const wstring &b) const {
       if ( a > b || (b.empty() && !a.empty()) )
         return false;
       return true;
     }
 
-    bool includeTo(const string &a, const string &b) const {
+    bool includeTo(const wstring &a, const wstring &b) const {
       if ( (!a.empty() && a < b) || (b.empty() && !a.empty()) )
         return false;
       return true;
@@ -130,12 +130,15 @@ class IOF30Interface {
   vector<FeeStatistics> feeStatistics;
 
   static void getAgeLevels(const vector<FeeInfo> &fees, const vector<int> &ix,
-                           int &normalIx, int &redIx, string &youthLimit, string &seniorLimit);
+                           int &normalIx, int &redIx, wstring &youthLimit, wstring &seniorLimit);
+
+  bool matchStageFilter(const set<int> &stageFilter, const xmlList &races);
 
   void readEvent(gdioutput &gdi, const xmlobject &xo,
                  map<int, vector<LegInfo> > &teamClassConfig);
   pRunner readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam team,
                           const map<int, vector<LegInfo> > &teamClassConfig,
+                          const set<int> &stageFilter,
                           map<int, vector< pair<int, int> > > &personId2TeamLeg);
   pRunner readPerson(gdioutput &gdi, const xmlobject &xo);
   pClub readOrganization(gdioutput &gdi, const xmlobject &xo, bool saveToDB);
@@ -143,7 +146,8 @@ class IOF30Interface {
                    map<int, vector<LegInfo> > &teamClassConfig);
 
   pTeam readTeamEntry(gdioutput &gdi, xmlobject &xTeam,
-                      map<int, pair<string, int> > &bibPatterns,
+                      const set<int> &stageFilter,
+                      map<int, pair<wstring, int> > &bibPatterns,
                       const map<int, vector<LegInfo> > &teamClassConfig,
                       map<int, vector< pair<int, int> > > &personId2TeamLeg);
 
@@ -151,26 +155,28 @@ class IOF30Interface {
                           const map<int, vector<LegInfo> > &teamClassConfig);
 
   pTeam readTeamStart(gdioutput &gdi, pClass pc, xmlobject &xTeam,
-                      map<int, pair<string, int> > &bibPatterns,
+                      map<int, pair<wstring, int> > &bibPatterns,
                       const map<int, vector<LegInfo> > &teamClassConfig);
 
   pTeam getCreateTeam(gdioutput &gdi, const xmlobject &xTeam, bool &newTeam);
 
   static int getIndexFromLegPos(int leg, int legorder, const vector<LegInfo> &setup);
+  
+  void prescanEntry(xmlobject & xo, set<int>& stages);
   void setupClassConfig(int classId, const xmlobject &xTeam, map<int, vector<LegInfo> > &teamClassConfig);
 
   void setupRelayClasses(const map<int, vector<LegInfo> > &teamClassConfig);
   void setupRelayClass(pClass pc, const vector<LegInfo> &teamClassConfig);
 
   int parseISO8601Time(const xmlobject &xo);
-  string getCurrentTime() const;
+  wstring getCurrentTime() const;
 
   static void getNationality(const xmlobject &xCountry, oDataInterface &di);
 
-  static void getAmount(const xmlobject &xAmount, double &amount, string &currency);
-  static void getAssignedFee(const xmlobject &xFee, double &fee, double &paid, double &taxable, double &percentage, string &currency);
+  static void getAmount(const xmlobject &xAmount, double &amount, wstring &currency);
+  static void getAssignedFee(const xmlobject &xFee, double &fee, double &paid, double &taxable, double &percentage, wstring &currency);
   static void getFee(const xmlobject &xFee, FeeInfo &fee);
-  static void getFeeAmounts(const xmlobject &xFee, double &fee, double &taxable, double &percentage, string &currency);
+  static void getFeeAmounts(const xmlobject &xFee, double &fee, double &taxable, double &percentage, wstring &currency);
 
   void writeFees(xmlparser &xml, const oRunner &r) const;
 
@@ -178,7 +184,7 @@ class IOF30Interface {
   void writeAssignedFee(xmlparser &xml, const oAbstractRunner &tr, int paidForCard) const;
   void writeRentalCardService(xmlparser &xml, int cardFee, bool paid) const;
 
-  void getProps(vector<string> &props) const;
+  void getProps(vector<wstring> &props) const;
 
   void writeClassResult(xmlparser &xml, const oClass &c, const vector<pRunner> &r,
                         const vector<pTeam> &t);
@@ -219,9 +225,9 @@ class IOF30Interface {
   int getStageNumber();
 
   bool readXMLCompetitorDB(const xmlobject &xCompetitor);
-  void writeXMLCompetitorDB(xmlparser &xml, const RunnerDBEntry &rde) const;
+  void writeXMLCompetitorDB(xmlparser &xml, const RunnerWDBEntry &rde) const;
 
-  int getStartIndex(const string &startId);
+  int getStartIndex(const wstring &startId);
 
   bool readControl(const xmlobject &xControl);
   pCourse readCourse(const xmlobject &xcrs);
@@ -229,31 +235,31 @@ class IOF30Interface {
   void readCourseGroups(xmlobject xClassCourse, vector< vector<pCourse> > &crs);
   void bindClassCourse(oClass &pc, const vector< vector<pCourse> > &crs);
 
-  static string constructCourseName(const xmlobject &xcrs);
-  static string constructCourseName(const string &family, const string &name);
+  static wstring constructCourseName(const xmlobject &xcrs);
+  static wstring constructCourseName(const wstring &family, const wstring &name);
 
-  void classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignment, const map<string, pCourse> &courses,
-                               const map<string, vector<pCourse> > &coursesFamilies);
+  void classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignment, const map<wstring, pCourse> &courses,
+                               const map<wstring, vector<pCourse> > &coursesFamilies);
   void classCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
-                             const map<string, pCourse> &courses,
-                             const map<string, vector<pCourse> > &coursesFamilies);
+                             const map<wstring, pCourse> &courses,
+                             const map<wstring, vector<pCourse> > &coursesFamilies);
   void personCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
-                              const map<string, pCourse> &courses);
+                              const map<wstring, pCourse> &courses);
   void teamCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
-                            const map<string, pCourse> &courses);
+                            const map<wstring, pCourse> &courses);
 
   void assignTeamCourse(gdioutput &gdi, oTeam &t, xmlList &xAssignment,
-                        const map<string, pCourse> &courses);
+                        const map<wstring, pCourse> &courses);
 
-  pCourse findCourse(gdioutput &gdi, const map<string, pCourse> &courses,
+  pCourse findCourse(gdioutput &gdi, const map<wstring, pCourse> &courses,
                      xmlobject &xPAssignment);
 
-  string writeControl(xmlparser &xml, const oControl &c, set<string> &writtenId);
+  wstring writeControl(xmlparser &xml, const oControl &c, set<wstring> &writtenId);
 
   void writeCourseInfo(xmlparser &xml, const oCourse &c);
 
   void writeFullCourse(xmlparser &xml, const oCourse &c,
-                         const map<int, string> &ctrlId2ExportId);
+                         const map<int, wstring> &ctrlId2ExportId);
 
 public:
   IOF30Interface(oEvent *oe, bool forceSplitFee);
@@ -261,7 +267,11 @@ public:
 
   void readEventList(gdioutput &gdi, xmlobject &xo);
 
-  void readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNonexisting, int &entRead, int &entFail, int &entRemoved);
+  /** Scan the entry list to find specification of stage numbers*/
+  void prescanEntryList(xmlobject & xo, set<int>& definedStages);
+
+  void readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNonexisting, 
+                     const set<int> &stageFilter, int &entRead, int &entFail, int &entRemoved);
 
   void readStartList(gdioutput &gdi, xmlobject &xo, int &entRead, int &entFail);
 

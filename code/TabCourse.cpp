@@ -60,11 +60,11 @@ void LoadClassPage(gdioutput &gdi);
 void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
 {
   if (gdi.hasField("Rogaining")) {
-    gdi.setText("TimeLimit", "");
+    gdi.setText("TimeLimit", L"");
     gdi.disableInput("TimeLimit");
-    gdi.setText("PointLimit", "");
+    gdi.setText("PointLimit", L"");
     gdi.disableInput("PointLimit");
-    gdi.setText("PointReduction", "");
+    gdi.setText("PointReduction", L"");
     gdi.disableInput("PointReduction");
     gdi.check("ReductionPerMinute", false);
     gdi.disableInput("ReductionPerMinute");
@@ -74,7 +74,7 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
   if (pc) {
     pc->synchronize();
 
-    string uis =  pc->getControlsUI();
+    wstring uis =  pc->getControlsUI();
     gdi.setText("Controls", uis);
 
     gdi.setText("CourseExpanded", encodeCourse(uis, pc->useFirstAsStart(), pc->useLastAsFinish()), true);
@@ -95,16 +95,16 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
       if ( rt > 0 ) {
         gdi.selectItemByData("Rogaining", 1);
         gdi.enableInput("TimeLimit");
-        gdi.setText("TimeLimit", formatTimeHMS(rt));
+        gdi.setText("TimeLimit", formatTimeHMSW(rt));
         gdi.enableInput("PointReduction");
-        gdi.setText("PointReduction", itos(pc->getRogainingPointsPerMinute()));
+        gdi.setText("PointReduction", itow(pc->getRogainingPointsPerMinute()));
         gdi.enableInput("ReductionPerMinute");
         gdi.check("ReductionPerMinute", pc->getDCI().getInt("RReductionMethod") != 0);
       }
       else if (rp > 0) {
         gdi.selectItemByData("Rogaining", 2);
         gdi.enableInput("PointLimit");
-        gdi.setText("PointLimit", itos(rp));
+        gdi.setText("PointLimit", itow(rp));
       }
     }
 
@@ -117,11 +117,11 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
     vector<pClass> cls;
     vector<pCourse> crs;
     oe->getClasses(cls, true);
-    string usedInClasses;
+    wstring usedInClasses;
     for (size_t k = 0; k < cls.size(); k++) {
       int nleg = max<int>(cls[k]->getNumStages(), 1);
       int nlegwithcrs = 0;
-      vector<string> usage;
+      vector<wstring> usage;
       set<int> allClassCrs;
       for (int j = 0; j < nleg; j++) {
         cls[k]->getCourses(j, crs);
@@ -139,35 +139,35 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
           }
         }
       }
-      string add;
+      wstring add;
       if (usage.size() == nleg || 
-          usage.size() == nlegwithcrs || 
+          (usage.size() == nlegwithcrs && nlegwithcrs > 0) || 
           (!usage.empty() && allClassCrs.size() == 1)) {
         add = cls[k]->getName();
       }
       else if (!usage.empty()) {
         add = cls[k]->getName();
-        add += " (";
+        add += L" (";
         for (size_t i = 0; i < usage.size(); i++) {
           if (i > 0)
-            add += ", ";
+            add += L", ";
           add += usage[i];
         }
-        add += ")";
+        add += L")";
       }
       
       if (!add.empty()) {
         if (!usedInClasses.empty())
-          usedInClasses += ", ";
+          usedInClasses += L", ";
         usedInClasses += add;
       }
     }
     gdi.setText("CourseUse", usedInClasses, true);
     pCourse shortens = pc->getLongerVersion();
     if (shortens)
-      gdi.setTextTranslate("Shortens", "Avkortar: X#" + shortens->getName(), true);
+      gdi.setTextTranslate("Shortens", L"Avkortar: X#" + shortens->getName(), true);
     else
-      gdi.setText("Shortens", "", true);
+      gdi.setText("Shortens", L"", true);
 
     gdi.enableEditControls(true);
 
@@ -188,22 +188,22 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
     }
   }
   else {
-    gdi.setText("Name", "");
-    gdi.setText("Controls", "");
-    gdi.setText("CourseExpanded", "");
+    gdi.setText("Name", L"");
+    gdi.setText("Controls", L"");
+    gdi.setText("CourseExpanded", L"");
 
-	  gdi.setText("Length", "");
-	  gdi.setText("Climb", "");
-	  gdi.setText("NumberMaps", "");
+	  gdi.setText("Length", L"");
+	  gdi.setText("Climb", L"");
+	  gdi.setText("NumberMaps", L"");
     gdi.check("FirstAsStart", false);
     gdi.check("LastAsFinish", false);
     courseId = 0;
     gdi.disableInput("Remove");
     gdi.disableInput("Save");
     gdi.selectItemByData("Courses", -1);
-    gdi.setText("CourseProblem", "", true);
-    gdi.setText("CourseUse", "", true);
-    gdi.setText("Shortens", "", true);
+    gdi.setText("CourseProblem", L"", true);
+    gdi.setText("CourseUse", L"", true);
+    gdi.setText("Shortens", L"", true);
     gdi.check("WithLoops", false);
     gdi.clearList("CommonControl");
     gdi.setInputStatus("CommonControl", false);
@@ -213,6 +213,7 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
 
     gdi.enableEditControls(false);
   }
+  gdi.refreshFast();
   gdi.setInputStatus("DrawCourse", pc != 0);  
 }
 
@@ -228,7 +229,7 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
   DWORD cid = courseId;
 
   pCourse pc;
-  string name=gdi.getText("Name");
+  wstring name=gdi.getText("Name");
 
   if (name.empty()) {
     gdi.alert("Banan måste ha ett namn.");
@@ -257,13 +258,13 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
       }
     }
     if (hasRes) {
-      firstAsStart = gdi.ask("ask:firstasstart");
+      firstAsStart = gdi.ask(L"ask:firstasstart");
     }
   }
 
 
   pc->setName(name);
-  bool changedCourse = pc->importControls(gdi.getText("Controls"), true);
+  bool changedCourse = pc->importControls(gdi.narrow(gdi.getText("Controls")), true);
   pc->setLength(gdi.getTextNo("Length"));
   pc->getDI().setInt("Climb", gdi.getTextNo("Climb"));
   pc->setNumberMaps(gdi.getTextNo("NumberMaps"));
@@ -293,8 +294,8 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
   if (gdi.hasField("Rogaining")) {
     string t;
     pc->setMaximumRogainingTime(convertAbsoluteTimeMS(gdi.getText("TimeLimit")));
-    pc->setMinimumRogainingPoints(atoi(gdi.getText("PointLimit").c_str()));
-    int pr = atoi(gdi.getText("PointReduction").c_str());
+    pc->setMinimumRogainingPoints(_wtoi(gdi.getText("PointLimit").c_str()));
+    int pr = _wtoi(gdi.getText("PointReduction").c_str());
     pc->setRogainingPointsPerMinute(pr);
     if (pr > 0) {
       int rmethod = gdi.isChecked("ReductionPerMinute") ? 1 : 0;
@@ -309,7 +310,7 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
 
   if (canSwitchViewMode != 2 && changedCourse && pc->getLegLengths().size() > 2) {
     if (canSwitchViewMode == 1) {
-      if(gdi.ask("ask:updatelegs")) {
+      if(gdi.ask(L"ask:updatelegs")) {
         gdi.sendCtrlMessage("LegLengths");
         return;
       }
@@ -344,7 +345,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
         return 0;
       }
       gdi.clearPage(false);
-      gdi.addString("", boldLarge, "Redigera sträcklängder för X#" + pc->getName());
+      gdi.addString("", boldLarge, L"Redigera sträcklängder för X#" + pc->getName());
       gdi.dropLine();
       int w = gdi.scaleLength(120);
       int xp = gdi.getCX() + w;
@@ -355,15 +356,15 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       for (int i = 0; i <= pc->getNumControls(); i++) {
         int len = pc->getLegLength(i);
         pControl cbegin = pc->getControl(i-1);
-        string begin = i == 0 ? lang.tl("Start") : (cbegin ? cbegin->getName() : "");
+        wstring begin = i == 0 ? lang.tl("Start") : (cbegin ? cbegin->getName() : L"");
         pControl cend = pc->getControl(i);
-        string end = i == pc->getNumControls() ? lang.tl("Mål") : (cend ? cend->getName() : "");
+        wstring end = i == pc->getNumControls() ? lang.tl("Mål") : (cend ? cend->getName() : L"");
         gdi.pushX();
         gdi.fillRight();
-        gdi.addStringUT(0, begin + MakeDash(" - ") + end + ":").xlimit = w-10;
+        gdi.addStringUT(0, begin + makeDash(L" - ") + end + L":").xlimit = w-10;
         gdi.setCX(xp);
         gdi.fillDown();
-        gdi.addInput("c" + itos(i), len > 0 ? itos(len) : "", 8);
+        gdi.addInput("c" + itos(i), len > 0 ? itow(len) : L"", 8);
         gdi.popX();
         if (i < pc->getNumControls()) {
           RECT rc;
@@ -388,12 +389,12 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id=="BrowseCourse") {
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("Alla banfiler", "*.xml;*.csv;*.txt"));
-      ext.push_back(make_pair("Banor, OCAD semikolonseparerat", "*.csv;*.txt"));
-      ext.push_back(make_pair("Banor, IOF (xml)", "*.xml"));
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Alla banfiler", L"*.xml;*.csv;*.txt"));
+      ext.push_back(make_pair(L"Banor, OCAD semikolonseparerat", L"*.csv;*.txt"));
+      ext.push_back(make_pair(L"Banor, IOF (xml)", L"*.xml"));
 
-      string file=gdi.browseForOpen(ext, "csv");
+      wstring file=gdi.browseForOpen(ext, L"csv");
 
       if (file.length()>0)
         gdi.setText("FileName", file);
@@ -402,15 +403,15 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       gdi.print(oe);
     }
     else if (bi.id=="PDF") {
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("Portable Document Format (PDF)", "*.pdf"));
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Portable Document Format (PDF)", L"*.pdf"));
 
       int index;
-      string file=gdi.browseForSave(ext, "pdf", index);
+      wstring file=gdi.browseForSave(ext, L"pdf", index);
 
       if (!file.empty()) {
         pdfwriter pdf;
-        pdf.generatePDF(gdi, gdi.toWide(file), "Report", "MeOS", gdi.getTL());
+        pdf.generatePDF(gdi, file, L"Report", L"MeOS", gdi.getTL());
         gdi.openDoc(file.c_str());
       }
     }
@@ -431,12 +432,12 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "ExportCourses") {
       int FilterIndex=0;
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("IOF CourseData, version 3.0 (xml)", "*.xml"));
-      string save = gdi.browseForSave(ext, "xml", FilterIndex);
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"IOF CourseData, version 3.0 (xml)", L"*.xml"));
+      wstring save = gdi.browseForSave(ext, L"xml", FilterIndex);
       if (save.length()>0) {
         IOF30Interface iof30(oe, false);
-        xmlparser xml(gdi.getEncoding() == ANSI ? 0 : &gdi);
+        xmlparser xml;
         xml.openOutput(save.c_str(), false);
         iof30.writeCourses(xml);
         xml.closeOut();
@@ -446,7 +447,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       setupCourseImport(gdi, CourseCB);
     }
     else if (bi.id=="DoImportCourse") {
-      string filename = gdi.getText("FileName");
+      wstring filename = gdi.getText("FileName");
       if (filename.empty())
         return 0;
       gdi.disableInput("DoImportCourse");
@@ -475,7 +476,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
         throw meosException("Ingen bana vald.");
       vector<pClass> cls;
       oe->getClasses(cls, true);
-      string clsNames;
+      wstring clsNames;
       bool hasAsked = false;
       courseDrawClasses.clear();
       for (size_t k = 0; k < cls.size(); k++) {
@@ -483,19 +484,19 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
           continue;
         if (!hasAsked &&oe->classHasResults(cls[k]->getId())) {
           hasAsked = true;
-          if (!gdi.ask("warning:drawresult"))
+          if (!gdi.ask(L"warning:drawresult"))
             return 0;
         }
         courseDrawClasses.push_back(ClassDrawSpecification(cls[k]->getId(), 0, -1, -1, 0));
         if (!clsNames.empty())
-          clsNames += ", ";
+          clsNames += L", ";
         clsNames += cls[k]->getName();
       }
       if (courseDrawClasses.empty())
         throw meosException("Ingen klass använder banan.");
 
       gdi.clearPage(false);
-      gdi.addString("", boldLarge, "Lotta klasser med banan X#" + crs->getName());
+      gdi.addString("", boldLarge, L"Lotta klasser med banan X#" + crs->getName());
       gdi.addStringUT(0, clsNames);
       gdi.dropLine();
       gdi.pushX();
@@ -504,13 +505,13 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       int firstStart = 3600;
       int interval = 2*60;
       int vac = 1;
-      gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, "Första start:");
-      gdi.addInput("Interval", formatTime(interval), 10, 0, "Startintervall (min):");
-      gdi.addInput("Vacances", itos(vac), 10, 0, "Antal vakanser:");
+      gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, L"Första start:");
+      gdi.addInput("Interval", formatTimeW(interval), 10, 0, L"Startintervall (min):");
+      gdi.addInput("Vacances", itow(vac), 10, 0, L"Antal vakanser:");
       gdi.fillDown();
       gdi.popX();
       gdi.dropLine(3);
-      gdi.addSelection("Method", 200, 200, 0, "Metod:");
+      gdi.addSelection("Method", 200, 200, 0, L"Metod:");
       gdi.addItem("Method", lang.tl("Lottning"), DMRandom);
       gdi.addItem("Method", lang.tl("SOFT-lottning"), DMSOFT);
 
@@ -524,8 +525,8 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       gdi.refresh();
     }
     else if (bi.id == "DoDrawCourse") {
-      string firstStart = gdi.getText("FirstStart");
-      string minInterval = gdi.getText("Interval");
+      wstring firstStart = gdi.getText("FirstStart");
+      wstring minInterval = gdi.getText("Interval");
       int vacances = gdi.getTextNo("Vacances");
       int fs = oe->getRelativeTime(firstStart);
       int iv = convertAbsoluteTimeMS(minInterval);
@@ -567,8 +568,8 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id=="Add") {
       if (courseId>0) {
-        string ctrl = gdi.getText("Controls");
-        string name = gdi.getText("Name");
+        wstring ctrl = gdi.getText("Controls");
+        wstring name = gdi.getText("Name");
         pCourse pc = oe->getCourse(courseId);
         if (pc && !name.empty() && !ctrl.empty() &&  pc->getControlsUI() != ctrl) {
           if (name == pc->getName()) {
@@ -578,9 +579,9 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
               ++name[len-1]; // course 1 ->  course 2, course 1a -> course 1b
             }
             else
-              name += " 2";
+              name += L" 2";
           }
-          if (gdi.ask("Vill du lägga till banan 'X' (Y)?#" + name + "#" + ctrl)) {
+          if (gdi.ask(L"Vill du lägga till banan 'X' (Y)?#" + name + L"#" + ctrl)) {
             pc = oe->addCourse(name);
             courseId = pc->getId();
             gdi.setText("Name", name);
@@ -630,9 +631,9 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       addedCourse = false;
     }
     else if (bi.id=="Rogaining") {
-      string t;
+      wstring t;
       t = gdi.getText("TimeLimit");
-      if (!t.empty() && t != "-")
+      if (!t.empty() && _wtoi(t.c_str()) > 0)
         time_limit = t;
       t = gdi.getText("PointLimit");
       if (!t.empty())
@@ -641,7 +642,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       if (!t.empty())
         point_reduction = t;
 
-      string tl, pl, pr;
+      wstring tl, pl, pr;
       if (bi.data == 1) {
         tl = time_limit;
         pr = point_reduction;
@@ -697,9 +698,9 @@ bool TabCourse::loadPage(gdioutput &gdi) {
 
   DWORD ClassID=0, RunnerID=0;
 
-  time_limit = "01:00:00";
-  point_limit = "10";
-  point_reduction = "1";
+  time_limit = L"01:00:00";
+  point_limit = L"10";
+  point_reduction = L"1";
 
   gdi.getData("ClassID", ClassID);
   gdi.getData("RunnerID", RunnerID);
@@ -712,7 +713,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.pushY();
 
   gdi.fillDown();
-  gdi.addListBox("Courses", 250, 360, CourseCB, "Banor (antal kontroller)").isEdit(false).ignore(true);
+  gdi.addListBox("Courses", 250, 360, CourseCB, L"Banor (antal kontroller)").isEdit(false).ignore(true);
   gdi.setTabStops("Courses", 240);
 
   oe->fillCourses(gdi, "Courses");
@@ -738,9 +739,9 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.dropLine(0.5);
   gdi.pushX();
   gdi.fillRight();
-  gdi.addInput("Name", "", 20, 0, "Namn:");
+  gdi.addInput("Name", L"", 20, 0, L"Namn:");
   gdi.fillDown();
-  gdi.addInput("NumberMaps", "", 6, 0, "Antal kartor:");
+  gdi.addInput("NumberMaps", L"", 6, 0, L"Antal kartor:");
   
   gdi.popX();
 
@@ -751,7 +752,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
     mlen = max(allCrs[k]->getControlsUI().length()/2+5, mlen);
   }
 
-  gdi.addInput("Controls", "", max(48u, mlen), CourseCB, "Kontroller:");
+  gdi.addInput("Controls", L"", max(48u, mlen), CourseCB, L"Kontroller:");
   gdi.dropLine(0.3);
   gdi.addString("CourseExpanded", 0, "...").setColor(colorDarkGreen);
   gdi.dropLine(0.5);
@@ -759,8 +760,8 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.dropLine(1);
 
   gdi.fillRight();
-  gdi.addInput("Climb", "", 8, 0, "Climb (m):");
-  gdi.addInput("Length", "", 8, 0, "Längd (m):");
+  gdi.addInput("Climb", L"", 8, 0, L"Climb (m):");
+  gdi.addInput("Length", L"", 8, 0, L"Längd (m):");
   gdi.dropLine(0.9);
   gdi.fillDown();
   gdi.addButton("LegLengths", "Redigera sträcklängder...", CourseCB).isEdit(true);
@@ -779,7 +780,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.addString("", 0, "Varvningskontroll:");
   gdi.fillDown();
   gdi.dropLine(-0.2);
-  gdi.addSelection("CommonControl", 50, 200, 0, "", "En bana med slingor tillåter deltagaren att ta slingorna i valfri ordning");
+  gdi.addSelection("CommonControl", 50, 200, 0, L"", L"En bana med slingor tillåter deltagaren att ta slingorna i valfri ordning");
 
   gdi.dropLine(0.2);
   gdi.popX();
@@ -789,7 +790,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.setCX(gdi.getCX()+ gdi.scaleLength(20));
   gdi.addString("", 0, "Avkortad banvariant:");
   gdi.dropLine(-0.2);
-  gdi.addSelection("ShortCourse", 150, 200, 0, "", "info_shortening");
+  gdi.addSelection("ShortCourse", 150, 200, 0, L"", L"info_shortening");
   gdi.addString("Shortens", 0, "");
 
   gdi.fillDown();
@@ -814,9 +815,9 @@ bool TabCourse::loadPage(gdioutput &gdi) {
     gdi.setCX(gdi.getCX()+gdi.scaleLength(20));
     gdi.dropLine(-0.8);
     int cx = gdi.getCX();
-    gdi.addInput("PointLimit", "", 8, 0, "Poänggräns:").isEdit(false);
-    gdi.addInput("TimeLimit", "", 8, 0, "Tidsgräns:").isEdit(false);
-    gdi.addInput("PointReduction", "", 8, 0, "Poängavdrag (per minut):").isEdit(false);
+    gdi.addInput("PointLimit", L"", 8, 0, L"Poänggräns:").isEdit(false);
+    gdi.addInput("TimeLimit", L"", 8, 0, L"Tidsgräns:").isEdit(false);
+    gdi.addInput("PointReduction", L"", 8, 0, L"Poängavdrag (per minut):").isEdit(false);
     gdi.dropLine(3.5);
     rc.right = gdi.getCX() + 5;
     gdi.setCX(cx);
@@ -849,16 +850,16 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   return true;
 }
 
-void TabCourse::runCourseImport(gdioutput& gdi, const string &filename,
+void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
                                 oEvent *oe, bool addClasses) {
   csvparser csv;
-  if (csv.iscsv(filename.c_str())) {
+  if (csv.iscsv(filename)) {
     gdi.fillRight();
     gdi.pushX();
     gdi.addString("", 0, "Importerar OCAD csv-fil...");
     gdi.refreshFast();
 
-    if (csv.ImportOCAD_CSV(*oe, filename.c_str(), addClasses)) {
+    if (csv.importOCAD_CSV(*oe, filename, addClasses)) {
       gdi.addString("", 1, "Klart.").setColor(colorGreen);
     }
     else gdi.addString("", 0, "Operationen misslyckades.").setColor(colorRed);
@@ -867,7 +868,8 @@ void TabCourse::runCourseImport(gdioutput& gdi, const string &filename,
     gdi.fillDown();
   }
   else {
-    oe->importXML_EntryData(gdi, filename.c_str(), addClasses, false);
+    set<int> noFilter;
+    oe->importXML_EntryData(gdi, filename.c_str(), addClasses, false, noFilter);
   }
   if (addClasses) {
     // There is specific course-class matching inside the import of each format,
@@ -877,7 +879,7 @@ void TabCourse::runCourseImport(gdioutput& gdi, const string &filename,
     oe->getClasses(cls, false);
     oe->getCourses(crs);
 
-    map<string, pCourse> name2Course;
+    map<wstring, pCourse> name2Course;
     map<int, vector<pClass> > course2Class;
     for (size_t k = 0; k < crs.size(); k++)
       name2Course[crs[k]->getName()] = crs[k];
@@ -887,7 +889,7 @@ void TabCourse::runCourseImport(gdioutput& gdi, const string &filename,
       cls[k]->getCourses(-1, usedCrs);
 
       if (usedCrs.empty()) {
-        map<string, pCourse>::iterator res = name2Course.find(cls[k]->getName());
+        map<wstring, pCourse>::iterator res = name2Course.find(cls[k]->getName());
         if (res != name2Course.end()) {
           usedCrs.push_back(res->second);
           if (cls[k]->getNumStages()==0) {
@@ -933,15 +935,15 @@ void TabCourse::runCourseImport(gdioutput& gdi, const string &filename,
     for (size_t k = 0; k < cls.size(); k++) {
       vector<pCourse> usedCrs;
       cls[k]->getCourses(-1, usedCrs);
-      string c;
+      wstring c;
       for (size_t j = 0; j < usedCrs.size(); j++) {
         if (j>0)
-          c += ", ";
+          c += L", ";
         c += usedCrs[j]->getName();
       }
       TextInfo &ci = gdi.addStringUT(yp, xp, 0, cls[k]->getName(), w);
       if (c.empty()) {
-        c = MakeDash("-");
+        c = makeDash(L"-");
         ci.setColor(colorRed);
       }
       gdi.addStringUT(yp, xp + w, 0, c);
@@ -952,16 +954,16 @@ void TabCourse::runCourseImport(gdioutput& gdi, const string &filename,
     gdi.addString("", 1, "Banor");
     yp = gdi.getCY();
     for (size_t k = 0; k < crs.size(); k++) {
-      string c;
+      wstring c;
       vector<pClass> usedCls = course2Class[crs[k]->getId()];
       for (size_t j = 0; j < usedCls.size(); j++) {
         if (j>0)
-          c += ", ";
+          c += L", ";
         c += usedCls[j]->getName();
       }
       TextInfo &ci = gdi.addStringUT(yp, xp, 0, crs[k]->getName(), w);
       if (c.empty()) {
-        c = MakeDash("-");
+        c = makeDash(L"-");
         ci.setColor(colorRed);
       }
       gdi.addStringUT(yp, xp + w, 0, c);
@@ -991,7 +993,7 @@ void TabCourse::setupCourseImport(gdioutput& gdi, GUICALLBACK cb) {
 
   gdi.fillRight();
   gdi.pushX();
-  gdi.addInput("FileName", "", 48, 0, "Filnamn:");
+  gdi.addInput("FileName", L"", 48, 0, L"Filnamn:");
   gdi.dropLine();
   gdi.fillDown();
   gdi.addButton("BrowseCourse", "Bläddra...", CourseCB);
@@ -1011,11 +1013,11 @@ void TabCourse::setupCourseImport(gdioutput& gdi, GUICALLBACK cb) {
   gdi.popX();
 }
 
-void TabCourse::fillCourseControls(gdioutput &gdi, const string &ctrl) {
+void TabCourse::fillCourseControls(gdioutput &gdi, const wstring &ctrl) {
   vector<int> nr;
-  oCourse::splitControls(ctrl, nr);
+  oCourse::splitControls(gdi.narrow(ctrl), nr);
 
-  vector< pair<string, size_t> > item;
+  vector< pair<wstring, size_t> > item;
   map<int, int> used;
   for (size_t k = 0; k < nr.size(); k++) {
     pControl pc = oe->getControl(nr[k], false);
@@ -1032,7 +1034,7 @@ void TabCourse::fillCourseControls(gdioutput &gdi, const string &ctrl) {
     for (map<int, int>::iterator it = used.begin(); it != used.end(); ++it) {
       if (it->second >= i && !added.count(it->first)) {
         added.insert(it->first);
-        item.push_back(make_pair(itos(it->first), it->first));
+        item.push_back(make_pair(itow(it->first), it->first));
       }
     }
   }
@@ -1042,7 +1044,7 @@ void TabCourse::fillCourseControls(gdioutput &gdi, const string &ctrl) {
 }
 
 void TabCourse::fillOtherCourses(gdioutput &gdi, oCourse &crs) {
-  vector< pair<string, size_t> > ac;
+  vector< pair<wstring, size_t> > ac;
   oe->fillCourses(ac, true);
   set<int> skipped;
   skipped.insert(crs.getId());
@@ -1053,7 +1055,7 @@ void TabCourse::fillOtherCourses(gdioutput &gdi, oCourse &crs) {
     longer = longer->getLongerVersion();
   }
   
-  vector< pair<string, size_t> > out;
+  vector< pair<wstring, size_t> > out;
   for (size_t k = 0; k < ac.size(); k++) {
     if (!skipped.count(ac[k].second))
       out.push_back(ac[k]);
@@ -1069,24 +1071,24 @@ void TabCourse::saveLegLengths(gdioutput &gdi) {
     return;
       
   pc->synchronize(false);
-  string lstr;
+  wstring lstr;
   bool gotAny = false;
   for (int i = 0; i <= pc->getNumControls(); i++) {
-    string t = trim(gdi.getText("c" + itos(i)));
+    wstring t = trim(gdi.getText("c" + itos(i)));
     if (t.empty())
-      t = "0";
+      t = L"0";
     else
       gotAny = true;
 
     if (i == 0)
       lstr = t;
     else
-      lstr += ";" + t;
+      lstr += L";" + t;
   }
   if (!gotAny)
-    lstr = "";
+    lstr = L"";
         
-  pc->importLegLengths(lstr, true);
+  pc->importLegLengths(gdi.narrow(lstr), true);
   pc->synchronize(true);
 }
 
@@ -1103,25 +1105,28 @@ void TabCourse::clearCompetitionData() {
   addedCourse = false;
 }
 
-void TabCourse::refreshCourse(const string &text, gdioutput &gdi) {
+void TabCourse::refreshCourse(const wstring &text, gdioutput &gdi) {
   bool firstAsStart = gdi.isChecked("FirstAsStart");
   bool lastAsFinish = gdi.isChecked("LastAsFinish");
-  string controls = encodeCourse(text, firstAsStart, lastAsFinish);
+  wstring controls = encodeCourse(text, firstAsStart, lastAsFinish);
   if (controls != gdi.getText("CourseExpanded"))
     gdi.setText("CourseExpanded", controls, true);
 }
-string TabCourse::encodeCourse(const string &in, bool firstStart, bool lastFinish) {
+
+wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFinish) {
   vector<int> newC;
-  oCourse::splitControls(in, newC);
-  string dash = MakeDash("-");
-  string out;
+  string ins;
+  wide2String(in, ins);
+  oCourse::splitControls(ins, newC);
+  wstring dash = makeDash(L"-");
+  wstring out;
   out.reserve(in.length() * 2);
-  string bf;
+  wstring bf;
   for (size_t i = 0; i < newC.size(); ++i) {
     if (i == 0) {
       out += lang.tl("Start");
       if (firstStart)
-        out += "(" + itos(newC[i]) + ")";
+        out += L"(" + itow(newC[i]) + L")";
       else
         out += dash + formatControl(newC[i], bf);
 
@@ -1136,7 +1141,7 @@ string TabCourse::encodeCourse(const string &in, bool firstStart, bool lastFinis
 
     if (i+1 == newC.size()) {
       if (lastFinish)
-        out += lang.tl("Mål") + "(" + itos(newC[i]) + ")";
+        out += lang.tl("Mål") + L"(" + itow(newC[i]) + L")";
       else
         out += formatControl(newC[i], bf) + dash + lang.tl("Mål");
     }
@@ -1147,12 +1152,12 @@ string TabCourse::encodeCourse(const string &in, bool firstStart, bool lastFinis
   return out;
 }
 
-const string &TabCourse::formatControl(int id, string &bf) const {
+const wstring &TabCourse::formatControl(int id, wstring &bf) const {
   pControl ctrl = oe->getControl(id, false);
   if (ctrl) {
     bf = ctrl->getString();
     return bf;
   }
   else
-    return itos(id);
+    return itow(id);
 }

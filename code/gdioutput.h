@@ -35,9 +35,17 @@
 #include <set>
 #include <map>
 #include <vector>
+
+#ifdef OLD
 #include <hash_set>
 #include <hash_map>
+#else
+#include <unordered_map>
+#include <unordered_set>
+#endif
+
 #include <algorithm>
+#include "subcommand.h"
 
 class Toolbar;
 
@@ -68,15 +76,15 @@ enum gdiFonts;
 #define NOTIMEOUT 0x0AAAAAAA
 
 typedef list<ToolInfo> ToolList;
-
+/*
 enum FontEncoding {
   ANSI, Russian, EastEurope, Hebrew
-};
-
+};*/
+/*
 FontEncoding interpetEncoding(const string &enc);
-
+*/
 struct FontInfo {
-  const string *name;
+  const wstring *name;
   HFONT normal;
   HFONT bold;
   HFONT italic;
@@ -92,12 +100,9 @@ protected:
   // Flag set to true when clearPage is called.
   bool hasCleared;
   bool useTables;
-  FontEncoding fontEncoding;
   // Set to true when in test mode
   bool isTestMode;
   
-  int getCharSet() const;
-
   bool highContrast;
 
   void deleteFonts();
@@ -134,13 +139,13 @@ protected:
   list<TextInfo>::iterator itTL;
 
   list<ButtonInfo> BI;
-  stdext::hash_map<HWND, ButtonInfo *> biByHwnd;
+  unordered_map<HWND, ButtonInfo *> biByHwnd;
 
   list<InputInfo> II;
-  stdext::hash_map<HWND, InputInfo *> iiByHwnd;
+  unordered_map<HWND, InputInfo *> iiByHwnd;
 
   list<ListBoxInfo> LBI;
-  stdext::hash_map<HWND, ListBoxInfo *> lbiByHwnd;
+  unordered_map<HWND, ListBoxInfo *> lbiByHwnd;
 
   list<DataStore> DataInfo;
   list<EventInfo> Events;
@@ -176,10 +181,10 @@ protected:
 
   HBRUSH Background;
 
-  map<string, GDIImplFontSet> fonts;
+  map<wstring, GDIImplFontSet> fonts;
   const GDIImplFontSet &getCurrentFont() const;
-  const GDIImplFontSet &getFont(const string &font) const;
-  const GDIImplFontSet &loadFont(const string &font);
+  const GDIImplFontSet &getFont(const wstring &font) const;
+  const GDIImplFontSet &loadFont(const wstring &font);
   mutable const GDIImplFontSet *currentFontSet;
 
   int MaxX;
@@ -198,7 +203,7 @@ protected:
   bool manualUpdate;
 
   LRESULT ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam);
-  void getWindowText(HWND hWnd, string &text);
+  void getWindowText(HWND hWnd, wstring &text);
   double scale;
   HFONT getGUIFont() const;
 
@@ -207,9 +212,9 @@ protected:
   mutable bool lastActive;
   mutable bool lastHighlight;
   mutable DWORD lastColor;
-  mutable string lastFont;
+  mutable wstring lastFont;
 
-  void initCommon(double scale, const string &font);
+  void initCommon(double scale, const wstring &font);
 
   void processButtonMessage(ButtonInfo &bi, DWORD wParam);
   void processEditMessage(InputInfo &bi, DWORD wParam);
@@ -222,7 +227,7 @@ protected:
 
   FixedTabs *tabs;
 
-  string currentFont;
+  wstring currentFont;
   vector< GDIImplFontEnum > enumeratedFonts;
 
   double autoSpeed;
@@ -242,20 +247,20 @@ protected:
 
   struct ScreenStringInfo {
     RECT rc;
-    string str;
+    wstring str;
     bool reached;
 
-    ScreenStringInfo(const RECT &r, const string &s) {
+    ScreenStringInfo(const RECT &r, const wstring &s) {
       rc = r;
       str = s;
       reached = false;
     }
   };
 
-  string listDescription;
+  wstring listDescription;
 
   mutable map<pair<int, int>, ScreenStringInfo> screenXYToString;
-  mutable map<string, pair<int, int> > stringToScreenXY;
+  mutable map<wstring, pair<int, int> > stringToScreenXY;
   mutable pair<int, int> snapshotMaxXY;
   bool hasAnyTimer;
 
@@ -264,8 +269,16 @@ protected:
 
   // Recorder, the second member is true if the recorder is owned and should be deleted
   pair<Recorder *, bool> recorder;
+  list< pair<const SubCommand *, string> > subCommands;
+
+  int defaultCodePage;
 public:
-  
+  // Return the bounding dimension of the desktop
+  void getVirtualScreenSize(RECT &rc);
+
+  void getWindowsPosition(RECT &rc) const;
+  void setWindowsPosition(const RECT &rc);
+
   void initRecorder(Recorder *rec);
   Recorder &getRecorder();
   string dbPress(const string &id, int extra);
@@ -276,6 +289,9 @@ public:
   void dbCheck(const string &id, bool state);
   string dbClick(const string &id, int extra);
   void dbDblClick(const string &id, int data);
+
+  void dbRegisterSubCommand(const SubCommand *cmd, const string &action);
+  void runSubCommand();
 
   // Add the next answer for a dialog popup
   void dbPushDialogAnswer(const string &answer);
@@ -291,13 +307,16 @@ public:
   bool isTest() const {return isTestMode;}
   const string &getTag() const {return tag;}
   bool hasTag(const string &t) const {return tag == t;}
-  const wstring &toWide(const string &input) const;
-
-  const string &toUTF8(const string &input) const;
+  const wstring &recodeToWide(const string &input) const;
+  const string &recodeToNarrow(const wstring &input) const;
+  
+  static const wstring &widen(const string &input);
+  static const string &narrow(const wstring &input);
+  
   const string &toUTF8(const wstring &input) const;
 
-  void setEncoding(FontEncoding encoding);
-  FontEncoding getEncoding() const;
+  //void setEncoding(FontEncoding encoding);
+  //FontEncoding getEncoding() const;
 
   void getFontInfo(const TextInfo &ti, FontInfo &fi) const;
 
@@ -307,9 +326,9 @@ public:
 
   const list<TextInfo> &getTL() const {return TL;}
 
-  void getEnumeratedFonts(vector< pair<string, size_t> > &output) const;
-  const string &getFontName(int id);
-  double getRelativeFontScale(gdiFonts font, const char *fontFace) const;
+  void getEnumeratedFonts(vector< pair<wstring, size_t> > &output) const;
+  const wstring &getFontName(int id);
+  double getRelativeFontScale(gdiFonts font, const wchar_t *fontFace) const;
 
   bool isFullScreen() const {return fullScreen;}
   void setFullScreen(bool useFullScreen);
@@ -334,11 +353,11 @@ public:
 
 
   double getScale() const {return scale;}
-  void enableEditControls(bool enable);
+  void enableEditControls(bool enable, bool processAll = false);
 
   bool hasEditControl() const;
 
-  void setFont(int size, const string &font, FontEncoding encoding);
+  void setFont(int size, const wstring &font);
 
   int getButtonHeight() const;
   int scaleLength(int input) const {return int(scale*input + 0.5);}
@@ -348,7 +367,7 @@ public:
 
   void tableCB(ButtonInfo &bu, Table *t);
 
-  char *getExtra(const char *id) const;
+  wchar_t *getExtra(const char *id) const;
   int getExtraInt(const char *id) const;
 
   void enableTables();
@@ -356,10 +375,10 @@ public:
 
   void pasteText(const char *id);
 
-  bool writeHTML(const wstring &file, const string &title, int refreshTimeOut) const;
-  bool writeTableHTML(const wstring &file, const string &title, int refreshTimeOut) const;
+  bool writeHTML(const wstring &file, const wstring &title, int refreshTimeOut) const;
+  bool writeTableHTML(const wstring &file, const wstring &title, int refreshTimeOut) const;
   bool writeTableHTML(ostream &fout, 
-                      const string &title,
+                      const wstring &title,
                       bool simpleFormat,
                       int refreshTimeOut) const;
 
@@ -369,12 +388,15 @@ public:
   void destroyPrinterDC(PrinterObject &po);
 
   void setSelection(const string &id, const set<int> &selection);
+  void setSelection(const wstring &id, const set<int> &selection) {
+    setSelection(narrow(id), selection);
+  }
+  
   void getSelection(const string &id, set<int> &selection);
 
   HWND getTarget() const {return hWndTarget;}
   HWND getMain() const {return hWndAppMain;}
 
-  string browseForFolder(const string &folderStart, const char *descr);
   void scrollToBottom();
   void scrollTo(int x, int y);
   void setOffset(int x, int y, bool update);
@@ -384,19 +406,21 @@ public:
   void addTable(Table *table, int x, int y);
   Table &getTable() const; //Get the (last) table. If needed, add support for named tables...
 
-  ToolInfo &addToolTip(const string &id, const string &tip, HWND hWnd, RECT *rc=0);
-  ToolInfo *getToolTip(const string &id);
-  ToolInfo &updateToolTip(const string &id, const string &tip);
 
+  ToolInfo &addToolTip(const string &id, const wstring &tip, HWND hWnd, RECT *rc=0);
+  ToolInfo *getToolTip(const string &id);
+  ToolInfo &updateToolTip(const string &id, const wstring &tip);
+  
   HWND getToolTip(){return hWndToolTip;}
 
   void init(HWND hWnd, HWND hMainApp, HWND hTab);
-  bool openDoc(const char *doc);
-  string browseForSave(const vector< pair<string, string> > &filter,
-                       const string &defext, int &FilterIndex);
-  string browseForOpen(const vector< pair<string, string> > &filter,
-                       const string &defext);
-
+  bool openDoc(const wchar_t *doc);
+  wstring browseForSave(const vector< pair<wstring, wstring> > &filter,
+                       const wstring &defext, int &FilterIndex);
+  wstring browseForOpen(const vector< pair<wstring, wstring> > &filter,
+                       const wstring &defext);
+  wstring browseForFolder(const wstring &folderStart, const wchar_t *descr);
+  
   bool clipOffset(int PageX, int PageY, int &MaxOffsetX, int &MaxOffsetY);
   RectangleInfo &addRectangle(RECT &rc, GDICOLOR Color = GDICOLOR(-1),
                               bool DrawBorder = true, bool addFirst = false);
@@ -431,7 +455,7 @@ public:
   void drawBoxText(HDC hDC, RECT &tr, InfoBox &Box, bool highligh);
   void drawBoxes(HDC hDC, RECT &rc);
   void drawBox(HDC hDC, InfoBox &Box, RECT &pos);
-  void addInfoBox(string id, string text, int TimeOut=0, GUICALLBACK cb=0);
+  void addInfoBox(string id, wstring text, int TimeOut=0, GUICALLBACK cb=0);
   HWND getHWND() const {return hWndTarget;}
   void updateObjectPositions();
   void drawBackground(HDC hDC, RECT &rc);
@@ -446,18 +470,17 @@ public:
   int GetOffsetY(){return OffsetY;}
   int GetOffsetX(){return OffsetX;}
 
-  void RenderString(TextInfo &ti, const string &text, HDC hDC);
+  void RenderString(TextInfo &ti, const wstring &text, HDC hDC);
   void RenderString(TextInfo &ti, HDC hDC=0);
   void calcStringSize(TextInfo &ti, HDC hDC=0) const;
   void formatString(const TextInfo &ti, HDC hDC) const;
 
-  static string getTimerText(TextInfo *tit, DWORD T);
-  static string getTimerText(int ZeroTime, int format);
-
+  static wstring getTimerText(TextInfo *tit, DWORD T);
+  static wstring getTimerText(int ZeroTime, int format);
 
   void fadeOut(string Id, int ms);
   void setWaitCursor(bool wait);
-  void setWindowTitle(const string &title);
+  void setWindowTitle(const wstring &title);
   bool selectFirstItem(const string &name);
   void removeString(string Id);
   void refresh() const;
@@ -473,10 +496,13 @@ public:
   int getHeight() const {return MaxY;}
   void getTargetDimension(int &x, int &y) const;
 
+  pair<int, int> getPos() const { return make_pair(CurrentX, CurrentY); }
+  void setPos(const pair<int, int> &p) { CurrentX = p.first; CurrentY = p.second; }
+
   void setCX(int cx){CurrentX=cx;}
   void setCY(int cy){CurrentY=cy;}
   int getLineHeight() const {return lineHeight;}
-  int getLineHeight(gdiFonts font, const char *face) const;
+  int getLineHeight(gdiFonts font, const wchar_t *face) const;
 
   BaseInfo *setInputFocus(const string &id, bool select=false);
   InputInfo *getInputFocus();
@@ -506,10 +532,12 @@ public:
   }
 
   enum AskAnswer {AnswerNo = 0, AnswerYes = 1, AnswerCancel = 2};
-  bool ask(const string &s);
-  AskAnswer askCancel(const string &s);
+  bool ask(const wstring &s);
+  AskAnswer askCancel(const wstring &s);
 
   void alert(const string &msg) const;
+  void alert(const wstring &msg) const;
+  
   void fillDown(){Direction=1;}
   void fillRight(){Direction=0;}
   void fillNone(){Direction=-1;}
@@ -531,38 +559,51 @@ public:
   pair<int, bool> getSelectedItem(const string &id);
   pair<int, bool> getSelectedItem(const char *id);
 
-  bool addItem(const string &id, const string &text, size_t data = 0);
-  bool addItem(const string &id, const vector< pair<string, size_t> > &items);
-  void filterOnData(const string &id, const stdext::hash_set<int> &filter);
+  bool addItem(const string &id, const wstring &text, size_t data = 0);
+  bool addItem(const string &id, const vector< pair<wstring, size_t> > &items);
+  
+  void filterOnData(const string &id, const unordered_set<int> &filter);
 
   bool clearList(const string &id);
 
   bool hasField(const string &id) const;
-  const string &getText(const char *id, bool acceptMissing = false) const;
+  /*const wstring &getText(const wchar_t *id, bool acceptMissing = false) const {
+    return getText(toNarrow(id).c_str(), acceptMissing); 
+  }*/
+  const wstring &getText(const char *id, bool acceptMissing = false) const;
+  
   BaseInfo &getBaseInfo(const char *id) const;
+  BaseInfo &getBaseInfo(const wchar_t *id) const {
+    return getBaseInfo(narrow(id).c_str());
+  }
 
   int getTextNo(const char *id, bool acceptMissing = false) const;
   int getTextNo(const string &id, bool acceptMissing = false) const
     {return getTextNo(id.c_str(), acceptMissing);}
 
-  const string &getText(const string &id, bool acceptMissing = false) const
+  const wstring &getText(const string &id, bool acceptMissing = false) const
     {return getText(id.c_str(), acceptMissing);}
 
-  // Insert text and notify "focusList"
-  bool insertText(const string &id, const string &text);
+    // Insert text and notify "focusList"
+  bool insertText(const string &id, const wstring &text);
 
-  void copyToClipboard(const string &html, bool convertToUTF8,
-                       const string &txt) const;
+  // The html version should be UTF-8.
+  void copyToClipboard(const string &html,
+                       const wstring &txt) const;
 
-  BaseInfo *setTextTranslate(const char *id, const string &text, bool update=false);
-  BaseInfo *setTextTranslate(const char *id, const char *text, bool update=false);
-  BaseInfo *setTextTranslate(const string &id, const string &text, bool update=false);
+  BaseInfo *setTextTranslate(const char *id, const wstring &text, bool update=false);
+  BaseInfo *setTextTranslate(const char *id, const wchar_t *text, bool update=false);
+  BaseInfo *setTextTranslate(const string &id, const wstring &text, bool update=false);
 
-  BaseInfo *setText(const char *id, const string &text, bool update=false);
+
+  BaseInfo *setText(const char *id, const wstring &text, bool update=false);
+  BaseInfo *setText(const wchar_t *id, const wstring &text, bool update=false) {
+    return setText(narrow(id), text, update);
+  }
   BaseInfo *setText(const char *id, int number, bool update=false);
-  BaseInfo *setTextZeroBlank(const char *id, int number, bool update=false);
-  BaseInfo *setText(const string &id, const string &text, bool update=false)
+  BaseInfo *setText(const string &id, const wstring &text, bool update=false)
     {return setText(id.c_str(), text, update);}
+  BaseInfo *setTextZeroBlank(const char *id, int number, bool update=false);
   BaseInfo *setText(const string &id, int number, bool update=false)
     {return setText(id.c_str(), number, update);}
 
@@ -579,6 +620,23 @@ public:
 
   void scaleSize(double scale);
 
+  ButtonInfo &addButton(const string &id, const wstring &text, GUICALLBACK cb = 0,
+                        const wstring &tooltip = L"");
+
+  ButtonInfo &addButton(int x, int y, const string &id, const wstring &text,
+                        GUICALLBACK cb = 0, const wstring &tooltop=L"");
+
+  ButtonInfo &addButton(int x, int y, int w, const string &id, const wstring &text,
+                        GUICALLBACK cb, const wstring &tooltop, bool absPos, bool hasState);
+
+  ButtonInfo &addCheckbox(const string &id, const wstring &text, GUICALLBACK cb=0, 
+                          bool Checked=true, const wstring &tooltip = L"");
+  ButtonInfo &addCheckbox(int x, int y, const string &id, 
+                          const wstring &text, GUICALLBACK cb=0,
+                          bool checked=true, const wstring &tooltop = L"", bool absPos=false);
+  
+
+  /// XXX Temporary
   ButtonInfo &addButton(const string &id, const string &text, GUICALLBACK cb = 0, const string &tooltip="");
 
   ButtonInfo &addButton(int x, int y, const string &id, const string &text,
@@ -588,48 +646,67 @@ public:
 
   ButtonInfo &addCheckbox(const string &id, const string &text, GUICALLBACK cb=0, bool Checked=true, const string &Help="");
   ButtonInfo &addCheckbox(int x, int y, const string &id, const string &text, GUICALLBACK cb=0, bool Checked=true, const string &Help="", bool AbsPos=false);
+  /// XXX
+  
   bool isChecked(const string &id);
   void check(const string &id, bool state, bool keepOriginalState = false);
 
   bool isInputChanged(const string &exclude);
 
-  InputInfo &addInput(const string &id, const string &text="", int length=16, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="");
-  InputInfo &addInput(int x, int y, const string &id, const string &text, int length, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="");
+  InputInfo &addInput(const string &id, const wstring &text = L"", int length=16, GUICALLBACK cb=0,
+                      const wstring &Explanation = L"", const wstring &tooltip=L"");
+  InputInfo &addInput(int x, int y, const string &id, const wstring &text, int length, 
+                      GUICALLBACK cb=0, const wstring &Explanation = L"", const wstring &tooltip=L"");
 
-  InputInfo *replaceSelection(const char *id, const string &text);
+  InputInfo *replaceSelection(const char *id, const wstring &text);
 
-  InputInfo &addInputBox(const string &id, int width, int height, const string &text,
-                         GUICALLBACK cb, const string &Explanation);
+  InputInfo &addInputBox(const string &id, int width, int height, const wstring &text,
+                         GUICALLBACK cb, const wstring &explanation);
 
   InputInfo &addInputBox(const string &id, int x, int y, int width, int height,
-                         const string &text, GUICALLBACK cb, const string &Explanation);
+                         const wstring &text, GUICALLBACK cb, const wstring &explanation);
 
-  ListBoxInfo &addListBox(const string &id, int width, int height, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="", bool multiple=false);
-  ListBoxInfo &addListBox(int x, int y, const string &id, int width, int height, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="", bool multiple=false);
+  ListBoxInfo &addListBox(const string &id, int width, int height, GUICALLBACK cb=0, const wstring &explanation=L"", const wstring &tooltip=L"", bool multiple=false);
+  ListBoxInfo &addListBox(int x, int y, const string &id, int width, int height, GUICALLBACK cb=0, const wstring &explanation=L"", const wstring &tooltip=L"", bool multiple=false);
 
-  ListBoxInfo &addSelection(const string &id, int width, int height, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="");
-  ListBoxInfo &addSelection(int x, int y, const string &id, int width, int height, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="");
+  ListBoxInfo &addSelection(const string &id, int width, int height, GUICALLBACK cb=0, const wstring &explanation=L"", const wstring &tooltip=L"");
+  ListBoxInfo &addSelection(int x, int y, const string &id, int width, int height, GUICALLBACK cb=0, const wstring &explanation=L"", const wstring &tooltip=L"");
 
-  ListBoxInfo &addCombo(const string &id, int width, int height, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="");
-  ListBoxInfo &addCombo(int x, int y, const string &id, int width, int height, GUICALLBACK cb=0, const string &Explanation="", const string &tooltip="");
+  ListBoxInfo &addCombo(const string &id, int width, int height, GUICALLBACK cb=0, const wstring &explanation=L"", const wstring &tooltip=L"");
+  ListBoxInfo &addCombo(int x, int y, const string &id, int width, int height, GUICALLBACK cb=0, const wstring &explanation=L"", const wstring &tooltip=L"");
+
   // Grows a listbox, selection, combo in X-direction to fit current contents. Returns true if changed.
   bool autoGrow(const char *id);
 
-  void setListDescription(const string &desc);
+  void setListDescription(const wstring &desc);
+  
+  // Wide versions
+  TextInfo &addString(const string &id, int format, const wstring &text, GUICALLBACK cb=0);
+  TextInfo &addString(const string &id, int yp, int xp, int format, const wstring &text,
+                      int xlimit=0, GUICALLBACK cb=0, const wchar_t *fontFace = 0);
+  TextInfo &addString(const char *id, int format, const wstring &text, GUICALLBACK cb=0);
+  TextInfo &addString(const char *id, int yp, int xp, int format, const wstring &text,
+                      int xlimit=0, GUICALLBACK cb=0, const wchar_t *fontFace = 0);
+  // Untranslated versions
+  TextInfo &addStringUT(int yp, int xp, int format, const wstring &text,
+                        int xlimit=0, GUICALLBACK cb=0, const wchar_t *fontFace = 0);
+  TextInfo &addStringUT(int format, const wstring &text, GUICALLBACK cb=0);
 
+  // Temporary XXX
   TextInfo &addString(const string &id, int format, const string &text, GUICALLBACK cb=0);
   TextInfo &addString(const string &id, int yp, int xp, int format, const string &text,
-                      int xlimit=0, GUICALLBACK cb=0, const char *fontFace = 0);
+                      int xlimit=0, GUICALLBACK cb=0, const wchar_t *fontFace = 0);
   TextInfo &addString(const char *id, int format, const string &text, GUICALLBACK cb=0);
   TextInfo &addString(const char *id, int yp, int xp, int format, const string &text,
-                      int xlimit=0, GUICALLBACK cb=0, const char *fontFace = 0);
+                      int xlimit=0, GUICALLBACK cb=0, const wchar_t *fontFace = 0);
   // Untranslated versions
   TextInfo &addStringUT(int yp, int xp, int format, const string &text,
-                        int xlimit=0, GUICALLBACK cb=0, const char *fontFace = 0);
+                        int xlimit=0, GUICALLBACK cb=0, const wchar_t *fontFace = 0);
   TextInfo &addStringUT(int format, const string &text, GUICALLBACK cb=0);
+  // XXX Temporary
 
   TextInfo &addTimer(int yp, int xp, int format, DWORD ZeroTime, 
-                     int xlimit=0, GUICALLBACK cb=0, int TimeOut=NOTIMEOUT, const char *fontFace = 0);
+                     int xlimit=0, GUICALLBACK cb=0, int TimeOut=NOTIMEOUT, const wchar_t *fontFace = 0);
   TextInfo &addTimeout(int TimeOut, GUICALLBACK cb);
 
   void removeTimeoutMilli(const string &id);
@@ -641,13 +718,13 @@ public:
   void closeWindow();
 
   void setDBErrorState(bool state);
-
+  int getCP() const {return defaultCodePage;}
   friend int TablesCB(gdioutput *gdi, int type, void *data);
   friend class Table;
-  friend gdioutput *createExtraWindow(const string &tag, const string &title, int max_x, int max_y);
+  friend gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x, int max_y);
 
-  gdioutput(const string &tag, double _scale, FontEncoding encoding);
-  gdioutput(double _scale,  FontEncoding encoding, HWND hWndTarget, const PrinterObject &defprn);
+  gdioutput(const string &tag, double _scale, int defaultCodePage);
+  gdioutput(double _scale, HWND hWndTarget, const PrinterObject &defprn, int defaultCodePage);
   virtual ~gdioutput();
 };
 

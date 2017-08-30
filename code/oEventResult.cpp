@@ -27,7 +27,6 @@
 #include <cassert>
 #include <algorithm>
 #include <limits>
-#include <hash_set>
 
 #include "oEvent.h"
 #include "oDataContainer.h"
@@ -199,7 +198,7 @@ void oEvent::calculateResults(ResultType resultType) {
         it->tCoursePlace = tPlace;
     }
     else {
-      int tt = it->getTotalRunningTime(it->FinishTime);
+      int tt = it->getTotalRunningTime(it->FinishTime, true);
 
       if (it->getTotalStatus() == StatusOK && tt>0) {
         cPlace++;
@@ -345,7 +344,7 @@ void oEvent::calculateTeamResults(bool multidayTotal)
   }
 }
 
-GeneralResult &oEvent::getGeneralResult(const string &tag, string &sourceFileOut) const {
+GeneralResult &oEvent::getGeneralResult(const string &tag, wstring &sourceFileOut) const {
   for (int i = 0; i < 2; i++) {
     if (i>0)
       loadGeneralResults(false);
@@ -354,8 +353,8 @@ GeneralResult &oEvent::getGeneralResult(const string &tag, string &sourceFileOut
         if (generalResults[k].ptr == 0)
           throw meosException("Internal error");
         sourceFileOut = generalResults[k].fileSource;
-        if (sourceFileOut == "*")
-          sourceFileOut = "";
+        if (sourceFileOut == L"*")
+          sourceFileOut = L"";
 
         return *generalResults[k].ptr;
       }
@@ -366,18 +365,18 @@ GeneralResult &oEvent::getGeneralResult(const string &tag, string &sourceFileOut
 
 void oEvent::loadGeneralResults(bool forceReload) const {
 //  OutputDebugString("Load General Results\n");
-  char bf[260];
-  getUserFile(bf, "");
-  vector<string> res;
-  expandDirectory(bf, "*.rules", res);
-  vector<string> res2;
-  expandDirectory(bf, "*.brules", res2);
+  wchar_t bf[260];
+  getUserFile(bf, L"");
+  vector<wstring> res;
+  expandDirectory(bf, L"*.rules", res);
+  vector<wstring> res2;
+  expandDirectory(bf, L"*.brules", res2);
 
   DynamicResult dr;
-  pair<string, string> err;
+  pair<wstring, wstring> err;
 
   vector<GeneralResultCtr> newGeneralResults;
-  set<string> loaded;
+  set<wstring> loaded;
   set<string> tags;
   set<long long> loadedRes;
   for (size_t k = 0; k < generalResults.size(); k++) {
@@ -418,10 +417,16 @@ void oEvent::loadGeneralResults(bool forceReload) const {
       loadedRes.insert(drp->getHashCode());
       newGeneralResults.push_back(GeneralResultCtr(res2[k], drp));
     }
+    catch (meosException &ex) {
+      if (err.first.empty()) {
+        err.first = res2[k];
+        err.second = ex.wwhat();
+      }
+    }
     catch (std::exception &ex) {
       if (err.first.empty()) {
         err.first = res2[k];
-        err.second = ex.what();
+        err.second = gdibase.widen(ex.what());
       }
     }
   }
@@ -486,28 +491,27 @@ void oEvent::loadGeneralResults(bool forceReload) const {
     if (rmAll[i].res->isReadOnly())
       drp->setReadOnly();
     drp->setAnnotation(rmAll[i].ctr->getListName());
-    string file = "*";
+    wstring file = L"*";
     newGeneralResults.push_back(GeneralResultCtr(file, drp));
   }
 
   swap(newGeneralResults, generalResults);
   if (!err.first.empty())
-    throw meosException("Error loading X (Y)#" + err.first + "#" + err.second);
+    throw meosException(L"Error loading X (Y)#" + err.first + L"#" + err.second);
 }
 
 
-void oEvent::getGeneralResults(bool onlyEditable, vector< pair<int, pair<string, string> > > &tagNameList, bool includeDate) const {
+void oEvent::getGeneralResults(bool onlyEditable, vector< pair<int, pair<string, wstring> > > &tagNameList, bool includeDate) const {
   tagNameList.clear();
   for (size_t k = 0; k < generalResults.size(); k++) {
     if (!onlyEditable || generalResults[k].isDynamic()) {
       tagNameList.push_back(make_pair(100 + k, make_pair(generalResults[k].tag, lang.tl(generalResults[k].name))));
       if (includeDate && generalResults[k].isDynamic()) {
         const DynamicResult &dr = dynamic_cast<const DynamicResult &>(*generalResults[k].ptr);
-        const string &date = dr.getTimeStamp();
+        const wstring &date = gdibase.widen(dr.getTimeStamp());
         if (!date.empty())
-          tagNameList.back().second.second += " [" + date + "]";
+          tagNameList.back().second.second += L" [" + date + L"]";
       }
-
     }
   }
 }

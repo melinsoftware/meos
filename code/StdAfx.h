@@ -32,24 +32,24 @@
 #include <crtdbg.h>
 
 using namespace std;
-bool getUserFile(char *fileNamePath, const char *fileName);
-bool getDesktopFile(char *fileNamePath, const char *fileName, const char *subFolder = 0);
-bool getMeOSFile(char *FileNamePath, const char *FileName);
+bool getUserFile(wchar_t *fileNamePath, const wchar_t *fileName);
+bool getDesktopFile(wchar_t *fileNamePath, const wchar_t *fileName, const wchar_t *subFolder = 0);
+bool getMeOSFile(wchar_t *FileNamePath, const wchar_t *FileName);
 
 class gdioutput;
-gdioutput *createExtraWindow(const string &tag, const string &title, int max_x = 0, int max_y = 0);
+gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x = 0, int max_y = 0);
 gdioutput *getExtraWindow(const string &tag, bool toForeGround);
 string uniqueTag(const char *base);
 
 void LoadPage(const string &name);
 
-string getTempFile();
-string getTempPath();
-void removeTempFile(const string &file); // Delete a temporyary
-void registerTempFile(const string &tempFile); //Register a file/folder as temporary => autmatic removal on exit.
+wstring getTempFile();
+wstring getTempPath();
+void removeTempFile(const wstring &file); // Delete a temporyary
+void registerTempFile(const wstring &tempFile); //Register a file/folder as temporary => autmatic removal on exit.
 
 const extern string _EmptyString;
 const extern string _VacantName;
-const extern string _UnkownName;
+const extern wstring _EmptyWString;
 
 #endif // !defined(AFX_STDAFX_H__A9DB83DB_A9FD_11D0_BFD1_444553540000__INCLUDED_)

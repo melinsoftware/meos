@@ -70,15 +70,15 @@ public:
   // Get the runner currently tied to this punch
   pRunner getTiedRunner() const;
   void addTableRow(Table &table) const;
-  void fillInput(int id, vector< pair<string, size_t> > &out, size_t &selected);
-  bool inputData(int id, const string &input, int inputId, string &output, bool noUpdate);
+  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected);
+  bool inputData(int id, const wstring &input, int inputId, wstring &output, bool noUpdate);
 
   void remove();
   bool canRemove() const;
 
   int getCardNo() const {return CardNo;}
   bool setCardNo(int cardNo, bool databaseUpdate = false);
-  bool setType(const string &t, bool databaseUpdate = false);
+  bool setType(const wstring &t, bool databaseUpdate = false);
   void setTimeInt(int newTime, bool databaseUpdate);
 
   static void rehashPunches(oEvent &oe, int cardNo, pFreePunch newPunch);

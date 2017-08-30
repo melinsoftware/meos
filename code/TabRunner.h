@@ -31,7 +31,7 @@ class TabRunner :
 private:
   void addToolbar(gdioutput &gdi);
 
-  const string &getSearchString() const;
+  const wstring &getSearchString() const;
 
   void setCardNo(gdioutput &gdi, int cardNo);
 
@@ -41,8 +41,8 @@ private:
 
   void selectRunner(gdioutput &gdi, pRunner r);
 
-  string lastSearchExpr;
-  stdext::hash_set<int> lastFilter;
+  wstring lastSearchExpr;
+  unordered_set<int> lastFilter;
   DWORD timeToFill;
   int inputId;
   int searchCB(gdioutput &gdi, int type, void *data);
@@ -59,7 +59,7 @@ private:
 
   int cardModeStartY;
   int lastRace;
-  string lastFee;
+  wstring lastFee;
   int runnerId;
   bool ownWindow;
   bool listenToPunches;

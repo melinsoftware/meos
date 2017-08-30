@@ -23,6 +23,7 @@
 ************************************************************************/
 #include "oBase.h"
 #include "oRunner.h"
+#include <set>
 
 class oTeam;//:public oBase {};
 typedef oTeam* pTeam;
@@ -56,7 +57,7 @@ protected:
   vector<pRunner> Runners;
   void setRunnerInternal(int k, pRunner r);
 
-  static const int dataSize = 96;
+  static const int dataSize = 160;
   int getDISize() const {return dataSize;}
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
@@ -81,7 +82,7 @@ protected:
   mutable vector< vector< vector<int> > > resultCalculationCache;
 
   string getRunners() const;
-  bool matchTeam(int number, const char *s_lc) const;
+  bool matchTeam(int number, const wchar_t *s_lc) const;
   int tNumRestarts; //Number of restarts for team
 
   int getLegToUse(int leg) const; // Get the number of the actual
@@ -90,10 +91,10 @@ protected:
 
   void addTableRow(Table &table) const;
 
-  bool inputData(int id, const string &input,
-                 int inputId, string &output, bool noUpdate);
+  bool inputData(int id, const wstring &input,
+                 int inputId, wstring &output, bool noUpdate);
 
-  void fillInput(int id, vector< pair<string, size_t> > &out, size_t &selected);
+  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected);
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -118,7 +119,7 @@ public:
     */
   void removeRunner(gdioutput &gdi, bool askRemoveRunner, int runnerIx);
   // Get entry date of team
-  string getEntryDate(bool dummy) const;
+  wstring getEntryDate(bool dummy) const;
 
   // Get the team itself
   cTeam getTeam() const {return this;}
@@ -173,32 +174,32 @@ public:
   // Number of shortenings up to and including a leg
   int getNumShortening(int leg) const;
   
-  string getDisplayName() const;
-  string getDisplayClub() const;
+  wstring getDisplayName() const;
+  wstring getDisplayClub() const;
 
-  void setBib(const string &bib, int numericalBib, bool updateStartNo, bool setTmpOnly);
+  void setBib(const wstring &bib, int numericalBib, bool updateStartNo, bool setTmpOnly);
 
   int getLegStartTime(int leg) const;
-  string getLegStartTimeS(int leg) const;
-  string getLegStartTimeCompact(int leg) const;
+  wstring getLegStartTimeS(int leg) const;
+  wstring getLegStartTimeCompact(int leg) const;
 
-  string getLegFinishTimeS(int leg) const;
+  wstring getLegFinishTimeS(int leg) const;
   int getLegFinishTime(int leg) const;
 
   int getTimeAfter(int leg) const;
 
   //Get total running time after leg
-  string getLegRunningTimeS(int leg, bool multidayTotal) const;
+  wstring getLegRunningTimeS(int leg, bool multidayTotal) const;
 
   int getLegRunningTime(int leg, bool multidayTotal) const;
   int getLegPrelRunningTime(int leg) const;
-  string getLegPrelRunningTimeS(int leg) const;
+  wstring getLegPrelRunningTimeS(int leg) const;
 
   RunnerStatus getLegStatus(int leg, bool multidayTotal) const;
-  const string &getLegStatusS(int leg, bool multidayTotal) const;
+  const wstring &getLegStatusS(int leg, bool multidayTotal) const;
 
-  string getLegPlaceS(int leg, bool multidayTotal) const;
-  string getLegPrintPlaceS(int leg, bool multidayTotal, bool withDot) const;
+  wstring getLegPlaceS(int leg, bool multidayTotal) const;
+  wstring getLegPrintPlaceS(int leg, bool multidayTotal, bool withDot) const;
   int getLegPlace(int leg, bool multidayTotal) const;
 
   static bool compareSNO(const oTeam &a, const oTeam &b);
@@ -206,6 +207,8 @@ public:
   static bool compareResult(const oTeam &a, const oTeam &b);
   static bool compareStartTime(const oTeam &a, const oTeam &b);
 
+  static void checkClassesWithReferences(oEvent &oe, set<int> &clsWithRef);
+  static void convertClassWithReferenceToPatrol(oEvent &oe, const set<int> &clsWithRef);
 
   void set(const xmlobject &xo);
   bool write(xmlparser &xml);

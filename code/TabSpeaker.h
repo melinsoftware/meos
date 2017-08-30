@@ -57,8 +57,7 @@ class TabSpeaker :
 private:
   set<int> controlsToWatch;
   set<int> classesToWatch;
-  set<int> controlsToWatchSI;
-
+  
   int lastControlToWatch;
   int lastClassToWatch;
 
@@ -70,7 +69,7 @@ private:
   void generateControlList(gdioutput &gdi, int classId);
   void generateControlListForLeg(gdioutput &gdi, int classId, int leg);
 
-  string lastControl;
+  wstring lastControl;
 
   void manualTimePage(gdioutput &gdi) const;
   void storeManualTime(gdioutput &gdi);
@@ -80,6 +79,7 @@ private:
   //Map CourseNo -> selected Control.
   //map<int, int> selectedControl;
   map<int, spkClassSelection> selectedControl;
+  int deducePreviousControl(int classId, int leg, int control);
 
   bool ownWindow;
 
@@ -93,6 +93,11 @@ private:
 
   SpeakerMonitor *getSpeakerMonitor();
 
+  void getSettings(gdioutput &gdi, multimap<string, wstring> &settings);
+  void importSettings(gdioutput &gdi, multimap<string, wstring> &settings);
+  static void loadSettings(vector< multimap<string, wstring> > &settings);
+  static void saveSettings(const vector< multimap<string, wstring> > &settings);
+  static wstring getSpeakerSettingsFile();
 public:
 
   bool onClear(gdioutput &gdi);
@@ -103,7 +108,6 @@ public:
 
   //Clear selection data
   void clearCompetitionData();
-
   int processButton(gdioutput &gdi, const ButtonInfo &bu);
   int processListBox(gdioutput &gdi, const ListBoxInfo &bu);
   int handleEvent(gdioutput &gdi, const EventInfo &ei);

@@ -36,7 +36,7 @@ class TimeStamp
 public:
   void setStamp(string s);
   string getStamp() const;
-  string getStampString() const;
+  wstring getStampString() const;
   int getAge() const;
   unsigned int getModificationTime() const {return Time;}
 

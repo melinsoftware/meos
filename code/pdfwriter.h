@@ -44,9 +44,9 @@ class pdfwriter  {
   protected:
 
     bool getFontData(const HFONT fontHandle, std::vector<char>& data, int &width);
-    HPDF_Font getPDFFont(HFONT font, float hFontScale, string &tmp, float &fontScale);
+    HPDF_Font getPDFFont(HFONT font, float hFontScale, wstring &tmp, float &fontScale);
     void selectFont(HPDF_Page page, const PDFFontSet &fs, int format, float scale);
-    vector<string> tmpFiles;
+    vector<wstring> tmpFiles;
     HPDF_Doc pdf;
   public:
     pdfwriter();
@@ -54,7 +54,7 @@ class pdfwriter  {
 
     void generatePDF(const gdioutput &gdi,
                      const wstring &file,
-                     const string &pageTitle,
-                     const string &author,
+                     const wstring &pageTitle,
+                     const wstring &author,
                      const list<TextInfo> &tl);
 };

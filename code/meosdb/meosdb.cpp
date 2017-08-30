@@ -32,8 +32,6 @@
   #define MEOSDB_API
 #endif
 
-#include <mysql++.h>
-
 #include <iostream>
 #include <iomanip>
 
@@ -76,7 +74,7 @@ bool MEOSDB_API msSynchronizeList(oEvent *oe, int lid)
 {
   nSynchList++;
   if (nSynchList % 100 == 99)
-    OutputDebugString("Synchronized 100 lists\n");
+    OutputDebugString(L"Synchronized 100 lists\n");
 
   if (lid==oLRunnerId)
     return msql.syncListRunner(oe);
@@ -135,7 +133,7 @@ int MEOSDB_API msSynchronizeRead(oBase *obj)
 {
   nSynchEnt++;
   if (nSynchEnt % 100 == 99)
-    OutputDebugString("Synchronized 100 entities\n");
+    OutputDebugString(L"Synchronized 100 entities\n");
 
   if (typeid(*obj)==typeid(oRunner)){
     return msql.syncRead(false, (oRunner *) obj );

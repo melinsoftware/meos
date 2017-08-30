@@ -40,11 +40,13 @@
 #include "TabSpeaker.h"
 #include "TabList.h"
 #include "speakermonitor.h"
+#include "meosexception.h"
 
 #include <cassert>
 
 //Base position for speaker buttons
 #define SPEAKER_BASE_X 40
+vector<string> getExtraWindows();
 
 TabSpeaker::TabSpeaker(oEvent *poe):TabBase(poe)
 {
@@ -124,16 +126,27 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
 
     gdi.pushX();
     gdi.fillRight();
-    gdi.addListBox("Classes", 200, 300, 0,"Klasser","", true);
+    gdi.addListBox("Classes", 200, 300, 0,L"Klasser", L"", true);
+    
+    auto pos = gdi.getPos();
+    
+    gdi.setCY(gdi.getHeight());
+    gdi.popX();
+    gdi.fillRight();
+    gdi.addButton("AllClass", "Alla", tabSpeakerCB);
+    gdi.addButton("NoClass", "Inga", tabSpeakerCB);
 
     oe->fillClasses(gdi, "Classes", oEvent::extraNone, oEvent::filterNone);
     gdi.setSelection("Classes", classesToWatch);
 
-    gdi.addListBox("Controls", 200, 300, 0, "Kontroller","", true);
+    gdi.fillRight();
+    gdi.setPos(pos);
+
+    gdi.addListBox("Controls", 200, 300, 0, L"Kontroller", L"", true);
     gdi.pushX();
     gdi.fillDown();
 
-    vector< pair<string, size_t> > d;
+    vector< pair<wstring, size_t> > d;
     oe->fillControls(d, oEvent::CTCourseControl);
     gdi.addItem("Controls", d);
 
@@ -144,6 +157,15 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.addButton("Cancel", "Avbryt", tabSpeakerCB).setCancel();
 
     gdi.refresh();
+  }
+  else if (bu.id == "AllClass") {
+    set<int> lst;
+    lst.insert(-1);
+    gdi.setSelection("Classes", lst);
+  }
+  else if (bu.id == "NoClass") {
+    set<int> lst;
+    gdi.setSelection("Classes", lst);
   }
   else if (bu.id=="ZoomIn") {
     gdi.scaleSize(1.05);
@@ -174,7 +196,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.fillRight();
     gdi.pushX();
     gdi.addString("", 0, "Klass:");
-    gdi.addSelection("Class", 200, 200, tabSpeakerCB, "", "Välj klass");
+    gdi.addSelection("Class", 200, 200, tabSpeakerCB, L"", L"Välj klass");
     oe->fillClasses(gdi, "Class", oEvent::extraNone, oEvent::filterNone);
     gdi.addButton("ClosePri", "Stäng", tabSpeakerCB);
     gdi.dropLine(2);
@@ -186,7 +208,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     loadPage(gdi);
   }
   else if (bu.id == "LiveResult") {
-    gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), MakeDash("MeOS - Live"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+    gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - Live"), gdi.getWidth() + 64 + gdi.scaleLength(120));
        
     gdi_new->clearPage(false);
     gdi_new->addString("", boldLarge, "Liveresultat");
@@ -228,22 +250,61 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
   }
   else if (bu.id == "Events") {
     gdi.restore("classes");
-    /*
-    shownEvents.clear();
-    events.clear();
-    */
+    classId = -1;
     drawTimeLine(gdi);
   }
   else if (bu.id == "Window") {
     oe->setupTimeLineEvents(0);
 
-    gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), MakeDash("MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+    gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
     if (gdi_new) {
       TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
       tl.ownWindow = true;
       tl.loadPage(*gdi_new);
       //oe->renderTimeLineEvents(*gdi_new);
     }
+    loadPage(gdi);
+  }
+  else if (bu.id == "SaveWindows") {
+    if (!gdi.ask(L"ask:savespeaker"))
+      return 0;
+
+    vector<string> tags = getExtraWindows();
+    vector< multimap<string, wstring> > speakerSettings;
+    
+    for (size_t i = 0; i < tags.size(); i++) {
+      if (tags[i] != "main" && tags[i].substr(0, 7) != "speaker")
+        continue;
+      gdioutput *gdi = getExtraWindow(tags[i], false);
+      if (gdi) {
+        TabBase *tb = gdi->getTabs().get(TabType::TSpeakerTab);
+        if (tb) {
+          speakerSettings.push_back(multimap<string, wstring>());
+          ((TabSpeaker *)tb)->getSettings(*gdi, speakerSettings.back());
+        }
+      }
+    }
+    saveSettings(speakerSettings);
+  }
+  else if (bu.id == "LoadWindows") {
+    if (!gdi.ask(L"ask:loadspeaker"))
+      return 0;
+    vector< multimap<string, wstring> > speakerSettings;
+
+    loadSettings(speakerSettings);
+    if (speakerSettings.empty())
+      throw meosException("Inställningarna är ogiltiga");
+    for (size_t k = 1; k < speakerSettings.size(); k++) {
+      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+      if (gdi_new) {
+        TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
+        tl.ownWindow = true;
+        tl.importSettings(*gdi_new, speakerSettings[k]);
+        tl.loadPage(*gdi_new);
+      }
+    }
+    importSettings(gdi, speakerSettings[0]);
+    loadPage(gdi);
   }
   else if (bu.id=="StoreTime") {
     storeManualTime(gdi);
@@ -260,13 +321,11 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     if (controlsToWatch.empty())
       controlsToWatch.insert(-2); // Non empty but no control
 
-    controlsToWatchSI.clear();
     for (set<int>::iterator it=controlsToWatch.begin();it!=controlsToWatch.end();++it) {
       pControl pc=oe->getControl(*it, false);
       if (pc) {
         pc->setRadio(true);
         pc->synchronize(true);
-        controlsToWatchSI.insert(pc->Numbers, pc->Numbers+pc->nNumbers);
       }
     }
     oe->setProperty("SpeakerShortNames", (int)gdi.isChecked("ShortNames"));
@@ -288,7 +347,8 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
   }
   else if (bu.id.substr(0, 4)=="ctrl") {
     bool shortNames = oe->getPropertyInt("SpeakerShortNames", false) != 0;
-    int ctrl = atoi(bu.id.substr(4, string::npos).c_str());
+    int ctrl = atoi(bu.id.substr(4,
+      string::npos).c_str());
     int ctrlPrev = bu.getExtraInt();
     selectedControl[classId].setControl(ctrl, ctrlPrev);
     gdi.restore("speaker");
@@ -305,10 +365,29 @@ void TabSpeaker::drawTimeLine(gdioutput &gdi) {
 
   gdi.fillRight();
   gdi.pushX();
-  gdi.dropLine(0.3);
+
+
+  const bool multiDay = oe->hasPrevStage();
+
+  gdi.dropLine(0.1);
+
+  if (multiDay) {
+    gdi.dropLine(0.2);
+    gdi.addString("", 0, "Resultat:");
+    gdi.dropLine(-0.2);
+
+    gdi.addSelection("MultiStage", 100, 100, tabSpeakerCB);
+    gdi.setCX(gdi.getCX() + gdi.getLineHeight()*2);
+    gdi.addItem("MultiStage", lang.tl("Etappresultat"), 0);
+    gdi.addItem("MultiStage", lang.tl("Totalresultat"), 1);
+    gdi.selectItemByData("MultiStage", getSpeakerMonitor()->useTotalResults() ? 1 : 0);    
+  }
+
+  gdi.dropLine(0.2);
   gdi.addString("", 0, "Filtrering:");
   gdi.dropLine(-0.2);
   gdi.addSelection("DetailLevel", 160, 100, tabSpeakerCB);
+  gdi.setCX(gdi.getCX() + gdi.getLineHeight()*2);
   gdi.addItem("DetailLevel", lang.tl("Alla händelser"), oTimeLine::PLow);
   gdi.addItem("DetailLevel", lang.tl("Viktiga händelser"), oTimeLine::PMedium);
   gdi.addItem("DetailLevel", lang.tl("Avgörande händelser"), oTimeLine::PHigh);
@@ -322,22 +401,22 @@ void TabSpeaker::drawTimeLine(gdioutput &gdi) {
   gdi.addItem("WatchNumber", lang.tl("X senaste#10"), 10);
   gdi.addItem("WatchNumber", lang.tl("X senaste#20"), 20);
   gdi.addItem("WatchNumber", lang.tl("X senaste#50"), 50);
-  gdi.addItem("WatchNumber", "Alla", 0);
+  gdi.addItem("WatchNumber", L"Alla", 0);
   gdi.selectItemByData("WatchNumber", watchNumber);
   gdi.dropLine(2);
   gdi.popX();
 
-  string cls;
+  wstring cls;
   for (set<int>::iterator it = classesToWatch.begin(); it != classesToWatch.end(); ++it) {
     pClass pc = oe->getClass(*it);
     if (pc) {
       if (!cls.empty())
-        cls += ", ";
+        cls += L", ";
       cls += oe->getClass(*it)->getName();
     }
   }
   gdi.fillDown();
-  gdi.addString("", 1, "Bevakar händelser i X#" + cls);
+  gdi.addString("", 1, L"Bevakar händelser i X#" + cls);
   gdi.dropLine();
 
   gdi.setRestorePoint("TimeLine");
@@ -566,7 +645,7 @@ void TabSpeaker::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r)
 
   vector<int> delta;
   r->getSplitAnalysis(delta);
-  string timeloss = lang.tl("Bommade kontroller: ");
+  wstring timeloss = lang.tl("Bommade kontroller: ");
   pCourse pc = 0;
   bool first = true;
   const int charlimit = 90;
@@ -579,16 +658,16 @@ void TabSpeaker::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r)
       }
 
       if (!first)
-        timeloss += " | ";
+        timeloss += L" | ";
       else
         first = false;
 
-      timeloss += pc->getControlOrdinal(j) + ". " + formatTime(delta[j]);
+      timeloss += pc->getControlOrdinal(j) + L". " + formatTimeW(delta[j]);
     }
     if (timeloss.length() > charlimit || (!timeloss.empty() && !first && j+1 == delta.size())) {
       gdi.addStringUT(yp, xp, 0, timeloss).setColor(colorDarkRed);
       yp += gdi.getLineHeight();
-      timeloss = "";
+      timeloss = L"";
     }
   }
   if (first) {
@@ -645,9 +724,10 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
     if (!keepLegs) {
       gdi.setData("CurrentY", cy);
       gdi.addSelection(cx, cy+2, "Leg", int(bw/gdi.getScale())-5, 100, tabSpeakerCB);
+      bool total = selectedControl[pc->getId()].isTotal();
       if (leg == 0 && stages[0].first != 0) {
         leg = stages[0].first;
-        selectedControl[pc->getId()].setLeg(selectedControl[pc->getId()].isTotal(), leg);
+        selectedControl[pc->getId()].setLeg(total, leg);
       }
 
       if (stages.size() > 1) {
@@ -667,7 +747,7 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
          gdi.addItem("Leg", lang.tl("Totalresultat"), 1000 + stages[0].first);
       }
 
-      gdi.selectItemByData("Leg", leg);
+      gdi.selectItemByData("Leg", leg + (total ? 1000 : 0));
       gdi.setRestorePoint("LegSelection");
     }
     else {
@@ -712,7 +792,7 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
 
       char bf[16];
       sprintf_s(bf, "ctrl%d", cid);
-      string name = course->getRadioName(cid);
+      wstring name = course->getRadioName(cid);
       /*if (controls[k]->hasName()) {
         name = "#" + controls[k]->getName();
         if (controls[k]->getNumberDuplicates() > 1)
@@ -724,9 +804,9 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
         name = "#" + name;
       }
       */
-      string tooltip = lang.tl("kontroll X (Y)#" + itos(k+1) +"#" + itos(controls[k]->getFirstNumber()));
+      wstring tooltip = lang.tl("kontroll X (Y)#" + itos(k+1) +"#" + itos(controls[k]->getFirstNumber()));
       capitalize(tooltip);
-      ButtonInfo &bi = gdi.addButton(cx, cy, bw, bf, "#" + name, tabSpeakerCB, "#" + tooltip, false, false);
+      ButtonInfo &bi = gdi.addButton(cx, cy, bw, bf, L"#" + name, tabSpeakerCB, L"#" + tooltip, false, false);
       bi.setExtra(previousControl);
       previousControl = cid;
       cx+=bw;
@@ -752,6 +832,32 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
   gdi.popX();
 }
 
+int TabSpeaker::deducePreviousControl(int classId, int leg, int control) {
+  pClass pc = oe->getClass(classId);
+  if (pc == 0)
+    return -1;
+  vector<oClass::TrueLegInfo> stages;
+  pc->getTrueStages(stages);
+  pCourse course = deduceSampleCourse(pc, stages, leg);
+  vector<pControl> controls;
+  if (course)
+    course->getControls(controls);
+  int previousControl = 0;
+  for (size_t k = 0; k < controls.size(); k++) {
+    int cid = course->getCourseControlId(k);
+    if (controlsToWatch.count(cid)) {
+      if (cid == control)
+        return previousControl;
+
+      previousControl = cid;
+    }
+  }
+  if (control == oPunch::PunchFinish)
+    return previousControl;
+  
+  return -1;
+}
+
 int TabSpeaker::processListBox(gdioutput &gdi, const ListBoxInfo &bu)
 {
   if (bu.id=="Leg") {
@@ -768,6 +874,10 @@ int TabSpeaker::processListBox(gdioutput &gdi, const ListBoxInfo &bu)
                       selectedControl[classId].isTotal(),
                       shortNames);
     }
+  }
+  else if (bu.id == "MultiStage") {
+    getSpeakerMonitor()->useTotalResults(gdi.isChecked(bu.id));
+    updateTimeLine(gdi);
   }
   else if (bu.id == "DetailLevel") {
     watchLevel = oTimeLine::Priority(bu.data);
@@ -817,7 +927,7 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
     pClass pc=oe->getClass(*it);
 
     if (pc) {
-      gdi.addButton(cx, cy, bw, classid, "#" + pc->getName(), tabSpeakerCB, "", false, false);
+      gdi.addButton(cx, cy, bw, classid, L"#" + pc->getName(), tabSpeakerCB, L"", false, false);
       cx+=bw;
       cb++;
 
@@ -844,7 +954,7 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
     } else db += bw;
     gdi.addButton(cx+db, cy, bw/5, "ZoomIn", "+", tabSpeakerCB, "Zooma in (Ctrl + '+')", false, false);
     db += bw/5+2;
-    gdi.addButton(cx+db, cy, bw/5, "ZoomOut", MakeDash("-"), tabSpeakerCB, "Zooma ut (Ctrl + '-')", false, false);
+    gdi.addButton(cx+db, cy, bw/5, "ZoomOut", makeDash(L"-"), tabSpeakerCB, L"Zooma ut (Ctrl + '-')", false, false);
     db += bw/5+2;
   }
   gdi.addButton(cx+db, cy, bw-2, "Settings", "Inställningar...", tabSpeakerCB, "Välj vilka klasser och kontroller som bevakas", false, false);
@@ -884,7 +994,41 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
       cb = 1, cx = basex, db = 0;
       cy += gdi.getButtonHeight()+4;
     } else db += bw;
+
+
+    if (getExtraWindows().size() == 1) {
+      wstring sf = getSpeakerSettingsFile();
+      if (fileExist(sf.c_str())) {
+        gdi.addButton(cx + db, cy, bw - 2, "LoadWindows", "Återskapa", tabSpeakerCB, "Återskapa tidigare sparade fönster- och speakerinställningar", false, false);
+        if (++cb > nbtn) {
+          cb = 1, cx = basex, db = 0;
+          cy += gdi.getButtonHeight() + 4;
+        }
+        else db += bw;
+      }
+    }
+    else {
+      gdi.addButton(cx + db, cy, bw - 2, "SaveWindows", "Spara", tabSpeakerCB, "Spara fönster- och speakerinställningar på datorn", false, false);
+      if (++cb > nbtn) {
+        cb = 1, cx = basex, db = 0;
+        cy += gdi.getButtonHeight() + 4;
+      }
+      else db += bw;
+    }
   }
+
+  if (classId == -1) {
+    string btn = "Events";
+    if (gdi.hasField(btn))
+      gdi.sendCtrlMessage(btn);
+  }
+  else if (classId > 0) {
+    string btn = "cid" + itos(classId);
+    if (gdi.hasField(btn))
+      gdi.sendCtrlMessage(btn);
+  }
+
+
   gdi.setRestorePoint("classes");
   gdi.refresh();
   return true;
@@ -894,7 +1038,6 @@ void TabSpeaker::clearCompetitionData()
 {
   controlsToWatch.clear();
   classesToWatch.clear();
-  controlsToWatchSI.clear();
   selectedControl.clear();
   classId=0;
   lastControl.clear();
@@ -915,9 +1058,9 @@ void TabSpeaker::manualTimePage(gdioutput &gdi) const
 
   gdi.fillRight();
   gdi.pushX();
-  gdi.addInput("Control", lastControl, 5, 0, "Kontroll");
-  gdi.addInput("Runner", "", 6, 0, "Löpare");
-  gdi.addInput("Time", "", 8, 0, "Tid");
+  gdi.addInput("Control", lastControl, 5, 0, L"Kontroll");
+  gdi.addInput("Runner", L"", 6, 0, L"Löpare");
+  gdi.addInput("Time", L"", 8, 0, L"Tid");
   gdi.dropLine();
   gdi.addButton("StoreTime", "Spara", tabSpeakerCB).setDefault();
   gdi.addButton("Cancel", "Avbryt", tabSpeakerCB).setCancel();
@@ -940,11 +1083,11 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
     throw std::exception("Kontrollnummer måste anges.");
 
   lastControl=gdi.getText("Control");
-  const string &r_str=gdi.getText("Runner");
-  string time=gdi.getText("Time");
+  const wstring &r_str=gdi.getText("Runner");
+  wstring time=gdi.getText("Time");
 
- if (time.empty())
-    time=getLocalTimeOnly();
+  if (time.empty())
+    time=getLocalTimeOnlyW();
 
   int itime=oe->getRelativeTime(time);
 
@@ -952,15 +1095,15 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
     throw std::exception("Ogiltig tid.");
 
   pRunner r=oe->getRunnerByBibOrStartNo(r_str, false);
-  int r_no = atoi(r_str.c_str());
+  int r_no = _wtoi(r_str.c_str());
   if (!r)
     r=oe->getRunnerByCardNo(r_no, itime);
 
-  string Name;
+  wstring Name;
   int sino=r_no;
   if (r) {
-    Name=r->getName();
-    sino=r->getCardNo();
+    Name = r->getName();
+    sino = r->getCardNo();
   }
   else
     Name = lang.tl("Okänd");
@@ -973,7 +1116,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
   oe->addFreePunch(itime, punch, sino, true);
 
   gdi.restore("manual", false);
-  gdi.addString("", 0, "Löpare: X, kontroll: Y, kl Z#" + Name + "#" + oPunch::getType(punch) + "#" +  oe->getAbsTime(itime));
+  gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch) + L"#" +  oe->getAbsTime(itime));
 
   manualTimePage(gdi);
 }
@@ -1045,4 +1188,151 @@ SpeakerMonitor *TabSpeaker::getSpeakerMonitor() {
     speakerMonitor = new SpeakerMonitor(*oe);
 
   return speakerMonitor;
+}
+
+void TabSpeaker::getSettings(gdioutput &gdi, multimap<string, wstring> &settings) {
+  RECT rc;
+  gdi.getWindowsPosition(rc);
+  settings.insert(make_pair("left", itow(rc.left)));
+  settings.insert(make_pair("right", itow(rc.right)));
+  settings.insert(make_pair("top", itow(rc.top)));
+  settings.insert(make_pair("bottom", itow(rc.bottom)));
+
+  for (auto clsId : classesToWatch) {
+    pClass cls = oe->getClass(clsId);
+    if (cls)
+      settings.insert(make_pair("class", cls->getName()));
+
+    if (classId == clsId) {
+      settings.insert(make_pair("currentClass", cls->getName()));
+      if (selectedControl.count(clsId)) {
+        int cControl = selectedControl[clsId].getControl();
+        int cLeg = selectedControl[clsId].getLeg();
+        bool cTotal = selectedControl[clsId].isTotal();
+        settings.insert(make_pair("currentControl", itow(cControl)));
+        settings.insert(make_pair("currentLeg", itow(cLeg)));
+        settings.insert(make_pair("currentTotal", itow(cTotal)));
+      }
+    }
+  }
+
+  if (classId == -1) {
+    settings.insert(make_pair("currentClass", L"@Events"));
+  }
+
+  for (auto ctrl : controlsToWatch) {
+    settings.insert(make_pair("control", itow(ctrl)));
+  }
+}
+
+int get(const multimap<string, wstring> &settings, const char *p) {
+  auto res = settings.find(p);
+  if (res != settings.end())
+    return _wtoi(res->second.c_str());
+
+  return 0;
+}
+
+void TabSpeaker::importSettings(gdioutput &gdi, multimap<string, wstring> &settings) {
+  classId = 0;
+  classesToWatch.clear();
+  controlsToWatch.clear();
+  selectedControl.clear();
+  int ctrl = 0, leg = 0, total = 0;
+
+  for (auto s : settings) {
+    if (s.first == "currentClass") {
+      if (s.second == L"@Events") {
+        classId = -1;
+      }
+      else {
+        pClass cls = oe->getClass(s.second);
+        classId = cls ? cls->getId() : 0;
+        if (classId > 0) {
+          ctrl = get(settings, "currentControl");
+          leg = get(settings, "currentLeg");
+          total = get(settings, "currentTotal");
+        }
+      }
+    }
+    else if (s.first == "class") {
+      pClass cls = oe->getClass(s.second);
+      if (cls)
+        classesToWatch.insert(cls->getId());
+    }
+    else if (s.first == "control") {
+      int ctrl = _wtoi(s.second.c_str());
+      pControl pc = oe->getControl(ctrl);
+      if (pc) {
+        controlsToWatch.insert(pc->getId());
+      }
+    }
+  }
+
+  int previousControl = deducePreviousControl(classId, leg, ctrl);
+  if (previousControl != -1) {
+    selectedControl[classId].setLeg(total != 0, leg);
+    selectedControl[classId].setControl(ctrl, previousControl);
+  }
+
+  RECT rc;
+  if (settings.find("left") == settings.end() ||
+      settings.find("right") == settings.end() ||
+      settings.find("top") == settings.end() ||
+      settings.find("bottom") == settings.end())
+    throw meosException("Inställningarna är ogiltiga");
+  
+  rc.left = get(settings, "left");
+  rc.right = get(settings, "right");
+  rc.top = get(settings, "top");
+  rc.bottom = get(settings, "bottom");
+
+  RECT desktop;
+  gdi.getVirtualScreenSize(desktop);
+  if (rc.right > rc.left && rc.bottom > rc.top &&
+      rc.right > 50 && rc.left < (desktop.right - 50) &&
+      rc.bottom > 50 && rc.top < (desktop.bottom - 50))
+    gdi.setWindowsPosition(rc);
+}
+
+wstring TabSpeaker::getSpeakerSettingsFile() {
+  wchar_t path[260];
+  getUserFile(path, L"speaker.xml");
+  return path;
+}
+
+void TabSpeaker::loadSettings(vector< multimap<string, wstring> > &settings) {
+  settings.clear();
+  xmlparser reader;
+  reader.read(getSpeakerSettingsFile());
+  xmlobject sp = reader.getObject("Speaker");
+  if (!sp)
+    return;
+
+  xmlList xmlsettings;
+  sp.getObjects(xmlsettings);
+  
+  for (auto s : xmlsettings) {
+    settings.push_back(multimap<string, wstring>());
+    xmlList allS;
+    s.getObjects(allS);
+    for (auto prop : allS) {
+      settings.back().insert(make_pair(prop.getName(), prop.getw()));
+    }
+  }
+}
+
+void TabSpeaker::saveSettings(const vector< multimap<string, wstring> > &settings) {
+  xmlparser d;
+  d.openOutput(getSpeakerSettingsFile().c_str(), false);
+  d.startTag("Speaker");
+  for (auto s : settings) {
+    d.startTag("SpeakerWindow");
+    for (auto prop : s) {
+      d.write(prop.first.c_str(), prop.second);
+    }
+    d.endTag();
+  }
+  d.endTag();
+  d.closeOut();
 }

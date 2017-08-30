@@ -41,7 +41,7 @@ int ImportFormats::getDefault(oEvent &oe) {
   return oe.getPropertyString("Language", "English") == "Français" ? FrenchFederationMapping : Default;
 }
 */
-void ImportFormats::getExportFormats(vector< pair<string, size_t> > &types, bool exportFilter) {
+void ImportFormats::getExportFormats(vector< pair<wstring, size_t> > &types, bool exportFilter) {
   types.clear();
     
   string v;
@@ -56,18 +56,18 @@ void ImportFormats::getExportFormats(vector< pair<string, size_t> > &types, bool
   types.push_back(make_pair(lang.tl("Webbdokument (html)"), HTML));
 }
 
-void ImportFormats::getExportFilters(bool exportFilters, vector< pair<string, string> > &ext) {
-  string v;
+void ImportFormats::getExportFilters(bool exportFilters, vector< pair<wstring, wstring> > &ext) {
+  wstring v;
   if (exportFilters) 
-    v = "Resultat";
+    v = L"Resultat";
   else
-    v = "Startlista";
+    v = L"Startlista";
     
-  ext.push_back(make_pair("IOF " + v + ", version 3.0 (xml)", "*.xml"));
-  ext.push_back(make_pair("IOF " + v + ", version 2.0.3 (xml)", "*.xml"));
-  ext.push_back(make_pair("OE Semikolonseparerad (csv)", "*.csv"));
-  ext.push_back(make_pair("OE/French Federation of Orienteering (csv)", "*.csv"));
-  ext.push_back(make_pair("Webbdokument (html)", "*.html"));
+  ext.push_back(make_pair(L"IOF " + v + L", version 3.0 (xml)", L"*.xml"));
+  ext.push_back(make_pair(L"IOF " + v + L", version 2.0.3 (xml)", L"*.xml"));
+  ext.push_back(make_pair(L"OE Semikolonseparerad (csv)", L"*.csv"));
+  ext.push_back(make_pair(L"OE/French Federation of Orienteering (csv)", L"*.csv"));
+  ext.push_back(make_pair(L"Webbdokument (html)", L"*.html"));
 }
 
 ImportFormats::ExportFormats ImportFormats::getDefaultExportFormat(oEvent &oe) {
@@ -80,13 +80,13 @@ ImportFormats::ExportFormats ImportFormats::setExportFormat(oEvent &oe, int raw)
   return (ExportFormats)raw;
 }
 
-void ImportFormats::getOECSVLanguage(vector< pair<string, size_t> > &typeLanguages) {
-  typeLanguages.push_back(make_pair("English", 1));
-  typeLanguages.push_back(make_pair("Svenska", 2));
-  typeLanguages.push_back(make_pair("Deutsch", 3));
-  typeLanguages.push_back(make_pair("Dansk", 4));
-  typeLanguages.push_back(make_pair("Français", 5));
-  typeLanguages.push_back(make_pair("Russian", 6));
+void ImportFormats::getOECSVLanguage(vector< pair<wstring, size_t> > &typeLanguages) {
+  typeLanguages.push_back(make_pair(L"English", 1));
+  typeLanguages.push_back(make_pair(L"Svenska", 2));
+  typeLanguages.push_back(make_pair(L"Deutsch", 3));
+  typeLanguages.push_back(make_pair(L"Dansk", 4));
+  typeLanguages.push_back(make_pair(L"Français", 5));
+  typeLanguages.push_back(make_pair(L"Russian", 6));
 }
   
 int ImportFormats::getDefaultCSVLanguage(oEvent &oe) {

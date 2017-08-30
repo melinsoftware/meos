@@ -50,9 +50,9 @@ oPunch::~oPunch()
 {
 }
 
-string oPunch::getInfo() const
+wstring oPunch::getInfo() const
 {
-  return "Stämpling "+codeString();
+  return L"Stämpling "+oe->gdiBase().widen(codeString());
 }
 
 string oPunch::codeString() const
@@ -68,53 +68,52 @@ void oPunch::decodeString(const string &s)
   Time=atoi(s.substr(s.find_first_of('-')+1).c_str());
 }
 
-string oPunch::getString() const
-{
-  char bf[32];
+wstring oPunch::getString() const {
+  wchar_t bf[32];
 
-  const char *ct;
-  string time(getTime());
+  const wchar_t *ct;
+  wstring time(getTime());
   ct=time.c_str();
 
-  string typeS = getType();
-  const char *tp = typeS.c_str();
+  wstring typeS = getType();
+  const wchar_t *tp = typeS.c_str();
 
   if (Type==oPunch::PunchStart)
-    sprintf_s(bf, "%s\t%s", tp, ct);
+    swprintf_s(bf, L"%s\t%s", tp, ct);
   else if (Type==oPunch::PunchFinish)
-    sprintf_s(bf, "%s\t%s", tp, ct);
+    swprintf_s(bf, L"%s\t%s", tp, ct);
   else if (Type==oPunch::PunchCheck)
-    sprintf_s(bf, "%s\t%s", tp, ct);
+    swprintf_s(bf, L"%s\t%s", tp, ct);
   else
   {
     if (isUsed)
-      sprintf_s(bf, "%d\t%s", Type, ct);
+      swprintf_s(bf, L"%d\t%s", Type, ct);
     else
-      sprintf_s(bf, "  %d*\t%s", Type, ct);
+      swprintf_s(bf, L"  %d*\t%s", Type, ct);
   }
 
   return bf;
 }
 
-string oPunch::getSimpleString() const
+wstring oPunch::getSimpleString() const
 {
-  string time(getTime());
+  wstring time(getTime());
 
   if (Type==oPunch::PunchStart)
-    return lang.tl("starten (X)#" + time);
+    return lang.tl(L"starten (X)#" + time);
   else if (Type==oPunch::PunchFinish)
-    return lang.tl("målet (X)#" + time);
+    return lang.tl(L"målet (X)#" + time);
   else if (Type==oPunch::PunchCheck)
-    return lang.tl("check (X)#" + time);
+    return lang.tl(L"check (X)#" + time);
   else
-    return lang.tl("kontroll X (Y)#" + itos(Type) + "#" + time);
+    return lang.tl(L"kontroll X (Y)#" + itow(Type) + L"#" + time);
 }
 
-string oPunch::getTime() const
+wstring oPunch::getTime() const
 {
   if (Time>=0)
     return oe->getAbsTime(Time+tTimeAdjust);
-  else return "-";
+  else return makeDash(L"-");
 }
 
 int oPunch::getAdjustedTime() const
@@ -123,7 +122,7 @@ int oPunch::getAdjustedTime() const
     return Time+tTimeAdjust;
   else return -1;
 }
-void oPunch::setTime(const string &t)
+void oPunch::setTime(const wstring &t)
 {
   int tt = oe->getRelativeTime(t)-tTimeAdjust;
   if (tt < 0)
@@ -143,13 +142,13 @@ oDataContainer &oPunch::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &
   throw std::exception("Unsupported");
 }
 
-string oPunch::getRunningTime(int startTime) const
+wstring oPunch::getRunningTime(int startTime) const
 {
   int t = getAdjustedTime();
   if (startTime>0 && t>0 && t>startTime)
-    return formatTime(t-startTime);
+    return formatTimeW(t-startTime);
   else
-    return "-";
+    return makeDash(L"-");
 }
 
 void oPunch::remove()
@@ -162,11 +161,11 @@ bool oPunch::canRemove() const
   return true;
 }
 
-const string &oPunch::getType() const {
+const wstring &oPunch::getType() const {
   return getType(Type);
 }
 
-const string &oPunch::getType(int t) {
+const wstring &oPunch::getType(int t) {
   if (t==oPunch::PunchStart)
     return lang.tl("Start");
   else if (t==oPunch::PunchFinish)
@@ -174,9 +173,9 @@ const string &oPunch::getType(int t) {
   else if (t==oPunch::PunchCheck)
     return lang.tl("Check");
   else if (t>10 && t<10000) {
-    return itos(t);
+    return itow(t);
   }
-  return _EmptyString;
+  return _EmptyWString;
 }
 
 void oPunch::changedObject() {

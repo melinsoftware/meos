@@ -95,7 +95,7 @@ oPrintPost::oPrintPost()
   resultModuleIndex = -1;
 }
 
-oPrintPost::oPrintPost(EPostType type_, const string &text_,
+oPrintPost::oPrintPost(EPostType type_, const wstring &text_,
                        int format_, int dx_, int dy_, pair<int, bool> index) {
   dx=dx_;
   dy=dy_;
@@ -139,13 +139,14 @@ bool oListInfo::needRegenerate(const oEvent &oe) const {
 
 static void generateNBestHead(const oListParam &par, oListInfo &li, int ypos) {
   if (par.filterMaxPer > 0)
-    li.addHead(oPrintPost(lString, lang.tl("Visar de X bästa#" + itos(par.filterMaxPer)), normalText, 0, ypos));
+    li.addHead(oPrintPost(lString, lang.tl(L"Visar de X bästa#" + itow(par.filterMaxPer)), normalText, 0, ypos));
 }
+extern gdioutput *gdi_main;
 
-static pair<string, bool> getControlName(const oEvent &oe, int courseContolId) {
+static pair<wstring, bool> getControlName(const oEvent &oe, int courseContolId) {
   pair<int, int> idt = oControl::getIdIndexFromCourseControlId(courseContolId);
   pControl to = oe.getControl(idt.first);
-  string toS;
+  wstring toS;
   bool name = false;
   if (to) {
     if (to->hasName()) {
@@ -153,46 +154,46 @@ static pair<string, bool> getControlName(const oEvent &oe, int courseContolId) {
       name = true;
     }
     else if (to->getFirstNumber()>0)
-      toS = itos(to->getFirstNumber());
+      toS = itow(to->getFirstNumber());
     else
-      toS = itos(idt.first);
+      toS = itow(idt.first);
 
     if (to->getNumberDuplicates() > 0)
-      toS += "-" + itos(idt.second + 1);
+      toS += L"-" + itow(idt.second + 1);
   }
   else
-    toS = itos(idt.first);
+    toS = itow(idt.first);
 
   return make_pair(toS, name);
 }
 
-static string getFullControlName(const oEvent &oe, int ctrl) {
-  pair<string, bool> toS = getControlName(oe, ctrl);
+static wstring getFullControlName(const oEvent &oe, int ctrl) {
+  pair<wstring, bool> toS = getControlName(oe, ctrl);
   if (toS.second)
     return toS.first;
   else
-    return lang.tl("Kontroll X#" + toS.first);
+    return lang.tl(L"Kontroll X#" + toS.first);
 }
 
-static void getResultTitle(const oEvent &oe, const oListParam &lp, string &title) {
+static void getResultTitle(const oEvent &oe, const oListParam &lp, wstring &title) {
   if (lp.useControlIdResultTo <= 0 && lp.useControlIdResultFrom <= 0)
-    title = lang.tl("Resultat - %s");
+    title = lang.tl(L"Resultat - %s");
   else if (lp.useControlIdResultTo>0 && lp.useControlIdResultFrom<=0){
-    pair<string, bool> toS = getControlName(oe, lp.useControlIdResultTo);
+    pair<wstring, bool> toS = getControlName(oe, lp.useControlIdResultTo);
     if (toS.second)
-      title = lang.tl("Resultat - %s") + ", " + toS.first;
+      title = lang.tl(L"Resultat - %s") + L", " + toS.first;
     else
-      title = lang.tl("Resultat - %s") + ", " + lang.tl("vid kontroll X#" + toS.first);
+      title = lang.tl(L"Resultat - %s") + L", " + lang.tl(L"vid kontroll X#" + toS.first);
   }
   else {
-    string fromS = lang.tl("Start"), toS = lang.tl("Mål");
+    wstring fromS = lang.tl(L"Start"), toS = lang.tl(L"Mål");
     if (lp.useControlIdResultTo>0) {
       toS = getControlName(oe, lp.useControlIdResultTo).first;
     }
     if (lp.useControlIdResultFrom>0) {
       fromS = getControlName(oe, lp.useControlIdResultFrom).first;
     }
-    title = lang.tl("Resultat mellan X och Y#" + fromS + "#" + toS);
+    title = lang.tl(L"Resultat mellan X och Y#" + fromS + L"#" + toS);
   }
 }
 
@@ -202,11 +203,62 @@ static double adjustmentFactor(double par, double target) {
   return val;
 }
 
+
+template<typename T, int size> class WordMeasure {
+  multimap<int, T> words;
+public:
+
+  WordMeasure() {}
+
+  void add(const T &word) {
+    if (words.size() > size) {
+      size_t blen = words.begin()->first;
+      if (word.length() <= blen)
+        return;
+      else {
+        words.erase(words.begin());
+        words.insert(make_pair(word.length(), word));
+      }
+    }
+    else {
+      words.insert(make_pair(word.length(), word));
+    }
+  }
+
+  int measure(const gdioutput &gdi, 
+              gdiFonts font,
+              const wchar_t *fontFace,
+              T &longest) {   
+
+    int w = 0;
+    TextInfo ti;
+    HDC hDC = GetDC(gdi.getHWND());
+    
+    for (multimap<int, T>::iterator it = words.begin(); it != words.end(); ++it) {
+      ti.xp = 0;
+      ti.yp = 0;
+      ti.format = font;
+      ti.text = it->second;
+      ti.font = fontFace != 0 ? fontFace : L"";
+      gdi.calcStringSize(ti, hDC);
+      if (ti.textRect.right > w) {
+        w = ti.textRect.right;
+        longest = ti.text;
+      }
+    }
+
+    ReleaseDC(gdi.getHWND(), hDC);
+    return w;
+  }
+
+};
+
 int oListInfo::getMaxCharWidth(const oEvent *oe,
+                               const gdioutput &gdi,
                                const set<int> &clsSel,
-                               const vector< pair<EPostType, string> > &typeFormats,
+                               const vector< pair<EPostType, wstring> > &typeFormats,
                                gdiFonts font,
-                               const char *fontFace,
+                               const wchar_t *fontFace,
                                bool large, int minSize) {
   vector<oPrintPost> pps;
   for (size_t k = 0; k < typeFormats.size(); k++) {
@@ -218,10 +270,10 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
   oListParam par;
   par.setLegNumberCoded(0);
   oCounter c;
-  vector<int> extras(pps.size(), 0);
+  vector< WordMeasure<wstring, 32> > extras(pps.size());
 
   for (size_t k = 0; k < pps.size(); k++) {
-    string extra;
+    wstring extra;
     switch (pps[k].type) {
       case lRunnerTotalTimeAfter:
       case lRunnerClassCourseTimeAfter:
@@ -236,7 +288,7 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lRunnerTimeAdjustment:
       case lRunnerGeneralTimeAfter:
  
-        extra = "+10:00";
+        extra = L"+10:00";
         break;
       case lTeamRogainingPointOvertime:
       case lRunnerRogainingPointOvertime:
@@ -255,11 +307,11 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lRunnerTime:
       case lRunnerTimeStatus:
       case lRunnerTimePlaceFixed:
-        extra = "50:50";
+        extra = L"50:50";
         break;
       case lRunnerGeneralTimeStatus:
       case lClassStartTimeRange:
-        extra = "50:50 (50:50)";
+        extra = L"50:50 (50:50)";
         break;
       case lTeamRogainingPointReduction:
       case lRunnerRogainingPointReduction:
@@ -277,66 +329,68 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lPunchControlPlaceAcc:
       case lResultModuleNumber:
       case lResultModuleNumberTeam:
-        extra = "199.";
+        extra = L"199.";
         break;
       case lRunnerGeneralPlace:
-        extra = "199. (99.)";
+        extra = L"199. (99.)";
         break;
     }
 
-    int width = 0;
     EPostType type = pps[k].type;
 
     if (type == lClubName || type == lRunnerName || type == lTeamName
                           || type == lTeamRunner || type == lTeamClub)
-      width = max(15, width);
+      extras[k].add(L"IK Friskus Varberg");
 
     if (type == lRunnerGivenName || type == lRunnerFamilyName || type == lRunnerNationality)
-      width = max(7, width);
+      extras[k].add(L"Karl-Gunnar");
 
     if (type == lRunnerCompleteName || type == lPatrolNameNames || type == lPatrolClubNameNames)
-      width = max(20, width);
+      extras[k].add(L"Karl-Gunnar Alexandersson");
 
-    width = max<int>(extra.size(), width);
-
-    extras[k] = width;
+    extras[k].add(extra);
   }
-
   for (size_t k = 0; k < pps.size(); k++) {
     const oPrintPost &pp = pps[k];
-    int width = 0;
-
+   
     for (oClassList::const_iterator it = oe->Classes.begin(); it != oe->Classes.end(); ++it) {
       if (it->isRemoved())
         continue;
       if (!clsSel.empty() && clsSel.count(it->getId()) == 0)
         continue;
 
-      const string &out = oe->formatListString(pp, par, 0, 0, 0, pClass(&*it), c);
-      width = max(width, int(out.length()));
+      const wstring &out = oe->formatListString(pp, par, 0, 0, 0, pClass(&*it), c);
+      extras[k].add(out);
     }
 
     for (oCourseList::const_iterator it = oe->Courses.begin(); it != oe->Courses.end(); ++it) {
       if (it->isRemoved())
         continue;
 
-      const string &out = oe->formatSpecialString(pp, par, 0, 0, pCourse(&*it), 0,  c);
-      width = max(width, int(out.length()));
+      const wstring &out = oe->formatSpecialString(pp, par, 0, 0, pCourse(&*it), 0,  c);
+      extras[k].add(out);
     }
 
     for (oControlList::const_iterator it = oe->Controls.begin(); it != oe->Controls.end(); ++it) {
       if (it->isRemoved())
         continue;
 
-      const string &out = oe->formatSpecialString(pp, par, 0, 0, 0, pControl(&*it),  c);
-      width = max(width, int(out.length()));
+      const wstring &out = oe->formatSpecialString(pp, par, 0, 0, 0, pControl(&*it),  c);
+      extras[k].add(out);
     }
-    extras[k] = max(extras[k], width);
   }
 
   int width = minSize;
   vector<int> row(pps.size(), 0);
-
+  vector<wstring> samples(pps.size());
+  wstring totWord = L"";
+  for (size_t k = 0; k < pps.size(); k++) {
+    extras[k].measure(gdi, font, fontFace, samples[k]);
+    totWord += samples[k];
+  }
+  
+  WordMeasure<wstring, 64> totMeasure;
+  totMeasure.add(totWord);
   for (oRunnerList::const_iterator it = oe->Runners.begin(); it != oe->Runners.end(); ++it) {
     if (it->isRemoved())
       continue;
@@ -347,8 +401,8 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
     if (!clsSel.empty() && (!teamOK && clsSel.count(it->getClassId()) == 0))
         continue;
 
-    copy(extras.begin(), extras.end(), row.begin());
-    
+    totWord.clear();
+    wstring rout;
     for (size_t k = 0; k < pps.size(); k++) {
       oPrintPost &pp = pps[k];
       
@@ -361,26 +415,34 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
         pRunner r = pRunner(&*it);
         numIter = (r && r->getCard()) ? r->getCard()->getNumPunches() + 1 : 1;
       }
-
+      rout.clear();
       while (numIter-- > 0) {
-        const string &out = oe->formatListString(pp, par, it->tInTeam, pRunner(&*it), it->Club, it->Class, c);
-        row[k] = max(row[k], int(out.length()));
+        const wstring &out = oe->formatListString(pp, par, it->tInTeam, pRunner(&*it), it->Club, it->Class, c);
+        //row[k] = max(row[k], int(out.length()));
+        if (out.length() > rout.length())
+          rout = out;
         if (numIter>0)
           c.level3++;
       }
+
+      if (rout.length() > samples[k].length())
+        totWord.append(rout);
+      else
+        totWord.append(samples[k]);
+
     }
 
-    int sum = 0; 
-    for (size_t k = 0; k < row.size(); k++)
-      sum += row[k];
-    width = max(width, sum); 
+    totMeasure.add(totWord);
   }
 
-  if (width == 0) {
-    for (size_t k = 0; k < row.size(); k++)
-      width += extras[k];
-  }
-
+  wstring dummy;
+  int w = totMeasure.measure(gdi, font, fontFace, dummy);
+  w = max(w, minSize);
+  if (large)
+    return w + 5;
+  else
+    return w + 15;
+  /*
   double w = width;
   double s = 1.0;
 
@@ -402,10 +464,10 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
   else if (width>0 && large)
     return int(s*(w*7.0+10.0));
   else
-    return 0;
+    return 0;*/
 }
 
-const string & oEvent::formatListString(EPostType type, const pRunner r) const
+const wstring & oEvent::formatListString(EPostType type, const pRunner r) const
 {
   oPrintPost pp;
   oCounter ctr;
@@ -415,8 +477,8 @@ const string & oEvent::formatListString(EPostType type, const pRunner r) const
   return formatListString(pp, par, r->tInTeam, r, r->Club, r->Class, ctr);
 }
 
-const string & oEvent::formatListString(EPostType type, const pRunner r, 
-                                        const string &format) const {
+const wstring & oEvent::formatListString(EPostType type, const pRunner r, 
+                                         const wstring &format) const {
   oPrintPost pp;
   oCounter ctr;
   oListParam par;
@@ -427,17 +489,17 @@ const string & oEvent::formatListString(EPostType type, const pRunner r,
 }
 
 
-const string &oEvent::formatListString(const oPrintPost &pp, const oListParam &par,
-                                       const pTeam t, const pRunner r, const pClub c,
-                                       const pClass pc, oCounter &counter) const {
+const wstring &oEvent::formatListString(const oPrintPost &pp, const oListParam &par,
+                                        const pTeam t, const pRunner r, const pClub c,
+                                        const pClass pc, oCounter &counter) const {
   const oPrintPost *cpp = &pp;
-  const string *tmp = 0;
-  string *out = 0;
+  const wstring *tmp = 0;
+  wstring *out = 0;
   while (cpp) {
     if (tmp) {
       if (!out) {
-        out = &StringCache::getInstance().get();
-        *out = "";
+        out = &StringCache::getInstance().wget();
+        *out = L"";
       }
       out->append(*tmp);
     }
@@ -453,16 +515,16 @@ const string &oEvent::formatListString(const oPrintPost &pp, const oListParam &p
     return *tmp;
 }
 
-const string &oEvent::formatSpecialString(const oPrintPost &pp, const oListParam &par, const pTeam t, int legIndex,
-                                          const pCourse crs, const pControl ctrl, oCounter &counter) const {
+const wstring &oEvent::formatSpecialString(const oPrintPost &pp, const oListParam &par, const pTeam t, int legIndex,
+                                           const pCourse crs, const pControl ctrl, oCounter &counter) const {
   const oPrintPost *cpp = &pp;
-  const string *tmp = 0;
-  string *out = 0;
+  const wstring *tmp = 0;
+  wstring *out = 0;
   while (cpp) {
     if (tmp) {
       if (!out) {
-        out = &StringCache::getInstance().get();
-        *out = "";
+        out = &StringCache::getInstance().wget();
+        *out = L"";
       }
       out->append(*tmp);
     }
@@ -478,14 +540,15 @@ const string &oEvent::formatSpecialString(const oPrintPost &pp, const oListParam
     return *tmp;
 }
 
-const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListParam &par,
-                                             const pTeam t, int legIndex,
-                                             const pCourse pc, const pControl ctrl, 
-                                             oCounter &counter) const {
+const wstring &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListParam &par,
+                                              const pTeam t, int legIndex,
+                                              const pCourse pc, const pControl ctrl, 
+                                              oCounter &counter) const {
 
-  char bf[512];
-  const string *sptr=0;
-  bf[0]=0;
+  wchar_t bfw[512];
+  const wstring *wsptr=0;
+  bfw[0] = 0;
+
   static bool reentrantLock = false;
   if (reentrantLock == true) {
     reentrantLock = false;
@@ -497,21 +560,21 @@ const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListPa
       if (pc) {
         int len = pc->getLength();
         if (len > 0)
-          sprintf_s(bf, "%d", len);
+          swprintf_s(bfw, L"%d", len);
       }
     break;
 
     case lCourseName:
     case lRunnerCourse:
       if (pc) {
-        sptr = &pc->getName();
+        wsptr = &pc->getName();
       }
     break;
 
     case lRunnerLegNumberAlpha:
       if (t && t->getClassRef() && legIndex >= 0) {
-        string legStr = t->getClassRef()->getLegNumber(legIndex);
-        strcpy_s(bf, legStr.c_str());
+        wstring legStr = t->getClassRef()->getLegNumber(legIndex);
+        wcscpy_s(bfw, legStr.c_str());
       }
       break;
 
@@ -519,26 +582,26 @@ const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListPa
       if (t && t->getClassRef() && legIndex >= 0) {
          int legNumber, legOrder;
          t->getClassRef()->splitLegNumberParallel(legIndex, legNumber, legOrder);
-         sptr = &itos(legNumber+1);
+         wsptr = &itow(legNumber+1);
       }
       break;
 
     case lCourseClimb: {
       int len = pc ? pc->getDCI().getInt("Climb") : 0;
       if (len > 0)
-        sprintf_s(bf, "%d", len);      
+        swprintf_s(bfw, L"%d", len);      
     }
     break;
 
     case lCourseUsage:
       if (pc) {
-        sptr = &itos(pc->getNumUsedMaps(false));
+        wsptr = &itow(pc->getNumUsedMaps(false));
       }
     break;
 
     case lCourseUsageNoVacant:
       if (pc) {
-        sptr = &itos(pc->getNumUsedMaps(true));
+        wsptr = &itow(pc->getNumUsedMaps(true));
       }
     break;
 
@@ -546,24 +609,24 @@ const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListPa
       if (pc) {
         vector<pClass> cls;
         pc->getClasses(cls);
-        string tmp;
+        wstring tmp;
         for (size_t k = 0; k < cls.size(); k++) {
           if (k > 0)
-            tmp += ", ";
+            tmp += L", ";
           tmp += cls[k]->getName();
           if (tmp.length() > 100) {
-            tmp += ", ...";
+            tmp += L", ...";
             break;
           }
         }
-        strncpy_s(bf, tmp.c_str(), 256);
+        wcsncpy_s(bfw, tmp.c_str(), 256);
       }
     break;
     
 
     case lControlName:
       if (ctrl)
-        strncpy_s(bf, ctrl->getName().c_str(), 128);
+        wcsncpy_s(bfw, ctrl->getName().c_str(), 128);
     break;
 
     case lControlCourses:
@@ -571,21 +634,21 @@ const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListPa
         vector<pCourse> crs;
         ctrl->getCourses(crs);
         if (crs.size() == Courses.size()) {
-          sptr = &lang.tl("Alla");
+          wsptr = &lang.tl("Alla");
           break;
         }
 
-        string tmp;
+        wstring tmp;
         for (size_t k = 0; k < crs.size(); k++) {
           if (k > 0)
-            tmp += ", ";
+            tmp += L", ";
           tmp += crs[k]->getName();
           if (tmp.length() > 100) {
-            tmp += ", ...";
+            tmp += L", ...";
             break;
           }
         }
-        strncpy_s(bf, tmp.c_str(), 256);
+        wcsncpy_s(bfw, tmp.c_str(), 256);
       }
     break;
   
@@ -594,77 +657,77 @@ const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListPa
         vector<pClass> cls;
         ctrl->getClasses(cls);
         if (cls.size() == getNumClasses()) {
-          sptr = &lang.tl("Alla");
+          wsptr = &lang.tl("Alla");
           break;
         }
 
-        string tmp;
+        wstring tmp;
         for (size_t k = 0; k < cls.size(); k++) {
           if (k > 0)
-            tmp += ", ";
+            tmp += L", ";
           tmp += cls[k]->getName();
           if (tmp.length() > 100) {
-            tmp += ", ...";
+            tmp += L", ...";
             break;
           }
         }
-        strncpy_s(bf, tmp.c_str(), 256);
+        wcsncpy_s(bfw, tmp.c_str(), 256);
       }
     break;
 
     case lControlVisitors:
       if (ctrl)
-        sptr = &itos(ctrl->getNumVisitors(false));
+        wsptr = &itow(ctrl->getNumVisitors(false));
     break;
 
     case lControlPunches:
       if (ctrl)
-        sptr = &itos(ctrl->getNumVisitors(true));
+        wsptr = &itow(ctrl->getNumVisitors(true));
       break;
 
     case lControlMedianLostTime:
       if (ctrl) 
-        sptr = &formatTime(ctrl->getMissedTimeMedian()); 
+        wsptr = &formatTimeW(ctrl->getMissedTimeMedian()); 
     break;
 
     case lControlMaxLostTime:
       if (ctrl) 
-        sptr = &formatTime(ctrl->getMissedTimeMax()); 
+        wsptr = &formatTimeW(ctrl->getMissedTimeMax()); 
       break;
     
     case lControlMistakeQuotient:
       if (ctrl) {
-        string tmp = itos(ctrl->getMistakeQuotient()); 
-        tmp += "%";
-        strncpy_s(bf, tmp.c_str(), 20);
+        wstring tmp = itow(ctrl->getMistakeQuotient()); 
+        tmp += L"%";
+        wcsncpy_s(bfw, tmp.c_str(), 20);
       }
       break;
 
     case lControlRunnersLeft:
       if (ctrl)
-        sptr = &itos(ctrl->getNumRunnersRemaining());
+        wsptr = &itow(ctrl->getNumRunnersRemaining());
     break;
 
     case lControlCodes: 
       if (ctrl) {
         vector<int> numbers;
         ctrl->getNumbers(numbers);
-        string tmp;
+        wstring tmp;
         for (size_t j = 0; j < numbers.size(); j++) {
           if (j > 0)
-            tmp += ", ";
-          tmp += itos(numbers[j]);
+            tmp += L", ";
+          tmp += itow(numbers[j]);
         }
-        strncpy_s(bf, tmp.c_str(), 256);
+        wcsncpy_s(bfw, tmp.c_str(), 256);
       }
       break;
 
     default: {
       reentrantLock = true;
       try {
-        const string &res = formatListStringAux(pp, par, t, t ? t->getRunner(legIndex) : 0, 
-                                                                t ? t->getClubRef() : 0,
-                                                                t ? t->getClassRef() : 0, counter);
+        const wstring &res = formatListStringAux(pp, par, t, t ? t->getRunner(legIndex) : 0, 
+                                                                 t ? t->getClubRef() : 0,
+                                                                 t ? t->getClassRef() : 0, counter);
         reentrantLock = false;
         return res;
       }
@@ -675,41 +738,42 @@ const string &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListPa
     }
   }
 
-  if (pp.type!=lString && (sptr==0 || sptr->empty()) && bf[0]==0)
-    return _EmptyString;
-  else if (sptr) {
+  if (pp.type!=lString && (wsptr==0 || wsptr->empty()) && bfw[0]==0)
+    return _EmptyWString;
+  else if (wsptr) {
     if (pp.text.empty())
-      return *sptr;
+      return *wsptr;
     else {
-      sprintf_s(bf, pp.text.c_str(), sptr->c_str());
-      string &res = StringCache::getInstance().get();
-      res = bf;
+      swprintf_s(bfw, pp.text.c_str(), wsptr->c_str());
+      wstring &res = StringCache::getInstance().wget();
+      res = bfw;
       return res;
     }
   }
   else {
     if (pp.text.empty()) {
-      string &res = StringCache::getInstance().get();
-      res = bf;
+      wstring &res = StringCache::getInstance().wget();
+      res = bfw;
       return res;
     }
     else {
-      char bf2[512];
-      sprintf_s(bf2, pp.text.c_str(), bf);
-      string &res = StringCache::getInstance().get();
+      wchar_t bf2[512];
+      swprintf_s(bf2, pp.text.c_str(), bfw);
+      wstring &res = StringCache::getInstance().wget();
       res = bf2;
       return res;
     }
   }
 }
 
-const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam &par,
+const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam &par,
                                           const pTeam t, const pRunner r, const pClub c,
                                           const pClass pc, oCounter &counter) const {
 
-  char bf[512];
-  const string *sptr=0;
-  bf[0]=0;
+  wchar_t wbf[512];
+  const wstring *wsptr=0;
+  wbf[0]=0;
+
   bool invalidClass = pc && pc->getClassStatus() != oClass::Normal;
   int legIndex = pp.legIndex;
   if(pc && pp.type != lResultModuleNumber && pp.type != lResultModuleNumberTeam
@@ -719,35 +783,35 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
   switch ( pp.type ) {
     case lClassName:
       if (invalidClass)
-        sprintf_s(bf, "%s (%s)", pc->getName().c_str(), lang.tl("Struken").c_str());
+        swprintf_s(wbf, L"%s (%s)", pc->getName().c_str(), lang.tl("Struken").c_str());
       else
-        sptr=pc ? &pc->getName() : 0;
+        wsptr=pc ? &pc->getName() : 0;
       break;
     case lResultDescription: {
-        string title;
+        wstring title;
         getResultTitle(*this, par, title);
-        strcpy_s(bf, title.c_str());
+        wcscpy_s(wbf, title.c_str());
       }
       break;
     case lTimingFromName:
       if (par.useControlIdResultFrom > 0)
-        strcpy_s(bf, getFullControlName(*this, par.useControlIdResultFrom).c_str());
+        wcscpy_s(wbf, getFullControlName(*this, par.useControlIdResultFrom).c_str());
       else
-        sptr = &lang.tl("Start");
+        wsptr = &lang.tl(L"Start");
       break;
     case lTimingToName:
       if (par.useControlIdResultTo > 0)
-        strcpy_s(bf, getFullControlName(*this, par.useControlIdResultTo).c_str());
+        wcscpy_s(wbf, getFullControlName(*this, par.useControlIdResultTo).c_str());
       else
-        sptr = &lang.tl("Mål");
+        wsptr = &lang.tl(L"Mål");
       break;
     case lClassLength:
       if (pc) {
-        strcpy_s(bf, pc->getLength(par.relayLegIndex).c_str());
+        wcscpy_s(wbf, pc->getLength(par.relayLegIndex).c_str());
       }
       break;
     case lClassStartName:
-      if (pc) strcpy_s(bf, pc->getDI().getString("StartName").c_str());
+      if (pc) wcscpy_s(wbf, pc->getDI().getString("StartName").c_str());
       break;
     case lClassStartTime:
     case lClassStartTimeRange:
@@ -755,16 +819,16 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         int first, last;
         pc->getStartRange(legIndex, first, last);
         if (pc->hasFreeStart())
-          strcpy_s(bf, lang.tl("Fri starttid").c_str());
+          wsptr = &lang.tl("Fri starttid");
         else if (first > 0 && first == last) {
           if (oe->useStartSeconds())
-            strcpy_s(bf, oe->getAbsTime(first).c_str());
+            wsptr = &oe->getAbsTime(first);
           else
-            strcpy_s(bf, oe->getAbsTimeHM(first).c_str());
+            wsptr = &oe->getAbsTimeHM(first);
         }
         else if (pp.type == lClassStartTimeRange) {
-          string range =  oe->getAbsTimeHM(first) + MakeDash(" - ") + oe->getAbsTimeHM(last);
-          strcpy_s(bf, range.c_str());
+          wstring range =  oe->getAbsTimeHM(first) + makeDash(L" - ") + oe->getAbsTimeHM(last);
+          wcscpy_s(wbf, range.c_str());
         }
       }
       break;
@@ -772,7 +836,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (pc && !invalidClass) {
         int total, finished,  dns;
         oe->getNumClassRunners(pc->getId(), par.getLegNumber(pc), total, finished, dns);
-        sprintf_s(bf, "(%d / %d)", finished, total);
+        swprintf_s(wbf, L"(%d / %d)", finished, total);
       }
       break;
     case lCourseLength:
@@ -798,27 +862,27 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (r) {
         int sh = r->getNumShortening();
         if (sh > 0)
-          sprintf_s(bf, "%d", sh);
+          swprintf_s(wbf, L"%d", sh);
       }
       break;
     case lCmpName:
-      sptr = &getName();
+      wsptr = &getName();
       break;
     case lCmpDate:
-      strcpy_s(bf, this->getDate().c_str());
+      wsptr = &getDate();
       break;
     case lCurrentTime:
-      strcpy_s(bf, getCurrentTimeS().c_str());
+      wcscpy_s(wbf, getCurrentTimeS().c_str());
       break;
     case lRunnerClub:
-      sptr=(r && r->Club) ? &r->Club->getDisplayName() : 0;
+      wsptr = (r && r->Club) ? &r->Club->getDisplayName() : 0;
       break;
     case lRunnerFinish:
       if (r && !invalidClass) {
         if (pp.resultModuleIndex == -1)
-          sptr = &r->getFinishTimeS();
+          wsptr = &r->getFinishTimeS();
         else
-          sptr = &r->getTempResult(pp.resultModuleIndex).getFinishTimeS(this);
+          wsptr = &r->getTempResult(pp.resultModuleIndex).getFinishTimeS(this);
       }
       break;
     case lRunnerStart:
@@ -834,45 +898,45 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         }
         if (r->startTimeAvailable()) {
           if (pp.type != lRunnerStartZero) 
-            sptr = &r->getStartTimeCompact();
+            wsptr = &r->getStartTimeCompact();
           else {
             int st = r->getStartTime();
-            sptr = &getTimeMS(st-3600);
+            wsptr = &getTimeMSW(st-3600);
           }
         }
         else
-          sptr = &MakeDash("-");
+          wsptr = &makeDash(L"-");
       }
       break;
     
     case lRunnerName:
-      sptr = r ? &r->getName() : 0;
+      wsptr = r ? &r->getName() : 0;
       break;
     case lRunnerGivenName:
-      if (r) strcpy_s(bf, r->getGivenName().c_str());
+      if (r) wcscpy_s(wbf, r->getGivenName().c_str());
       break;
     case lRunnerFamilyName:
-      if (r) strcpy_s(bf, r->getFamilyName().c_str());
+      if (r) wcscpy_s(wbf, r->getFamilyName().c_str());
       break;
     case lRunnerCompleteName:
-      if (r) strcpy_s(bf, r->getCompleteIdentification().c_str());
+      if (r) wcscpy_s(wbf, r->getCompleteIdentification().c_str());
       break;
     case lPatrolNameNames:
       if (t) {
         pRunner r1 = t->getRunner(0);
         pRunner r2 = t->getRunner(1);
         if (r1 && r2) {
-          sprintf_s(bf, "%s / %s", r1->getName().c_str(),r2->getName().c_str());
+          swprintf_s(wbf, L"%s / %s", r1->getName().c_str(),r2->getName().c_str());
         }
         else if (r1) {
-          sptr = &r1->getName();
+          wsptr = &r1->getName();
         }
         else if (r2) {
-          sptr = &r2->getName();
+          wsptr = &r2->getName();
         }
       }
       else {
-        sptr = r ? &r->getName() : 0;
+        wsptr = r ? &r->getName() : 0;
       }
       break;
     case lPatrolClubNameNames:
@@ -884,63 +948,63 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (c1 == c2)
           c2 = 0;
         if (c1 && c2) {
-          sprintf_s(bf, "%s / %s", c1->getDisplayName().c_str(),c2->getDisplayName().c_str());
+          swprintf_s(wbf, L"%s / %s", c1->getDisplayName().c_str(),c2->getDisplayName().c_str());
         }
         else if (c1) {
-          sptr = &c1->getDisplayName();
+          wsptr = &c1->getDisplayName();
         }
         else if (c2) {
-          sptr = &c2->getDisplayName();
+          wsptr = &c2->getDisplayName();
         }
       }
       else {
-        sptr = r && r->Club ? &r->Club->getDisplayName() : 0;
+        wsptr = r && r->Club ? &r->Club->getDisplayName() : 0;
       }
       break;
     case lRunnerTime:
       if (r && !invalidClass) {
         if (pp.resultModuleIndex == -1)
-          sptr = &r->getRunningTimeS();
+          wsptr = &r->getRunningTimeS();
         else
-          sptr = &r->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
+          wsptr = &r->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
 
         if (r->getNumShortening() > 0) {
-          sprintf_s(bf, "*%s", sptr->c_str());
-          sptr = 0;
+          swprintf_s(wbf, L"*%s", wsptr->c_str());
+          wsptr = 0;
         }
 
       }
     case lRunnerTimeStatus:
       if (r) {
         if (invalidClass)
-          sptr = &lang.tl("Struken");
+          wsptr = &lang.tl("Struken");
         else if (pp.resultModuleIndex == -1) {
           bool ok = r->prelStatusOK();
           if (ok && pc && !pc->getNoTiming()) {
-            sptr = &r->getRunningTimeS();
+            wsptr = &r->getRunningTimeS();
             if (r->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else {
             if (ok)
-              sptr = &formatStatus(StatusOK);
+              wsptr = &formatStatus(StatusOK);
             else
-              sptr = &r->getStatusS();
+              wsptr = &r->getStatusS();
           }
         }
         else {
           const oAbstractRunner::TempResult &res = r->getTempResult(pp.resultModuleIndex);
           if (res.getStatus() == StatusOK && pc && !pc->getNoTiming()) {
-            sptr = &res.getRunningTimeS(0);
+            wsptr = &res.getRunningTimeS(0);
             if (r->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else
-            sptr = &res.getStatusS(StatusOK);
+            wsptr = &res.getStatusS(StatusOK);
         }
       }
       break;
@@ -948,45 +1012,45 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
     case lRunnerGeneralTimeStatus:
       if (r) {
         if (invalidClass)
-          sptr = &lang.tl("Struken");
+          wsptr = &lang.tl("Struken");
         else if (pp.resultModuleIndex == -1) {
           if (r->prelStatusOK() && pc && !pc->getNoTiming()) {
-            string timeStatus = r->getRunningTimeS();
+            wstring timeStatus = r->getRunningTimeS();
             
             if (r->hasInputData() || (r->getLegNumber() > 0 && !r->isPatrolMember())) {
               RunnerStatus ts = r->getTotalStatus();
               int rt = r->getTotalRunningTime();
               if (ts == StatusOK || (ts == StatusUnknown && rt > 0)) {
-                string vts = formatTime(rt) + " (" + timeStatus + ")";
+                wstring vts = formatTimeW(rt) + L" (" + timeStatus + L")";
                 swap(vts, timeStatus);
               }
               else {
-                string vts = formatStatus(ts) + " (" + timeStatus + ")";
+                wstring vts = formatStatus(ts) + L" (" + timeStatus + L")";
                 swap(vts, timeStatus);
               }
             }
 
             if (r->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", timeStatus.c_str());
+              swprintf_s(wbf, L"*%s", timeStatus.c_str());
             }
             else {
-              strcpy_s(bf, timeStatus.c_str());
+              wcscpy_s(wbf, timeStatus.c_str());
             }
           }
           else
-            sptr = &r->getStatusS();
+            wsptr = &r->getStatusS();
         }
         else {
           const oAbstractRunner::TempResult &res = r->getTempResult(pp.resultModuleIndex);
           if (res.getStatus() == StatusOK && pc && !pc->getNoTiming()) {
-            sptr = &res.getRunningTimeS(0);
+            wsptr = &res.getRunningTimeS(0);
             if (r->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else
-            sptr = &res.getStatusS(StatusOK);
+            wsptr = &res.getStatusS(StatusOK);
         }
       }
       break;
@@ -1003,10 +1067,10 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
               if ( (t && t->getNumShortening(tleg) == 0) || (!t && r->getNumShortening() == 0)) { 
                 int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true);
                 if (after > 0)
-                  sprintf_s(bf, "+%d:%02d", after/60, after%60);
+                  swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
               }
               else {
-                sptr = &MakeDash("-");
+                wsptr = &makeDash(L"-");
               }
             }
           }
@@ -1016,10 +1080,10 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
               if (r->getNumShortening() == 0) {
                 int after = r->getRunningTime() - pc->getBestLegTime(tleg);
                 if (after > 0)
-                  sprintf_s(bf, "+%d:%02d", after/60, after%60);
+                  swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
               }
               else {
-                sptr = &MakeDash("-");
+                wsptr = &makeDash(L"-");
               }
             }
           }
@@ -1027,7 +1091,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         else {
           int after = r->getTempResult(pp.resultModuleIndex).getTimeAfter();
           if (after > 0)
-            sprintf_s(bf, "+%d:%02d", after/60, after%60);
+            swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
       }
       break;
@@ -1041,7 +1105,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           int len = pc->getLength();
           if (len > 0 && t > 0) {
             int sperkm = (1000 * t) / len;
-            strcpy_s(bf, formatTime(sperkm).c_str());
+            wsptr = &formatTimeW(sperkm);
           }
         }
       }
@@ -1049,89 +1113,89 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
     case lRunnerTotalTime:
       if (r && !invalidClass) {
         if (pp.resultModuleIndex == -1)
-          sptr = &r->getTotalRunningTimeS();
+          wsptr = &r->getTotalRunningTimeS();
         else
-          sptr = &r->getTempResult(pp.resultModuleIndex).getRunningTimeS(r->getTotalTimeInput());
+          wsptr = &r->getTempResult(pp.resultModuleIndex).getRunningTimeS(r->getTotalTimeInput());
       }
       break;
     case lRunnerTotalTimeStatus:
       if (invalidClass)
-        sptr = &lang.tl("Struken");
+        wsptr = &lang.tl("Struken");
       else if (r) {
         if (pp.resultModuleIndex == -1) {
           if ((r->getTotalStatus()==StatusOK || (r->getTotalStatus()==StatusUnknown 
             && r->prelStatusOK() && r->getInputStatus() == StatusOK) )&& pc && !pc->getNoTiming()) {
-            sptr = &r->getTotalRunningTimeS();
+            wsptr = &r->getTotalRunningTimeS();
             if (r->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else
-            sptr = &r->getTotalStatusS();
+            wsptr = &r->getTotalStatusS();
         }
         else {
           const oAbstractRunner::TempResult &res = r->getTempResult(pp.resultModuleIndex);
           RunnerStatus input = r->getTotalStatusInput();
           if (input == StatusOK && res.getStatus() == StatusOK && pc && !pc->getNoTiming()) {
-            sptr = &res.getRunningTimeS(r->getTotalTimeInput());
+            wsptr = &res.getRunningTimeS(r->getTotalTimeInput());
             if (r->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else
-            sptr = &res.getStatusS(input);
+            wsptr = &res.getStatusS(input);
         }
       }
       break;
     case lRunnerTempTimeStatus:
       if (invalidClass)
-          sptr = &lang.tl("Struken");
+          wsptr = &lang.tl("Struken");
       else if (r) {
         if (r->tempStatus==StatusOK && pc && !pc->getNoTiming())
-          strcpy_s(bf, formatTime(r->tempRT).c_str());
+          wcscpy_s(wbf, formatTimeW(r->tempRT).c_str());
         else
-          strcpy_s(bf, formatStatus(r->tempStatus).c_str() );
+          wcscpy_s(wbf, formatStatus(r->tempStatus).c_str() );
       }
       break;
     case lRunnerPlace:
       if (r && !invalidClass  && pc && !pc->getNoTiming()) {
         if (pp.resultModuleIndex == -1)
-          strcpy_s(bf, r->getPrintPlaceS(pp.text.empty()).c_str() );
+          wcscpy_s(wbf, r->getPrintPlaceS(pp.text.empty()).c_str() );
         else
-          sptr = &r->getTempResult(pp.resultModuleIndex).getPrintPlaceS(pp.text.empty());
+          wsptr = &r->getTempResult(pp.resultModuleIndex).getPrintPlaceS(pp.text.empty());
       }
       break;
     case lRunnerTotalPlace:
       if (r && !invalidClass && pc && !pc->getNoTiming())
-        strcpy_s(bf, r->getPrintTotalPlaceS(pp.text.empty()).c_str() );
+        wcscpy_s(wbf, r->getPrintTotalPlaceS(pp.text.empty()).c_str() );
       break;
 
     case lRunnerGeneralPlace:
       if (r && !invalidClass && pc && !pc->getNoTiming()) {
         if (pp.resultModuleIndex == -1) {
           if (r->hasInputData() || (r->getLegNumber() > 0 && !r->isPatrolMember())) {
-            string iPlace;
+            wstring iPlace;
             if (pc->getClassType() != oClassPatrol)
               iPlace = r->getPrintPlaceS(true);
 
-            string tPlace = r->getPrintTotalPlaceS(true); 
-            string v;
+            wstring tPlace = r->getPrintTotalPlaceS(true); 
+            wstring v;
             if (iPlace.empty())
               v = tPlace;
             else {
               if (tPlace.empty())
-                tPlace = MakeDash("-");
-              v = tPlace + " (" + iPlace + ")";
+                tPlace = makeDash(L"-");
+              v = tPlace + L" (" + iPlace + L")";
             }
-            strcpy_s(bf, v.c_str());
+            wcscpy_s(wbf, v.c_str());
           }
           else
-            strcpy_s(bf, r->getPrintPlaceS(pp.text.empty()).c_str() );
+            wcscpy_s(wbf, r->getPrintPlaceS(pp.text.empty()).c_str() );
         }
         else
-          sptr = &r->getTempResult(pp.resultModuleIndex).getPrintPlaceS(pp.text.empty());
+          wsptr = &r->getTempResult(pp.resultModuleIndex).getPrintPlaceS(pp.text.empty());
       }
       break;
 
@@ -1139,7 +1203,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (r && !invalidClass && pc && !pc->getNoTiming()) {
         int p = r->getCoursePlace();
         if (p>0 && p<10000)
-          sprintf_s(bf, "%d.", p);
+          swprintf_s(wbf, L"%d.", p);
       }
       break;
     case lRunnerPlaceDiff:
@@ -1148,9 +1212,9 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (r->getTotalStatus() == StatusOK && p > 0 && r->inputPlace>0) {
           int pd = p - r->inputPlace;
           if (pd > 0)
-            sprintf_s(bf, "+%d", pd);
+            swprintf_s(wbf, L"+%d", pd);
           else if (pd < 0)
-            sprintf_s(bf, "-%d", -pd);
+            swprintf_s(wbf, L"-%d", -pd);
         }
       }
       break;
@@ -1162,27 +1226,27 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           int afterOld = r->inputTime - pc->getBestInputTime(tleg);
           int ad = after - afterOld;
           if (ad > 0)
-            sprintf_s(bf, "+%d:%02d", ad/60, ad%60);
+            swprintf_s(wbf, L"+%d:%02d", ad/60, ad%60);
           if (ad < 0)
-            sprintf_s(bf, "-%d:%02d", (-ad)/60, (-ad)%60);
+            swprintf_s(wbf, L"-%d:%02d", (-ad)/60, (-ad)%60);
         }
       }
       break;
     case lRunnerRogainingPoint:
       if (r && !invalidClass) {
         if (pp.resultModuleIndex == -1) 
-          sprintf_s(bf, "%d", r->getRogainingPoints(false));
+          swprintf_s(wbf, L"%d", r->getRogainingPoints(false));
         else
-          sprintf_s(bf, "%d", r->getTempResult(pp.resultModuleIndex).getPoints());
+          swprintf_s(wbf, L"%d", r->getTempResult(pp.resultModuleIndex).getPoints());
       }
       break;
 
     case lRunnerRogainingPointTotal:
       if (r && !invalidClass) {
         if (pp.resultModuleIndex == -1) 
-          sprintf_s(bf, "%d", r->getRogainingPoints(true));
+          swprintf_s(wbf, L"%d", r->getRogainingPoints(true));
         else
-          sprintf_s(bf, "%d", r->getTempResult(pp.resultModuleIndex).getPoints() + r->getInputPoints());
+          swprintf_s(wbf, L"%d", r->getTempResult(pp.resultModuleIndex).getPoints() + r->getInputPoints());
       }
       break;
 
@@ -1190,14 +1254,14 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (r && !invalidClass) {
         int red = r->getRogainingReduction();
         if (red > 0)
-          sprintf_s(bf, "-%d", red);
+          swprintf_s(wbf, L"-%d", red);
       }
       break;
     
     case lRunnerRogainingPointGross:
       if (r && !invalidClass) {
         int p = r->getRogainingPointsGross();
-        sptr = &itos(p);
+        wsptr = &itow(p);
       }
       break;
     
@@ -1205,23 +1269,23 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (r && !invalidClass) {
         int a = r->getPointAdjustment();
         if (a<0)
-          sptr = &itos(a);
+          wsptr = &itow(a);
         else if (a>0)
-          sprintf_s(bf, "+%d", a);
+          swprintf_s(wbf, L"+%d", a);
       }
       break;
     case lRunnerTimeAdjustment:
       if (r && !invalidClass) {
         int a = r->getTimeAdjustment();
         if (a != 0)
-          sptr = &getTimeMS(a);
+          wsptr = &getTimeMSW(a);
       }
       break;
     case lRunnerRogainingPointOvertime:
       if (r && !invalidClass) {
         int over = r->getRogainingOvertime();
         if (over > 0)
-          sptr = &formatTime(over);
+          wsptr = &formatTimeW(over);
       }
       break;
 
@@ -1241,10 +1305,10 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
   
         if (r->getNumShortening() == 0) {
           if (after > 0)
-            sprintf_s(bf, "+%d:%02d", after/60, after%60);
+            swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
         else {
-          sptr = &MakeDash("-");
+          wsptr = &makeDash(L"-");
         }
       }
       break;
@@ -1255,10 +1319,10 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           if ( (t && t->getNumShortening(tleg) == 0) || (!t && r->getNumShortening() == 0)) { 
             int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true);
             if (after > 0)
-              sprintf_s(bf, "+%d:%02d", after/60, after%60);
+              swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
           }
           else {
-            sptr = &MakeDash("-");
+            wsptr = &makeDash(L"-");
           }
         }
       }
@@ -1269,7 +1333,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (crs && r->tStatus==StatusOK && !pc->getNoTiming()) {
           int after = r->getRunningTime() - pc->getBestTimeCourse(crs->getId());
           if (after > 0)
-            sprintf_s(bf, "+%d:%02d", after/60, after%60);
+            swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
       }
       break;
@@ -1277,12 +1341,12 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (r && !invalidClass) {
         int t = r->getTimeWhenPlaceFixed();
         if (t == 0 || (t>0 && t < getComputerTime())) {
-          strcpy_s(bf, lang.tl("klar").c_str());
+          wcscpy_s(wbf, lang.tl("klar").c_str());
         }
         else if (t == -1)
-          strcpy_s(bf, "-");
+          wcscpy_s(wbf, L"-");
         else
-          strcpy_s(bf, oe->getAbsTime(t).c_str());
+          wcscpy_s(wbf, oe->getAbsTime(t).c_str());
       }
       break;
     case lRunnerLegNumberAlpha:
@@ -1290,11 +1354,11 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (r)
         return formatSpecialStringAux(pp, par, t, r->getLegNumber(), 0, 0, counter);
       else
-        strcpy_s(bf, par.getLegName().c_str());
+        wcscpy_s(wbf, par.getLegName().c_str());
       break;
     case lRunnerMissedTime:
       if (r && r->tStatus == StatusOK && pc && !pc->getNoTiming() && !invalidClass) {
-        strcpy_s(bf, r->getMissedTimeS().c_str());
+        wcscpy_s(wbf, r->getMissedTimeS().c_str());
       }
       break;
     case lRunnerTempTimeAfter:
@@ -1302,27 +1366,27 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (r->tempStatus==StatusOK &&  pc && !pc->getNoTiming()
               && r->tempRT>pc->tLegLeaderTime) {
           int after=r->tempRT-pc->tLegLeaderTime;
-          sprintf_s(bf, "+%d:%02d", after/60, after%60);
+          swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
       }
       break;
 
     case lRunnerCard:
       if (r && r->CardNo > 0)
-        sprintf_s(bf, "%d", r->getCardNo());
+        swprintf_s(wbf, L"%d", r->getCardNo());
       break;
     case lRunnerRank:
       if (r) {
         int rank=r->getDI().getInt("Rank");
         if (rank>0)
-          strcpy_s(bf, FormatRank(rank).c_str());
+          wcscpy_s(wbf, formatRank(rank).c_str());
       }
       break;
     case lRunnerBib:
       if (r) {
-        string bib = r->getBib();
+        const wstring &bib = r->getBib();
         if (!bib.empty())
-          sprintf_s(bf, "%s", bib.c_str());
+          wsptr = &bib;
       }
       break;
     case lRunnerUMMasterPoint:
@@ -1331,62 +1395,61 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         oe->getNumClassRunners(pc->getId(), par.getLegNumber(pc), total, finished, dns);
         int percent = int(floor(0.5+double((100*(total-dns-r->getPlace()))/double(total-dns))));
         if (r->getStatus()==StatusOK)
-          sprintf_s(bf, "%d",  percent);
+          swprintf_s(wbf, L"%d",  percent);
         else
-          sprintf_s(bf, "0");
+          swprintf_s(wbf, L"0");
       }
       break;
     case lRunnerAge:
       if (r) {
         int y = r->getBirthAge();
         if (y > 0)
-          sprintf_s(bf, "%d", y);
+          swprintf_s(wbf, L"%d", y);
       }
     break;
     case lRunnerBirthYear:
       if (r) {
         int y = r->getBirthYear();
         if (y > 0)
-          sprintf_s(bf, "%d", y);
+          swprintf_s(wbf, L"%d", y);
       }
     break;
     case lRunnerSex:
       if (r) {
         PersonSex s = r->getSex();
         if (s == sFemale)
-          sptr = &lang.tl("Kvinna");
+          wsptr = &lang.tl("Kvinna");
         else if (s == sMale)
-          sptr = &lang.tl("Man");
+          wsptr = &lang.tl("Man");
       }
     break;
     case lRunnerPhone:
       if (r) {
-        string s = r->getDCI().getString("Phone");
-        strcpy_s(bf, s.c_str());
+        wsptr = &r->getDCI().getString("Phone");
       }
     break;
     case lRunnerFee:
       if (r) {
-        string s = formatCurrency(r->getDCI().getInt("Fee"));
-        strcpy_s(bf, s.c_str());
+        wstring s = formatCurrency(r->getDCI().getInt("Fee"));
+        wcscpy_s(wbf, s.c_str());
       }
     break;
     case lTeamFee:
       if (t) {
-        string s = formatCurrency(t->getTeamFee());
-        strcpy_s(bf, s.c_str());
+        wstring s = formatCurrency(t->getTeamFee());
+        wcscpy_s(wbf, s.c_str());
       }
     break;
     case lRunnerNationality:
       if (r) {
-        string nat = r->getNationality();
-        strcpy_s(bf, nat.c_str());
+        wstring nat = r->getNationality();
+        wcscpy_s(wbf, nat.c_str());
       }
     break;
     case lTeamName:
       //sptr = t ? &t->Name : 0;
       if (t) {
-        strcpy_s(bf, t->getDisplayName().c_str());
+        wcscpy_s(wbf, t->getDisplayName().c_str());
       }
       break;
     case lTeamStart:
@@ -1403,10 +1466,10 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
 
         if (unsigned(legIndex)<t->Runners.size() && t->Runners[legIndex] && t->Runners[legIndex]->startTimeAvailable()) {
           if (pp.type != lTeamStartZero) 
-            sptr = &t->Runners[legIndex]->getStartTimeCompact();
+            wsptr = &t->Runners[legIndex]->getStartTimeCompact();
           else {
             int st = t->Runners[legIndex]->getStartTime();
-            sptr = &getTimeMS(st-3600);
+            wsptr = &getTimeMSW(st-3600);
           }
         }
       }
@@ -1414,58 +1477,58 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
     case lTeamStatus:
       if (t && !invalidClass) {
         if (pp.resultModuleIndex == -1)
-          sptr = &t->getLegStatusS(legIndex, false);
+          wsptr = &t->getLegStatusS(legIndex, false);
         else
-          sptr = &t->getTempResult(pp.resultModuleIndex).getStatusS(StatusOK);
+          wsptr = &t->getTempResult(pp.resultModuleIndex).getStatusS(StatusOK);
       }
       break;
     case lTeamTime:
       if (t && !invalidClass) {
         if (pp.resultModuleIndex == -1)
-          strcpy_s(bf, t->getLegRunningTimeS(legIndex, false).c_str() );
+          wcscpy_s(wbf, t->getLegRunningTimeS(legIndex, false).c_str() );
         else
-          sptr = &t->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
+          wsptr = &t->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
       }
       break;
     case lTeamTimeStatus:
       if (invalidClass)
-          sptr = &lang.tl("Struken");
+          wsptr = &lang.tl("Struken");
       else if (t) {
         if (pp.resultModuleIndex == -1) {
           RunnerStatus st = t->getLegStatus(legIndex, false);
           if (st==StatusOK || (st==StatusUnknown && t->getLegRunningTime(legIndex, false)>0))
-            strcpy_s(bf, t->getLegRunningTimeS(legIndex, false).c_str());
+            wcscpy_s(wbf, t->getLegRunningTimeS(legIndex, false).c_str());
           else
-            sptr = &t->getLegStatusS(legIndex, false);
+            wsptr = &t->getLegStatusS(legIndex, false);
         }
         else {
           RunnerStatus st = t->getTempResult(pp.resultModuleIndex).getStatus();
           if (st == StatusOK || st == StatusUnknown) {
-            sptr = &t->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
+            wsptr = &t->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
             if (t->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else
-            sptr = &t->getTempResult(pp.resultModuleIndex).getStatusS(StatusOK);
+            wsptr = &t->getTempResult(pp.resultModuleIndex).getStatusS(StatusOK);
         }
       }
       break;
     case lTeamRogainingPoint:
       if (t && !invalidClass) {
         if (pp.resultModuleIndex == -1) 
-          sprintf_s(bf, "%d", t->getRogainingPoints(false));
+          swprintf_s(wbf, L"%d", t->getRogainingPoints(false));
         else
-          sprintf_s(bf, "%d", t->getTempResult(pp.resultModuleIndex).getPoints());
+          swprintf_s(wbf, L"%d", t->getTempResult(pp.resultModuleIndex).getPoints());
       }
       break;
     case lTeamRogainingPointTotal:
       if (t && !invalidClass) {
         if (pp.resultModuleIndex == -1) 
-          sprintf_s(bf, "%d", t->getRogainingPoints(true));
+          swprintf_s(wbf, L"%d", t->getRogainingPoints(true));
         else
-          sprintf_s(bf, "%d", t->getTempResult(pp.resultModuleIndex).getPoints() + t->getInputPoints());
+          swprintf_s(wbf, L"%d", t->getTempResult(pp.resultModuleIndex).getPoints() + t->getInputPoints());
       }
       break;
 
@@ -1473,7 +1536,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (t && !invalidClass) {
         int red = t->getRogainingReduction();
         if (red > 0)
-          sprintf_s(bf, "-%d", red);
+          swprintf_s(wbf, L"-%d", red);
       }
       break;
 
@@ -1481,7 +1544,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (t && !invalidClass) {
         int over = t->getRogainingOvertime();
         if (over > 0)
-          sptr = &formatTime(over);
+          wsptr = &formatTimeW(over);
       }
       break;
 
@@ -1489,9 +1552,9 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (t && !invalidClass) {
         int a = t->getPointAdjustment();
         if (a<0)
-          sptr = &itos(a);
+          wsptr = &itow(a);
         else if (a>0)
-          sprintf_s(bf, "+%d", a);
+          wprintf_s(wbf, "+%d", a);
       }
       break;
 
@@ -1499,7 +1562,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       if (t && !invalidClass) {
         int a = t->getTimeAdjustment();
         if (a != 0)
-          sptr = &getTimeMS(a);
+          wsptr = &getTimeMSW(a);
       }
       break;
 
@@ -1510,10 +1573,10 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
             if (t->getNumShortening(legIndex) == 0) {
               int ta=t->getTimeAfter(legIndex);
               if (ta>0)
-                sprintf_s(bf, "+%d:%02d", ta/60, ta%60);
+                swprintf_s(wbf, L"+%d:%02d", ta/60, ta%60);
             }
             else {
-              sptr = &MakeDash("-");
+              wsptr = &makeDash(L"-");
             }
           }
         }
@@ -1521,7 +1584,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           if (t->getTempResult().getStatus() == StatusOK) {
             int after = t->getTempResult(pp.resultModuleIndex).getTimeAfter();
             if (after > 0)
-              sprintf_s(bf, "+%d:%02d", after/60, after%60);
+              swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
           }
         }
       }
@@ -1529,22 +1592,22 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
     case lTeamPlace:
       if (t && !invalidClass && pc && !pc->getNoTiming()) {
         if (pp.resultModuleIndex == -1) {
-          strcpy_s(bf, t->getLegPrintPlaceS(legIndex, false, pp.text.empty()).c_str());
+          wcscpy_s(wbf, t->getLegPrintPlaceS(legIndex, false, pp.text.empty()).c_str());
         }
         else
-          sptr = &t->getTempResult(pp.resultModuleIndex).getPrintPlaceS(pp.text.empty());
+          wsptr = &t->getTempResult(pp.resultModuleIndex).getPrintPlaceS(pp.text.empty());
       }
       break;
 
     case lTeamLegTimeStatus:
       if (invalidClass)
-        sptr = &lang.tl("Struken");
+        wsptr = &lang.tl("Struken");
       else if (t) {
         int ix = r ? r->getLegNumber() : counter.level3;
         if (t->getLegStatus(ix, false)==StatusOK)
-          strcpy_s(bf, t->getLegRunningTimeS(ix, false).c_str() );
+          wcscpy_s(wbf, t->getLegRunningTimeS(ix, false).c_str() );
         else
-          strcpy_s(bf, t->getLegStatusS(ix, false).c_str() );
+          wcscpy_s(wbf, t->getLegStatusS(ix, false).c_str() );
       }
       break;
     case lTeamLegTimeAfter:
@@ -1554,58 +1617,58 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           if (t->getNumShortening(ix) == 0) {
             int ta=t->getTimeAfter(ix);
             if (ta>0)
-              sprintf_s(bf, "+%d:%02d", ta/60, ta%60);
+              swprintf_s(wbf, L"+%d:%02d", ta/60, ta%60);
           }
           else {
-            sptr = &MakeDash("-");
+            wsptr = &makeDash(L"-");
           }
         }
       }
       break;
     case lTeamClub:
       if (t) {
-        strcpy_s(bf, t->getDisplayClub().c_str());
+        wcscpy_s(wbf, t->getDisplayClub().c_str());
       }
       break;
     case lTeamRunner:
       if (t && unsigned(legIndex)<t->Runners.size() && t->Runners[legIndex])
-        sptr=&t->Runners[legIndex]->getName();
+        wsptr=&t->Runners[legIndex]->getName();
       break;
     case lTeamRunnerCard:
       if (t && unsigned(legIndex)<t->Runners.size() && t->Runners[legIndex]
       && t->Runners[legIndex]->getCardNo()>0)
-        sprintf_s(bf, "%d", t->Runners[legIndex]->getCardNo());
+        swprintf_s(wbf, L"%d", t->Runners[legIndex]->getCardNo());
       break;
     case lTeamBib:
       if (t) {
-        sptr = &t->getBib();
+        wsptr = &t->getBib();
       }
       break;
     case lTeamTotalTime:
-      if (t && !invalidClass) strcpy_s(bf, t->getLegRunningTimeS(legIndex, true).c_str() );
+      if (t && !invalidClass) wcscpy_s(wbf, t->getLegRunningTimeS(legIndex, true).c_str() );
       break;
     case lTeamTotalTimeStatus:
       if (invalidClass)
-          sptr = &lang.tl("Struken");
+          wsptr = &lang.tl("Struken");
       else if (t) {
         if (pp.resultModuleIndex == -1) {
           if (t->getLegStatus(legIndex, true)==StatusOK)
-            strcpy_s(bf, t->getLegRunningTimeS(legIndex, true).c_str() );
+            wcscpy_s(wbf, t->getLegRunningTimeS(legIndex, true).c_str() );
           else
-            strcpy_s(bf, t->getLegStatusS(legIndex, true).c_str() );
+            wcscpy_s(wbf, t->getLegStatusS(legIndex, true).c_str() );
         }
         else {
           RunnerStatus st = t->getTempResult(pp.resultModuleIndex).getStatus();
           RunnerStatus inp = t->getInputStatus();
           if (st == StatusOK && inp == StatusOK) {
-            sptr = &t->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
+            wsptr = &t->getTempResult(pp.resultModuleIndex).getRunningTimeS(0);
             if (t->getNumShortening() > 0) {
-              sprintf_s(bf, "*%s", sptr->c_str());
-              sptr = 0;
+              swprintf_s(wbf, L"*%s", wsptr->c_str());
+              wsptr = 0;
             }
           }
           else
-            sptr = &t->getTempResult(pp.resultModuleIndex).getStatusS(StatusOK);
+            wsptr = &t->getTempResult(pp.resultModuleIndex).getStatusS(StatusOK);
         }
       }
       break;
@@ -1615,14 +1678,14 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (t->getTotalStatus() == StatusOK && p > 0 && t->inputPlace>0) {
           int pd = p - t->inputPlace;
           if (pd > 0)
-            sprintf_s(bf, "+%d", pd);
+            swprintf_s(wbf, L"+%d", pd);
           else if (pd < 0)
-            sprintf_s(bf, "-%d", -pd);
+            swprintf_s(wbf, L"-%d", -pd);
         }
       }
       break;
     case lTeamTotalPlace:
-      if (t && !invalidClass && pc && !pc->getNoTiming()) strcpy_s(bf, t->getPrintTotalPlaceS(pp.text.empty()).c_str() );
+      if (t && !invalidClass && pc && !pc->getNoTiming()) wcscpy_s(wbf, t->getPrintTotalPlaceS(pp.text.empty()).c_str() );
       break;
 
       break;
@@ -1632,7 +1695,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (t->getTotalStatus()==StatusOK &&  pc && !pc->getNoTiming()) {
           int after = t->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true);
           if (after > 0)
-            sprintf_s(bf, "+%d:%02d", after/60, after%60);
+            swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
       }
       break;
@@ -1644,36 +1707,36 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           int afterOld = t->inputTime - pc->getBestInputTime(tleg);
           int ad = after - afterOld;
           if (ad > 0)
-            sprintf_s(bf, "+%d:%02d", ad/60, ad%60);
+            swprintf_s(wbf, L"+%d:%02d", ad/60, ad%60);
           if (ad < 0)
-            sprintf_s(bf, "-%d:%02d", (-ad)/60, (-ad)%60);
+            swprintf_s(wbf, L"-%d:%02d", (-ad)/60, (-ad)%60);
         }
       }
       break;
     case lTeamStartNo:
       if (t)
-        sprintf_s(bf, "%d", t->getStartNo());
+        swprintf_s(wbf, L"%d", t->getStartNo());
       break;
     case lRunnerStartNo:
       if (r)
-        sprintf_s(bf, "%d", r->getStartNo());
+        swprintf_s(wbf, L"%d", r->getStartNo());
       break;
     case lNationality:
-      if (r && !(sptr = &r->getDCI().getString("Nationality"))->empty())
+      if (r && !(wsptr = &r->getDCI().getString("Nationality"))->empty())
         break;
-      else if (t && !(sptr = &t->getDCI().getString("Nationality"))->empty())
+      else if (t && !(wsptr = &t->getDCI().getString("Nationality"))->empty())
         break;
-      else if (c && !(sptr = &c->getDCI().getString("Nationality"))->empty())
+      else if (c && !(wsptr = &c->getDCI().getString("Nationality"))->empty())
         break;
 
       break;
 
     case lCountry:
-      if (r && !(sptr = &r->getDCI().getString("Country"))->empty())
+      if (r && !(wsptr = &r->getDCI().getString("Country"))->empty())
         break;
-      else if (t && !(sptr = &t->getDCI().getString("Country"))->empty())
+      else if (t && !(wsptr = &t->getDCI().getString("Country"))->empty())
         break;
-      else if (c && !(sptr = &c->getDCI().getString("Country"))->empty())
+      else if (c && !(wsptr = &c->getDCI().getString("Country"))->empty())
         break;
 
       break;
@@ -1684,7 +1747,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (!ctrl || ctrl->isRogaining(crs->hasRogaining()))
           break;
         if (r->getPunchTime(counter.level3, false)>0 && ctrl->hasName()) {
-          sprintf_s(bf, "%s: %s (%s)", ctrl->getName().c_str(),
+          swprintf_s(wbf, L"%s: %s (%s)", ctrl->getName().c_str(),
             r->getNamedSplitS(counter.level3).c_str(),
             r->getPunchTimeS(counter.level3, false).c_str());
         }
@@ -1707,72 +1770,72 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         }
         if (pp.type == lPunchTime) {
           if (r->getPunchTime(counter.level3, false)>0) {
-            sprintf_s(bf, "%s (%s)",
+            swprintf_s(wbf, L"%s (%s)",
               r->getSplitTimeS(counter.level3, false).c_str(),
               r->getPunchTimeS(counter.level3, false).c_str());
           }
           else {
-            strcpy_s(bf, MakeDash("- (-)").c_str());
+            wsptr = &makeDash(L"- (-)");
           }
         }
         else if (pp.type == lPunchControlNumber) {
-          strcpy_s(bf, crs->getControlOrdinal(counter.level3).c_str());
+          wcscpy_s(wbf, crs->getControlOrdinal(counter.level3).c_str());
         }
         else if (pp.type == lPunchControlCode) {
           const oControl *ctrl=crs->getControl(counter.level3);
           if (ctrl) {
             if (ctrl->getStatus() == oControl::StatusMultiple) {
-              string str = ctrl->getStatusS();
-              sprintf_s(bf, "%s.", str.substr(0, 1).c_str());
+              wstring str = ctrl->getStatusS();
+              swprintf_s(wbf, L"%s.", str.substr(0, 1).c_str());
             }
             else
-              sprintf_s(bf, "%d", ctrl->getFirstNumber());
+              swprintf_s(wbf, L"%d", ctrl->getFirstNumber());
           }
         }
         else if (pp.type == lPunchControlPlace) {
           int p = r->getLegPlace(counter.level3);
           if (p>0)
-            sprintf_s(bf, "%d", p);
+            swprintf_s(wbf, L"%d", p);
         }
         else if (pp.type == lPunchControlPlaceAcc) {
           int p = r->getLegPlaceAcc(counter.level3);
           if (p>0)
-            sprintf_s(bf, "%d", p);
+            swprintf_s(wbf, L"%d", p);
         }
         else if (pp.type == lPunchLostTime) {
-          strcpy_s(bf, r->getMissedTimeS(counter.level3).c_str());
+          wcscpy_s(wbf, r->getMissedTimeS(counter.level3).c_str());
         }
       }
       break;
     case lSubSubCounter:
       if (pp.text.empty())
-        sprintf_s(bf, "%d.", counter.level3+1);
+        swprintf_s(wbf, L"%d.", counter.level3+1);
       else
-        sprintf_s(bf, "%d", counter.level3+1);
+        swprintf_s(wbf, L"%d", counter.level3+1);
       break;
     case lSubCounter:
       if (pp.text.empty())
-        sprintf_s(bf, "%d.", counter.level2+1);
+        swprintf_s(wbf, L"%d.", counter.level2+1);
       else
-        sprintf_s(bf, "%d", counter.level2+1);
+        swprintf_s(wbf, L"%d", counter.level2+1);
       break;
     case lTotalCounter:
       if (pp.text.empty())
-        sprintf_s(bf, "%d.", counter.level1+1);
+        swprintf_s(wbf, L"%d.", counter.level1+1);
       else
-        sprintf_s(bf, "%d", counter.level1+1);
+        swprintf_s(wbf, L"%d", counter.level1+1);
       break;
     case lClubName:
-      sptr = c != 0 ? &c->getDisplayName() : 0;
+      wsptr = c != 0 ? &c->getDisplayName() : 0;
       break;
     case lResultModuleTime:
     case lResultModuleTimeTeam:
 
       if (pp.resultModuleIndex != -1) {
         if (t && pp.type == lResultModuleTimeTeam)
-          sptr = &t->getTempResult(pp.resultModuleIndex).getOutputTime(legIndex);
+          wsptr = &t->getTempResult(pp.resultModuleIndex).getOutputTime(legIndex);
         else if (r)
-          sptr = &r->getTempResult(pp.resultModuleIndex).getOutputTime(legIndex);
+          wsptr = &r->getTempResult(pp.resultModuleIndex).getOutputTime(legIndex);
       }
       break;
 
@@ -1787,11 +1850,11 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           nr = r->getTempResult(pp.resultModuleIndex).getOutputNumber(legIndex);
 
         if (pp.text.empty() || pp.text[0]!='@')
-          sptr = &itos(nr);
+          wsptr = &itow(nr);
         else {
-          vector<string> out;
-          split(pp.text.substr(1), ";", out);
-          string &res = StringCache::getInstance().get();
+          vector<wstring> out;
+          split(pp.text.substr(1), L";", out);//WCS
+          wstring &res = StringCache::getInstance().wget();
           size_t ix = nr;
           if (!out.empty() && ix >= out.size() && out.back().find_first_of('%') != out.back().npos) {
             ix = out.size() - 1;
@@ -1799,13 +1862,13 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
           if (ix < out.size()) { 
             res.swap(out[ix]);
             if (res.find_first_of('%') != res.npos) {
-              char bf2[256];
-              sprintf_s(bf2, res.c_str(), itos(nr).c_str());
+              wchar_t bf2[256];
+              swprintf_s(bf2, res.c_str(), itos(nr).c_str());
               res = bf2;
             }
           }
           else
-            res = "";
+            res = L"";
 
           return res;
         }
@@ -1819,7 +1882,7 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
         if (punch && punch->tRogainingIndex>=0) {
           const pControl ctrl = crs->getControl(punch->tRogainingIndex);
           if (ctrl) {
-            sprintf_s(bf, "%d, %dp, %s (%s)",
+            swprintf_s(wbf, L"%d, %dp, %s (%s)",
                       punch->Type, ctrl->getRogainingPoints(),
                       r->Card->getRogainingSplit(counter.level3, r->tStartTime).c_str(),
                       punch->getRunningTime(r->tStartTime).c_str());
@@ -1829,28 +1892,28 @@ const string &oEvent::formatListStringAux(const oPrintPost &pp, const oListParam
       break;
   }
 
-  if (pp.type!=lString && (sptr==0 || sptr->empty()) && bf[0]==0)
-    return _EmptyString;
-  else if (sptr) {
+  if (pp.type!=lString && (wsptr==0 || wsptr->empty()) && wbf[0]==0)
+    return _EmptyWString;
+  else if (wsptr) {
     if (pp.text.empty())
-      return *sptr;
+      return *wsptr;
     else {
-      sprintf_s(bf, pp.text.c_str(), sptr->c_str());
-      string &res = StringCache::getInstance().get();
-      res = bf;
+      swprintf_s(wbf, pp.text.c_str(), wsptr->c_str());
+      wstring &res = StringCache::getInstance().wget();
+      res = wbf;
       return res;
     }
   }
   else {
     if (pp.text.empty()) {
-      string &res = StringCache::getInstance().get();
-      res = bf;
+      wstring &res = StringCache::getInstance().wget();
+      res = wbf;
       return res;
     }
     else {
-      char bf2[512];
-      sprintf_s(bf2, pp.text.c_str(), bf);
-      string &res = StringCache::getInstance().get();
+      wchar_t bf2[512];
+      swprintf_s(bf2, pp.text.c_str(), wbf);
+      wstring &res = StringCache::getInstance().wget();
       res = bf2;
       return res;
     }
@@ -1898,8 +1961,8 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
         rr = t->getRunner(lg);
       }
     }
-    const string &text = (legIndex == -1) ? formatListString(pp, ppi.par, t, rr, c, pc, ppi.counter) :
-                                            formatSpecialString(pp, ppi.par, t, legIndex, crs, ctrl, ppi.counter);
+    const wstring &text = (legIndex == -1) ? formatListString(pp, ppi.par, t, rr, c, pc, ppi.counter) :
+                                             formatSpecialString(pp, ppi.par, t, legIndex, crs, ctrl, ppi.counter);
     updated |= !text.empty();
     TextInfo *ti = 0;
     if (!text.empty()) {
@@ -1936,7 +1999,7 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
 
 void oEvent::calculatePrintPostKey(const list<oPrintPost> &ppli, gdioutput &gdi, const oListParam &par,
                                    const pTeam t, const pRunner r, const pClub c,
-                                   const pClass pc, oCounter &counter, string &key)
+                                   const pClass pc, oCounter &counter, wstring &key)
 {
   key.clear();
   list<oPrintPost>::const_iterator ppit;
@@ -1949,7 +2012,7 @@ void oEvent::calculatePrintPostKey(const list<oPrintPost> &ppli, gdioutput &gdi,
         linLeg = pc->getLinearIndex(pp.legIndex, pp.linearLegIndex);
       rr=t->getRunner(linLeg);
     }
-    const string &text = formatListString(pp, par, t, rr, c, pc, counter);
+    const wstring &text = formatListString(pp, par, t, rr, c, pc, counter);
     key += text;
     //Skip merged entities
     while (ppit != ppli.end() && ppit->doMergeNext)
@@ -2045,16 +2108,16 @@ void oEvent::generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, 
   oe->calcUseStartSeconds();
   oe->calculateNumRemainingMaps();
   oe->updateComputerTime();
-  vector< pair<int, pair<string, string> > > tagNameList;
+  vector< pair<int, pair<string, wstring> > > tagNameList;
   oe->getGeneralResults(false, tagNameList, false);
-  string src;
+  wstring src;
   for (size_t k = 0; k < tagNameList.size(); k++)
     oe->getGeneralResult(tagNameList[k].second.first, src).setContext(&li.lp);
 
-  string listname;
+  wstring listname;
   if (!li.Head.empty()) {
     oCounter counter;
-    const string &name = formatListString(li.Head.front(), li.lp, 0, 0, 0, 0, counter);
+    const wstring &name = formatListString(li.Head.front(), li.lp, 0, 0, 0, 0, counter);
     listname = name;
     li.lp.updateDefaultName(name);
   }
@@ -2063,10 +2126,10 @@ void oEvent::generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, 
   if (nClassesSelected!=0 && nClassesSelected < min(Classes.size(), Classes.size()/2+5) ) {
     // Non-trivial class selection:
     Classes.sort();
-    string cls;
+    wstring cls;
     for (oClassList::iterator it = Classes.begin(); it != Classes.end(); ++it) {
       if (li.lp.selection.count(it->getId())) {
-        cls += MakeDash(" - ");
+        cls += makeDash(L" - ");
         cls += it->getName();
       }
     }
@@ -2074,7 +2137,7 @@ void oEvent::generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, 
   }
 
   if (li.lp.getLegNumberCoded() != -1) {
-    listname += lang.tl(" Sträcka X#" + li.lp.getLegName());
+    listname += lang.tl(L" Sträcka X#" + li.lp.getLegName());
   }
 
   generateListInternal(gdi, li, addHead);
@@ -2130,7 +2193,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     it->apply(false, 0, true);
   }
 
-  string oldKey;
+  wstring oldKey;
   if ( li.listType==li.EBaseTypeRunner ) {
 
     if (li.calcCourseClassResults)
@@ -2210,7 +2273,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
     GeneralResult *gResult = 0;
     if (!li.resultModule.empty()) {
-      string src;
+      wstring src;
       gResult = &getGeneralResult(li.resultModule, src);
       oListInfo::ResultType resType = li.getResultType();
       gResult->calculateIndividualResults(rlist, resType, li.sortOrder == Custom, li.getParam().getInputNumber());
@@ -2260,7 +2323,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         }
       }
 
-      string newKey;
+      wstring newKey;
       printPostInfo.par.relayLegIndex = -1;
       calculatePrintPostKey(li.subHead, gdi, li.lp, it->tInTeam, &*it, it->Club, it->Class, printPostInfo.counter, newKey);
 
@@ -2317,7 +2380,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     }
     GeneralResult *gResult = 0;
     if (!li.resultModule.empty()) {
-      string src;
+      wstring src;
       gResult = &getGeneralResult(li.resultModule, src);
       oListInfo::ResultType resType = li.getResultType();
       gResult->calculateTeamResults(tlist, resType, li.sortOrder == Custom, li.getParam().getInputNumber());
@@ -2380,7 +2443,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
           parLegRangeMin++;
       }
 
-      string newKey;
+      wstring newKey;
       printPostInfo.par.relayLegIndex = linearLegSpec;
       calculatePrintPostKey(li.subHead, gdi, li.lp, &*it, 0, it->Club, it->Class, printPostInfo.counter, newKey);
       if (newKey != oldKey) {
@@ -2388,10 +2451,10 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
           if (!oldKey.empty())
             gdi.addStringUT(gdi.getCY()-1, 0, pageNewPage, "");
         }
-        string legInfo;
+        wstring legInfo;
         if (linearLegSpec >= 0 && it->getClassRef()) {
           // Specified leg
-          legInfo = lang.tl(", Str. X#" + li.lp.getLegName());
+          legInfo = lang.tl(L", Str. X#" + li.lp.getLegName());
         }
 
         gdi.addStringUT(pagePageInfo, it->getClass() + legInfo); // Teamlist
@@ -2622,7 +2685,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
           continue;
       }
 
-      string newKey;
+      wstring newKey;
       calculatePrintPostKey(li.subHead, gdi, li.lp, 0, 0, 0, 0, printPostInfo.counter, newKey);
 
       if (newKey != oldKey) {
@@ -2656,7 +2719,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
       if (it->isRemoved())
         continue;
 
-      string newKey;
+      wstring newKey;
       calculatePrintPostKey(li.subHead, gdi, li.lp, 0, 0, 0, 0, printPostInfo.counter, newKey);
 
       if (newKey != oldKey) {
@@ -2688,7 +2751,7 @@ void oEvent::fillListTypes(gdioutput &gdi, const string &name, int filter)
   //gdi.clearList(name);
   map<EStdListType, oListInfo>::iterator it;
 
-  vector< pair<string, size_t> > v;
+  vector< pair<wstring, size_t> > v;
   for (it=listMap.begin(); it!=listMap.end(); ++it) {
     v.push_back(make_pair(it->second.Name, it->first));
     //gdi.addItem(name, it->second.Name, it->first);
@@ -2711,7 +2774,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   if (!filterResults) {
     oListInfo li;
-    li.Name=lang.tl("Startlista, individuell");
+    li.Name=lang.tl(L"Startlista, individuell");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2720,7 +2783,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Resultat, individuell");
+    li.Name=lang.tl(L"Resultat, individuell");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2731,7 +2794,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Resultat, generell");
+    li.Name=lang.tl(L"Resultat, generell");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2744,7 +2807,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Rogaining, individuell");
+    li.Name=lang.tl(L"Rogaining, individuell");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2753,7 +2816,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Avgjorda klasser (prisutdelningslista)");
+    li.Name=lang.tl(L"Avgjorda klasser (prisutdelningslista)");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2761,7 +2824,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
   }
   if (!filterResults) {
     oListInfo li;
-    li.Name=lang.tl("Startlista, patrull");
+    li.Name=lang.tl(L"Startlista, patrull");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2771,7 +2834,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Resultat, patrull");
+    li.Name=lang.tl(L"Resultat, patrull");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2781,7 +2844,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name="Patrullresultat (STOR)";
+    li.Name=lang.tl(L"Patrullresultat (STOR)");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2791,7 +2854,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Resultat (STOR)");
+    li.Name=lang.tl(L"Resultat (STOR)");
     li.supportClasses = true;
     li.supportLegs = true;
     li.supportFrom = true;
@@ -2813,7 +2876,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   if (!filterResults) {
     oListInfo li;
-    li.Name=lang.tl("Hyrbricksrapport");
+    li.Name=lang.tl(L"Hyrbricksrapport");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = false;
     li.supportLegs = false;
@@ -2822,7 +2885,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Stafettresultat, delsträckor");
+    li.Name=lang.tl(L"Stafettresultat, delsträckor");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2831,7 +2894,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Stafettresultat, lag");
+    li.Name=lang.tl(L"Stafettresultat, lag");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2850,7 +2913,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
   if (!filterResults) {
     {
       oListInfo li;
-      li.Name=lang.tl("Startlista, stafett (lag)");
+      li.Name=lang.tl(L"Startlista, stafett (lag)");
       li.listType=li.EBaseTypeTeam;
       li.supportClasses = true;
       li.supportLegs = false;
@@ -2858,7 +2921,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
     }
     {
       oListInfo li;
-      li.Name=lang.tl("Startlista, stafett (sträcka)");
+      li.Name=lang.tl(L"Startlista, stafett (sträcka)");
       li.listType=li.EBaseTypeTeam;
       li.supportClasses = true;
       li.supportLegs = true;
@@ -2866,7 +2929,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
     }
     {
       oListInfo li;
-      li.Name=lang.tl("Bantilldelning, stafett");
+      li.Name=lang.tl(L"Bantilldelning, stafett");
       li.listType=li.EBaseTypeTeam;
       li.supportClasses = true;
       li.supportLegs = false;
@@ -2874,7 +2937,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
     }
     {
       oListInfo li;
-      li.Name=lang.tl("Bantilldelning, individuell");
+      li.Name=lang.tl(L"Bantilldelning, individuell");
       li.listType=li.EBaseTypeRunner;
       li.supportClasses = true;
       li.supportLegs = false;
@@ -2882,7 +2945,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
     }
     {
       oListInfo li;
-      li.Name=lang.tl("Individuell startlista, visst lopp");
+      li.Name=lang.tl(L"Individuell startlista, visst lopp");
       li.listType=li.EBaseTypeTeam;
       li.supportClasses = true;
       li.supportLegs = true;
@@ -2892,7 +2955,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Individuell resultatlista, visst lopp");
+    li.Name=lang.tl(L"Individuell resultatlista, visst lopp");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2901,7 +2964,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Individuell resultatlista, visst lopp (STOR)");
+    li.Name=lang.tl(L"Individuell resultatlista, visst lopp (STOR)");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2911,7 +2974,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name = lang.tl("Individuell resultatlista, alla lopp");
+    li.Name = lang.tl(L"Individuell resultatlista, alla lopp");
     li.listType = li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2920,7 +2983,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   if (!filterResults) {
     oListInfo li;
-    li.Name = lang.tl("Klubbstartlista");
+    li.Name = lang.tl(L"Klubbstartlista");
     li.listType = li.EBaseTypeClub;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2929,7 +2992,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name = lang.tl("Klubbresultatlista");
+    li.Name = lang.tl(L"Klubbresultatlista");
     li.listType = li.EBaseTypeClub;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2939,7 +3002,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
   if (!filterResults) {
     {
       oListInfo li;
-      li.Name=lang.tl("Tävlingsrapport");
+      li.Name=lang.tl(L"Tävlingsrapport");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -2948,7 +3011,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
     {
       oListInfo li;
-      li.Name=lang.tl("Kontroll inför tävlingen");
+      li.Name=lang.tl(L"Kontroll inför tävlingen");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -2957,7 +3020,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
     {
       oListInfo li;
-      li.Name=lang.tl("Kvar-i-skogen");
+      li.Name=lang.tl(L"Kvar-i-skogen");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -2966,7 +3029,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
     {
       oListInfo li;
-      li.Name=lang.tl("Fakturor");
+      li.Name=lang.tl(L"Fakturor");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -2975,7 +3038,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
     {
       oListInfo li;
-      li.Name=lang.tl("Ekonomisk sammanställning");
+      li.Name=lang.tl(L"Ekonomisk sammanställning");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -3003,7 +3066,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   if (!filterResults) {
     oListInfo li;
-    li.Name=lang.tl("Minutstartlista");
+    li.Name=lang.tl(L"Minutstartlista");
     li.supportClasses = false;
     li.supportLegs = false;
     li.listType=li.EBaseTypeNone;
@@ -3012,7 +3075,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Händelser - tidslinje");
+    li.Name=lang.tl(L"Händelser - tidslinje");
     li.supportClasses = true;
     li.supportLegs = false;
     li.listType=li.EBaseTypeNone;
@@ -3021,7 +3084,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Liveresultat, deltagare");
+    li.Name=lang.tl(L"Liveresultat, deltagare");
     li.listType=li.EBaseTypeRunner;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -3038,7 +3101,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Stafettresultat, sträcka (STOR)");
+    li.Name=lang.tl(L"Stafettresultat, sträcka (STOR)");
     li.supportClasses = true;
     li.supportLegs = false;
     li.largeSize = true;
@@ -3066,7 +3129,7 @@ int openRunnerTeamCB(gdioutput *gdi, int type, void *data);
 
 void oEvent::generateFixedList(gdioutput &gdi, const oListInfo &li)
 {
-  string dmy;
+  wstring dmy;
   switch (li.lp.listCode) {
     case EFixedPreReport:
       generatePreReport(gdi);
@@ -3099,13 +3162,13 @@ void oEvent::generateFixedList(gdioutput &gdi, const oListInfo &li)
 
     case EFixedTimeLine:
       gdi.clearPage(false);
-      gdi.addString("", boldLarge, MakeDash("Tidslinje - X#" + getName()));
+      gdi.addString("", boldLarge, makeDash(L"Tidslinje - X#") + getName());
 
       gdi.dropLine();
       set<__int64> stored;
       vector<oTimeLine> events;
 
-      map<int, string> cName;
+      map<int, wstring> cName;
       for (oClassList::const_iterator it = Classes.begin(); it != Classes.end(); ++it) {
         if (!it->isRemoved())
           cName[it->getId()] = it->getName();
@@ -3130,9 +3193,9 @@ void oEvent::generateFixedList(gdioutput &gdi, const oListInfo &li)
         if (ev.getType() == oTimeLine::TLTFinish && r->getStatus() != StatusOK)
           continue;
 
-        string name = "";
+        wstring name = L"";
         if (r)
-          name = r->getCompleteIdentification() + " ";
+          name = r->getCompleteIdentification() + L" ";
 
         gdi.addStringUT(yp, xp, 0, oe->getAbsTime(ev.getTime()));
         gdi.addStringUT(yp, xp + w1, 0, cName[ev.getClassId()], w-10);
@@ -3190,7 +3253,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo
       oListParam &nextPar = oe->getListContainer().getParam(cPar->nextList-1);
       li.next.push_back(oListInfo());
       nextPar.cb = 0;
-      generateListInfoAux(nextPar, lineHeight, li.next.back(), "");
+      generateListInfoAux(nextPar, lineHeight, li.next.back(), L"");
       cPar = &nextPar;
     }
   }
@@ -3205,14 +3268,14 @@ void oEvent::generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo
   }
 }
 
-void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li, const string &name) {
+void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li, const wstring &name) {
   const int lh=lineHeight;
   const int vspace=lh/2;
   int bib;
   pair<int, bool> ln;
   const double scale = 1.8;
 
-  string ttl;
+  wstring ttl;
   Position pos;
 
   pClass sampleClass = 0;
@@ -3235,28 +3298,28 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
   switch (lt) {
     case EStdStartList: {
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Startlista - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Startlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       int bib = 0;
       int rank = 0;
       if (hasBib(true, false)) {
-        li.addListPost(oPrintPost(lRunnerBib, "", normalText, 0, 0));
+        li.addListPost(oPrintPost(lRunnerBib, L"", normalText, 0, 0));
         bib=40;
       }
-      li.addListPost(oPrintPost(lRunnerStart, "", normalText, 0+bib, 0));
-      li.addListPost(oPrintPost(lPatrolNameNames, "", normalText, 70+bib, 0));
-      li.addListPost(oPrintPost(lPatrolClubNameNames, "", normalText, 300+bib, 0));
+      li.addListPost(oPrintPost(lRunnerStart, L"", normalText, 0+bib, 0));
+      li.addListPost(oPrintPost(lPatrolNameNames, L"", normalText, 70+bib, 0));
+      li.addListPost(oPrintPost(lPatrolClubNameNames, L"", normalText, 300+bib, 0));
       if (hasRank()) {
-        li.addListPost(oPrintPost(lRunnerRank, "", normalText, 470+bib, 0));
+        li.addListPost(oPrintPost(lRunnerRank, L"", normalText, 470+bib, 0));
         rank = 50;
       }
-      li.addListPost(oPrintPost(lRunnerCard, "", normalText, 470+bib+rank, 0));
+      li.addListPost(oPrintPost(lRunnerCard, L"", normalText, 470+bib+rank, 0));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 12));
-      li.addSubHead(oPrintPost(lClassLength, lang.tl("%s meter"), boldText, 300+bib, 12));
-      li.addSubHead(oPrintPost(lClassStartName, "", boldText, 470+bib+rank, 12));
-      li.addSubHead(oPrintPost(lString, "", boldText, 470+bib, 16));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 12));
+      li.addSubHead(oPrintPost(lClassLength, lang.tl(L"%s meter"), boldText, 300+bib, 12));
+      li.addSubHead(oPrintPost(lClassStartName, L"", boldText, 470+bib+rank, 12));
+      li.addSubHead(oPrintPost(lString, L"", boldText, 470+bib, 16));
 
       li.listType=li.EBaseTypeRunner;
       li.sortOrder=ClassStartTime;
@@ -3265,35 +3328,35 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
 
     case EStdClubStartList: {
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Klubbstartlista - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Klubbstartlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       if (hasBib(true, true)) {
         pos.add("bib", 40);
-        li.addListPost(oPrintPost(lRunnerBib, "", normalText, 0, 0));
+        li.addListPost(oPrintPost(lRunnerBib, L"", normalText, 0, 0));
       }
 
-      pos.add("start", li.getMaxCharWidth(this, par.selection, lRunnerStart, "", normalText));
-      li.addListPost(oPrintPost(lRunnerStart, "", normalText, pos.get("start"), 0));
+      pos.add("start", li.getMaxCharWidth(this, par.selection, lRunnerStart, L"", normalText));
+      li.addListPost(oPrintPost(lRunnerStart, L"", normalText, pos.get("start"), 0));
 
       if (hasRank()) {
         pos.add("rank", 50);
-        li.addListPost(oPrintPost(lRunnerRank, "", normalText, pos.get("rank"), 0));
+        li.addListPost(oPrintPost(lRunnerRank, L"", normalText, pos.get("rank"), 0));
       }
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerName, "", normalText));
-      li.addListPost(oPrintPost(lPatrolNameNames, "", normalText, pos.get("name"), 0));
-      pos.add("class", li.getMaxCharWidth(this, par.selection, lClassName, "", normalText));
-      li.addListPost(oPrintPost(lClassName, "", normalText, pos.get("class"), 0));
-      pos.add("length", li.getMaxCharWidth(this, par.selection, lClassLength, "%s m", normalText));
-      li.addListPost(oPrintPost(lClassLength, lang.tl("%s m"), normalText, pos.get("length"), 0));
-      pos.add("sname", li.getMaxCharWidth(this, par.selection, lClassStartName, "", normalText));
-      li.addListPost(oPrintPost(lClassStartName, "", normalText, pos.get("sname"), 0));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerName, L"", normalText));
+      li.addListPost(oPrintPost(lPatrolNameNames, L"", normalText, pos.get("name"), 0));
+      pos.add("class", li.getMaxCharWidth(this, par.selection, lClassName, L"", normalText));
+      li.addListPost(oPrintPost(lClassName, L"", normalText, pos.get("class"), 0));
+      pos.add("length", li.getMaxCharWidth(this, par.selection, lClassLength, L"%s m", normalText));
+      li.addListPost(oPrintPost(lClassLength, lang.tl(L"%s m"), normalText, pos.get("length"), 0));
+      pos.add("sname", li.getMaxCharWidth(this, par.selection, lClassStartName, L"", normalText));
+      li.addListPost(oPrintPost(lClassStartName, L"", normalText, pos.get("sname"), 0));
 
       pos.add("card", 70);
-      li.addListPost(oPrintPost(lRunnerCard, "", normalText, pos.get("card"), 0));
+      li.addListPost(oPrintPost(lRunnerCard, L"", normalText, pos.get("card"), 0));
 
-      li.addSubHead(oPrintPost(lClubName, "", boldText, 0, 12));
-      li.addSubHead(oPrintPost(lString, "", boldText, 100, 16));
+      li.addSubHead(oPrintPost(lClubName, L"", boldText, 0, 12));
+      li.addSubHead(oPrintPost(lString, L"", boldText, 100, 16));
 
       li.listType=li.EBaseTypeClub;
       li.sortOrder=ClassTeamLeg;
@@ -3303,26 +3366,26 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
 
     case EStdClubResultList: {
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Klubbresultatlista - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Klubbresultatlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
-      pos.add("class", li.getMaxCharWidth(this, par.selection, lClassName, "", normalText));
-      li.addListPost(oPrintPost(lClassName, "", normalText, pos.get("class"), 0));
+      pos.add("class", li.getMaxCharWidth(this, par.selection, lClassName, L"", normalText));
+      li.addListPost(oPrintPost(lClassName, L"", normalText, pos.get("class"), 0));
        
       pos.add("place", 40);
-      li.addListPost(oPrintPost(lRunnerPlace, "", normalText, pos.get("place"), 0));
+      li.addListPost(oPrintPost(lRunnerPlace, L"", normalText, pos.get("place"), 0));
 
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, "", normalText));
-      li.addListPost(oPrintPost(lRunnerName, "", normalText, pos.get("name"), 0));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, L"", normalText));
+      li.addListPost(oPrintPost(lRunnerName, L"", normalText, pos.get("name"), 0));
 
-      pos.add("time", li.getMaxCharWidth(this, par.selection, lRunnerTimeStatus, "", normalText));
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", normalText, pos.get("time"), 0));
+      pos.add("time", li.getMaxCharWidth(this, par.selection, lRunnerTimeStatus, L"", normalText));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, pos.get("time"), 0));
 
-      pos.add("after", li.getMaxCharWidth(this, par.selection, lRunnerTimeAfter, "", normalText));
-      li.addListPost(oPrintPost(lRunnerTimeAfter, "", normalText, pos.get("after"), 0));
+      pos.add("after", li.getMaxCharWidth(this, par.selection, lRunnerTimeAfter, L"", normalText));
+      li.addListPost(oPrintPost(lRunnerTimeAfter, L"", normalText, pos.get("after"), 0));
 
-      li.addSubHead(oPrintPost(lClubName, "", boldText, 0, 12));
-      li.addSubHead(oPrintPost(lString, "", boldText, 100, 16));
+      li.addSubHead(oPrintPost(lClubName, L"", boldText, 0, 12));
+      li.addSubHead(oPrintPost(lString, L"", boldText, 100, 16));
 
       li.listType=li.EBaseTypeClub;
       li.sortOrder=ClassResult;
@@ -3333,13 +3396,13 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
     case EStdRentedCard:
     {
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Hyrbricksrapport - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Hyrbricksrapport - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
-      li.addListPost(oPrintPost(lTotalCounter, "%s", normalText, 0, 0));
-      li.addListPost(oPrintPost(lRunnerCard, "", normalText, 30, 0));
-      li.addListPost(oPrintPost(lRunnerName, "", normalText, 130, 0));
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
+      li.addListPost(oPrintPost(lTotalCounter, L"%s", normalText, 0, 0));
+      li.addListPost(oPrintPost(lRunnerCard, L"", normalText, 30, 0));
+      li.addListPost(oPrintPost(lRunnerName, L"", normalText, 130, 0));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
 
       li.setFilter(EFilterHasCard);
       li.setFilter(EFilterRentCard);
@@ -3350,54 +3413,54 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
 
     case EStdResultList: {
-      string stitle;
+      wstring stitle;
       getResultTitle(*this, li.lp, stitle);
       stitle = par.getCustomTitle(stitle);
 
-      li.addHead(oPrintPost(lCmpName, MakeDash(stitle), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(stitle), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
       pos.add("place", 25);
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, "", normalText, 0, false, 25));
-      pos.add("club", li.getMaxCharWidth(this, par.selection, lPatrolClubNameNames, "", normalText, 0, false, 25));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, L"", normalText, 0, false, 25));
+      pos.add("club", li.getMaxCharWidth(this, par.selection, lPatrolClubNameNames, L"", normalText, 0, false, 25));
       pos.add("status", 50);
       pos.add("after", 50);
       pos.add("missed", 50);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
 
-      li.addListPost(oPrintPost(lRunnerPlace, "", normalText, pos.get("place"), 0));
-      li.addListPost(oPrintPost(lPatrolNameNames, "", normalText, pos.get("name"), 0));
-      li.addListPost(oPrintPost(lPatrolClubNameNames, "", normalText, pos.get("club"), 0));
+      li.addListPost(oPrintPost(lRunnerPlace, L"", normalText, pos.get("place"), 0));
+      li.addListPost(oPrintPost(lPatrolNameNames, L"", normalText, pos.get("name"), 0));
+      li.addListPost(oPrintPost(lPatrolClubNameNames, L"", normalText, pos.get("club"), 0));
 
       if (li.lp.useControlIdResultTo<=0 && li.lp.useControlIdResultFrom<=0) {
-        li.addSubHead(oPrintPost(lClassResultFraction, "", boldText, pos.get("club"), 10));
+        li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, pos.get("club"), 10));
 
-        li.addListPost(oPrintPost(lRunnerTimeStatus, "", normalText, pos.get("status"), 0));
-        li.addListPost(oPrintPost(lRunnerTimeAfter, "", normalText, pos.get("after"), 0));
+        li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, pos.get("status"), 0));
+        li.addListPost(oPrintPost(lRunnerTimeAfter, L"", normalText, pos.get("after"), 0));
         if (li.lp.showInterTimes) {
-          li.addSubListPost(oPrintPost(lPunchNamedTime, "", italicSmall, pos.get("name"), 0, make_pair(1, true)));
+          li.addSubListPost(oPrintPost(lPunchNamedTime, L"", italicSmall, pos.get("name"), 0, make_pair(1, true)));
           li.subListPost.back().fixedWidth = 160;
           li.listSubType = li.EBaseTypePunches;
         }
         else if (li.lp.showSplitTimes) {
-          li.addSubListPost(oPrintPost(lPunchTime, "", italicSmall, pos.get("name"), 0, make_pair(1, true)));
+          li.addSubListPost(oPrintPost(lPunchTime, L"", italicSmall, pos.get("name"), 0, make_pair(1, true)));
           li.subListPost.back().fixedWidth = 95;
           li.listSubType = li.EBaseTypePunches;
         }
       }
       else {
         li.needPunches = true;
-        li.addListPost(oPrintPost(lRunnerTempTimeStatus, "", normalText, pos.get("status"), 0));
-        li.addListPost(oPrintPost(lRunnerTempTimeAfter, "", normalText, pos.get("after"), 0));
+        li.addListPost(oPrintPost(lRunnerTempTimeStatus, L"", normalText, pos.get("status"), 0));
+        li.addListPost(oPrintPost(lRunnerTempTimeAfter, L"", normalText, pos.get("after"), 0));
       }
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, pos.get("status"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldText, pos.get("after"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, pos.get("status"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldText, pos.get("after"), 10));
 
       if (li.lp.splitAnalysis)  {
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", normalText, pos.get("missed"), 0));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldText, pos.get("missed"), 10));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", normalText, pos.get("missed"), 0));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldText, pos.get("missed"), 10));
       }
 
       li.calcResults = true;
@@ -3409,7 +3472,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
     }
     case EGeneralResultList: {
-      string stitle;
+      wstring stitle;
       getResultTitle(*this, li.lp, stitle);
       stitle = par.getCustomTitle(stitle);
 
@@ -3429,42 +3492,42 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
         small = italicSmall;
       }
 
-      li.addHead(oPrintPost(lCmpName, MakeDash(stitle), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(stitle), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      pos.add("place", li.getMaxCharWidth(this, par.selection, lRunnerGeneralPlace, "", normalText));
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerCompleteName, "", normalText));
-      pos.add("status", li.getMaxCharWidth(this, par.selection, lRunnerGeneralTimeStatus, "", normalText));
-      pos.add("after", li.getMaxCharWidth(this, par.selection, lRunnerGeneralTimeAfter, "", normalText));
+      pos.add("place", li.getMaxCharWidth(this, par.selection, lRunnerGeneralPlace, L"", normalText));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerCompleteName, L"", normalText));
+      pos.add("status", li.getMaxCharWidth(this, par.selection, lRunnerGeneralTimeStatus, L"", normalText));
+      pos.add("after", li.getMaxCharWidth(this, par.selection, lRunnerGeneralTimeAfter, L"", normalText));
       pos.add("missed", 50);
 
-      li.addSubHead(oPrintPost(lClassName, "", header, 0, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", header, 0, 10));
 
-      li.addListPost(oPrintPost(lRunnerGeneralPlace, "", normal, pos.get("place", s), 0));
-      li.addListPost(oPrintPost(lRunnerCompleteName, "", normal, pos.get("name", s), 0));
+      li.addListPost(oPrintPost(lRunnerGeneralPlace, L"", normal, pos.get("place", s), 0));
+      li.addListPost(oPrintPost(lRunnerCompleteName, L"", normal, pos.get("name", s), 0));
 
       if (li.lp.useControlIdResultTo<=0 && li.lp.useControlIdResultFrom<=0) {
-        li.addListPost(oPrintPost(lRunnerGeneralTimeStatus, "", normal, pos.get("status", s), 0));
-        li.addListPost(oPrintPost(lRunnerGeneralTimeAfter, "", normal, pos.get("after", s), 0));
+        li.addListPost(oPrintPost(lRunnerGeneralTimeStatus, L"", normal, pos.get("status", s), 0));
+        li.addListPost(oPrintPost(lRunnerGeneralTimeAfter, L"", normal, pos.get("after", s), 0));
         if (li.lp.showInterTimes) {
-          li.addSubListPost(oPrintPost(lPunchNamedTime, "", small, pos.get("name", s), 0, make_pair(1, true)));
+          li.addSubListPost(oPrintPost(lPunchNamedTime, L"", small, pos.get("name", s), 0, make_pair(1, true)));
           li.subListPost.back().fixedWidth = 160;
           li.listSubType = li.EBaseTypePunches;
         }
         else if (li.lp.showSplitTimes) {
-          li.addSubListPost(oPrintPost(lPunchTime, "", small, pos.get("name", s), 0, make_pair(1, true)));
+          li.addSubListPost(oPrintPost(lPunchTime, L"", small, pos.get("name", s), 0, make_pair(1, true)));
           li.subListPost.back().fixedWidth = 95;
           li.listSubType = li.EBaseTypePunches;
         }
       }
       else {
         li.needPunches = true;
-        li.addListPost(oPrintPost(lRunnerTempTimeStatus, "", normal, pos.get("status", s), 0));
-        li.addListPost(oPrintPost(lRunnerTempTimeAfter, "", normal, pos.get("after", s), 0));
+        li.addListPost(oPrintPost(lRunnerTempTimeStatus, L"", normal, pos.get("status", s), 0));
+        li.addListPost(oPrintPost(lRunnerTempTimeAfter, L"", normal, pos.get("after", s), 0));
       }
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), header, pos.get("status", s), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), header, pos.get("after", s), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), header, pos.get("status", s), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), header, pos.get("after", s), 10));
 
       li.calcResults = true;
       li.listType=li.EBaseTypeRunner;
@@ -3477,26 +3540,26 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
     case EIndPriceList:
 
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Avgjorda placeringar - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCurrentTime, lang.tl("Genererad: ") + "%s", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Avgjorda placeringar - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCurrentTime, lang.tl(L"Genererad: ") + L"%s", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
       pos.add("place", 25);
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, "", normalText));
-      pos.add("club", li.getMaxCharWidth(this, par.selection, lPatrolClubNameNames, "", normalText));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, L"", normalText));
+      pos.add("club", li.getMaxCharWidth(this, par.selection, lPatrolClubNameNames, L"", normalText));
       pos.add("status", 80);
       pos.add("info", 80);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldText, pos.get("club"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, pos.get("status"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Avgörs kl"), boldText, pos.get("info"), 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, pos.get("club"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, pos.get("status"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Avgörs kl"), boldText, pos.get("info"), 10));
 
-      li.addListPost(oPrintPost(lRunnerPlace, "", normalText, pos.get("place"), 0));
-      li.addListPost(oPrintPost(lPatrolNameNames, "", normalText, pos.get("name"), 0));
-      li.addListPost(oPrintPost(lPatrolClubNameNames, "", normalText, pos.get("club"), 0));
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", normalText, pos.get("status"), 0));
-      li.addListPost(oPrintPost(lRunnerTimePlaceFixed, "", normalText, pos.get("info"), 0));
+      li.addListPost(oPrintPost(lRunnerPlace, L"", normalText, pos.get("place"), 0));
+      li.addListPost(oPrintPost(lPatrolNameNames, L"", normalText, pos.get("name"), 0));
+      li.addListPost(oPrintPost(lPatrolClubNameNames, L"", normalText, pos.get("club"), 0));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, pos.get("status"), 0));
+      li.addListPost(oPrintPost(lRunnerTimePlaceFixed, L"", normalText, pos.get("info"), 0));
 
       li.calcResults = true;
       li.listType = li.EBaseTypeRunner;
@@ -3505,18 +3568,18 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case EStdTeamResultList:
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Resultatsammanställning - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Resultatsammanställning - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", normalText, 280, 14));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", normalText, 280, 14));
 
       //Use last leg for every team (index=-1)
-      li.addListPost(oPrintPost(lTeamPlace, "", normalText, 0, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamName, "", normalText, 25, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", normalText, 280, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", normalText, 340, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamPlace, L"", normalText, 0, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamName, L"", normalText, 25, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", normalText, 280, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", normalText, 340, 5, make_pair(-1, true)));
 
       li.lp.setLegNumberCoded(-1);
       li.calcResults=true;
@@ -3527,30 +3590,30 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case EStdTeamResultListAll:
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Resultat - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Resultat - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldText, 280, 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, 400, 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldText, 460, 14));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, 280, 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, 400, 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldText, 460, 14));
 
       //Use last leg for every team (index=-1)
-      li.addListPost(oPrintPost(lTeamPlace, "", normalText, 0, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamName, "", normalText, 25, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", normalText, 400, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", normalText, 460, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamPlace, L"", normalText, 0, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamName, L"", normalText, 25, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", normalText, 400, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", normalText, 460, 5, make_pair(-1, true)));
 
-      li.addSubListPost(oPrintPost(lRunnerLegNumberAlpha, "%s.", normalText, 25, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lRunnerName, "", normalText, 45, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lRunnerTimeStatus, "", normalText, 280, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lTeamLegTimeStatus, "", normalText, 400, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lTeamLegTimeAfter, "", normalText, 460, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerLegNumberAlpha, L"%s.", normalText, 25, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerName, L"", normalText, 45, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, 280, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lTeamLegTimeStatus, L"", normalText, 400, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lTeamLegTimeAfter, L"", normalText, 460, 0, make_pair(0, true)));
 
       if (li.lp.splitAnalysis)  {
-        li.addSubListPost(oPrintPost(lRunnerMissedTime, "", normalText, 510, 0));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldText, 510, 14));
+        li.addSubListPost(oPrintPost(lRunnerMissedTime, L"", normalText, 510, 0));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldText, 510, 14));
       }
 
       li.lp.setLegNumberCoded(-1);
@@ -3562,41 +3625,41 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case unused_EStdTeamResultListLeg: {
-      char title[256];
+      wchar_t title[256];
       if (li.lp.getLegNumberCoded() != 1000)
-        sprintf_s(title, (lang.tl("Resultat efter sträcka X#" + li.lp.getLegName())+" - %%s").c_str());
+        swprintf_s(title, (lang.tl(L"Resultat efter sträcka X#" + li.lp.getLegName())+L" - %%s").c_str());
       else
-        sprintf_s(title, (lang.tl("Resultat efter sträckan")+" - %%s").c_str());
+        swprintf_s(title, (lang.tl(L"Resultat efter sträckan")+L" - %%s").c_str());
 
       pos.add("place", 25);
-      pos.add("team", li.getMaxCharWidth(this, par.selection, lTeamName, "", normalText));
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerName, "", normalText));
+      pos.add("team", li.getMaxCharWidth(this, par.selection, lTeamName, L"", normalText));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerName, L"", normalText));
       pos.add("status", 50);
       pos.add("teamstatus", 50);
       pos.add("after", 50);
       pos.add("missed", 50);
 
-      li.addHead(oPrintPost(lCmpName, MakeDash(title), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(title), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, pos.get("place"), 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldText, pos.get("name"), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, pos.get("status"), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Totalt"), boldText, pos.get("teamstatus"), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldText, pos.get("after"), 14));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, pos.get("place"), 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, pos.get("name"), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, pos.get("status"), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Totalt"), boldText, pos.get("teamstatus"), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldText, pos.get("after"), 14));
 
       ln = li.lp.getLegInfo(sampleClass);
-      li.addListPost(oPrintPost(lTeamPlace, "", normalText, pos.get("place"), 2, ln));
-      li.addListPost(oPrintPost(lTeamName, "", normalText, pos.get("team"), 2, ln));
-      li.addListPost(oPrintPost(lRunnerName, "", normalText, pos.get("name"), 2, ln));
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", normalText, pos.get("status"), 2, ln));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", normalText, pos.get("teamstatus"), 2, ln));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", normalText, pos.get("after"), 2, ln));
+      li.addListPost(oPrintPost(lTeamPlace, L"", normalText, pos.get("place"), 2, ln));
+      li.addListPost(oPrintPost(lTeamName, L"", normalText, pos.get("team"), 2, ln));
+      li.addListPost(oPrintPost(lRunnerName, L"", normalText, pos.get("name"), 2, ln));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, pos.get("status"), 2, ln));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", normalText, pos.get("teamstatus"), 2, ln));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", normalText, pos.get("after"), 2, ln));
 
       if (li.lp.splitAnalysis)  {
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", normalText, pos.get("missed"), 2, ln));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldText, pos.get("missed"), 14));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", normalText, pos.get("missed"), 2, ln));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldText, pos.get("missed"), 14));
       }
 
       li.calcResults=true;
@@ -3606,38 +3669,38 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
     }
     case unused_EStdTeamResultListLegLARGE: {
-      char title[256];
+      wchar_t title[256];
       if (li.lp.getLegNumberCoded() != 1000)
-        sprintf_s(title, ("%%s - "+lang.tl("sträcka X#" + li.lp.getLegName())).c_str());
+        swprintf_s(title, (L"%%s - "+lang.tl(L"sträcka X#" + li.lp.getLegName())).c_str());
       else
-        sprintf_s(title, ("%%s - "+lang.tl("slutsträckan")).c_str());
+        swprintf_s(title, (L"%%s - "+lang.tl(L"slutsträckan")).c_str());
 
       pos.add("place", 25);
-      pos.add("team", min(120, li.getMaxCharWidth(this, par.selection, lTeamName, "", normalText)));
-      pos.add("name", min(120, li.getMaxCharWidth(this, par.selection, lRunnerName, "", normalText)));
+      pos.add("team", min(120, li.getMaxCharWidth(this, par.selection, lTeamName, L"", normalText)));
+      pos.add("name", min(120, li.getMaxCharWidth(this, par.selection, lRunnerName, L"", normalText)));
       pos.add("status", 50);
       pos.add("teamstatus", 50);
       pos.add("after", 50);
       pos.add("missed", 50);
 
-      li.addSubHead(oPrintPost(lClassName, MakeDash(title), boldLarge, pos.get("place", scale), 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldLarge, pos.get("name", scale), 14));
+      li.addSubHead(oPrintPost(lClassName, makeDash(title), boldLarge, pos.get("place", scale), 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldLarge, pos.get("name", scale), 14));
 
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldLarge, pos.get("status", scale), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Totalt"), boldLarge, pos.get("teamstatus", scale), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldLarge, pos.get("after", scale), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldLarge, pos.get("status", scale), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Totalt"), boldLarge, pos.get("teamstatus", scale), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldLarge, pos.get("after", scale), 14));
 
       ln = li.lp.getLegInfo(sampleClass);
-      li.addListPost(oPrintPost(lTeamPlace, "", fontLarge, pos.get("place", scale), 5, ln));
-      li.addListPost(oPrintPost(lTeamName, "", fontLarge, pos.get("team", scale), 5, ln));
-      li.addListPost(oPrintPost(lRunnerName, "", fontLarge, pos.get("name", scale), 5, ln));
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", fontLarge, pos.get("status", scale), 5, ln));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", fontLarge, pos.get("teamstatus", scale), 5, ln));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", fontLarge, pos.get("after", scale), 5, ln));
+      li.addListPost(oPrintPost(lTeamPlace, L"", fontLarge, pos.get("place", scale), 5, ln));
+      li.addListPost(oPrintPost(lTeamName, L"", fontLarge, pos.get("team", scale), 5, ln));
+      li.addListPost(oPrintPost(lRunnerName, L"", fontLarge, pos.get("name", scale), 5, ln));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", fontLarge, pos.get("status", scale), 5, ln));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", fontLarge, pos.get("teamstatus", scale), 5, ln));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", fontLarge, pos.get("after", scale), 5, ln));
 
       if (li.lp.splitAnalysis)  {
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", fontLarge, pos.get("missed", scale), 5, ln));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldLarge, pos.get("missed", scale), 14));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", fontLarge, pos.get("missed", scale), 5, ln));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldLarge, pos.get("missed", scale), 14));
       }
 
       li.calcResults=true;
@@ -3649,21 +3712,21 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     case EStdTeamStartList:
       {
         MetaList mList;
-        mList.setListName("Startlista, stafett");
-        mList.addToHead(lCmpName).setText("Startlista - X");;
+        mList.setListName(L"Startlista, stafett");
+        mList.addToHead(lCmpName).setText(L"Startlista - X");;
         mList.newHead();
         mList.addToHead(lCmpDate);
 
         mList.addToSubHead(lClassName);
         mList.addToSubHead(MetaListPost(lClassStartTime, lNone));
-        mList.addToSubHead(MetaListPost(lClassLength, lNone)).setText("X meter");
+        mList.addToSubHead(MetaListPost(lClassLength, lNone)).setText(L"X meter");
         mList.addToSubHead(MetaListPost(lClassStartName, lNone));
 
         mList.addToList(lTeamBib);
         mList.addToList(lTeamStartCond);
         mList.addToList(lTeamName);
 
-        mList.addToSubList(lRunnerLegNumberAlpha).align(lTeamName, false).setText("X.");
+        mList.addToSubList(lRunnerLegNumberAlpha).align(lTeamName, false).setText(L"X.");
         mList.addToSubList(lRunnerName);
         mList.addToSubList(lRunnerCard).align(lClassStartName);
 
@@ -3677,72 +3740,72 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case ETeamCourseList:
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Bantilldelningslista - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Bantilldelningslista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       li.listType=li.EBaseTypeTeam;
 
       bib=0;
-      li.addListPost(oPrintPost(lTeamBib, "", normalText, 0+bib, 4));
-      li.addListPost(oPrintPost(lTeamName, "", normalText, 50+bib, 4));
-      li.addListPost(oPrintPost(lTeamClub, "", normalText, 300+bib, 4));
+      li.addListPost(oPrintPost(lTeamBib, L"", normalText, 0+bib, 4));
+      li.addListPost(oPrintPost(lTeamName, L"", normalText, 50+bib, 4));
+      li.addListPost(oPrintPost(lTeamClub, L"", normalText, 300+bib, 4));
 
       li.listSubType=li.EBaseTypeRunner;
-      li.addSubListPost(oPrintPost(lRunnerLegNumberAlpha, "%s.", normalText, 25+bib, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lRunnerName, "", normalText, 50+bib, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lRunnerCard, "", normalText, 300+bib, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lRunnerCourse, "", normalText, 400+bib, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerLegNumberAlpha, L"%s.", normalText, 25+bib, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerName, L"", normalText, 50+bib, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerCard, L"", normalText, 300+bib, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerCourse, L"", normalText, 400+bib, 0, make_pair(0, true)));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Bricka"), boldText, 300+bib, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Bana"),   boldText, 400+bib, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Bricka"), boldText, 300+bib, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Bana"),   boldText, 400+bib, 10));
 
       li.sortOrder = ClassStartTime;
       break;
 
     case EIndCourseList: {
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Bantilldelningslista - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Bantilldelningslista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       li.listType=li.EBaseTypeRunner;
 
       bib=0;
-      li.addListPost(oPrintPost(lRunnerBib, "", normalText, 0+bib, 0));
-      oPrintPost &rn = li.addListPost(oPrintPost(lRunnerName, "", normalText, 50+bib, 0));
+      li.addListPost(oPrintPost(lRunnerBib, L"", normalText, 0+bib, 0));
+      oPrintPost &rn = li.addListPost(oPrintPost(lRunnerName, L"", normalText, 50+bib, 0));
       rn.doMergeNext = true;
-      li.addListPost(oPrintPost(lRunnerClub, " (%s)", normalText, 50+bib, 0));
-      li.addListPost(oPrintPost(lRunnerCard, "", normalText, 300+bib, 0));
-      li.addListPost(oPrintPost(lRunnerCourse, "", normalText, 400+bib, 0));
+      li.addListPost(oPrintPost(lRunnerClub, L" (%s)", normalText, 50+bib, 0));
+      li.addListPost(oPrintPost(lRunnerCard, L"", normalText, 300+bib, 0));
+      li.addListPost(oPrintPost(lRunnerCourse, L"", normalText, 400+bib, 0));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Bricka"), boldText, 300+bib, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Bana"),   boldText, 400+bib, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Bricka"), boldText, 300+bib, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Bana"),   boldText, 400+bib, 10));
 
       li.sortOrder = ClassStartTime;
       break;
     }
     case EStdTeamStartListLeg: {
-      char title[256];
+      wchar_t title[256];
       if (li.lp.getLegNumberCoded() == 1000)
         throw std::exception("Ogiltigt val av sträcka");
 
-      sprintf_s(title, lang.tl("Startlista %%s - sträcka X#" + li.lp.getLegName()).c_str());
+      swprintf_s(title, lang.tl(L"Startlista %%s - sträcka X#" + li.lp.getLegName()).c_str());
 
-      li.addHead(oPrintPost(lCmpName, MakeDash(title), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(title), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       ln=li.lp.getLegInfo(sampleClass);
       li.listType=li.EBaseTypeTeam;
       bib=0;
       if (hasBib(false, true)) {
-        li.addListPost(oPrintPost(lTeamBib, "", normalText, 0, 0));
+        li.addListPost(oPrintPost(lTeamBib, L"", normalText, 0, 0));
         bib=40;
       }
-      li.addListPost(oPrintPost(lTeamStart, "", normalText, 0+bib, 0, ln));
-      li.addListPost(oPrintPost(lTeamName, "", normalText, 70+bib, 0, ln));
-      li.addListPost(oPrintPost(lTeamRunner, "", normalText, 300+bib, 0, ln));
-      li.addListPost(oPrintPost(lTeamRunnerCard, "", normalText, 520+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamStart, L"", normalText, 0+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamName, L"", normalText, 70+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamRunner, L"", normalText, 300+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamRunnerCard, L"", normalText, 520+bib, 0, ln));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
-      li.addSubHead(oPrintPost(lClassStartName, "", normalText, 300+bib, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lClassStartName, L"", normalText, 300+bib, 10));
 
       li.sortOrder=ClassStartTime;
       //li.setFilter(EFilterExcludeDNS);
@@ -3755,24 +3818,24 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       //sprintf_s(title, lang.tl("Startlista lopp %d - %%s").c_str(), li.lp.legNumber+1);
       ln=li.lp.getLegInfo(sampleClass);
 
-      ttl = MakeDash(lang.tl("Startlista lopp X - Y#" + li.lp.getLegName() + "#%s"));
+      ttl = makeDash(lang.tl(L"Startlista lopp X - Y#" + li.lp.getLegName() + L"#%s"));
       li.addHead(oPrintPost(lCmpName, ttl, boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       li.listType=li.EBaseTypeTeam;
       bib=0;
       if (hasBib(false, true)) {
-        li.addListPost(oPrintPost(lTeamBib, "", normalText, 0, 0));
+        li.addListPost(oPrintPost(lTeamBib, L"", normalText, 0, 0));
         bib=40;
       }
-      li.addListPost(oPrintPost(lTeamStart, "", normalText, 0+bib, 0, ln));
-      li.addListPost(oPrintPost(lTeamRunner, "", normalText, 70+bib, 0, ln));
-      li.addListPost(oPrintPost(lTeamClub, "", normalText, 300+bib, 0, ln));
-      li.addListPost(oPrintPost(lTeamRunnerCard, "", normalText, 500+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamStart, L"", normalText, 0+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamRunner, L"", normalText, 70+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamClub, L"", normalText, 300+bib, 0, ln));
+      li.addListPost(oPrintPost(lTeamRunnerCard, L"", normalText, 500+bib, 0, ln));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
-      li.addSubHead(oPrintPost(lClassLength, lang.tl("%s meter"), boldText, 300+bib, 10, ln));
-      li.addSubHead(oPrintPost(lClassStartName, "", boldText, 500+bib, 10, ln));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lClassLength, lang.tl(L"%s meter"), boldText, 300+bib, 10, ln));
+      li.addSubHead(oPrintPost(lClassStartName, L"", boldText, 500+bib, 10, ln));
 
       li.sortOrder=ClassStartTime;
       li.setFilter(EFilterExcludeDNS);
@@ -3782,32 +3845,32 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       ln=li.lp.getLegInfo(sampleClass);
 
       if (li.lp.getLegNumberCoded() != 1000)
-        ttl = lang.tl("Resultat lopp X - Y#" + li.lp.getLegName() + "#%s");
+        ttl = lang.tl(L"Resultat lopp X - Y#" + li.lp.getLegName() + L"#%s");
       else
-        ttl = lang.tl("Resultat - X#%s");
+        ttl = lang.tl(L"Resultat - X#%s");
 
-      li.addHead(oPrintPost(lCmpName, MakeDash(ttl), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(ttl), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldText, 260, 14));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, 260, 14));
 
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, 460, 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Totalt"), boldText, 510, 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldText, 560, 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, 460, 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Totalt"), boldText, 510, 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldText, 560, 14));
 
-      li.addListPost(oPrintPost(lTeamPlace, "", normalText, 0, 0, ln));
-      li.addListPost(oPrintPost(lRunnerName, "", normalText, 40, 0, ln));
-      li.addListPost(oPrintPost(lRunnerClub, "", normalText, 260, 0, ln));
+      li.addListPost(oPrintPost(lTeamPlace, L"", normalText, 0, 0, ln));
+      li.addListPost(oPrintPost(lRunnerName, L"", normalText, 40, 0, ln));
+      li.addListPost(oPrintPost(lRunnerClub, L"", normalText, 260, 0, ln));
 
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", normalText, 460, 0, ln));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", normalText, 510, 0, ln));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", normalText, 560, 0, ln));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, 460, 0, ln));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", normalText, 510, 0, ln));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", normalText, 560, 0, ln));
 
       if (li.lp.splitAnalysis)  {
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", normalText, 620, 0, ln));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldText, 620, 14));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", normalText, 620, 0, ln));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldText, 620, 14));
       }
 
       li.calcResults=true;
@@ -3823,28 +3886,28 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       ln=li.lp.getLegInfo(sampleClass);
 
       pos.add("place", 25);
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerName, "", normalText));
-      pos.add("club", li.getMaxCharWidth(this, par.selection, lRunnerClub, "", normalText));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerName, L"", normalText));
+      pos.add("club", li.getMaxCharWidth(this, par.selection, lRunnerClub, L"", normalText));
 
       pos.add("status", 50);
       pos.add("teamstatus", 50);
       pos.add("after", 50);
 
-      ttl = "%s - " + lang.tl("Lopp ") + li.lp.getLegName();
-      li.addSubHead(oPrintPost(lClassName, MakeDash(ttl), boldLarge, pos.get("place", scale), 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldLarge, pos.get("club", scale), 14));
+      ttl = L"%s - " + lang.tl(L"Lopp ") + li.lp.getLegName();
+      li.addSubHead(oPrintPost(lClassName, makeDash(ttl), boldLarge, pos.get("place", scale), 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldLarge, pos.get("club", scale), 14));
 
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldLarge, pos.get("status", scale), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Totalt"), boldLarge, pos.get("teamstatus", scale), 14));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldLarge, pos.get("after", scale), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldLarge, pos.get("status", scale), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Totalt"), boldLarge, pos.get("teamstatus", scale), 14));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldLarge, pos.get("after", scale), 14));
 
-      li.addListPost(oPrintPost(lTeamPlace, "", fontLarge, pos.get("place", scale), 0, ln));
-      li.addListPost(oPrintPost(lRunnerName, "", fontLarge, pos.get("name", scale), 0, ln));
-      li.addListPost(oPrintPost(lRunnerClub, "", fontLarge, pos.get("club", scale), 0, ln));
+      li.addListPost(oPrintPost(lTeamPlace, L"", fontLarge, pos.get("place", scale), 0, ln));
+      li.addListPost(oPrintPost(lRunnerName, L"", fontLarge, pos.get("name", scale), 0, ln));
+      li.addListPost(oPrintPost(lRunnerClub, L"", fontLarge, pos.get("club", scale), 0, ln));
 
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", fontLarge, pos.get("status", scale), 0, ln));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", fontLarge, pos.get("teamstatus", scale), 0, ln));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", fontLarge, pos.get("after", scale), 0, ln));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", fontLarge, pos.get("status", scale), 0, ln));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", fontLarge, pos.get("teamstatus", scale), 0, ln));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", fontLarge, pos.get("after", scale), 0, ln));
 
       li.calcResults=true;
       li.listType=li.EBaseTypeTeam;
@@ -3853,27 +3916,27 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case EStdIndMultiResultListAll:
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Resultat - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Resultat - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, "", boldText, 280, 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, lang.tl("Tid"), boldText, 480, 14));
-      li.addSubHead(oPrintPost(lClassResultFraction, lang.tl("Efter"), boldText, 540, 14));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, 280, 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, lang.tl(L"Tid"), boldText, 480, 14));
+      li.addSubHead(oPrintPost(lClassResultFraction, lang.tl(L"Efter"), boldText, 540, 14));
 
       //Use last leg for every team (index=-1)
-      li.addListPost(oPrintPost(lTeamPlace, "", normalText, 0, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lRunnerName, "", normalText, 25, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lRunnerClub, "", normalText, 280, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamPlace, L"", normalText, 0, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lRunnerName, L"", normalText, 25, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lRunnerClub, L"", normalText, 280, 5, make_pair(-1, true)));
 
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", normalText, 480, 5, make_pair(-1, true)));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", normalText, 540, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", normalText, 480, 5, make_pair(-1, true)));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", normalText, 540, 5, make_pair(-1, true)));
 
-      li.addSubListPost(oPrintPost(lSubSubCounter, lang.tl("Lopp %s"), normalText, 25, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lRunnerTimeStatus, "", normalText, 90, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lTeamLegTimeStatus, "", normalText, 150, 0, make_pair(0, true)));
-      li.addSubListPost(oPrintPost(lTeamLegTimeAfter, "", normalText, 210, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lSubSubCounter, lang.tl(L"Lopp %s"), normalText, 25, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, 90, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lTeamLegTimeStatus, L"", normalText, 150, 0, make_pair(0, true)));
+      li.addSubListPost(oPrintPost(lTeamLegTimeAfter, L"", normalText, 210, 0, make_pair(0, true)));
 
       li.lp.setLegNumberCoded(-1);
       li.calcResults=true;
@@ -3885,15 +3948,15 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     case EStdPatrolStartList:
     {
       MetaList mList;
-      mList.setListName("Startlista, patrull");
+      mList.setListName(L"Startlista, patrull");
 
-      mList.addToHead(lCmpName).setText("Startlista - X").align(false);
+      mList.addToHead(lCmpName).setText(L"Startlista - X").align(false);
       mList.newHead();
       mList.addToHead(lCmpDate).align(false);
 
       mList.addToSubHead(lClassName);
       mList.addToSubHead(lClassStartTime);
-      mList.addToSubHead(lClassLength).setText("X meter");
+      mList.addToSubHead(lClassLength).setText(L"X meter");
       mList.addToSubHead(lClassStartName);
 
       mList.addToList(lTeamBib);
@@ -3927,33 +3990,33 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
     }
     case EStdPatrolResultList:
-      li.addHead(oPrintPost(lCmpName, MakeDash(lang.tl("Resultatlista - %s")), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Resultatlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addListPost(oPrintPost(lTeamPlace, "", normalText, 0, vspace, make_pair(1, true)));
-      li.addListPost(oPrintPost(lTeamName, "", normalText, 70, vspace));
+      li.addListPost(oPrintPost(lTeamPlace, L"", normalText, 0, vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamName, L"", normalText, 70, vspace));
       //li.addListPost(oPrintPost(lTeamClub, "", normalText, 250, vspace));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", normalText, 400, vspace, make_pair(1, true)));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", normalText, 460, vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", normalText, 400, vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", normalText, 460, vspace, make_pair(1, true)));
 
-      li.addListPost(oPrintPost(lTeamRunner, "", normalText, 70, lh+vspace, make_pair(0, true)));
-      li.addListPost(oPrintPost(lTeamRunner, "", normalText, 250, lh+vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamRunner, L"", normalText, 70, lh+vspace, make_pair(0, true)));
+      li.addListPost(oPrintPost(lTeamRunner, L"", normalText, 250, lh+vspace, make_pair(1, true)));
       li.setFilter(EFilterHasResult);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, 0, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, 400, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldText, 460, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, 400, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldText, 460, 10));
 
       if (li.lp.showInterTimes) {
-        li.addSubListPost(oPrintPost(lPunchNamedTime, "", normalText, 10, 0, make_pair(1, true)));
+        li.addSubListPost(oPrintPost(lPunchNamedTime, L"", normalText, 10, 0, make_pair(1, true)));
         li.subListPost.back().fixedWidth=160;
         li.listSubType=li.EBaseTypePunches;
       }
 
       if (li.lp.splitAnalysis)  {
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", normalText, 520, vspace, make_pair(1, true)));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldText, 520, 10));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", normalText, 520, vspace, make_pair(1, true)));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldText, 520, 10));
       }
 
       li.listType=li.EBaseTypeTeam;
@@ -3964,34 +4027,34 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
     case EStdPatrolResultListLARGE:
       pos.add("place", 25);
-      pos.add("team", int(0.7*max(li.getMaxCharWidth(this, par.selection, lTeamName, "", normalText),
-                        li.getMaxCharWidth(this, par.selection, lPatrolNameNames, "", normalText))));
+      pos.add("team", int(0.7*max(li.getMaxCharWidth(this, par.selection, lTeamName, L"", normalText),
+                        li.getMaxCharWidth(this, par.selection, lPatrolNameNames, L"", normalText))));
 
       pos.add("status", 50);
       pos.add("after", 50);
       pos.add("missed", 50);
 
-      li.addListPost(oPrintPost(lTeamPlace, "", fontLarge, pos.get("place", scale), vspace, make_pair(1, true)));
-      li.addListPost(oPrintPost(lTeamName, "", fontLarge, pos.get("team", scale), vspace));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", fontLarge, pos.get("status", scale), vspace, make_pair(1, true)));
-      li.addListPost(oPrintPost(lTeamTimeAfter, "", fontLarge, pos.get("after", scale), vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamPlace, L"", fontLarge, pos.get("place", scale), vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamName, L"", fontLarge, pos.get("team", scale), vspace));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", fontLarge, pos.get("status", scale), vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamTimeAfter, L"", fontLarge, pos.get("after", scale), vspace, make_pair(1, true)));
 
-      li.addListPost(oPrintPost(lPatrolNameNames, "", fontLarge, pos.get("team", scale), 25+vspace, make_pair(0, true)));
+      li.addListPost(oPrintPost(lPatrolNameNames, L"", fontLarge, pos.get("team", scale), 25+vspace, make_pair(0, true)));
       //li.addListPost(oPrintPost(lTeamRunner, "", fontLarge, pos.get("status", scale), 25+vspace, 1));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldLarge, 0, 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldLarge, pos.get("status", scale), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Efter"), boldLarge, pos.get("after", scale), 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldLarge, 0, 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldLarge, pos.get("status", scale), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Efter"), boldLarge, pos.get("after", scale), 10));
 
       if (li.lp.showInterTimes) {
-        li.addSubListPost(oPrintPost(lPunchNamedTime, "", normalText, 10, 0, make_pair(1, true)));
+        li.addSubListPost(oPrintPost(lPunchNamedTime, L"", normalText, 10, 0, make_pair(1, true)));
         li.subListPost.back().fixedWidth=200;
         li.listSubType=li.EBaseTypePunches;
       }
 
       if (li.lp.splitAnalysis)  {
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", fontLarge, pos.get("missed", scale), vspace, make_pair(0, true)));
-        li.addSubHead(oPrintPost(lString, lang.tl("Bomtid"), boldLarge, pos.get("missed", scale), 10));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", fontLarge, pos.get("missed", scale), vspace, make_pair(0, true)));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldLarge, pos.get("missed", scale), 10));
       }
 
       li.setFilter(EFilterHasResult);
@@ -4002,18 +4065,18 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case unused_EStdRaidResultListLARGE:
-      li.addListPost(oPrintPost(lTeamPlace, "", fontLarge, 0, vspace));
-      li.addListPost(oPrintPost(lTeamName, "", fontLarge, 40, vspace));
-      li.addListPost(oPrintPost(lTeamTimeStatus, "", fontLarge, 490, vspace));
+      li.addListPost(oPrintPost(lTeamPlace, L"", fontLarge, 0, vspace));
+      li.addListPost(oPrintPost(lTeamName, L"", fontLarge, 40, vspace));
+      li.addListPost(oPrintPost(lTeamTimeStatus, L"", fontLarge, 490, vspace));
 
-      li.addListPost(oPrintPost(lTeamRunner, "", fontLarge, 40, 25+vspace, make_pair(0, true)));
-      li.addListPost(oPrintPost(lTeamRunner, "", fontLarge, 300, 25+vspace, make_pair(1, true)));
+      li.addListPost(oPrintPost(lTeamRunner, L"", fontLarge, 40, 25+vspace, make_pair(0, true)));
+      li.addListPost(oPrintPost(lTeamRunner, L"", fontLarge, 300, 25+vspace, make_pair(1, true)));
 
-      li.addSubListPost(oPrintPost(lPunchNamedTime, "", fontMedium, 0, 2, make_pair(1, true)));
+      li.addSubListPost(oPrintPost(lPunchNamedTime, L"", fontMedium, 0, 2, make_pair(1, true)));
       li.subListPost.back().fixedWidth=200;
       li.setFilter(EFilterHasResult);
 
-      li.addSubHead(oPrintPost(lClassName, "", boldLarge, 0, 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldLarge, 0, 10));
 
       li.listType=li.EBaseTypeTeam;
       li.listSubType=li.EBaseTypePunches;
@@ -4023,37 +4086,37 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
    case EStdResultListLARGE:
       pos.add("place", 25);
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, "", normalText, 0, true));
-      pos.add("club", li.getMaxCharWidth(this, par.selection, lPatrolClubNameNames, "", normalText, 0, true));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lPatrolNameNames, L"", normalText, 0, true));
+      pos.add("club", li.getMaxCharWidth(this, par.selection, lPatrolClubNameNames, L"", normalText, 0, true));
       pos.add("status", 50);
       pos.add("missed", 50);
 
-      li.addListPost(oPrintPost(lRunnerPlace, "", fontLarge, pos.get("place", scale), vspace));
-      li.addListPost(oPrintPost(lPatrolNameNames, "", fontLarge, pos.get("name", scale), vspace));
-      li.addListPost(oPrintPost(lPatrolClubNameNames, "", fontLarge, pos.get("club", scale), vspace));
+      li.addListPost(oPrintPost(lRunnerPlace, L"", fontLarge, pos.get("place", scale), vspace));
+      li.addListPost(oPrintPost(lPatrolNameNames, L"", fontLarge, pos.get("name", scale), vspace));
+      li.addListPost(oPrintPost(lPatrolClubNameNames, L"", fontLarge, pos.get("club", scale), vspace));
 
-      li.addSubHead(oPrintPost(lClassName, "", boldLarge, pos.get("place", scale), 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldLarge, pos.get("place", scale), 10));
 
       if (li.lp.useControlIdResultTo<=0 && li.lp.useControlIdResultFrom<=0) {
-        li.addSubHead(oPrintPost(lClassResultFraction, "", boldLarge, pos.get("club", scale), 10));
-        li.addListPost(oPrintPost(lRunnerTimeStatus, "", fontLarge, pos.get("status", scale), vspace));
+        li.addSubHead(oPrintPost(lClassResultFraction, L"", boldLarge, pos.get("club", scale), 10));
+        li.addListPost(oPrintPost(lRunnerTimeStatus, L"", fontLarge, pos.get("status", scale), vspace));
       }
       else {
         li.needPunches = true;
-        li.addListPost(oPrintPost(lRunnerTempTimeStatus, "", normalText, pos.get("status", scale), vspace));
+        li.addListPost(oPrintPost(lRunnerTempTimeStatus, L"", normalText, pos.get("status", scale), vspace));
       }
       if (li.lp.splitAnalysis) {
-        li.addSubHead(oPrintPost(lString, "Bomtid", boldLarge, pos.get("missed", scale), 10));
-        li.addListPost(oPrintPost(lRunnerMissedTime, "", fontLarge, pos.get("missed", scale), vspace));
+        li.addSubHead(oPrintPost(lString, lang.tl(L"Bomtid"), boldLarge, pos.get("missed", scale), 10));
+        li.addListPost(oPrintPost(lRunnerMissedTime, L"", fontLarge, pos.get("missed", scale), vspace));
       }
 
       if (li.lp.showInterTimes) {
-        li.addSubListPost(oPrintPost(lPunchNamedTime, "", normalText, 0, 0, make_pair(1, true)));
+        li.addSubListPost(oPrintPost(lPunchNamedTime, L"", normalText, 0, 0, make_pair(1, true)));
         li.subListPost.back().fixedWidth = 160;
         li.listSubType = li.EBaseTypePunches;
       }
       else if (li.lp.showSplitTimes) {
-        li.addSubListPost(oPrintPost(lPunchTime, "", normalText, 0, 0, make_pair(1, true)));
+        li.addSubListPost(oPrintPost(lPunchTime, L"", normalText, 0, 0, make_pair(1, true)));
         li.subListPost.back().fixedWidth = 95;
         li.listSubType = li.EBaseTypePunches;
       }
@@ -4069,11 +4132,11 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
    case EStdUM_Master:
-      li.addListPost(oPrintPost(lRunnerPlace, "", fontMedium, 0, 0));
-      li.addListPost(oPrintPost(lRunnerName, "", fontMedium, 40, 0));
-      li.addListPost(oPrintPost(lRunnerClub, "", fontMedium, 250, 0));
-      li.addListPost(oPrintPost(lClassName, "", fontMedium, 490, 0));
-      li.addListPost(oPrintPost(lRunnerUMMasterPoint, "", fontMedium, 580, 0));
+      li.addListPost(oPrintPost(lRunnerPlace, L"", fontMedium, 0, 0));
+      li.addListPost(oPrintPost(lRunnerName, L"", fontMedium, 40, 0));
+      li.addListPost(oPrintPost(lRunnerClub, L"", fontMedium, 250, 0));
+      li.addListPost(oPrintPost(lClassName, L"", fontMedium, 490, 0));
+      li.addListPost(oPrintPost(lRunnerUMMasterPoint, L"", fontMedium, 580, 0));
 
       li.setFilter(EFilterHasResult);
 
@@ -4085,29 +4148,29 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
    case ERogainingInd:
       pos.add("place", 25);
-      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerCompleteName, "", normalText, 0, true));
+      pos.add("name", li.getMaxCharWidth(this, par.selection, lRunnerCompleteName, L"", normalText, 0, true));
       pos.add("points", 50);
       pos.add("status", 50);
-      li.addHead(oPrintPost(lCmpName, MakeDash(par.getCustomTitle(lang.tl("Rogainingresultat - %s"))), boldLarge, 0,0));
-      li.addHead(oPrintPost(lCmpDate, "", normalText, 0, 25));
+      li.addHead(oPrintPost(lCmpName, makeDash(par.getCustomTitle(lang.tl(L"Rogainingresultat - %s"))), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
-      li.addListPost(oPrintPost(lRunnerPlace, "", normalText, pos.get("place"), vspace));
-      li.addListPost(oPrintPost(lRunnerCompleteName, "", normalText, pos.get("name"), vspace));
-      li.addListPost(oPrintPost(lRunnerRogainingPoint, "%sp", normalText, pos.get("points"), vspace));
-      li.addListPost(oPrintPost(lRunnerTimeStatus, "", normalText, pos.get("status"), vspace));
+      li.addListPost(oPrintPost(lRunnerPlace, L"", normalText, pos.get("place"), vspace));
+      li.addListPost(oPrintPost(lRunnerCompleteName, L"", normalText, pos.get("name"), vspace));
+      li.addListPost(oPrintPost(lRunnerRogainingPoint, L"%sp", normalText, pos.get("points"), vspace));
+      li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, pos.get("status"), vspace));
 
       li.setFilter(EFilterHasResult);
 
       if (li.lp.splitAnalysis || li.lp.showInterTimes) {
-        li.addSubListPost(oPrintPost(lRogainingPunch, "", normalText, 10, 0, make_pair(1, true)));
+        li.addSubListPost(oPrintPost(lRogainingPunch, L"", normalText, 10, 0, make_pair(1, true)));
         li.subListPost.back().fixedWidth=130;
         li.listSubType=li.EBaseTypePunches;
       }
 
-      li.addSubHead(oPrintPost(lClassName, "", boldText, pos.get("place"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Poäng"), boldText, pos.get("points"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl("Tid"), boldText, pos.get("status"), 10));
+      li.addSubHead(oPrintPost(lClassName, L"", boldText, pos.get("place"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Poäng"), boldText, pos.get("points"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, pos.get("status"), 10));
 
       li.listType=li.EBaseTypeRunner;
       li.sortOrder = ClassPoints;
@@ -4117,7 +4180,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     break;
 
     case EStdTeamAllLegLARGE: {
-      vector< pair<string, size_t> > out;
+      vector< pair<wstring, size_t> > out;
       fillLegNumbers(par.selection, false, false, out);
       par.listCode = oe->getListContainer().getType("legresult");
       par.useLargeSize = true;
@@ -4159,6 +4222,15 @@ string oPrintPost::encodeFont(const string &face, int factor) {
   }
   return out;
 }
+
+wstring oPrintPost::encodeFont(const wstring &face, int factor) {
+  wstring out(face);
+  if (factor > 0 && factor != 100) {
+    out += L";" + itow(factor/100) + L"." + itow(factor%100);
+  }
+  return out;
+}
+
 void oListInfo::setupLinks(const list<oPrintPost> &lst) const {
   for (list<oPrintPost>::const_iterator it = lst.begin(); it != lst.end(); ++it) {
     list<oPrintPost>::const_iterator itNext = it;
@@ -4223,18 +4295,18 @@ pair<int, bool> oListParam::getLegInfo(const pClass cls) const {
   return make_pair(lin, true);
 }
 
-string oListParam::getLegName() const {
+wstring oListParam::getLegName() const {
   if (legNumber == -1)
-    return "";
+    return L"";
 
   if (legNumber < 1000)
-    return itos(legNumber + 1);
+    return itow(legNumber + 1);
 
   int sub = legNumber % 10000;
   int maj = legNumber / 10000;
   
-  char bf[64];
+  wchar_t bf[64];
   char symb = 'a' + sub;
-  sprintf_s(bf, "%d%c", maj, symb);
+  swprintf_s(bf, L"%d%c", maj, symb);
   return bf;
 }

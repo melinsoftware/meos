@@ -89,7 +89,7 @@ void ListEditor::show(gdioutput &gdi) {
   int by = gdi.getCY();
 
   if (currentList)
-    gdi.addString("", boldLarge, MakeDash("Listredigerare - X#") + currentList->getListName());
+    gdi.addString("", boldLarge, makeDash(L"Listredigerare - X#") + currentList->getListName());
   else
     gdi.addString("", boldLarge, "Listredigerare");
 
@@ -106,7 +106,7 @@ void ListEditor::show(gdioutput &gdi) {
   if (savedFileName.empty())
     gdi.addButton("SaveFile", "Spara som fil", editListCB);
   else {
-    gdi.addButton("SaveFile", "Spara fil", editListCB, "#" + savedFileName);
+    gdi.addButton("SaveFile", L"Spara fil", editListCB, L"#" + savedFileName);
     gdi.addButton("SaveFileCopy", "Spara som...", editListCB);
   }
 
@@ -228,6 +228,10 @@ void ListEditor::show(gdioutput &gdi) {
 
     oe->generateList(gdi, false, li, true);
   }
+  catch (meosException &ex) {
+    gdi.addString("", 1, "Listan kan inte visas").setColor(colorRed);
+    gdi.addString("", 0, ex.wwhat());
+  }
   catch (std::exception &ex) {
     gdi.addString("", 1, "Listan kan inte visas").setColor(colorRed);
     gdi.addString("", 0, ex.what());
@@ -256,20 +260,20 @@ void ListEditor::showLine(gdioutput &gdi, const vector<MetaListPost> &line, int 
 }
 
 ButtonInfo &ListEditor::addButton(gdioutput &gdi, const MetaListPost &mlp, int x, int y, int lineIx, int ix) const {
-  string cap;
-  if (mlp.getType() == "String") {
-    cap = "Text: X#" + mlp.getText();
+  wstring cap;
+  if (mlp.getType() == L"String") {
+    cap = L"Text: X#" + mlp.getText();
   }
   else {
-    const string &text = mlp.getText();
+    const wstring &text = mlp.getText();
     if (text.length() > 0) {
       if (text[0] == '@') {
-        vector<string> part; 
-        split(text.substr(1), ";", part);
-        unsplit(part, "|", cap);
+        vector<wstring> part; 
+        split(text.substr(1), L";", part);
+        unsplit(part, L"|", cap);
       }
       else
-        cap = text + "#" + lang.tl(mlp.getType());
+        cap = text + L"#" + lang.tl(mlp.getType());
     }
     else {
       cap = mlp.getType();
@@ -319,10 +323,10 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       if (ChooseColor(&cc)) {
         data.setExtra((int)cc.rgbResult);
 
-        string co;
+        wstring co;
         for (ix = 0; ix < 16; ix++) {
-          char bf[16];
-          sprintf_s(bf, "%x ", staticColor[ix]);
+          wchar_t bf[16];
+          swprintf_s(bf, L"%x ", staticColor[ix]);
           co += bf;
         }
         oe->setProperty("Colors", co);
@@ -403,14 +407,14 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
 
       EPostType ptype = EPostType(lbi.data);
 
-      string str = gdi.getText("Text");
+      wstring str = gdi.getText("Text");
       if (ptype != lString) {
         if (!str.empty() && str.find_first_of('X') == string::npos && str[0]!='@') {
           throw meosException("Texten ska innehålla tecknet X, som byts ut mot tävlingsspecifik data");
         }
       }
 
-      string t1 = mlp.getType();
+      wstring t1 = mlp.getType();
       EPostType newType = EPostType(lbi.data);
       mlp.setType(newType);
       if (t1 != mlp.getType())
@@ -461,7 +465,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       }
     }
     else if (bi.id == "ApplyListProp") {
-      string name = gdi.getText("Name");
+      wstring name = gdi.getText("Name");
 
       if (name.empty())
         throw meosException("Namnet kan inte vara tomt");
@@ -482,7 +486,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       if (gdi.getSelectedItem("SubType", lbi))
         list.setSubListType(oListInfo::EBaseType(lbi.data));
 
-      vector< pair<string, bool> > filtersIn;
+      vector< pair<wstring, bool> > filtersIn;
       vector< bool > filtersOut;
       list.getFilters(filtersIn);
       for (size_t k = 0; k < filtersIn.size(); k++)
@@ -490,7 +494,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
 
       list.setFilters(filtersOut);
 
-      vector< pair<string, bool> > subFiltersIn;
+      vector< pair<wstring, bool> > subFiltersIn;
       vector< bool > subFiltersOut;
       list.getSubFilters(subFiltersIn);
       for (size_t k = 0; k < subFiltersIn.size(); k++)
@@ -550,13 +554,13 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
 
       bool copy = bi.id == "SaveFileCopy";
 
-      string fileName = copy ? "" : savedFileName;
+      wstring fileName = copy ? L"" : savedFileName;
 
       if (fileName.empty()) {
         int ix = 0;
-        vector< pair<string, string> > ext;
-        ext.push_back(make_pair("xml-data", "*.xml"));
-        fileName = gdi.browseForSave(ext, "xml", ix);
+        vector< pair<wstring, wstring> > ext;
+        ext.push_back(make_pair(L"xml-data", L"*.xml"));
+        fileName = gdi.browseForSave(ext, L"xml", ix);
         if (fileName.empty())
           return 0;
       }
@@ -572,15 +576,15 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       if (!checkSave(gdi))
         return 0;
 
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("xml-data", "*.xml"));
-      string fileName = gdi.browseForOpen(ext, "xml");
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"xml-data", L"*.xml"));
+      wstring fileName = gdi.browseForOpen(ext, L"xml");
       if (fileName.empty())
         return 0;
 
       MetaList *tmp = new MetaList();
       try {
-        tmp->setListName(lang.tl("Ny lista"));
+        tmp->setListName(lang.tl(L"Ny lista"));
         tmp->load(fileName);
       }
       catch(...) {
@@ -608,12 +612,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       gdi.setData("ListEditorClz", this);
 
       gdi.pushX();
-      vector< pair<string, size_t> > lists;
+      vector< pair<wstring, size_t> > lists;
       oe->getListContainer().getLists(lists, true, false, false);
       reverse(lists.begin(), lists.end());
 
       gdi.fillRight();
-      gdi.addSelection("OpenList", 250, 400, editListCB, "Välj lista:");
+      gdi.addSelection("OpenList", 250, 400, editListCB, L"Välj lista:");
       gdi.addItem("OpenList", lists);
       gdi.selectFirstItem("OpenList");
 
@@ -709,12 +713,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     if (lbi.id == "AlignType") {
       gdi.setInputStatus("AlignText", lbi.data == lString);
       if (lbi.data == lString) {
-        int ix = lbi.text.find_first_of(":");
+        int ix = lbi.text.find_first_of(L":");
         if (ix != lbi.text.npos)
           gdi.setText("AlignText", lbi.text.substr(ix+1));
       }
       else
-        gdi.setText("AlignText", "");
+        gdi.setText("AlignText", L"");
     }
     else if (lbi.id == "Type") {
       EPostType type = EPostType(lbi.data);
@@ -727,12 +731,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         gdi.disableInput("UseLeg");
         gdi.enableInput("Leg");
         if (gdi.getText("Leg").empty())
-          gdi.setText("Leg", "0");
+          gdi.setText("Leg", L"0");
       }
       else {
         gdi.enableInput("UseLeg");
         if (gdi.getTextNo("Leg") == 0) {
-          gdi.setText("Leg", "");
+          gdi.setText("Leg", L"");
           gdi.enableInput("UseLeg");
           gdi.enableInput("UseResultModule", true);
           gdi.check("UseLeg", false);
@@ -742,14 +746,14 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     }
     else if (lbi.id == "SubType") {
       oListInfo::EBaseType subType = oListInfo::EBaseType(lbi.data);
-      vector< pair<string, bool> > subfilters;
+      vector< pair<wstring, bool> > subfilters;
       currentList->getSubFilters(subfilters);
       for (size_t k = 0; k < subfilters.size(); k++) {
         gdi.setInputStatus("subfilter" + itos(k), subType != oListInfo::EBaseTypeNone);
       }
     }
     else if (lbi.id == "ResultType") {
-      vector< pair<string, size_t> > types;
+      vector< pair<wstring, size_t> > types;
       int currentType = 0;
       currentList->getSortOrder(lbi.data != 0, types, currentType);
       if (lbi.data == 0) {
@@ -811,7 +815,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
 
   gdi.dropLine(3);
   gdi.popX();
-  vector< pair<string, size_t> > types;
+  vector< pair<wstring, size_t> > types;
   int currentType;
   mlp.getTypes(types, currentType);
   EPostType storedType = EPostType(currentType);
@@ -833,21 +837,21 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.pushX();
   gdi.fillRight();
   int boxY = gdi.getCY();
-  gdi.addSelection("Type", 290, 500, editListCB, "Typ:");
+  gdi.addSelection("Type", 290, 500, editListCB, L"Typ:");
   gdi.addItem("Type", types);
   gdi.selectItemByData("Type", currentType);
-  gdi.addInput("Text", mlp.getText(), 16, 0, "Egen text:", "Använd symbolen X där MeOS ska fylla i typens data.");
+  gdi.addInput("Text", mlp.getText(), 16, 0, L"Egen text:", L"Använd symbolen X där MeOS ska fylla i typens data.");
   int boxX = gdi.getCX();
   gdi.popX();
   gdi.fillRight();
   gdi.dropLine(3);
   currentList->getAlignTypes(mlp, types, currentType);
   sort(types.begin(), types.end());
-  gdi.addSelection("AlignType", 290, 500, editListCB, "Justera mot:");
+  gdi.addSelection("AlignType", 290, 500, editListCB, L"Justera mot:");
   gdi.addItem("AlignType", types);
   gdi.selectItemByData("AlignType", currentType);
 
-  gdi.addInput("AlignText", mlp.getAlignText(), 16, 0, "Text:");
+  gdi.addInput("AlignText", mlp.getAlignText(), 16, 0, L"Text:");
   if (currentType != lString)
     gdi.disableInput("AlignText");
   gdi.popX();
@@ -855,7 +859,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.fillRight();
   gdi.addCheckbox("BlockAlign", "Justera blockvis:", 0, mlp.getAlignBlock());
   gdi.dropLine(-0.2);
-  gdi.addInput("BlockSize", itos(mlp.getBlockWidth()), 5, 0, "", "Blockbredd");
+  gdi.addInput("BlockSize", itow(mlp.getBlockWidth()), 5, 0, L"", L"Blockbredd");
   gdi.dropLine(2.1);
   gdi.popX();
   gdi.fillRight();
@@ -871,9 +875,9 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.dropLine(-0.2);
   gdi.setCX(gdi.getCX() + gdi.getLineHeight() * 5);
   if (storedType == lResultModuleNumber || storedType == lResultModuleTime || storedType == lResultModuleTimeTeam || storedType == lResultModuleNumberTeam)
-    gdi.addInput("Leg", leg>=0 ? itos(leg) : "0", 4);
+    gdi.addInput("Leg", leg>=0 ? itow(leg) : L"0", 4);
   else
-    gdi.addInput("Leg", leg>=0 ? itos(leg + 1) : "", 4);
+    gdi.addInput("Leg", leg>=0 ? itow(leg + 1) : L"", 4);
   
   if (storedType == lResultModuleNumber || storedType == lResultModuleTime || storedType == lResultModuleTimeTeam || storedType == lResultModuleNumberTeam) {
     gdi.check("UseLeg", true);
@@ -897,13 +901,13 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.addString("", 1, "Formateringsregler");
   gdi.dropLine(0.5);
   gdi.fillRight();
-  gdi.addInput("MinIndeent", itos(mlp.getMinimalIndent()), 7, 0, "Minsta intabbning:");
+  gdi.addInput("MinIndeent", itow(mlp.getMinimalIndent()), 7, 0, L"Minsta intabbning:");
 
-  vector< pair<string, size_t> > fonts;
+  vector< pair<wstring, size_t> > fonts;
   int currentFont;
   mlp.getFonts(fonts, currentFont);
 
-  gdi.addSelection("Fonts", 150, 500, 0, "Format:");
+  gdi.addSelection("Fonts", 150, 500, 0, L"Format:");
   gdi.addItem("Fonts", fonts);
   gdi.selectItemByData("Fonts", currentFont);
   int maxX = gdi.getCX();
@@ -911,7 +915,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.popX();
   gdi.dropLine(3);
 
-  gdi.addSelection("TextAdjust", 150, 100, 0, "Textjustering:");
+  gdi.addSelection("TextAdjust", 150, 100, 0, L"Textjustering:");
   gdi.addItem("TextAdjust", lang.tl("Vänster"), 0);
   gdi.addItem("TextAdjust", lang.tl("Höger"), textRight);
   gdi.addItem("TextAdjust", lang.tl("Centrera"), textCenter);
@@ -954,13 +958,13 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.refresh();
 }
 
-const char *ListEditor::getIndexDescription(EPostType type) {
+const wchar_t *ListEditor::getIndexDescription(EPostType type) {
   if (type == lResultModuleTime || type == lResultModuleTimeTeam)
-    return "Index in X[index]#OutputTimes";
+    return L"Index in X[index]#OutputTimes";
   else if (type == lResultModuleNumber || type == lResultModuleNumberTeam)
-    return "Index in X[index]#OutputNumbers";
+    return L"Index in X[index]#OutputNumbers";
   else  
-    return "Applicera för specifik sträcka:";
+    return L"Applicera för specifik sträcka:";
 }
 
 void ListEditor::editListProp(gdioutput &gdi, bool newList) {
@@ -993,39 +997,39 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.fillRight();
   gdi.pushX();
 
-  gdi.addInput("Name", list.getListName(), 20, 0, "Listnamn:");
+  gdi.addInput("Name", list.getListName(), 20, 0, L"Listnamn:");
 
   if (newList) {
     gdi.dropLine(3.5);
     gdi.popX();
   }
 
-  vector< pair<string, size_t> > types;
+  vector< pair<wstring, size_t> > types;
   int currentType = 0;
 
   int maxX = gdi.getCX();
 
   list.getBaseType(types, currentType);
-  gdi.addSelection("BaseType", 150, 400, 0, "Listtyp:");
+  gdi.addSelection("BaseType", 150, 400, 0, L"Listtyp:");
   gdi.addItem("BaseType", types);
   gdi.selectItemByData("BaseType", currentType);
   gdi.autoGrow("BaseType");
   
   list.getResultModule(*oe, types, currentType);
-  gdi.addSelection("ResultType", 150, 400, editListCB, "Resultatuträkning:");
+  gdi.addSelection("ResultType", 150, 400, editListCB, L"Resultatuträkning:");
   gdi.addItem("ResultType", types);
   gdi.autoGrow("ResultType");
   gdi.selectItemByData("ResultType", currentType);
 
   list.getSortOrder(false, types, currentType);
-  gdi.addSelection("SortOrder", 170, 400, 0, "Global sorteringsordning:");
+  gdi.addSelection("SortOrder", 170, 400, 0, L"Global sorteringsordning:");
   gdi.addItem("SortOrder", types);
   gdi.autoGrow("SortOrder");
   
   gdi.selectItemByData("SortOrder", currentType);
 
   list.getSubType(types, currentType);
-  gdi.addSelection("SubType", 150, 400, editListCB, "Sekundär typ:");
+  gdi.addSelection("SubType", 150, 400, editListCB, L"Sekundär typ:");
   gdi.addItem("SubType", types);
   gdi.selectItemByData("SubType", currentType);
   oListInfo::EBaseType subType = oListInfo::EBaseType(currentType);
@@ -1043,7 +1047,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.fillDown();
   gdi.addString("", 1, "Filter");
   gdi.dropLine(0.5);
-  vector< pair<string, bool> > filters;
+  vector< pair<wstring, bool> > filters;
   list.getFilters(filters);
   gdi.fillRight();
   int xp = gdi.getCX();
@@ -1065,7 +1069,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.fillDown();
   gdi.addString("", 1, "Underfilter");
   gdi.dropLine(0.5);
-  vector< pair<string, bool> > subfilters;
+  vector< pair<wstring, bool> > subfilters;
   list.getSubFilters(subfilters);
   gdi.fillRight();
   xp = gdi.getCX();
@@ -1091,8 +1095,8 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.addString("", 1, "Typsnitt");
   gdi.dropLine(0.5);
   gdi.fillRight();
-  const char *expl[4] = {"Rubrik", "Underrubrik", "Lista", "Underlista"};
-  vector< pair<string, size_t> > fonts;
+  const wchar_t *expl[4] = {L"Rubrik", L"Underrubrik", L"Lista", L"Underlista"};
+  vector< pair<wstring, size_t> > fonts;
   gdi.getEnumeratedFonts(fonts);
   sort(fonts.begin(), fonts.end());
 
@@ -1104,10 +1108,10 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
     gdi.setText(id, list.getFontFace(k));
     gdi.setCX(gdi.getCX()+20);
     int f = list.getFontFaceFactor(k);
-    string ff = f == 0 ? "100 %" : itos(f) + " %";
-    gdi.addInput("FontFactor" + itos(k), ff, 4, 0, "Skalfaktor", "Relativ skalfaktor för typsnittets storlek i procent");
+    wstring ff = f == 0 ? L"100 %" : itow(f) + L" %";
+    gdi.addInput("FontFactor" + itos(k), ff, 4, 0, L"Skalfaktor", L"Relativ skalfaktor för typsnittets storlek i procent");
     f = list.getExtraSpace(k);
-    gdi.addInput("ExtraSpace" + itos(k), itos(f), 4, 0, "Avstånd", "Extra avstånd ovanför textblock");
+    gdi.addInput("ExtraSpace" + itos(k), itow(f), 4, 0, L"Avstånd", L"Extra avstånd ovanför textblock");
     if (k == 1) {
       gdi.dropLine(3);
       gdi.popX();
@@ -1172,7 +1176,7 @@ void ListEditor::makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside) 
 
 bool ListEditor::checkSave(gdioutput &gdi) {
   if (dirtyInt || dirtyExt) {
-    gdioutput::AskAnswer answer = gdi.askCancel("Vill du spara ändringar?");
+    gdioutput::AskAnswer answer = gdi.askCancel(L"Vill du spara ändringar?");
     if (answer == gdioutput::AnswerCancel)
       return false;
 

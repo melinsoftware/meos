@@ -73,9 +73,9 @@ struct SICard
   SIPunch CheckPunch;
   DWORD nPunch;
   SIPunch Punch[192];
-  char FirstName[21];
-  char LastName[21];
-  char Club[41];
+  wchar_t FirstName[21];
+  wchar_t LastName[21];
+  wchar_t Club[41];
   char readOutTime[32];
   bool PunchOnly;
   bool convertedTime;
@@ -110,7 +110,7 @@ struct SI_StationInfo
 {
   SI_StationInfo();
   HANDLE ThreadHandle;
-  string ComPort;
+  wstring ComPort;
   HANDLE hComm;
   COMMTIMEOUTS TimeOuts;
 
@@ -142,19 +142,19 @@ struct SI_StationInfo
 class SportIdent
 {
 protected:
-  bool ReadSI6Block(HANDLE hComm, BYTE *data);
-  bool ReadSystemData(SI_StationInfo *si, int retry=2);
-  bool ReadSystemDataV2(SI_StationInfo &si);
+  bool readSI6Block(HANDLE hComm, BYTE *data);
+  bool readSystemData(SI_StationInfo *si, int retry=2);
+  bool readSystemDataV2(SI_StationInfo &si);
   CRITICAL_SECTION SyncObj;
 
   DWORD ZeroTime; //Used to analyse times. Seconds 0-24h (0-24*3600)
-  int ReadByte_delay(BYTE &byte,  HANDLE hComm);
-  int ReadBytes_delay(BYTE *byte, DWORD buffSize, DWORD len,  HANDLE hComm);
-  int ReadBytesDLE_delay(BYTE *byte, DWORD buffSize, DWORD len,  HANDLE hComm);
+  int readByte_delay(BYTE &byte,  HANDLE hComm);
+  int readBytes_delay(BYTE *byte, DWORD buffSize, DWORD len,  HANDLE hComm);
+  int readBytesDLE_delay(BYTE *byte, DWORD buffSize, DWORD len,  HANDLE hComm);
 
-  int ReadByte(BYTE &byte,  HANDLE hComm);
-  int ReadBytes(BYTE *byte, DWORD len,  HANDLE hComm);
-  int ReadBytesDLE(BYTE *byte, DWORD len,  HANDLE hComm);
+  int readByte(BYTE &byte,  HANDLE hComm);
+  int readBytes(BYTE *byte, DWORD len,  HANDLE hComm);
+  int readBytesDLE(BYTE *byte, DWORD len,  HANDLE hComm);
 
   // Returns zero on failure, number of bytes used on success. 
   int analyzeStation(BYTE *db, SI_StationData &si);
@@ -163,26 +163,26 @@ protected:
   int n_SI_Info; //Number of structures..
   SI_StationInfo *Current_SI_Info; //Current SI_Info in use (for thread startup);
 
-  WORD CalcCRC(BYTE *data, DWORD length);
-  bool CheckCRC(BYTE *bf);
-  void SetCRC(BYTE *bf);
+  WORD calcCRC(BYTE *data, DWORD length);
+  bool checkCRC(BYTE *bf);
+  void setCRC(BYTE *bf);
 
-  bool GetCard5Data(BYTE *data, SICard &card);
-  bool GetCard6Data(BYTE *data, SICard &card);
-  bool GetCard9Data(BYTE *data, SICard &card);
+  bool getCard5Data(BYTE *data, SICard &card);
+  bool getCard6Data(BYTE *data, SICard &card);
+  bool getCard9Data(BYTE *data, SICard &card);
 
   DWORD GetExtCardNumber(BYTE *data) const;
 
-  void GetSI5Data(HANDLE hComm);
-  void GetSI5DataExt(HANDLE hComm);
+  void getSI5Data(HANDLE hComm);
+  void getSI5DataExt(HANDLE hComm);
 
-  void GetSI6Data(HANDLE hComm);
-  void GetSI6DataExt(HANDLE hComm);
-  void GetSI9DataExt(HANDLE hComm);
+  void getSI6Data(HANDLE hComm);
+  void getSI6DataExt(HANDLE hComm);
+  void getSI9DataExt(HANDLE hComm);
 
-  void AnalyseSI5Time(BYTE *data, DWORD &time, DWORD &control);
-  bool AnalysePunch(BYTE *data, DWORD &time, DWORD &control);
-  void AnalyseTPunch(BYTE *data, DWORD &time, DWORD &control);
+  void analyseSI5Time(BYTE *data, DWORD &time, DWORD &control);
+  bool analysePunch(BYTE *data, DWORD &time, DWORD &control);
+  void analyseTPunch(BYTE *data, DWORD &time, DWORD &control);
 
   //Card read waiting to be processed.
   list<SICard> ReadCards;
@@ -196,27 +196,27 @@ protected:
   int MonitorTCPSI(WORD port, int localZeroTime);
 
 public:
-  SI_StationInfo *findStation(const string &com);
+  SI_StationInfo *findStation(const wstring &com);
 
-  void getInfoString(const string &com, vector<string> &info);
-  bool IsPortOpen(const string &com);
-  void SetZeroTime(DWORD zt);
-  bool AutoDetect(list<int> &ComPorts);
-  void StopMonitorThread();
+  void getInfoString(const wstring &com, vector<wstring> &info);
+  bool isPortOpen(const wstring &com);
+  void setZeroTime(DWORD zt);
+  bool autoDetect(list<int> &ComPorts);
+  void stopMonitorThread();
 
-  void StartMonitorThread(const char *com);
-  bool GetCard(SICard &sic);
+  void startMonitorThread(const wchar_t *com);
+  bool getCard(SICard &sic);
   void addCard(const SICard &sic);
-  void AddPunch(DWORD Time, int Station, int Card, int Mode=0);
+  void addPunch(DWORD Time, int Station, int Card, int Mode=0);
 
 
   void EnumrateSerialPorts(list<int> &ports);
 
-  void CloseCom(const char *com);
-  bool OpenCom(const char *com);
+  void closeCom(const wchar_t *com);
+  bool openCom(const wchar_t *com);
   bool tcpAddPort(int port, DWORD zeroTime);
 
-  bool OpenComListen(const char *com, DWORD BaudRate);
+  bool openComListen(const wchar_t *com, DWORD BaudRate);
 
   SportIdent(HWND hWnd, DWORD Id);
   virtual ~SportIdent();

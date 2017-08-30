@@ -31,8 +31,14 @@ class ImportFormats;
 class TabCompetition :
   public TabBase
 {
-  string eventorBase;
-  string iofExportVersion;
+  enum FlowOperation {
+    FlowContinue,
+    FlowCancel,
+    FlowAborted
+  };
+
+  wstring eventorBase;
+  wstring iofExportVersion;
   void textSizeControl(gdioutput &gdi) const;
 
   bool showConnectionPage;
@@ -48,14 +54,14 @@ class TabCompetition :
   list<PrefsEditor> prefsEditor;
 
   oFreeImport fi;
-  string entryText;
+  wstring entryText;
   vector<oEntryBlock> entries;
   void loadConnectionPage(gdioutput &gdi);
 
-  string defaultServer;
-  string defaultName;
-  string defaultPwd;
-  string defaultPort;
+  wstring defaultServer;
+  wstring defaultName;
+  wstring defaultPwd;
+  wstring defaultPort;
 
   void copyrightLine(gdioutput &gdi) const;
   void loadAboutPage(gdioutput &gdi) const;
@@ -65,30 +71,30 @@ class TabCompetition :
   int lastChangeClassType;
 
   struct {
-    string name;
-    string careOf;
-    string street;
-    string city;
-    string zipCode;
-    string account;
-    string email;
+    wstring name;
+    wstring careOf;
+    wstring street;
+    wstring city;
+    wstring zipCode;
+    wstring account;
+    wstring email;
   } eventor;
 
   int getOrganizer(bool updateEvent);
-  void getAPIKey(vector< pair<string, string> > &key) const;
+  void getAPIKey(vector< pair<wstring, wstring> > &key) const;
   void getEventorCompetitions(gdioutput &gdi,
-                              const string &fromDate,
+                              const wstring &fromDate,
                               vector<CompetitionInfo> &events) const;
 
   void saveSettings(gdioutput &gdi);
   void loadSettings(gdioutput &gdi);
 
   void getEventorCmpData(gdioutput &gdi, int id,
-                         const string &eventFile,
-                         const string &clubFile,
-                         const string &classFile,
-                         const string &entryFile,
-                         const string &dbFile) const;
+                         const wstring &eventFile,
+                         const wstring &clubFile,
+                         const wstring &classFile,
+                         const wstring &entryFile,
+                         const wstring &dbFile) const;
 
   void loadMultiEvent(gdioutput &gdi);
   void saveMultiEvent(gdioutput &gdi);
@@ -117,7 +123,9 @@ class TabCompetition :
   void newCompetitionGuide(gdioutput &gdi, int step);
 
   void entryForm(gdioutput &gdi, bool isGuide);
-  void saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide);
+  FlowOperation saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide);
+  
+  FlowOperation checkStageFilter(gdioutput &gdi, const wstring &fname, set<int> &filter);
   void setExportOptionsStatus(gdioutput &gdi, int format) const;
 
   void selectStartlistOptions(gdioutput &gdi);
@@ -137,7 +145,7 @@ public:
   void saveMeosFeatures(gdioutput &gdi, bool write);
   void updateFeatureStatus(gdioutput &gdi);
 
-  void setEventorServer(const string &server);
+  void setEventorServer(const wstring &server);
   void setEventorUTC(bool useUTC);
 
   int competitionCB(gdioutput &gdi, int type, void *data);

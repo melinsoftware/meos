@@ -21,19 +21,37 @@
 ************************************************************************/
 
 #include "stdafx.h"
+
 #include "localizer.h"
 #include <fstream>
 #include <vector>
-#include "meos_util.h"
 #include "random.h"
 #include "oFreeImport.h"
+#include "meos_util.h"
+
+const string &toUTF8(const wstring &winput) {
+  string &output = StringCache::getInstance().get();
+  size_t alloc = winput.length()*2;
+  output.resize(alloc);
+  WideCharToMultiByte(CP_UTF8, 0, winput.c_str(), winput.length()+1, (char *)output.c_str(), alloc, 0, 0);
+  output.resize(strlen(output.c_str()));
+  return output;
+}
+
+const wstring &fromUTF(const string &input) {
+  wstring &output = StringCache::getInstance().wget();
+  output.resize(input.length()+2, 0);
+  int res = MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, &output[0], output.size() * sizeof(wchar_t));
+  output.resize(res-1);
+  return output;
+}
 
 class LocalizerImpl
 {
-  string language;
-  map<string, string> table;
-  map<string, string> unknown;
-  void loadTable(const vector<string> &raw, const string &language);
+  wstring language;
+  map<wstring, wstring> table;
+  map<wstring, wstring> unknown;
+  void loadTable(const vector<string> &raw, const wstring &language);
   mutable oWordList *givenNames;
 
 public:
@@ -42,12 +60,12 @@ public:
 
   void translateAll(const LocalizerImpl &all);
 
-  const string &translate(const string &str, bool &found);
+  const wstring &translate(const wstring &str, bool &found);
 
-  void saveUnknown(const string &file);
-  void saveTable(const string &file);
-  void loadTable(const string &file, const string &language);
-  void loadTable(int resource, const string &language);
+  void saveUnknown(const wstring &file);
+  void saveTable(const wstring &file);
+  void loadTable(const wstring &file, const wstring &language);
+  void loadTable(int resource, const wstring &language);
 
   void clear();
   LocalizerImpl(void);
@@ -90,9 +108,9 @@ void Localizer::LocalizerInternal::set(Localizer &lio) {
   li.user = this;
 }
 
-vector<string> Localizer::LocalizerInternal::getLangResource() const {
-  vector<string> v;
-  for (map<string, string>::const_iterator it = langResource.begin(); it !=langResource.end(); ++it)
+vector<wstring> Localizer::LocalizerInternal::getLangResource() const {
+  vector<wstring> v;
+  for (map<wstring, wstring>::const_iterator it = langResource.begin(); it !=langResource.end(); ++it)
     v.push_back(it->first);
 
   return v;
@@ -113,9 +131,9 @@ LocalizerImpl::~LocalizerImpl(void)
     delete givenNames;
 }
 
-const string &Localizer::LocalizerInternal::tl(const string &str) const {
+const wstring &Localizer::LocalizerInternal::tl(const wstring &str) const {
   bool found;
-  const string *ret = &impl->translate(str, found);
+  const wstring *ret = &impl->translate(str, found);
   if (found || !implBase)
     return *ret;
 
@@ -123,16 +141,16 @@ const string &Localizer::LocalizerInternal::tl(const string &str) const {
   return *ret;
 }
 
-const string &LocalizerImpl::translate(const string &str, bool &found)
+const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
 {
   found = false;
   static int i = 0;
   const int bsize = 17;
-  static string value[bsize];
+  static wstring value[bsize];
   int len = str.length();
 
   if (len==0)
-    return str;
+    return _EmptyWString;
 
   if (str[0]=='#') {
     i = (i + 1)%bsize;
@@ -149,14 +167,14 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
       k++;
 
     if (k<str.length()) {
-      string sub = str.substr(k);
+      wstring sub = str.substr(k);
       i = (i + 1)%bsize;
       value[i] = str.substr(0, k) + translate(sub, found);
       return value[i];
     }
   }
 
-  map<string, string>::const_iterator it = table.find(str);
+  map<wstring, wstring>::const_iterator it = table.find(str);
   if (it != table.end()) {
     found = true;
     return it->second;
@@ -164,13 +182,13 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
 
   int subst = str.find_first_of('#');
   if (subst != str.npos) {
-    string s = translate(str.substr(0, subst), found);
-    vector<string> split_vec;
-    split(str.substr(subst+1), "#", split_vec);
-    split_vec.push_back("");
-    const char *subsymb = "XYZW";
+    wstring s = translate(str.substr(0, subst), found);
+    vector<wstring> split_vec;
+    split(str.substr(subst+1), L"#", split_vec);
+    split_vec.push_back(L"");
+    const wchar_t *subsymb = L"XYZW";
     size_t subpos = 0;
-    string ret;
+    wstring ret;
     size_t lastpos = 0;
     for (size_t k = 0; k<s.size(); k++) {
       if (subpos>=split_vec.size() || subpos>=4)
@@ -195,12 +213,12 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
   }
 
 
-  char last = str[len-1];
+  wchar_t last = str[len-1];
   if (last != ':' && last != '.' && last != ' ' && last != ',' &&
       last != ';' && last != '<' && last != '>' && last != '-' && last != 0x96) {
 #ifdef _DEBUG
     if (str.length()>1)
-      unknown[str] = "";
+      unknown[str] = L"";
 #endif
     found = false;
     i = (i + 1)%bsize;
@@ -208,11 +226,11 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
     return value[i];
   }
 
-  string suffix;
+  wstring suffix;
   int pos = str.find_last_not_of(last);
 
   while(pos>0) {
-    char last = str[pos];
+    wchar_t last = str[pos];
     if (last != ':' && last != ' ' && last != ',' && last != '.' &&
         last != ';' && last != '<' && last != '>' && last != '-' && last != 0x96)
       break;
@@ -222,7 +240,7 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
 
   suffix = str.substr(pos+1);
 
-  string key = str.substr(0, str.length()-suffix.length());
+  wstring key = str.substr(0, str.length()-suffix.length());
   it = table.find(key);
   if (it != table.end()) {
     i = (i + 1)%bsize;
@@ -232,7 +250,7 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
   }
 #ifdef _DEBUG
   if (key.length() > 1)
-    unknown[key] = "";
+    unknown[key] = L"";
 #endif
 
   found = false;
@@ -240,30 +258,30 @@ const string &LocalizerImpl::translate(const string &str, bool &found)
   value[i] = str;
   return value[i];
 }
-const string newline = "\n";
+const wstring newline = L"\n";
 
-void LocalizerImpl::saveUnknown(const string &file)
+void LocalizerImpl::saveUnknown(const wstring &file)
 {
   if (!unknown.empty()) {
     ofstream fout(file.c_str(), ios::trunc|ios::out);
-    for (map<string, string>::iterator it = unknown.begin(); it!=unknown.end(); ++it) {
-      string value = it->second;
-      string key = it->first;
+    for (map<wstring, wstring>::iterator it = unknown.begin(); it!=unknown.end(); ++it) {
+      wstring value = it->second;
+      wstring key = it->first;
       if (value.empty()) {
         value = key;
 
         int nl = value.find(newline);
-        int n2 = value.find(".");
+        int n2 = value.find(L".");
 
         if (nl!=string::npos || n2!=string::npos) {
           while (nl!=string::npos) {
-            value.replace(nl, newline.length(), "\\n");
+            value.replace(nl, newline.length(), L"\\n");
             nl = value.find(newline);
           }
-          key = "help:" + itos(value.length()) + itos(value.find_first_of("."));
+          key = L"help:" + itow(value.length()) + itow(value.find_first_of('.'));
         }
       }
-      fout << key << " = " << value << endl;
+      fout << toUTF8(key) << " = " << toUTF8(value) << endl;
     }
   }
 }
@@ -271,8 +289,8 @@ void LocalizerImpl::saveUnknown(const string &file)
 
 const oWordList &LocalizerImpl::getGivenNames() const {
   if (givenNames == 0) {
-    char bf[260];
-    getUserFile(bf, "given.mwd");
+    wchar_t bf[260];
+    getUserFile(bf, L"wgiven.mwd");
     givenNames = new oWordList();
     try {
       givenNames->load(bf);
@@ -283,29 +301,29 @@ const oWordList &LocalizerImpl::getGivenNames() const {
 
 #ifndef MEOSDB
 
-void Localizer::LocalizerInternal::loadLangResource(const string &name) {
-  map<string,string>::iterator it = langResource.find(name);
+void Localizer::LocalizerInternal::loadLangResource(const wstring &name) {
+  map<wstring,wstring>::iterator it = langResource.find(name);
   if (it == langResource.end())
     throw std::exception("Unknown language");
 
-  string &res = it->second;
+  wstring &res = it->second;
 
-  int i = atoi(res.c_str());
+  int i = _wtoi(res.c_str());
   if (i > 0)
     impl->loadTable(i, name);
   else
     impl->loadTable(res, name);
 }
 
-void Localizer::LocalizerInternal::addLangResource(const string &name, const string &resource) {
+void Localizer::LocalizerInternal::addLangResource(const wstring &name, const wstring &resource) {
   langResource[name] = resource;
   if (implBase == 0) {
     implBase = new LocalizerImpl();
-    implBase->loadTable(atoi(resource.c_str()), name);
+    implBase->loadTable(_wtoi(resource.c_str()), name);
   }
 }
 
-void Localizer::LocalizerInternal::debugDump(const string &untranslated, const string &translated) const {
+void Localizer::LocalizerInternal::debugDump(const wstring &untranslated, const wstring &translated) const {
   if (implBase) {
     impl->translateAll(*implBase);
   }
@@ -314,7 +332,7 @@ void Localizer::LocalizerInternal::debugDump(const string &untranslated, const s
 }
 
 void LocalizerImpl::translateAll(const LocalizerImpl &all) {
-  map<string, string>::const_iterator it;
+  map<wstring, wstring>::const_iterator it;
   bool f;
   for (it = all.table.begin(); it != all.table.end(); ++it) {
     translate(it->first, f);
@@ -324,25 +342,25 @@ void LocalizerImpl::translateAll(const LocalizerImpl &all) {
   }
 }
 
-void LocalizerImpl::saveTable(const string &file)
+void LocalizerImpl::saveTable(const wstring &file)
 {
-  ofstream fout((language+"_"+file).c_str(), ios::trunc|ios::out);
-  for (map<string, string>::iterator it = table.begin(); it!=table.end(); ++it) {
-    string value = it->second;
+  ofstream fout(language+L"_"+file, ios::trunc|ios::out);
+  for (map<wstring, wstring>::iterator it = table.begin(); it!=table.end(); ++it) {
+    wstring value = it->second;
     int nl = value.find(newline);
     while (nl!=string::npos) {
-      value.replace(nl, newline.length(), "\\n");
+      value.replace(nl, newline.length(), L"\\n");
       nl = value.find(newline);
     }
-    fout << it->first << " = " << value << endl;
+    fout << toUTF8(it->first) << " = " << toUTF8(value) << endl;
   }
 }
 
-void LocalizerImpl::loadTable(int id, const string &language)
+void LocalizerImpl::loadTable(int id, const wstring &language)
 {
-  string sname = "#"+itos(id);
-  const char *name = sname.c_str();
-  HRSRC hResInfo = FindResource(0, name, "#300");
+  wstring sname = L"#"+itow(id);
+  const wchar_t *name = sname.c_str();
+  HRSRC hResInfo = FindResource(0, name, L"#300");
   HGLOBAL hGlobal = LoadResource(0, hResInfo);
 
   if (hGlobal==0)
@@ -375,7 +393,7 @@ void LocalizerImpl::loadTable(int id, const string &language)
   loadTable(raw, language);
 }
 
-void LocalizerImpl::loadTable(const string &file, const string &language)
+void LocalizerImpl::loadTable(const wstring &file, const wstring &language)
 {
   clear();
   ifstream fin(file.c_str(), ios::in);
@@ -407,7 +425,7 @@ void LocalizerImpl::loadTable(const string &file, const string &language)
 }
 
 
-void LocalizerImpl::loadTable(const vector<string> &raw, const string &language)
+void LocalizerImpl::loadTable(const vector<string> &raw, const wstring &language)
 {
   vector<int> order(raw.size());
   for (size_t k = 0; k<raw.size(); k++)
@@ -418,6 +436,7 @@ void LocalizerImpl::loadTable(const vector<string> &raw, const string &language)
 
   table.clear();
   this->language = language;
+  string nline = "\n";
   for (size_t k=0;k<raw.size();k++) {
     const string &s = raw[order[k]];
     int pos = s.find_first_of('=');
@@ -437,11 +456,26 @@ void LocalizerImpl::loadTable(const vector<string> &raw, const string &language)
 
     int nl = value.find("\\n");
     while (nl!=string::npos) {
-      value.replace(nl, 2, newline);
+      value.replace(nl, 2, nline);
       nl = value.find("\\n");
     }
 
-    table[key] = value;
+    static int translate = 0;
+
+    if (translate) {
+      wstring output, okey;
+      output.reserve(value.size()+1);
+      output.resize(value.size(), 0);
+      MultiByteToWideChar(1251, MB_PRECOMPOSED, value.c_str(), value.size(), &output[0], output.size() * sizeof(wchar_t));
+   
+      okey.reserve(key.size()+1);
+      okey.resize(key.size(), 0);
+      MultiByteToWideChar(1252, MB_PRECOMPOSED, key.c_str(), key.size(), &okey[0], okey.size() * sizeof(wchar_t));
+
+      table[okey] = output;
+    }
+    else
+      table[fromUTF(key)] = fromUTF(value);
   }
 }
 
@@ -455,6 +489,15 @@ void LocalizerImpl::clear()
 }
 
 bool Localizer::capitalizeWords() const {
-  return tl("Lyssna") == "Listen";
+  return tl("Lyssna") == L"Listen";
 }
 
+const wstring &Localizer::tl(const string &str) const {
+  if (str.length() == 0)
+    return _EmptyWString;
+  wstring key(str.begin(), str.end());
+  for (size_t k = 0; k < key.size(); k++) {
+    key[k] = 0xFF&key[k];
+  }
+  return linternal->tl(key);
+}

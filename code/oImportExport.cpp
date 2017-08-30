@@ -86,7 +86,7 @@ int ConvertStatusToOE(int i)
   return 1;//Ej start...?!
 }
 
-string &getFirst(string &inout, int maxNames) {
+wstring &getFirst(wstring &inout, int maxNames) {
   int s = inout.size();
   for (int k = 0;k<s; k++) {
     if (inout[k] == ' ' && k>3 && maxNames<=1) {
@@ -98,7 +98,7 @@ string &getFirst(string &inout, int maxNames) {
   return inout;
 }
 
-bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSplits)
+bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includeSplits)
 {
   enum {
     OEstno = 0, OEcard = 1, OEid = 2, OEsurname = 3, OEfirstname = 4,
@@ -168,9 +168,9 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
     row[OEstno] = conv_is(it->getId());
     row[OEcard] = conv_is(it->getCardNo());
     if (it->getExtIdentifier() != 0)
-      row[OEid] = it->getExtIdentifierString();
-    row[OEsurname] = it->getFamilyName();
-    row[OEfirstname] = it->getGivenName();
+      row[OEid] = gdibase.recodeToNarrow(it->getExtIdentifierString());
+    row[OEsurname] = gdibase.recodeToNarrow(it->getFamilyName());
+    row[OEfirstname] = gdibase.recodeToNarrow(it->getGivenName());
     row[OEbirth] = conv_is(di.getInt("BirthYear") % 100);
 
     // Specialized per language
@@ -185,7 +185,7 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
     case sBoth:
     case sUnknown:
     default:
-      row[OEsex] = di.getString("Sex");
+      row[OEsex] = gdibase.recodeToNarrow(di.getString("Sex"));
       break;
     }
 
@@ -196,32 +196,29 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
       row[OEnc] = "0";
 
     // Excel format HH:MM:SS
-    string dash = MakeDash("-");
-    row[OEstart] = it->getStartTimeS();
-    if (row[OEstart] == dash)
-      row[OEstart] = "";
-
+    if (it->getStartTime() > 0)
+      row[OEstart] = gdibase.recodeToNarrow(it->getStartTimeS());
+    
     // Excel format HH:MM:SS
-    row[OEfinish] = it->getFinishTimeS();
-    if (row[OEfinish] == dash)
-      row[OEfinish] = "";
-
+    if (it->getFinishTime() > 0)
+      row[OEfinish] = gdibase.recodeToNarrow(it->getFinishTimeS());
+    
     // Excel format HH:MM:SS
-    row[OEtime] = formatTimeHMS(it->getRunningTime());
-    if (row[OEtime] == dash)
-      row[OEtime] = "";
+    
+    if (it->getRunningTime() > 0)
+      row[OEtime] = formatTimeHMS(it->getRunningTime());
 
     row[OEstatus] = conv_is(ConvertStatusToOE(it->getStatus()));
     row[OEclubno] = conv_is(it->getClubId());
 
     if (it->getClubRef()) {
-      row[OEclub] = it->getClubRef()->getDI().getString("ShortName");
-      row[OEclubcity] = it->getClub();
+      row[OEclub] = gdibase.recodeToNarrow(it->getClubRef()->getDI().getString("ShortName"));
+      row[OEclubcity] = gdibase.recodeToNarrow(it->getClub());
     }
-    row[OEnat] = di.getString("Nationality");
+    row[OEnat] = gdibase.recodeToNarrow(di.getString("Nationality"));
     row[OEclassno] = conv_is(it->getClassId());
-    row[OEclassshortname] = it->getClass();
-    row[OEclassname] = it->getClass();
+    row[OEclassshortname] = gdibase.recodeToNarrow(it->getClass());
+    row[OEclassname] = gdibase.recodeToNarrow(it->getClass());
 
     row[OErent] = conv_is(di.getInt("CardFee"));
     row[OEfee] = conv_is(di.getInt("Fee"));
@@ -230,7 +227,7 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
     pCourse pc = it->getCourse(true);
     if (pc) {
       row[OEcourseno] = conv_is(pc->getId());
-      row[OEcourse] = pc->getName();
+      row[OEcourse] = gdibase.recodeToNarrow(pc->getName());
       if (pc->getLength()>0) {
         sprintf_s(bf, "%d.%d", pc->getLength() / 1000, pc->getLength() % 1000);
         row[OElength] = bf;
@@ -239,7 +236,7 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
 
       row[OEcoursecontrols] = conv_is(pc->nControls);
     }
-    row[OEpl] = it->getPlaceS();
+    row[OEpl] = gdibase.recodeToNarrow(it->getPlaceS());
 
     if (includeSplits && pc != NULL)
     {
@@ -260,7 +257,7 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
       for (int k = startIx, m = 0; k < endIx; k++, m += 2) {
         if (pc->getControl(k)->isRogaining(hasRogaining))
           continue;
-        row.push_back(pc->getControl(k)->getIdS());
+        row.push_back(gdibase.recodeToNarrow(pc->getControl(k)->getIdS()));
         if (unsigned(k) < sp.size() && sp[k].time > 0)
           row.push_back(formatTimeHMS(sp[k].time - it->tStartTime));
         else
@@ -275,7 +272,7 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
         pPunch punch = *punchIt;
         if (!punch->isUsed && !(punch->isFinish() && !pc->useLastAsFinish()) && !(punch->isStart() && !pc->useFirstAsStart()) && !punch->isCheck())
         {
-          row.push_back(punch->getType());
+          row.push_back(gdibase.recodeToNarrow(punch->getType()));
 
           int t = punch->getAdjustedTime();
           if (it->tStartTime > 0 && t > 0 && t > it->tStartTime)
@@ -295,8 +292,9 @@ bool oEvent::exportOECSV(const char *file, int languageTypeIndex, bool includeSp
   return true;
 }
 
-void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateClass, bool removeNonexisting)
-{
+void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file, 
+                                 bool updateClass, bool removeNonexisting,
+                                 const set<int> &filter) {
   vector< pair<int, int> > runnersInTeam;
   for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isRemoved() && it->tInTeam) {
@@ -304,7 +302,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
     }
   }
 
-  xmlparser xml(0);
+  xmlparser xml;
   xml.read(file);
 
   xmlobject xo = xml.getObject("EntryList");
@@ -317,7 +315,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
 
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false);
-      reader.readEntryList(gdi, xo, removeNonexisting, ent, fail, removed);
+      reader.readEntryList(gdi, xo, removeNonexisting, filter, ent, fail, removed);
     }
     else {
       xmlList xl;
@@ -360,7 +358,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
     }
     gdi.addString("", 0, "Klart. Antal importerade: X#" + itos(ent));
     if (fail>0)
-      gdi.addString("", 0, "Antal misslyckade: X#" + itos(fail)).setColor(colorRed);
+      gdi.addString("", 0, "Antal som inte importerades: X#" + itos(fail)).setColor(colorRed);
     gdi.dropLine();
     gdi.refreshFast();
   }
@@ -391,13 +389,13 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
 
           pClass cls = 0;
           if (clsId == 0) {
-            string clsName;
+            wstring clsName;
             it->getObjectString("ClassShortName", clsName);
             if (!clsName.empty())
               cls = getClassCreate(0, clsName);
           }
           else
-            cls = getClassCreate(clsId, lang.tl("Klass ") + itos(clsId));
+            cls = getClassCreate(clsId, lang.tl(L"Klass ") + itow(clsId));
 
           it->getObjects("PersonStart", entries);
           for (size_t k = 0; k<entries.size(); k++) {
@@ -413,7 +411,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
     }
     gdi.addString("", 0, "Klart. Antal importerade: X#" + itos(ent));
     if (fail>0)
-      gdi.addString("", 0, "Antal misslyckade: X#" + itos(fail)).setColor(colorRed);
+      gdi.addString("", 0, "Antal som inte importerades: X#" + itos(fail)).setColor(colorRed);
     gdi.dropLine();
     gdi.refreshFast();
   }
@@ -570,7 +568,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false);
       reader.readEventList(gdi, xo);
-      gdi.addString("", 0, "Tävlingens namn: X#" + getName());
+      gdi.addString("", 0, L"Tävlingens namn: X#" + getName());
       gdi.dropLine();
       gdi.refreshFast();
     }
@@ -583,7 +581,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const char *file, bool updateCl
       for(it=xl.begin(); it != xl.end(); ++it){
         if (it->is("Event")){
           addXMLEvent(*it);
-          gdi.addString("", 0, "Tävlingens namn: X#" + getName());
+          gdi.addString("", 0, L"Tävlingens namn: X#" + getName());
           gdi.dropLine();
           gdi.refreshFast();
           break;
@@ -611,7 +609,7 @@ bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
   xmlobject person = xentry.getObject("Person");
   if (!person) return false;
 
-  string pids;
+  wstring pids;
   person.getObjectString("PersonId", pids);
   __int64 extId = oBase::converExtIdentifierString(pids);
   int pid = oBase::idFromExtId(extId);
@@ -639,16 +637,16 @@ bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
   //if (!cardno)
   //  return false;
 
-  string given;
+  wstring given;
   pname.getObjectString("Given", given);
   getFirst(given, 2);
-  string family;
+  wstring family;
   pname.getObjectString("Family", family);
 
   if (given.empty() || family.empty())
     return false;
 
-  string name(family + ", " + given);
+  wstring name(family + L", " + given);
 
   char sex[2];
   person.getObjectString("sex", sex, 2);
@@ -665,7 +663,7 @@ bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
       natId.getObjectString("value", national, 4);
   }
 
-  RunnerDBEntry *rde = runnerDB->getRunnerById(extId);
+  RunnerWDBEntry *rde = runnerDB->getRunnerById(extId);
 
   if (!rde) {
     rde = runnerDB->getRunnerByCard(cardno);
@@ -680,54 +678,54 @@ bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
   if (rde) {
     rde->setExtId(extId);
     rde->setName(name.c_str());
-    rde->clubNo = clubId;
-    rde->birthYear = extendYear(birth);
-    rde->sex = sex[0];
-    memcpy(rde->national, national, 3);
+    rde->dbe().clubNo = clubId;
+    rde->dbe().birthYear = extendYear(birth);
+    rde->dbe().sex = sex[0];
+    memcpy(rde->dbe().national, national, 3);
   }
   return true;
 }
 
-bool oEvent::addOECSVCompetitorDB(const vector<string> &row)
+bool oEvent::addOECSVCompetitorDB(const vector<wstring> &row)
 {
   // Ident. base de données;Puce;Nom;Prénom;Né;S;N° club;Nom;Ville;Nat;N° cat.;Court;Long;Num1;Num2;Num3;E_Mail;Texte1;Texte2;Texte3;Adr. nom;Rue;Ligne2;Code Post.;Ville;Tél.;Fax;E-mail;Id/Club;Louée
   enum { OEid = 0, OEcard = 1, OEsurname = 2, OEfirstname = 3, OEbirth = 4, OEsex = 5,
     OEclubno = 6, OEclub = 7, OEclubcity = 8, OEnat = 9, OEclassno = 10, OEclassshort = 11, OEclasslong = 12
   };
 
-  int pid = atoi(row[OEid].c_str());
+  int pid = _wtoi(row[OEid].c_str());
 
-  string given = row[OEfirstname];
-  string family = row[OEsurname];
+  wstring given = row[OEfirstname];
+  wstring family = row[OEsurname];
 
   if (given.empty() && family.empty())
     return false;
 
-  string name = family + ", " + given;
+  wstring name = family + L", " + given;
   
   // Depending on the OE language, man = "H" (French) or "M" (English, Svenska, Dansk, Russian, Deutsch)
   // woman = "F" (English, French) or "W" (Deutsch, Russian) or "K" (Svenska, Dansk)
   char sex[2];
-  if (row[OEsex] == "H" || row[OEsex] == "M")
-    strcpy(sex, "M");
-  else if (row[OEsex] == "F" || row[OEsex] == "K" || row[OEsex] == "W")
-    strcpy(sex, "W");
+  if (row[OEsex] == L"H" || row[OEsex] == L"M")
+    strcpy_s(sex, "M");
+  else if (row[OEsex] == L"F" || row[OEsex] == L"K" || row[OEsex] == L"W")
+    strcpy_s(sex, "W");
   else
-    strcpy(sex, "");
+    strcpy_s(sex, "");
 
-  int birth = atoi(row[OEbirth].c_str());
+  int birth = _wtoi(row[OEbirth].c_str());
 
   // Hack to take care of inconsistency between FFCO licensees archive (France) and event registrations from FFCO (FR)
   char national[4] = { 0,0,0,0 };
-  if (row[OEnat] == "France") {
-    strcpy(national, "FRA");
+  if (row[OEnat] == L"France") {
+    strcpy_s(national, "FRA");
   }
 
   // Extract club data
 
-  int clubId = atoi(row[OEclubno].c_str());
-  string clubName;
-  string shortClubName;
+  int clubId = _wtoi(row[OEclubno].c_str());
+  wstring clubName;
+  wstring shortClubName;
 
   clubName = row[OEclubcity];
   shortClubName = row[OEclub];
@@ -748,9 +746,9 @@ bool oEvent::addOECSVCompetitorDB(const vector<string> &row)
     delete pc;
   }
 
-  RunnerDBEntry *rde = runnerDB->getRunnerById(pid);
+  RunnerWDBEntry *rde = runnerDB->getRunnerById(pid);
 
-  int cardno = atoi(row[OEcard].c_str());
+  int cardno = _wtoi(row[OEcard].c_str());
   if (!rde) {
     rde = runnerDB->getRunnerByCard(cardno);
 
@@ -764,10 +762,10 @@ bool oEvent::addOECSVCompetitorDB(const vector<string> &row)
   if (rde) {
     rde->setExtId(pid);
     rde->setName(name.c_str());
-    rde->clubNo = clubId;
-    rde->birthYear = extendYear(birth);
-    rde->sex = sex[0];
-    memcpy(rde->national, national, 3);
+    rde->dbe().clubNo = clubId;
+    rde->dbe().birthYear = extendYear(birth);
+    rde->dbe().sex = sex[0];
+    memcpy(rde->dbe().national, national, 3);
   }
   return true;
 }
@@ -776,7 +774,7 @@ bool oEvent::addXMLTeamEntry(const xmlobject &xentry, int clubId)
 {
   if (!xentry) return false;
 
-  string name;
+  wstring name;
   xentry.getObjectString("TeamName", name);
   int id = xentry.getObjectInt("EntryId");
 
@@ -818,7 +816,7 @@ bool oEvent::addXMLTeamEntry(const xmlobject &xentry, int clubId)
   t->Club = club;
   oDataInterface DI = t->getDI();
 
-  string date;
+  wstring date;
   if (edate) DI.setDate("EntryDate", edate.getObjectString("Date", date));
 
   int maxleg = teamCmp.size();
@@ -849,7 +847,7 @@ pClass oEvent::getXMLClass(const xmlobject &xentry) {
     pClass pc = getClass(cid);
     if ( pc == 0 && cid>0) {
       oClass cls(this, cid);
-      cls.Name = lang.tl("Klass X#" + itos(cid));
+      cls.Name = lang.tl(L"Klass X#" + itow(cid));
       pc = addClass(cls);//Create class if not found
     }
     return pc;
@@ -878,7 +876,7 @@ pRunner oEvent::addXMLPerson(const xmlobject &person) {
   xmlobject pname = person.getObject("PersonName");
   if (!pname) return 0;
 
-  string pids;
+  wstring pids;
   person.getObjectString("PersonId", pids);
   __int64 extId = oBase::converExtIdentifierString(pids);
   int pid = oBase::idFromExtId(extId);
@@ -898,15 +896,15 @@ pRunner oEvent::addXMLPerson(const xmlobject &person) {
     }
   }
 
-  string given, family;
+  wstring given, family;
   pname.getObjectString("Given", given);
   pname.getObjectString("Family", family);
 
-  r->setName(family + ", " + getFirst(given, 2), false);
+  r->setName(family + L", " + getFirst(given, 2), false);
   r->setExtIdentifier(extId);
 
   oDataInterface DI=r->getDI();
-  string tmp;
+  wstring tmp;
 
   r->setSex(interpretSex(person.getObjectString("sex", tmp)));
   xmlobject bd=person.getObject("BirthDate");
@@ -916,7 +914,7 @@ pRunner oEvent::addXMLPerson(const xmlobject &person) {
   xmlobject nat=person.getObject("Nationality");
 
   if (nat) {
-    char national[4];
+    wchar_t national[4];
     xmlobject natId = nat.getObject("CountryId");
     if (natId)
       r->setNationality(natId.getObjectString("value", national, 4));
@@ -938,15 +936,15 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
     clubId = cmpClubId;
 
   oDataInterface DI=r->getDI();
-  string given = r->getGivenName();
+  wstring given = r->getGivenName();
   xmlList cards;
   xentry.getObjects("CCard", cards);
-  string tmp;
+  wstring tmp;
   for (size_t k= 0; k<cards.size(); k++) {
     xmlobject &card = cards[k];
     if (card) {
       xmlobject psys = card.getObject("PunchingUnitType");
-      if (!psys || psys.getObjectString("value", tmp) == "SI") {
+      if (!psys || psys.getObjectString("value", tmp) == L"SI") {
         int cardno = card.getObjectInt("CCardId");
         r->setCardNo(cardno, false);
         break;
@@ -978,7 +976,7 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
     if (person2) {
       xmlobject pname2 = person2.getObject("PersonName");
 
-      string pids2;
+      wstring pids2;
       person.getObjectString("PersonId", pids2);
       const __int64 extId2 = oBase::converExtIdentifierString(pids2);
       int pid2 = oBase::idFromExtId(extId2);
@@ -995,11 +993,11 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
         }
       }
 
-      string given2, family2;
+      wstring given2, family2;
       if (pname2) {
         pname2.getObjectString("Given", given2);
         pname2.getObjectString("Family", family2);
-        r2->setName(family2 + ", " + getFirst(given2, 2), false);
+        r2->setName(family2 + L", " + getFirst(given2, 2), false);
       }
 
       r2->setExtIdentifier(pid2);
@@ -1036,7 +1034,7 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
         }
 
         if (createTeam && t && !t->hasFlag(oAbstractRunner::FlagUpdateName)) {
-          t->setName(given + " / " + given2, false);
+          t->setName(given + L" / " + given2, false);
         }
       }
     }
@@ -1064,7 +1062,7 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
 
   xmlobject xclub = xstart.getObject("Club");
   int clubId = xstart.getObjectInt("ClubId");
-  string cname;
+  wstring cname;
   if (xclub) {
     clubId = xclub.getObjectInt("ClubId");
     xclub.getObjectString("ShortName", cname);
@@ -1102,7 +1100,7 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
   else
     r->setCardNo(cardno, false);
 
-  string tmp;
+  wstring tmp;
   xmlobject xstarttime = xstrt.getObject("StartTime");
   if (xstarttime)
     r->setStartTimeS(xstarttime.getObjectString("Clock", tmp));
@@ -1119,113 +1117,7 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
   return r;
 }
 
-bool addXMLPerson(const xmlobject &xentry, oWordList &givenNames,
-                                           oWordList &familyNames) {
-  if (!xentry) return false;
-
-  xmlobject person=xentry.getObject("Person");
-  if (!person) return false;
-
-  xmlobject pname=person.getObject("PersonName");
-  if (!pname) return false;
-
-  char bf[256];
-  givenNames.insert(pname.getObjectString("Given", bf, sizeof(bf)));
-  familyNames.insert(pname.getObjectString("Family",  bf, sizeof(bf)));
-
-  return true;
-}
-
-void importXMLNames(const xmlobject &xml, oWordList &givenNames,
-                                  oWordList &familyNames)
-{
-  if (!xml)
-    return;
-
-  xmlobject xo = xml.getObject("CompetitorList");
-
-  if (xo){
-    xmlList xl;
-    xo.getObjects(xl);
-
-    xmlList::const_iterator it;
-
-    for(it=xl.begin(); it != xl.end(); ++it){
-      if (it->is("Competitor")){
-        addXMLPerson(*it, givenNames, familyNames);
-      }
-    }
-  }
-}
-
-void addXMLClub(const xmlobject *xclub, oWordList &clubs)
-{
-  if (!xclub)
-    return;
-
-
-  string Name;
-  xclub->getObjectString("Name", Name);
-
-  if (Name.empty() || !IsCharAlphaNumeric(Name[0]))
-    return;
-
-  clubs.insert(Name.c_str());
-  return;
-}
-
-void importXMLAllClubs(const xmlobject &xml, oWordList &clubs)
-{
-  if (!xml)
-    return;
-  xmlobject xo=xml.getObject("ClubList");
-
-  if (xo){
-    xmlList xl;
-    xo.getObjects(xl);
-
-    xmlList::const_iterator it;
-
-    for(it=xl.begin(); it != xl.end(); ++it){
-      if (it->is("Club")){
-        addXMLClub(&*it, clubs);
-      }
-    }
-  }
-}
-
-bool oEvent::importXMLNames(const char *file,
-                            oFreeImport &fi, string &info) const
-{
-  xmlparser xml(0);
-  info.clear();
-  DWORD tc=GetTickCount(), t;
-
-  xml.read(file);
-  char bf[128];
-  t=GetTickCount()-tc;
-  sprintf_s(bf, "XML read: %d.%ds ", t/1000, (t/100)%10);
-  info+=bf;
-  tc=GetTickCount();
-  if (xml.getObject("meosdata")) {
-    oEvent oNew(gdibase);
-    oNew.open(xml);
-
-    fi.init(oNew.Runners, oNew.Clubs, oNew.Classes);
-  }
-  else {
-    ::importXMLNames(xml.getObject("CompetitorList"), fi.givenDB, fi.familyDB);
-    ::importXMLAllClubs(xml.getObject("ClubList"), fi.clubDB);
-  }
-
-  t=GetTickCount()-tc;
-  sprintf_s(bf, "Import: %d.%ds ", t/1000, (t/100)%10);
-  info+=bf;
-
-  return true;
-}
-
-void oEvent::importOECSV_Data(const char *oecsvfile, bool clear) {
+void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
   // Clear DB if needed
   if (clear) {
     runnerDB->clearClubs();
@@ -1233,7 +1125,7 @@ void oEvent::importOECSV_Data(const char *oecsvfile, bool clear) {
   }
 
   csvparser cp;
-  list< vector<string> > data;
+  list< vector<wstring> > data;
 
   gdibase.addString("",0,"Läser löpare...");
   gdibase.refresh();
@@ -1244,7 +1136,7 @@ void oEvent::importOECSV_Data(const char *oecsvfile, bool clear) {
   
   gdibase.refresh();
 
-  list<vector<string>>::iterator it;
+  list<vector<wstring>>::iterator it;
 
   for (it = ++(data.begin()); it != data.end(); ++it) {
     addOECSVCompetitorDB(*it);
@@ -1256,7 +1148,7 @@ void oEvent::importOECSV_Data(const char *oecsvfile, bool clear) {
   setProperty("DatabaseUpdate", getRelativeDay());
 
   // Save DB
-  saveRunnerDatabase("database", true);
+  saveRunnerDatabase(L"database", true);
 
   if (HasDBConnection) {
     gdibase.addString("", 0, "Uppdaterar serverns databas...");
@@ -1273,7 +1165,7 @@ void oEvent::importOECSV_Data(const char *oecsvfile, bool clear) {
     else if (stat == opStatusWarning) {
       char bf[256];
       msGetErrorState(bf);
-      gdibase.addInfoBox("", string("Kunde inte ladda upp löpardatabasen (X).#") + bf, 5000);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -1281,11 +1173,11 @@ void oEvent::importOECSV_Data(const char *oecsvfile, bool clear) {
   }
 }
 
-void oEvent::importXML_IOF_Data(const char *clubfile,
-                              const char *competitorfile, bool clear)
+void oEvent::importXML_IOF_Data(const wstring &clubfile,
+                              const wstring &competitorfile, bool clear)
 {
-  if (clubfile && clubfile[0]) {
-    xmlparser xml_club(0);
+  if (!clubfile.empty()) {
+    xmlparser xml_club;
     xml_club.setProgress(gdibase.getHWND());
 
     if (clear)
@@ -1321,11 +1213,11 @@ void oEvent::importXML_IOF_Data(const char *clubfile,
             clubCount++;
         }
     }
-    gdibase.addStringUT(0, lang.tl("Antal importerade: ") + itos(clubCount));
+    gdibase.addStringUT(0, lang.tl("Antal importerade: ") + itow(clubCount));
   }
 
-  if (competitorfile && competitorfile[0]) {
-    xmlparser xml_cmp(0);
+  if (!competitorfile.empty()) {
+    xmlparser xml_cmp;
     xml_cmp.setProgress(gdibase.getHWND());
     gdibase.dropLine();
     gdibase.addString("",0,"Läser löpare...");
@@ -1363,13 +1255,13 @@ void oEvent::importXML_IOF_Data(const char *clubfile,
       }
     }
 
-    gdibase.addStringUT(0, lang.tl("Antal importerade: ") + itos(personCount));
+    gdibase.addStringUT(0, lang.tl("Antal importerade: ") + itow(personCount));
     gdibase.refresh();
 
     setProperty("DatabaseUpdate", getRelativeDay());
   }
 
-  saveRunnerDatabase("database", true);
+  saveRunnerDatabase(L"database", true);
 
   if (HasDBConnection) {
     gdibase.addString("", 0, "Uppdaterar serverns databas...");
@@ -1388,7 +1280,7 @@ void oEvent::importXML_IOF_Data(const char *clubfile,
     else if (stat == opStatusWarning) {
       char bf[256];
       msGetErrorState(bf);
-      gdibase.addInfoBox("", string("Kunde inte ladda upp löpardatabasen (X).#") + bf, 5000);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -1426,7 +1318,7 @@ bool oEvent::addXMLEvent(const xmlobject &xevent)
     return false;
 
   int id = xevent.getObjectInt("EventId");
-  string name;
+  wstring name;
   xevent.getObjectString("Name", name);
 
   xmlobject date = xevent.getObject("StartDate");
@@ -1437,7 +1329,7 @@ bool oEvent::addXMLEvent(const xmlobject &xevent)
   setName(name);
 
   if (date) {
-    string dateStr;
+    wstring dateStr;
     date.getObjectString("Date", dateStr);
     setDate(dateStr);
   }
@@ -1489,14 +1381,14 @@ int getFinishIndex(int sn) {
   return sn + 311100;
 }
 
-string getStartName(const string &start) {
+wstring getStartName(const wstring &start) {
   int num = getNumberSuffix(start);
   if (num == 0 && start.length()>0)
     num = int(start[start.length()-1])-'0';
   if (num > 0 && num < 10)
-    return lang.tl("Start ") + itos(num);
+    return lang.tl(L"Start ") + itow(num);
   else if (start.length() == 1)
-    return lang.tl("Start");
+    return lang.tl(L"Start");
   else
     return start;
 }
@@ -1533,30 +1425,30 @@ bool oEvent::addXMLControl(const xmlobject &xcontrol, int type)
     }
   }
   else if (type == 1) {
-    string start;
+    wstring start;
     xcontrol.getObjectString("StartPointCode", start);
     start = getStartName(trim(start));
     int num = getNumberSuffix(start);
     if (num == 0 && start.length()>0)
       num = int(start[start.length()-1])-'0';
     pControl pc = getControl(getStartIndex(num), true);
-    pc->setNumbers("");
+    pc->setNumbers(L"");
     pc->setName(start);
     pc->setStatus(oControl::StatusStart);
     pc->getDI().setInt("xpos", xp);
     pc->getDI().setInt("ypos", yp);
   }
   else if (type == 2) {
-    string finish;
+    wstring finish;
     xcontrol.getObjectString("FinishPointCode", finish);
     finish = trim(finish);
     int num = getNumberSuffix(finish);
     if (num == 0 && finish.length()>0)
       num = int(finish[finish.length()-1])-'0';
     if (num > 0)
-      finish = lang.tl("Mål ") + itos(num);
+      finish = lang.tl("Mål ") + itow(num);
     pControl pc = getControl(getFinishIndex(num), true);
-    pc->setNumbers("");
+    pc->setNumbers(L"");
     pc->setName(finish);
     pc->setStatus(oControl::StatusFinish);
     pc->getDI().setInt("xpos", xp);
@@ -1573,14 +1465,14 @@ bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses)
 
   int cid = xcrs.getObjectInt("CourseId");
 
-  string name;
+  wstring name;
   xcrs.getObjectString("CourseName", name);
   name = trim(name);
-  vector<string> cls;
+  vector<wstring> cls;
   xmlList obj;
   xcrs.getObjects("ClassShortName", obj);
   for (size_t k = 0; k<obj.size(); k++) {
-    string c;
+    wstring c;
     obj[k].getObjectString(0, c);
     cls.push_back(trim(c));
   }
@@ -1590,13 +1482,13 @@ bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses)
   xcrs.getObjects("CourseVariation", obj);
   for (size_t k = 0; k<obj.size(); k++) {
     int variationId = obj[k].getObjectInt("CourseVariationId");
-    string varName;
+    wstring varName;
     obj[k].getObjectString("Name", varName);
     //int len = obj[k].getObjectInt("CourseLength");
     xmlobject lenObj = obj[k].getObject("CourseLength");
     int len = getLength(lenObj);
     int climb = getLength(obj[k].getObject("CourseClimb"));
-    string start;
+    wstring start;
     obj[k].getObjectString("StartPointCode", start);
     start = getStartName(trim(start));
 
@@ -1616,11 +1508,11 @@ bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses)
 
     legLen.push_back(getLength(obj[k].getObject("DistanceToFinish")));
     int actualId = ((cid+1)*100) + variationId;
-    string cname=name;
+    wstring cname=name;
     if (!varName.empty())
-      cname += " " + varName;
+      cname += L" " + varName;
     else if (obj.size() > 1)
-      cname += " " + itos(k+1);
+      cname += L" " + itow(k+1);
 
     pCourse pc = 0;
     if (cid > 0)
@@ -1690,7 +1582,7 @@ bool oEvent::addXMLClass(const xmlobject &xclass)
     return false;
 
   int classid=xclass.getObjectInt("ClassId");
-  string name, shortName;
+  wstring name, shortName;
   xclass.getObjectString("Name", name);
   xclass.getObjectString("ClassShortName", shortName);
 
@@ -1713,7 +1605,7 @@ bool oEvent::addXMLClass(const xmlobject &xclass)
   pc->setName(name);
   oDataInterface DI=pc->getDI();
 
-  string tmp;
+  wstring tmp;
   DI.setInt("LowAge", xclass.getObjectInt("lowAge"));
   DI.setInt("HighAge", xclass.getObjectInt("highAge"));
   DI.setString("Sex", xclass.getObjectString("sex", tmp));
@@ -1725,8 +1617,8 @@ bool oEvent::addXMLClass(const xmlobject &xclass)
   for (size_t k = 0; k<xFee.size(); k++) {
     xmlobject xamount = xFee[k].getObject("Amount");
     if (xamount) {
-      double f = atof(xamount.get());
-      string cur = xamount.getAttrib("currency").get();
+      double f = atof(xamount.getRaw());
+      wstring cur = xamount.getAttrib("currency").wget();
       if (f>0) {
         fee.push_back(oe->interpretCurrency(f, cur));
       }
@@ -1760,7 +1652,7 @@ bool oEvent::addXMLClub(const xmlobject &xclub, bool savetoDB)
     return false;
 
   int clubid=xclub.getObjectInt("ClubId");
-  string Name, shortName;
+  wstring Name, shortName;
   xclub.getObjectString("Name", Name);
   xclub.getObjectString("ShortName", shortName);
 
@@ -1774,12 +1666,12 @@ bool oEvent::addXMLClub(const xmlobject &xclub, bool savetoDB)
 
   xmlobject address=xclub.getObject("Address");
 
-  string str;
-  string co;
+  wstring str;
+  wstring co;
 
   if (address) {
-    address.getObjectString("street", str).length();
-    address.getObjectString("careOf", co).length();
+    address.getObjectString("street", str);
+    address.getObjectString("careOf", co);
   }
 
   pClub pc=0;
@@ -1801,7 +1693,7 @@ bool oEvent::addXMLClub(const xmlobject &xclub, bool savetoDB)
 
   oDataInterface DI=pc->getDI();
 
-  string tmp;
+  wstring tmp;
   DI.setString("CareOf", co);
   DI.setString("Street", str);
   if (address) {
@@ -1821,7 +1713,7 @@ bool oEvent::addXMLClub(const xmlobject &xclub, bool savetoDB)
 
   if (country) {
     xmlobject natId = country.getObject("CountryId");
-    char national[4];
+    wchar_t national[4];
     if (natId)
       DI.setString("Nationality", natId.getObjectString("value", national, 4));
   }
@@ -1871,7 +1763,7 @@ bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRun
 
   if (!person) return false;
 
-  string pid;
+  wstring pid;
   person.getObjectString("PersonId", pid);
   const __int64 extId = oBase::converExtIdentifierString(pid);
   int id = oBase::idFromExtId(extId);
@@ -1885,13 +1777,13 @@ bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRun
 
     if (!pname) return false;
 
-    string given, family;
-    string name=getFirst(pname.getObjectString("Given", given), 2)+" "+pname.getObjectString("Family", family);
+    wstring given, family;
+    wstring name=pname.getObjectString("Family", family) + L", "  + getFirst(pname.getObjectString("Given", given), 2);
 
     if (!club)
       r=getRunnerByName(name);
     else {
-      string cn, cns;
+      wstring cn, cns;
       club.getObjectString("ShortName", cns);
       club.getObjectString("Name", cn);
 
@@ -1923,7 +1815,7 @@ bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRun
 void oEvent::exportIOFEventList(xmlparser &xml)
 {
   xml.startTag("EventList");
-  xml.write("IOFVersion", "version", "2.0.3");
+  xml.write("IOFVersion", "version", L"2.0.3");
 
   exportIOFEvent(xml);
 
@@ -1938,22 +1830,22 @@ void oEvent::exportIOFEvent(xmlparser &xml)
   xml.write("EventId", getExtIdentifierString());
   xml.write("Name", getName());
 
-  xml.write("EventClassificationId", "type", "other", "MeOS");
+  xml.write("EventClassificationId", "type", L"other", L"MeOS");
 
   {
     xml.startTag("StartDate");
-    xml.write("Date", "dateFormat", "YYYY-MM-DD", getDate());
-    xml.write("Clock", "clockFormat", "HH:MM:SS", getZeroTime());
+    xml.write("Date", "dateFormat", L"YYYY-MM-DD", getDate());
+    xml.write("Clock", "clockFormat", L"HH:MM:SS", getZeroTime());
     xml.endTag(); // StartDate
   }
 
-  string url = getDCI().getString("Homepage");
+  wstring url = getDCI().getString("Homepage");
   if (!url.empty())
     xml.write("WebURL", url);
 
-  string account = getDCI().getString("Account");
+  wstring account = getDCI().getString("Account");
   if (!account.empty())
-    xml.write("Account", "type", "other", account);
+    xml.write("Account", "type", L"other", account);
 
   xml.endTag(); //Event
 }
@@ -1962,15 +1854,15 @@ void oEvent::exportIOFClass(xmlparser &xml)
 {
   xml.startTag("ClassData");
 
-  set<string> cls;
+  set<wstring> cls;
   for (oClassList::iterator it = Classes.begin(); it!=Classes.end(); ++it) {
     if (!it->getType().empty())
       cls.insert(it->getType());
   }
 
   int id = 1;
-  map<string, int> idMap;
-  for (set<string>::iterator it = cls.begin(); it != cls.end(); ++it) {
+  map<wstring, int> idMap;
+  for (set<wstring>::iterator it = cls.begin(); it != cls.end(); ++it) {
     xml.startTag("ClassType");
     idMap[*it] = id;
     xml.write("ClassTypeId", id++);
@@ -1979,7 +1871,7 @@ void oEvent::exportIOFClass(xmlparser &xml)
   }
 
   for (oClassList::iterator it = Classes.begin(); it!=Classes.end(); ++it) {
-    vector<string> pv;
+    vector<wstring> pv;
 
     pClass pc = &*it;
     int low = 0;
@@ -1987,44 +1879,44 @@ void oEvent::exportIOFClass(xmlparser &xml)
     pc->getAgeLimit(low, high);
 
     if (low>0) {
-      pv.push_back("lowAge");
-      pv.push_back(itos(low));
+      pv.push_back(L"lowAge");
+      pv.push_back(itow(low));
     }
     if (high>0) {
-      pv.push_back("highAge");
-      pv.push_back(itos(high));
+      pv.push_back(L"highAge");
+      pv.push_back(itow(high));
     }
 
-    string sex = encodeSex(pc->getSex());
+    wstring sex = encodeSex(pc->getSex());
     if (sex.empty())
-      sex = "B";
+      sex = L"B";
 
-    pv.push_back("sex");
+    pv.push_back(L"sex");
     pv.push_back(sex);
 
     if (pc->getNumStages()>1) {
-      pv.push_back("numberInTeam");
-      pv.push_back(itos(pc->getNumStages()));
+      pv.push_back(L"numberInTeam");
+      pv.push_back(itow(pc->getNumStages()));
     }
 
     if (pc->getClassType() == oClassRelay) {
-      pv.push_back("teamEntry");
-      pv.push_back("Y");
+      pv.push_back(L"teamEntry");
+      pv.push_back(L"Y");
     }
 
     if (pc->getNoTiming()) {
-      pv.push_back("timePresentation");
-      pv.push_back("N");
+      pv.push_back(L"timePresentation");
+      pv.push_back(L"N");
     }
 
     xml.startTag("Class", pv);
 
-    xml.write("ClassId", itos(pc->getId()));
+    xml.write("ClassId", itow(pc->getId()));
 
     xml.write("ClassShortName", pc->getName());
 
     if (!pc->getType().empty())
-      xml.write("ClassTypeId", itos(idMap[pc->getType()]));
+      xml.write("ClassTypeId", itow(idMap[pc->getType()]));
 
     xml.endTag();
   }
@@ -2034,7 +1926,7 @@ void oEvent::exportIOFClass(xmlparser &xml)
 void oEvent::exportIOFClublist(xmlparser &xml)
 {
   xml.startTag("ClubList");
-  xml.write("IOFVersion", "version", "2.0.3");
+  xml.write("IOFVersion", "version", L"2.0.3");
 
   for (oClubList::iterator it = Clubs.begin(); it!=Clubs.end(); ++it) {
     it->exportIOFClub(xml, true);
@@ -2043,7 +1935,7 @@ void oEvent::exportIOFClublist(xmlparser &xml)
   xml.endTag();
 }
 
-void cWrite(xmlparser &xml, const char *tag, const string &value) {
+void cWrite(xmlparser &xml, const char *tag, const wstring &value) {
   if (!value.empty()) {
     xml.write(tag, value);
   }
@@ -2073,36 +1965,36 @@ void oClub::exportIOFClub(xmlparser &xml, bool compact) const
     return;
   }
 
-  string country = getDCI().getString("Nationality");
+  wstring country = getDCI().getString("Nationality");
   if (!country.empty())
     xml.write("CountryId", "value", country);
 
   int district = getDCI().getInt("District");
   if (district>0)
-    xml.write("OrganisationId", itos(district));
+    xml.write("OrganisationId", district);
 
-  vector<string> pv;
+  vector<wstring> pv;
 
   // Address
-  string co = getDCI().getString("CareOf");
-  string street = getDCI().getString("Street");
-  string city = getDCI().getString("City");
-  string zip = getDCI().getString("ZIP");
+  wstring co = getDCI().getString("CareOf");
+  wstring street = getDCI().getString("Street");
+  wstring city = getDCI().getString("City");
+  wstring zip = getDCI().getString("ZIP");
 
   if (!co.empty()) {
-    pv.push_back("careOf");
+    pv.push_back(L"careOf");
     pv.push_back(co);
   }
   if (!street.empty()) {
-    pv.push_back("street");
+    pv.push_back(L"street");
     pv.push_back(street);
   }
   if (!city.empty()) {
-    pv.push_back("city");
+    pv.push_back(L"city");
     pv.push_back(city);
   }
   if (!zip.empty()) {
-    pv.push_back("zipCode");
+    pv.push_back(L"zipCode");
     pv.push_back(zip);
   }
   if (!pv.empty()) {
@@ -2112,15 +2004,15 @@ void oClub::exportIOFClub(xmlparser &xml, bool compact) const
   pv.clear();
 
   //Tele
-  string mail = getDCI().getString("EMail");
-  string phone = getDCI().getString("Phone");
+  wstring mail = getDCI().getString("EMail");
+  wstring phone = getDCI().getString("Phone");
 
   if (!mail.empty()) {
-    pv.push_back("mailAddress");
+    pv.push_back(L"mailAddress");
     pv.push_back(mail);
   }
   if (!phone.empty()) {
-    pv.push_back("phoneNumber");
+    pv.push_back(L"phoneNumber");
     pv.push_back(phone);
   }
   if (!pv.empty()) {
@@ -2135,7 +2027,7 @@ void oClub::exportIOFClub(xmlparser &xml, bool compact) const
 void oEvent::exportIOFStartlist(xmlparser &xml)
 {
   xml.startTag("StartList");
-  xml.write("IOFVersion", "version", "2.0.3");
+  xml.write("IOFVersion", "version", L"2.0.3");
 
   exportIOFEvent(xml);
 
@@ -2168,9 +2060,9 @@ void oClass::exportIOFStart(xmlparser &xml) {
       if (rank>0) {
         //Ranking
         xml.startTag("Rank");
-        xml.write("Name", "MeOS");
-        xml.write("RankPosition", itos(rank));
-        xml.write("RankValue", itos(rank));
+        xml.write("Name", L"MeOS");
+        xml.write("RankPosition", rank);
+        xml.write("RankValue", rank);
         xml.endTag();
       }
 
@@ -2179,14 +2071,14 @@ void oClass::exportIOFStart(xmlparser &xml) {
         it->exportIOFStart(xml);
       else {
         xml.startTag("RaceStart");
-        xml.write("EventRaceId", "1");
+        xml.write("EventRaceId", L"1");
         it->exportIOFStart(xml);
         xml.endTag();
         for (int k = 0; k < multi; k++) {
           pRunner r = it->getMultiRunner(k+1);
           if (r) {
             xml.startTag("RaceStart");
-            xml.write("EventRaceId", itos(k+2));
+            xml.write("EventRaceId", k+2);
             r->exportIOFStart(xml);
             xml.endTag();
           }
@@ -2210,7 +2102,7 @@ void oClass::exportIOFStart(xmlparser &xml) {
       if (writeTeamName)
         xml.write("TeamName", it->getName());
 
-      string nat = it->getDCI().getString("Nationality");
+      wstring nat = it->getDCI().getString("Nationality");
       if (!nat.empty())
         xml.write("CountryId", "value", nat);
 
@@ -2244,33 +2136,33 @@ void oRunner::exportIOFStart(xmlparser &xml)
   xml.startTag("Start");
   int sno = getStartNo();
   if (sno>0)
-    xml.write("StartNumber", itos(sno));
+    xml.write("StartNumber", sno);
 
   xml.startTag("StartTime");
-  xml.write("Clock", "clockFormat", "HH:MM:SS",
+  xml.write("Clock", "clockFormat", L"HH:MM:SS",
               formatTimeIOF(getStartTime(), oe->ZeroTime));
   xml.endTag();
 
-  string bib = getBib();
+  wstring bib = getBib();
   if (!bib.empty())
     xml.write("BibNumber", bib);
 
   if (getCardNo() > 0)
-    xml.write("CCardId", itos(getCardNo()));
+    xml.write("CCardId", getCardNo());
 
   int len = 0;
   if (getCourse(false)) {
     len = getCourse(false)->getLength();
     if (len>0)
-      xml.write("CourseLength", "unit", "m", itos(len));
+      xml.write("CourseLength", "unit", L"m", itow(len));
 
-    string start = getCourse(false)->getStart();
+    wstring start = getCourse(false)->getStart();
     if (!start.empty())
       xml.write("StartId", max(1, getNumberSuffix(start)));
   }
 
   if (tInTeam) {
-    xml.write("TeamSequence", itos(tLeg+1));
+    xml.write("TeamSequence", tLeg+1);
   }
 
   xml.endTag();
@@ -2278,7 +2170,7 @@ void oRunner::exportIOFStart(xmlparser &xml)
 
 void oRunner::exportIOFRunner(xmlparser &xml, bool compact)
 {
-  string sex = encodeSex(getSex());
+  wstring sex = encodeSex(getSex());
 
   if (sex.length()==1)
     xml.startTag("Person", "sex", sex);
@@ -2292,14 +2184,14 @@ void oRunner::exportIOFRunner(xmlparser &xml, bool compact)
 
   xml.startTag("PersonName");
   xml.write("Family", getFamilyName());
-  xml.write("Given", "sequence", "1", getGivenName());
+  xml.write("Given", "sequence", L"1", getGivenName());
   xml.endTag();
 
   int year = getBirthYear();
 
   if (year>0 && !compact) {
     xml.startTag("BirthDate");
-    xml.write("Date", "dateFormat", "YYYY", itos(extendYear(year)));
+    xml.write("Date", "dateFormat", L"YYYY", itow(extendYear(year)));
     xml.endTag();
   }
 
@@ -2311,7 +2203,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
   vector<SplitData> dummy;
   xml.startTag("ResultList");
 
-  xml.write("IOFVersion", "version", "2.0.3");
+  xml.write("IOFVersion", "version", L"2.0.3");
 
   exportIOFEvent(xml);
 
@@ -2361,13 +2253,13 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
 
           xml.startTag("Result");
             xml.startTag("StartTime");
-              xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
+              xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
             xml.endTag();
             xml.startTag("FinishTime");
-              xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(it->getLegFinishTime(-1), ZeroTime));
+              xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getLegFinishTime(-1), ZeroTime));
             xml.endTag();
 
-            xml.write("Time", "timeFormat", "HH:MM:SS", formatTimeIOF(it->getLegRunningTime(-1, false), 0));
+            xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(it->getLegRunningTime(-1, false), 0));
             xml.write("ResultPosition", it->getLegPlaceS(-1, false));
 
             xml.write("CompetitorStatus", "value", it->Runners[0]->getIOFStatusS());
@@ -2375,7 +2267,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             const vector<SplitData> &sp=it->Runners[0]->getSplitTimes(true);
 
             pCourse pc=it->Runners[0]->getCourse(false);
-            if (pc) xml.write("CourseLength", "unit", "m", pc->getLengthS());
+            if (pc) xml.write("CourseLength", "unit", L"m", pc->getLengthS());
 
             pCourse pcourse=pc;
             if (pcourse && it->getLegStatus(-1, false)>0 && it->getLegStatus(-1, false)!=StatusDNS) {
@@ -2389,9 +2281,9 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
                 xml.startTag("SplitTime", "sequence", itos(no++));
                 xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
                 if (unsigned(k)<sp.size() && sp[k].time>0)
-                  xml.write("Time", "clockFormat", "HH:MM:SS", getAbsTime((sp[k].time-it->tStartTime)-ZeroTime));
+                  xml.write("Time", "clockFormat", L"HH:MM:SS", getAbsTime((sp[k].time-it->tStartTime)-ZeroTime));
                 else
-                  xml.write("Time", "--:--:--");
+                  xml.write("Time", L"--:--:--");
 
                 xml.endTag();
               }
@@ -2466,20 +2358,20 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
           xml.write("CCardId", it->getCardNo());
         xml.endTag();
         xml.startTag("StartTime");
-        xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
+        xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
         xml.endTag();
         xml.startTag("FinishTime");
-        xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
+        xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
         xml.endTag();
 
-        xml.write("Time", "timeFormat", "HH:MM:SS", formatTimeIOF(it->getRunningTime(),0));
+        xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(it->getRunningTime(),0));
         xml.write("ResultPosition", it->getPlaceS());
 
         xml.write("CompetitorStatus", "value", it->getIOFStatusS());
 
         const vector<SplitData> &sp=it->getSplitTimes(true);
         pCourse pc=it->getCourse(false);
-        if (pc) xml.write("CourseLength", "unit", "m", pc->getLengthS());
+        if (pc) xml.write("CourseLength", "unit", L"m", pc->getLengthS());
 
         pCourse pcourse=it->getCourse(true);
         if (pcourse && it->getStatus()>0 && it->getStatus()!=StatusDNS
@@ -2494,9 +2386,9 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             xml.startTag("SplitTime", "sequence", itos(no++));
             xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
             if (unsigned(k)<sp.size() && sp[k].time>0)
-              xml.write("Time", "timeFormat", "HH:MM:SS", getAbsTime((sp[k].time-it->tStartTime)-ZeroTime));
+              xml.write("Time", "timeFormat", L"HH:MM:SS", getAbsTime((sp[k].time-it->tStartTime)-ZeroTime));
             else
-              xml.write("Time", "--:--:--");
+              xml.write("Time", L"--:--:--");
 
             xml.endTag();
           }
@@ -2579,7 +2471,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
     <ResultPosition>1</ResultPosition>
     <TeamStatus value="OK"></TeamStatus>
       */
-      string nat = it->getDCI().getString("Nationality");
+      wstring nat = it->getDCI().getString("Nationality");
       if (!nat.empty())
         xml.write("CountryId", "value", nat);
 
@@ -2587,13 +2479,13 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
       xml.write("BibNumber", it->getStartNo());
 
       xml.startTag("StartTime");
-        xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
+        xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
       xml.endTag();
       xml.startTag("FinishTime");
-      xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
+      xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
       xml.endTag();
 
-      xml.write("Time", "timeFormat", "HH:MM:SS", formatTimeIOF(it->getRunningTime(), 0));
+      xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(it->getRunningTime(), 0));
       xml.write("ResultPosition", it->getPlaceS());
       xml.write("TeamStatus", "value", it->getIOFStatusS());
 
@@ -2612,13 +2504,13 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
           xml.startTag("Result"); {
             xml.write("TeamSequence", k+1);
             xml.startTag("StartTime");
-              xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(r->getStartTime(), ZeroTime));
+              xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(r->getStartTime(), ZeroTime));
             xml.endTag();
             xml.startTag("FinishTime");
-            xml.write("Clock", "clockFormat", "HH:MM:SS", formatTimeIOF(r->getFinishTimeAdjusted(), ZeroTime));
+            xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(r->getFinishTimeAdjusted(), ZeroTime));
             xml.endTag();
 
-            xml.write("Time", "timeFormat", "HH:MM:SS", formatTimeIOF(r->getRunningTime(), 0));
+            xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(r->getRunningTime(), 0));
             xml.write("ResultPosition", r->getPlaceS());
 
             xml.write("CompetitorStatus", "value", r->getIOFStatusS());
@@ -2630,7 +2522,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
             if (pc) {
               xml.startTag("CourseVariation");
               xml.write("CourseVariationId", pc->getId());
-              xml.write("CourseLength", "unit", "m", pc->getLengthS());
+              xml.write("CourseLength", "unit", L"m", pc->getLengthS());
               xml.endTag();
             }
             pCourse pcourse=pc;
@@ -2646,9 +2538,9 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
                 xml.startTag("SplitTime", "sequence", itos(no++));
                 xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
                 if (unsigned(k)<sp.size() && sp[k].time>0)
-                  xml.write("Time", "clockFormat", "HH:MM:SS", getAbsTime((sp[k].time-r->tStartTime)-ZeroTime));
+                  xml.write("Time", "clockFormat", L"HH:MM:SS", getAbsTime((sp[k].time-r->tStartTime)-ZeroTime));
                 else
-                  xml.write("Time", "--:--:--");
+                  xml.write("Time", L"--:--:--");
 
                 xml.endTag();
               } //Loop over splits
@@ -2667,12 +2559,12 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
 
 }
 
-void oEvent::exportIOFSplits(IOFVersion version, const char *file,
+void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
                              bool oldStylePatrolExport, bool useUTC,
                              const set<int> &classes, int leg,
                              bool teamsAsIndividual, bool unrollLoops,
                              bool includeStageInfo, bool forceSplitFee) {
-  xmlparser xml(gdibase.getEncoding() == ANSI ? 0 : &gdibase);
+  xmlparser xml;
 
   xml.openOutput(file, false);
   oClass::initClassId(*this);
@@ -2695,10 +2587,10 @@ void oEvent::exportIOFSplits(IOFVersion version, const char *file,
   xml.closeOut();
 }
 
-void oEvent::exportIOFStartlist(IOFVersion version, const char *file, bool useUTC,
+void oEvent::exportIOFStartlist(IOFVersion version, const wchar_t *file, bool useUTC,
                                 const set<int> &classes, bool teamsAsIndividual,
                                 bool includeStageInfo, bool forceSplitFee) {
-  xmlparser xml(gdibase.getEncoding() == ANSI ? 0 : &gdibase);
+  xmlparser xml;
   
   oClass::initClassId(*this);
   xml.openOutput(file, false);

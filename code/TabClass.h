@@ -61,8 +61,8 @@ class TabClass :
   bool EditChanged;
   int ClassId;
   int currentStage;
-  string storedNStage;
-  string storedStart;
+  wstring storedNStage;
+  wstring storedStart;
   oEvent::PredefinedTypes storedPredefined;
   bool showForkingGuide;
 
@@ -85,13 +85,13 @@ class TabClass :
   int lastSeedMethod;
   bool lastSeedPreventClubNb;
   bool lastSeedReverse;
-  string lastSeedGroups;
+  wstring lastSeedGroups;
   int lastPairSize;
-  string lastFirstStart;
-  string lastInterval;
-  string lastNumVac;
-  string lastScaleFactor;
-  string lastMaxAfter;
+  wstring lastFirstStart;
+  wstring lastInterval;
+  wstring lastNumVac;
+  wstring lastScaleFactor;
+  wstring lastMaxAfter;
 
   bool lastHandleBibs;
   // Generate a table with class settings
@@ -108,7 +108,7 @@ class TabClass :
   void showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK classesCB) const;
 
   // Set simultaneous start in a class
-  void simultaneous(int classId, string time);
+  void simultaneous(int classId, const wstring &time);
 
   void updateFairForking(gdioutput &gdi, pClass pc) const;
   void selectCourses(gdioutput &gdi, int legNo);
@@ -116,12 +116,12 @@ class TabClass :
 
   void defineForking(gdioutput &gdi, bool clearSettings);
   vector< vector<int> > forkingSetup;
-  static const char *getCourseLabel(bool pool);
+  static const wchar_t *getCourseLabel(bool pool);
 
   void getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb);
   void saveClassSettingsTable(gdioutput &gdi, set<int> &classModifiedFee, bool &modifiedBib);
 
-  static string getBibCode(AutoBibType bt, const string &key);
+  static wstring getBibCode(AutoBibType bt, const wstring &key);
 
   void setParallelOptions(const string &sdKey, gdioutput &gdi, pClass pc, int  legno);
   
@@ -136,7 +136,7 @@ class TabClass :
   void readDrawInfo(gdioutput &gdi, DrawInfo &drawInfo);
   void writeDrawInfo(gdioutput &gdi, const DrawInfo &drawInfo);
 
-  static vector< pair<string, size_t> > getPairOptions();
+  static vector< pair<wstring, size_t> > getPairOptions();
 public:
   
   void clearCompetitionData();

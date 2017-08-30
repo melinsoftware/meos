@@ -55,20 +55,20 @@ public:
 private:
   struct FeatureDescriptor {
     Feature feat;
-    string code;
+    wstring code;
     string desc;
     set<Feature> dependsOn;
     FeatureDescriptor &require(Feature f) {
       dependsOn.insert(f);
       return *this;
     }
-    FeatureDescriptor(Feature feat, string code, string desc);
+    FeatureDescriptor(Feature feat, wstring code, string desc);
   };
 
   vector<FeatureDescriptor> desc;
   map<Feature, int> featureToIx;
-  map<string, int> codeToIx;
-  FeatureDescriptor &add(Feature feat, const char *code, const char *desc);
+  map<wstring, int> codeToIx;
+  FeatureDescriptor &add(Feature feat, const wchar_t *code, const char *desc);
   FeatureDescriptor &addHead(const char *desc);
 
   set<Feature> features;
@@ -95,9 +95,9 @@ public:
   bool isHead(int featureIx) const;
   const string &getHead(int featureIx) const;
   const string &getDescription(Feature f) const;
-  const string &getCode(Feature f) const;
+  const wstring &getCode(Feature f) const;
 
-  string serialize() const;
-  void deserialize(const string &input, oEvent &oe);
+  wstring serialize() const;
+  void deserialize(const wstring &input, oEvent &oe);
 };
 

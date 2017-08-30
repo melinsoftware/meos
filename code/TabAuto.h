@@ -55,7 +55,7 @@ protected:
 
   void settingsTitle(gdioutput &gdi, char *title);
   enum IntervalType {IntervalNone, IntervalMinute, IntervalSecond};
-  void startCancelInterval(gdioutput &gdi, char *startCommand, bool created, IntervalType type, const string &interval);
+  void startCancelInterval(gdioutput &gdi, char *startCommand, bool created, IntervalType type, const wstring &interval);
   
 public:
   static AutoMachine *getMachine(int id);
@@ -84,8 +84,8 @@ class PrintResultMachine :
   public AutoMachine
 {
 protected:
-  string exportFile;
-  string exportScript;
+  wstring exportFile;
+  wstring exportScript;
   bool doExport;
   bool doPrint;
   bool structuredExport;
@@ -146,7 +146,7 @@ class SaveMachine :
   public AutoMachine
 {
 protected:
-  string baseFile;
+  wstring baseFile;
   int saveIter;
 public:
   SaveMachine *clone() const {
@@ -168,7 +168,7 @@ class PrewarningMachine :
   public AutoMachine
 {
 protected:
-  string waveFolder;
+  wstring waveFolder;
   set<int> controls;
   set<int> controlsSI;
 public:
@@ -184,9 +184,9 @@ class MySQLReconnect :
   public AutoMachine
 {
 protected:
-  string error;
-  string timeError;
-  string timeReconnect;
+  wstring error;
+  wstring timeError;
+  wstring timeReconnect;
   HANDLE hThread;
 public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
@@ -194,7 +194,7 @@ public:
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
   bool stop();
-  MySQLReconnect(const string &error);
+  MySQLReconnect(const wstring &error);
   virtual ~MySQLReconnect();
   friend class TabAuto;
 };
@@ -219,7 +219,7 @@ class SplitsMachine :
   public AutoMachine
 {
 protected:
-  string file;
+  wstring file;
   set<int> classes;
   int leg;
 public:

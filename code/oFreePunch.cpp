@@ -94,7 +94,7 @@ void oFreePunch::Set(const xmlobject *xo)
       Id=it->getInt();
     }
     else if (it->is("Updated")){
-      Modified.setStamp(it->get());
+      Modified.setStamp(it->getRaw());
     }
   }
 }
@@ -150,7 +150,7 @@ bool oFreePunch::canRemove() const
 Table *oEvent::getPunchesTB()//Table mode
 {
   if (tables.count("punch") == 0) {
-    Table *table=new Table(this, 20, "Stämplingar", "punches");
+    Table *table=new Table(this, 20, L"Stämplingar", "punches");
     table->addColumn("Id", 70, true, true);
     table->addColumn("Ändrad", 150, false);
     table->addColumn("Bricka", 70, true);
@@ -189,32 +189,32 @@ void oFreePunch::addTableRow(Table &table) const {
   oFreePunch &it = *pFreePunch(this);
   table.addRow(getId(), &it);
   int row = 0;
-  table.set(row++, it, TID_ID, itos(getId()), false, cellEdit);
+  table.set(row++, it, TID_ID, itow(getId()), false, cellEdit);
   table.set(row++, it, TID_MODIFIED, getTimeStamp(), false, cellEdit);
-  table.set(row++, it, TID_CARD, itos(getCardNo()), true, cellEdit);
+  table.set(row++, it, TID_CARD, itow(getCardNo()), true, cellEdit);
   table.set(row++, it, TID_CONTROL, getType(), true, cellEdit);
   table.set(row++, it, TID_TIME, getTime(), true, cellEdit);
   pRunner r = 0;
   if (CardNo > 0)
     r = oe->getRunnerByCardNo(CardNo, Time, false);
 
-  table.set(row++, it, TID_RUNNER, r ? r->getName() : "?", false, cellEdit);
+  table.set(row++, it, TID_RUNNER, r ? r->getName() : L"?", false, cellEdit);
 
   if (r && r->getTeam())
     table.set(row++, it, TID_TEAM, r->getTeam()->getName(), false, cellEdit);
   else
-    table.set(row++, it, TID_TEAM, "", false, cellEdit);
+    table.set(row++, it, TID_TEAM, L"", false, cellEdit);
 }
 
-bool oFreePunch::inputData(int id, const string &input,
-                           int inputId, string &output, bool noUpdate)
+bool oFreePunch::inputData(int id, const wstring &input,
+                           int inputId, wstring &output, bool noUpdate)
 {
   synchronize(false);
   switch(id) {
     case TID_CARD:
-      setCardNo(atoi(input.c_str()));
+      setCardNo(_wtoi(input.c_str()));
       synchronize(true);
-      output = itos(CardNo);
+      output = itow(CardNo);
       break;
 
     case TID_TIME:
@@ -231,7 +231,7 @@ bool oFreePunch::inputData(int id, const string &input,
   return false;
 }
 
-void oFreePunch::fillInput(int id, vector< pair<string, size_t> > &out, size_t &selected)
+void oFreePunch::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected)
 {
 }
 
@@ -246,8 +246,8 @@ void oFreePunch::setTimeInt(int t, bool databaseUpdate) {
   }
 }
 
-bool oFreePunch::setType(const string &t, bool databaseUpdate) {
-  int type = atoi(t.c_str());
+bool oFreePunch::setType(const wstring &t, bool databaseUpdate) {
+  int type = _wtoi(t.c_str());
   int ttype = 0;
   if (type>0 && type<10000)
     ttype = type;

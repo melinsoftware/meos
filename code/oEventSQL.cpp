@@ -132,7 +132,7 @@ bool oEvent::msSynchronize(oBase *ob)
 
   char err[256];
   if (msGetErrorState(err))
-    gdibase.addInfoBox("sqlerror", err, 15000);
+    gdibase.addInfoBox("sqlerror", gdibase.widen(err), 15000);
 
   if (ret==0) {
     verifyConnection();
@@ -145,7 +145,7 @@ bool oEvent::msSynchronize(oBase *ob)
 
   if (ret==1) {
     gdibase.RemoveFirstInfoBox("sqlwarning");
-    gdibase.addInfoBox("sqlwarning", "Varning: ändringar i X blev överskrivna#" + ob->getInfo(), 5000);
+    gdibase.addInfoBox("sqlwarning", L"Varning: ändringar i X blev överskrivna#" + ob->getInfo(), 5000);
   }
   return ret!=0;
 }
@@ -443,7 +443,7 @@ bool oEvent::connectToMySQL(const string &server, const string &user, const stri
   if (!msConnectToServer(this)) {
     char bf[256];
     msGetErrorState(bf);
-    MessageBox(NULL, lang.tl(bf).c_str(), "Error", MB_OK);
+    MessageBox(NULL, lang.tl(bf).c_str(), L"Error", MB_OK);
     return false;
   }
 
@@ -460,28 +460,32 @@ bool oEvent::uploadSynchronize()
 {
   if (isThreadReconnecting())
     throw std::exception("Internt fel i anslutningen. Starta om MeOS");
-  string newId = makeValidFileName(CurrentNameId, true);
-  strcpy_s(CurrentNameId, newId.c_str());
+  wstring newId = makeValidFileName(currentNameId, true);
+  currentNameId = newId;
 
   for (list<CompetitionInfo>::iterator it = cinfo.begin(); it != cinfo.end(); ++it) {
-    if (it->FullPath == CurrentNameId && it->Server.length()>0) {
-      gdioutput::AskAnswer ans = gdibase.askCancel("ask:overwrite_server");
+    if (it->FullPath == currentNameId && it->Server.length()>0) {
+      gdioutput::AskAnswer ans = gdibase.askCancel(L"ask:overwrite_server");
 
       if (ans == gdioutput::AnswerCancel)
         return false;
       else if (ans == gdioutput::AnswerNo) {
-        int len = strlen(CurrentNameId);
-        char ex[10];
-        sprintf_s(ex, "_%05XZ", (GetTickCount()/97) & 0xFFFFF);
+        int len = currentNameId.length();
+        wchar_t ex[10];
+        swprintf_s(ex, L"_%05XZ", (GetTickCount()/97) & 0xFFFFF);
         if (len > 0) {
-          if (len< 7 || CurrentNameId[len-1] != 'Z')
-            strcat_s(CurrentNameId, ex);
-          else
-            strcpy_s(CurrentNameId + len - 7, 64 - len + 7, ex);
+          if (len< 7 || currentNameId[len-1] != 'Z')
+            currentNameId += ex;
+          else {
+            wchar_t CurrentNameId[64];
+            wcscpy_s(CurrentNameId, currentNameId.c_str());
+            wcscpy_s(CurrentNameId + len - 7, 64 - len + 7, ex);
+            currentNameId = CurrentNameId;
+          }
         }
       }
       else {
-        if (!gdibase.ask("ask:overwriteconfirm"))
+        if (!gdibase.ask(L"ask:overwriteconfirm"))
           return false;
       }
     }
@@ -519,13 +523,13 @@ bool oEvent::uploadSynchronize()
   else if (stat == opStatusWarning) {
     char bf[256];
     msGetErrorState(bf);
-    gdibase.addInfoBox("", string("Kunde inte ladda upp löpardatabasen (X).#") + bf, 5000);
+    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
   }
 
   HasDBConnection=true;
 
   // Save local version of database
-  saveRunnerDatabase(CurrentNameId, false);
+  saveRunnerDatabase(currentNameId.c_str(), false);
 
   return true;
 }
@@ -572,12 +576,12 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
       it->Name = lang.tl(it->Name.substr(1));
   }
 
-  newCompetition("");
+  newCompetition(L"");
   Id=ci.Id;
-  strcpy_s(CurrentNameId, ci.FullPath.c_str());
+  currentNameId = ci.FullPath;
 
-  char file[260];
-  sprintf_s(file, "%s.dbmeos", CurrentNameId);
+  wchar_t file[260];
+  swprintf_s(file, L"%s.dbmeos", currentNameId.c_str());
   getUserFile(CurrentFile, file);
   if ( !msOpenDatabase(this) ) {
     char bf[256];
@@ -588,7 +592,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
   updateFreeId();
   HasDBConnection=false;
 
-  openRunnerDatabase(CurrentNameId);
+  openRunnerDatabase(currentNameId.c_str());
 
   int ret = msSynchronizeRead(this);
   if (ret == 0) {
@@ -602,12 +606,12 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
     // Warning
     char bf[256];
     msGetErrorState(bf);
-    string info = "Databasvarning: X#" + lang.tl(bf);
+    wstring info = L"Databasvarning: X#" + lang.tl(bf);
     gdibase.addInfoBox("sqlerror", info, 15000);
   }
 
   // Cache database locally
-  saveRunnerDatabase(CurrentNameId, false);
+  saveRunnerDatabase(currentNameId.c_str(), false);
 
   HasDBConnection=true;
 
@@ -680,7 +684,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
   }
 
   reEvaluateAll(set<int>(), false);
-  vector<string> out;
+  vector<wstring> out;
   checkChanged(out);
   assert(out.empty());
 
@@ -774,17 +778,17 @@ bool oEvent::reConnect(char *errorMsg256)
 }
 
 //Returns number of changed, non-saved elements.
-int oEvent::checkChanged(vector<string> &out) const
+int oEvent::checkChanged(vector<wstring> &out) const
 {
   int changed=0;
-  char bf[256];
+  wchar_t bf[256];
   out.clear();
 
   for (list<oCard>::iterator it=oe->Cards.begin();
     it!=oe->Cards.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Card %d", it->cardNo);
+      swprintf_s(bf, L"Card %d", it->cardNo);
       out.push_back(bf);
       it->synchronize();
     }
@@ -793,7 +797,7 @@ int oEvent::checkChanged(vector<string> &out) const
     it!=oe->Clubs.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Club %s", it->name.c_str());
+      swprintf_s(bf, L"Club %ws", it->name.c_str());
       out.push_back(bf);
       it->synchronize();
     }
@@ -802,7 +806,7 @@ int oEvent::checkChanged(vector<string> &out) const
     it!=oe->Controls.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Control %d", it->Numbers[0]);
+      swprintf_s(bf, L"Control %d", it->Numbers[0]);
       out.push_back(bf);
       it->synchronize();
     }
@@ -811,7 +815,7 @@ int oEvent::checkChanged(vector<string> &out) const
         it!=oe->Courses.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Course %s", it->Name.c_str());
+      swprintf_s(bf, L"Course %s", it->Name.c_str());
       out.push_back(bf);
       it->synchronize();
     }
@@ -820,7 +824,7 @@ int oEvent::checkChanged(vector<string> &out) const
       it!=oe->Classes.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Class %s", it->Name.c_str());
+      swprintf_s(bf, L"Class %s", it->Name.c_str());
       out.push_back(bf);
       it->synchronize();
     }
@@ -829,7 +833,7 @@ int oEvent::checkChanged(vector<string> &out) const
       it!=oe->Runners.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Runner %s", it->getName().c_str());
+      swprintf_s(bf, L"Runner %s", it->getName().c_str());
       out.push_back(bf);
       it->synchronize();
     }
@@ -837,7 +841,7 @@ int oEvent::checkChanged(vector<string> &out) const
       it!=oe->Teams.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Team %s", it->getName().c_str());
+      swprintf_s(bf, L"Team %s", it->getName().c_str());
       out.push_back(bf);
       it->synchronize();
     }
@@ -845,7 +849,7 @@ int oEvent::checkChanged(vector<string> &out) const
       it!=oe->punches.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      sprintf_s(bf, "Punch SI=%d, %d", it->CardNo, it->Type);
+      swprintf_s(bf, L"Punch SI=%d, %d", it->CardNo, it->Type);
       out.push_back(bf);
       it->synchronize();
     }
@@ -901,10 +905,9 @@ void oEvent::closeDBConnection()
 
   if (!oe->empty() && hadDB) {
     save();
-    Name+=" (Lokal kopia från: " + serverName + ")";
-    char cn[260];
-    sprintf_s(cn, "%s.%s.meos", CurrentNameId, serverName.c_str());
-    getUserFile(CurrentFile, cn);
+    Name+=L" (Lokal kopia från: " + gdibase.widen(serverName) + L")";
+    wstring cn = currentNameId + L"." + gdibase.widen(serverName) + L".meos";
+    getUserFile(CurrentFile, cn.c_str());
     serverName.clear();
     save();
     gdibase.setWindowTitle(Name);

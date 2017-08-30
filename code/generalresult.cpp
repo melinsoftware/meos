@@ -29,13 +29,16 @@
 #include "meosexception.h"
 #include "localizer.h"
 
-GeneralResultCtr::GeneralResultCtr(const char *tagIn, const string &nameIn, GeneralResult *ptrIn) {
+extern gdioutput *gdi_main;
+
+
+GeneralResultCtr::GeneralResultCtr(const char *tagIn, const wstring &nameIn, GeneralResult *ptrIn) {
   name = nameIn;
   tag = tagIn;
   ptr = ptrIn;
 }
 
-GeneralResultCtr::GeneralResultCtr(string &file, DynamicResult *ptrIn) {
+GeneralResultCtr::GeneralResultCtr(wstring &file, DynamicResult *ptrIn) {
   ptr = ptrIn;
   name = ptrIn->getName(false);
   tag = ptrIn->getTag();
@@ -116,8 +119,8 @@ struct GRSortInfo {
     else if (score != other.score)
       return score < other.score;
 
-    const string &as = tr->getBib();
-    const string &bs = other.tr->getBib();
+    const wstring &as = tr->getBib();
+    const wstring &bs = other.tr->getBib();
     if (as != bs)
       return compareBib(as, bs);
     else
@@ -780,8 +783,8 @@ int DynamicResult::deducePoints(oRunner &runner) const {
 
 }
 
-void DynamicResult::save(const string &file) const {
-  xmlparser xml(0);
+void DynamicResult::save(const wstring &file) const {
+  xmlparser xml;
   xml.openOutput(file.c_str(), true);
   save(xml);
   xml.closeOut();
@@ -792,12 +795,12 @@ extern oEvent *gEvent;
 void DynamicResult::save(xmlparser &xml) const {
   xml.startTag("MeOSResultCalculationSet");
   xml.write("Name", name);
-  xml.write("Tag", tag);
+  xml.write("Tag", gdioutput::widen(tag));
   xml.write("Description", description);
   if (origin.empty())
-    origin = gEvent->getName() + " (" + getLocalDate() + ")";
+    origin = gEvent->getName() + L" (" + getLocalDateW() + L")";
   xml.write("Origin", origin);
-  xml.write("Date", getLocalTime());
+  xml.write("Date", getLocalTimeW());
 //  xml.write("Tag", tag);
 //  xml.write("UID", getUniqueId());
 
@@ -821,8 +824,8 @@ void DynamicResult::clear() {
   }
 }
 
-void DynamicResult::load(const string &file) {
-  xmlparser xml(0);
+void DynamicResult::load(const wstring &file) {
+  xmlparser xml;
   xml.read(file.c_str());
   xmlobject xDef = xml.getObject("MeOSResultCalculationSet");
   load(xDef);
@@ -864,7 +867,7 @@ void DynamicResult::compile(bool forceRecompile) const {
   }
   parser.clear();
 
-  pair<string, string> err;
+  pair<wstring, wstring> err;
   for (size_t k = 0; k < methods.size(); k++) {
     if (!methods[k].source.empty()) {
       try {
@@ -872,14 +875,14 @@ void DynamicResult::compile(bool forceRecompile) const {
       }
       catch (const meosException &ex) {
         if (err.first.empty()) {
-          err.first = method2SymbName[DynamicMethods(k)].second;
-          err.second = lang.tl(ex.what());
+          err.first = gdioutput::widen(method2SymbName[DynamicMethods(k)].second);
+          err.second = lang.tl(ex.wwhat());
         }
       }
     }
   }
   if (!err.first.empty()) {
-    throw meosException("Error in result module X, method Y (Z)#" + name + "#" + err.first + "#" + err.second);
+    throw meosException(L"Error in result module X, method Y (Z)#" + name + L"#" + err.first + L"#" + err.second);
   }
 }
 
@@ -985,11 +988,11 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
   }
 }
 
-void DynamicResult::getSymbols(vector< pair<string, size_t> > &symb) const {
+void DynamicResult::getSymbols(vector< pair<wstring, size_t> > &symb) const {
   parser.getSymbols(symb);
 }
 
-void DynamicResult::getSymbolInfo(int ix, string &name, string &desc) const {
+void DynamicResult::getSymbolInfo(int ix, wstring &name, wstring &desc) const {
   parser.getSymbolInfo(ix, name, desc);
 }
 
@@ -1062,7 +1065,7 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner) const {
     parser.addSymbol("ClubId", 0);
     parser.addSymbol("DistrictId", 0);
   }
-  parser.addSymbol("Bib", atoi(runner.getBib().c_str()));
+  parser.addSymbol("Bib", _wtoi(runner.getBib().c_str()));
 }
 
 void DynamicResult::prepareCalculations(oTeam &team) const {
@@ -1255,6 +1258,7 @@ void DynamicResult::storeOutput(vector<int> &times, vector<int> &numbers) const 
 }
 
 int checksum(const string &str);
+int checksum(const wstring &str);
 
 long long DynamicResult::getHashCode() const {
   long long hc = 1;
@@ -1272,11 +1276,11 @@ string DynamicResult::undecorateTag(const string &inputTag) {
     return inputTag;
 }
 
-string DynamicResult::getName(bool withAnnotation) const {
+wstring DynamicResult::getName(bool withAnnotation) const {
   if (annotation.empty() || !withAnnotation)
     return name;
   else
-    return name + " (" + annotation + ")";
+    return name + L" (" + annotation + L")";
 }
 
 void DynamicResult::debugDumpVariables(gdioutput &gdi, bool includeSymbols) const {

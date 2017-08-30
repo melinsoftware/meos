@@ -41,9 +41,9 @@ public:
     HTML = 5
   };
 
-  static void getExportFormats(vector< pair<string, size_t> > &types, bool exportFilter);
+  static void getExportFormats(vector< pair<wstring, size_t> > &types, bool exportFilter);
 
-  static void getExportFilters(bool exportFilters, vector< pair<string, string> > &ext);
+  static void getExportFilters(bool exportFilters, vector< pair<wstring, wstring> > &ext);
 
   static ExportFormats getDefaultExportFormat(oEvent &oe);
 
@@ -55,7 +55,7 @@ public:
     return option;
   }
 
-  static void getOECSVLanguage(vector< pair<string, size_t> > &typeLanguages); 
+  static void getOECSVLanguage(vector< pair<wstring, size_t> > &typeLanguages); 
   
   static int getDefaultCSVLanguage(oEvent &oe);
 

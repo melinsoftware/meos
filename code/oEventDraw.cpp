@@ -274,8 +274,8 @@ void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> 
 
   gdi.addString("", 0, "Faktiskt startdjup: X minuter.#" + itos(((last+1) * di.baseInterval)/60));
 
-  gdi.addString("", 1, string("Sista start (nu tilldelad): X.#") +
-      oe->getAbsTime(laststart*di.baseInterval+di.firstStart));
+  gdi.addString("", 1, L"Sista start (nu tilldelad): X.#" +
+                        oe->getAbsTime(laststart*di.baseInterval+di.firstStart));
 
   gdi.dropLine();
 
@@ -1109,8 +1109,8 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
   delete[] stimes;
 }
 
-void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
-                               const string &minIntervall, const string &vacances,
+void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
+                               const wstring &minIntervall, const wstring &vacances,
                                bool lateBefore, bool softMethod, int pairSize)
 {
   gdi.refresh();
@@ -1150,7 +1150,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
   if (iFirstStart<=0)
     throw std::exception("Felaktigt tidsformat för första start");
 
-  double vacancy = atof(vacances.c_str())/100;
+  double vacancy = _wtof(vacances.c_str())/100;
 
   gdi.fillDown();
   gdi.addString("", 1, "Automatisk lottning").setColor(colorGreen);
@@ -1167,7 +1167,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
     needsCompletion.erase(*it);
 
   //Start with not drawn classes
-  map<string, int> starts;
+  map<wstring, int> starts;
   map<pClass, int> runnersPerClass;
 
   // Count number of runners per start
@@ -1192,8 +1192,8 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
   while ( !starts.empty() ) {
     // Select smallest start
     int runnersStart = Runners.size()+1;
-    string start;
-    for ( map<string, int>::iterator it = starts.begin(); it != starts.end(); ++it) {
+    wstring start;
+    for ( map<wstring, int>::iterator it = starts.begin(); it != starts.end(); ++it) {
       if (runnersStart > it->second) {
         start = it->first;
         runnersStart = it->second;
@@ -1261,7 +1261,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
       continue;
 
     gdi.dropLine();
-    gdi.addStringUT(1, lang.tl("Optimerar startfördelning") + " " + start);
+    gdi.addStringUT(1, lang.tl(L"Optimerar startfördelning ") + start);
     gdi.refreshFast();
     gdi.dropLine();
     vector<ClassInfo> cInfo;
@@ -1274,7 +1274,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
       laststart=max(laststart, ci.firstStart+ci.nRunners*ci.interval);
     }
 
-    gdi.addStringUT(1, lang.tl("Sista start (nu tilldelad)") + ": " +
+    gdi.addStringUT(1, lang.tl("Sista start (nu tilldelad)") + L": " +
                     getAbsTime((laststart)*di.baseInterval+di.firstStart));
     gdi.dropLine();
     gdi.refreshFast();
@@ -1283,12 +1283,12 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
       const ClassInfo &ci = cInfo[k];
 
       if (getClass(ci.classId)->getClassType() == oClassRelay) {
-        gdi.addString("", 0, "Hoppar över stafettklass: X#" +
+        gdi.addString("", 0, L"Hoppar över stafettklass: X#" +
                     getClass(ci.classId)->getName()).setColor(colorRed);
         continue;
       }
 
-      gdi.addString("", 0, "Lottar: X#" + getClass(ci.classId)->getName());
+      gdi.addString("", 0, L"Lottar: X#" + getClass(ci.classId)->getName());
       vector<ClassDrawSpecification> spec;
       spec.push_back(ClassDrawSpecification(ci.classId, leg, 
                                   di.firstStart + di.baseInterval * ci.firstStart, 
@@ -1308,7 +1308,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const string &firstStart,
     if (it->hasFreeStart())
       continue;
 
-    gdi.addStringUT(0, lang.tl("Lottar efteranmälda") + ": " + it->getName());
+    gdi.addStringUT(0, lang.tl(L"Lottar efteranmälda: ") + it->getName());
 
     vector<ClassDrawSpecification> spec;
     spec.push_back(ClassDrawSpecification(it->getId(), leg, 0, 0, 0));

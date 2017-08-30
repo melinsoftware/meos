@@ -35,8 +35,9 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+extern gdioutput *gdi_main;
 
-xmlparser::xmlparser(gdioutput *utfConverter_) : utfConverter(utfConverter_)
+xmlparser::xmlparser() : utfConverter(gdi_main)
 {
   progress = 0;
   lastIndex = 0;
@@ -83,11 +84,26 @@ xmlobject::~xmlobject()
 }
 
 
+const string &xmlparser::encodeXML(const wstring &input) {
+  return ::encodeXML(gdi_main->toUTF8(input));
+}
+
 const string &xmlparser::encodeXML(const string &input) {
   if (utfConverter)
-    return ::encodeXML(utfConverter->toUTF8(input));
+    return ::encodeXML(utfConverter->toUTF8(gdi_main->widen(input))); //XXX WCS
   else
     return ::encodeXML(input);
+}
+
+void xmlparser::write(const char *tag, const wstring &Value)
+{
+  if (!cutMode || !Value.empty()) {
+    fOut() << "<" << tag << ">"
+           << encodeXML(Value)
+           << "</" << tag << ">" << endl;
+  }
+  if (!fOut().good())
+    throw meosException("Writing to XML file failed.");
 }
 
 void xmlparser::write(const char *tag, const string &Value)
@@ -118,18 +134,28 @@ void xmlparser::write(const char *tag, const char *Property, const string &Value
     throw meosException("Writing to XML file failed.");
 }
 
-void xmlparser::write(const char *tag, const char *prop, const char *value)
+void xmlparser::write(const char *tag, const char *Property, const wstring &Value)
 {
-  write(tag, prop, string(value));
+  if (!cutMode || !Value.empty()) {
+    fOut() << "<" << tag << " " << Property << "=\""
+           << encodeXML(Value) << "\"/>" << endl;
+  }
+  if (!fOut().good())
+    throw meosException("Writing to XML file failed.");
 }
 
-void xmlparser::write(const char *tag, const char *prop, bool value)
+void xmlparser::write(const char *tag, const char *prop, const wchar_t *value)
+{
+  write(tag, prop, wstring(value));
+}
+
+void xmlparser::writeBool(const char *tag, const char *prop, bool value)
 {
   if (!cutMode || value)
-    write(tag, prop, value ? "true" : "false");
+    write(tag, prop, value ? L"true" : L"false");
 }
 
-
+/*
 void xmlparser::write(const char *tag, const char *Property, const string &PropValue, const string &Value)
 {
   if (!cutMode || Value != "" || PropValue != "") {
@@ -140,7 +166,20 @@ void xmlparser::write(const char *tag, const char *Property, const string &PropV
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
 }
+*/
 
+void xmlparser::write(const char *tag, const char *Property, const wstring &PropValue, const wstring &Value)
+{
+  if (!cutMode || Value != L"" || PropValue != L"") {
+    fOut() << "<" << tag << " " << Property << "=\""
+           << encodeXML(PropValue) << "\">" << encodeXML(Value)
+           << "</" << tag << ">" << endl;
+  }
+  if (!fOut().good())
+    throw meosException("Writing to XML file failed.");
+}
+
+/*
 void xmlparser::write(const char *tag, const vector< pair<string, string> > &propValue, const string &value) {
   if (!cutMode || value != "" || !propValue.empty()) {
     fOut() << "<" << tag;
@@ -156,20 +195,62 @@ void xmlparser::write(const char *tag, const vector< pair<string, string> > &pro
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
-
 }
 
+void xmlparser::write(const char *tag, const vector< pair<string, string> > &propValue, const wstring &value) {
+  if (!cutMode || value != L"" || !propValue.empty()) {
+    fOut() << "<" << tag;
+    for (size_t k = 0; k < propValue.size(); k++) {
+      fOut() << " " << propValue[k].first << "=\"" << encodeXML(propValue[k].second) << "\"";
+    }
+    if (!value.empty()) {
+      fOut() << ">" << encodeXML(value)
+             << "</" << tag << ">" << endl;
+    }
+    else
+      fOut() << "/>" << endl;
+  }
+  if (!fOut().good())
+    throw meosException("Writing to XML file failed.");
+}
+*/
+void xmlparser::write(const char *tag, const vector< pair<string, wstring> > &propValue, const wstring &value) {
+  if (!cutMode || value != L"" || !propValue.empty()) {
+    fOut() << "<" << tag;
+    for (size_t k = 0; k < propValue.size(); k++) {
+      fOut() << " " << propValue[k].first << "=\"" << encodeXML(propValue[k].second) << "\"";
+    }
+    if (!value.empty()) {
+      fOut() << ">" << encodeXML(value)
+             << "</" << tag << ">" << endl;
+    }
+    else
+      fOut() << "/>" << endl;
+  }
+  if (!fOut().good())
+    throw meosException("Writing to XML file failed.");
+}
 
+/*
 void xmlparser::write(const char *tag, const char *prop,
                       bool propValue, const string &value) {
   write(tag, prop, propValue ? "true" : "false", value);
-}
+}*/
 
+void xmlparser::writeBool(const char *tag, const char *prop,
+                      bool propValue, const wstring &value) {
+  write(tag, prop, propValue ? L"true" : L"false", value);
+}
+/*
 void xmlparser::write(const char *tag, const char *prop,
                       const char *propValue, const string &value) {
   write(tag, prop, string(propValue), value);
-}
+}*/
 
+void xmlparser::write(const char *tag, const char *prop,
+                      const wchar_t *propValue, const wstring &value) {
+  write(tag, prop, wstring(propValue), value);
+}
 
 void xmlparser::write(const char *tag, int Value)
 {
@@ -205,7 +286,7 @@ void xmlparser::write64(const char *tag, __int64 Value)
     throw meosException("Writing to XML file failed.");
 }
 
-void xmlparser::startTag(const char *tag, const char *prop, const string &Value)
+void xmlparser::startTag(const char *tag, const char *prop, const wstring &Value)
 {
   if (tagStackPointer<32) {
     fOut() << "<" << tag << " " << prop << "=\"" << encodeXML(Value) << "\">" << endl;
@@ -217,6 +298,19 @@ void xmlparser::startTag(const char *tag, const char *prop, const string &Value)
     throw meosException("Tag depth too large.");
 }
 
+
+void xmlparser::startTag(const char *tag, const char *prop, const string &Value)
+{
+  if (tagStackPointer<32) {
+    fOut() << "<" << tag << " " << prop << "=\"" << encodeXML(Value) << "\">" << endl;
+    tagStack[tagStackPointer++]=tag;
+    if (!fOut().good())
+      throw meosException("Writing to XML file failed.");
+  }
+  else
+    throw meosException("Tag depth too large.");
+}
+/*
 void xmlparser::startTag(const char *tag, const vector<string> &propvalue)
 {
   if (tagStackPointer<32) {
@@ -232,7 +326,22 @@ void xmlparser::startTag(const char *tag, const vector<string> &propvalue)
   else
     throw meosException("Tag depth too large.");
 }
-
+*/
+void xmlparser::startTag(const char *tag, const vector<wstring> &propvalue)
+{
+  if (tagStackPointer<32) {
+    fOut() << "<" << tag << " ";
+    for (size_t k=0;k<propvalue.size(); k+=2) {
+      fOut() << encodeXML(propvalue[k]) << "=\"" << encodeXML(propvalue[k+1]) << "\" ";
+    }
+    fOut() << ">" << endl;
+    tagStack[tagStackPointer++]=tag;
+    if (!fOut().good())
+      throw meosException("Writing to XML file failed.");
+  }
+  else
+    throw meosException("Tag depth too large.");
+}
 
 void xmlparser::startTag(const char *tag)
 {
@@ -273,12 +382,12 @@ void xmlparser::getMemoryOutput(string &res) {
   foutString.clear();
 }
 
-void xmlparser::openOutput(const char *file, bool useCutMode)
+void xmlparser::openOutput(const wchar_t *file, bool useCutMode)
 {
   openOutputT(file, useCutMode, "");
 }
 
-void xmlparser::openOutputT(const char *file, bool useCutMode, const string &type)
+void xmlparser::openOutputT(const wchar_t *file, bool useCutMode, const string &type)
 {
   toString = false;
   cutMode = useCutMode;
@@ -287,7 +396,7 @@ void xmlparser::openOutputT(const char *file, bool useCutMode, const string &typ
   tagStackPointer=0;
 
   if (foutFile.bad())
-    throw meosException(string("Writing to XML file failed: ") + string(file));
+    throw meosException(wstring(L"Writing to XML file failed: ") + wstring(file));
 
   if (utfConverter)
     fOut() << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n\n";
@@ -305,7 +414,7 @@ int xmlparser::closeOut()
   while(tagStackPointer>0)
     endTag();
 
-  int len = foutFile.tellp();
+  int len = (int)foutFile.tellp();
   foutFile.close();
 
   return len;
@@ -317,14 +426,14 @@ xmldata::xmldata(const char *t, char *d) : tag(t), data(d)
   next = 0;
 }
 
-xmlattrib::xmlattrib(const char *t, char *d) : tag(t), data(d) {}
+xmlattrib::xmlattrib(const char *t, char *d, const xmlparser *p) : tag(t), data(d), parser(p) {}
 
-void xmlparser::read(const string &file, int maxobj)
+void xmlparser::read(const wstring &file, int maxobj)
 {
   fin.open(file.c_str(), ios::binary);
 
   if (!fin.good())
-    throw meosException("Failed to open 'X' for reading.#" + string(file));
+    throw meosException(L"Failed to open 'X' for reading.#" + file);
 
   char bf[1024];
   bf[0]=0;
@@ -337,10 +446,10 @@ void xmlparser::read(const string &file, int maxobj)
 
   char *ptr=ltrim(bf);
   isUTF = checkUTF(ptr);
-  int p1 = fin.tellg();
+  int p1 = (int)fin.tellg();
 
   fin.seekg(0, ios::end);
-  int p2 = fin.tellg();
+  int p2 = (int)fin.tellg();
   fin.seekg(p1, ios::beg);
 
   int asize = p2-p1;
@@ -659,7 +768,7 @@ xmlattrib xmlobject::getAttrib(const char *pname) const
         if (start<=end) {
           *start = 0;
           if (strcmp(pname, tag) == 0)
-            return xmlattrib(tag, value);
+            return xmlattrib(tag, value, parser);
           start++;
         }
         else {//Error
@@ -672,10 +781,67 @@ xmlattrib xmlobject::getAttrib(const char *pname) const
         oldStart = start;
     }
   }
-  return xmlattrib(0,0);
+  return xmlattrib(0,0, parser);
 }
 
 static int unconverted = 0;
+
+
+
+
+const wchar_t *xmlobject::getw() const
+{
+  const char *ptr = getRaw();
+  if (ptr == 0)
+    return 0;
+  static wchar_t buff[buff_pre_alloc];
+  int len = strlen(ptr);
+  len = min(len+1, buff_pre_alloc-10);
+  if (parser->isUTF) {
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, ptr, len, buff, buff_pre_alloc);
+    buff[wlen-1] = 0;
+  }
+  else {
+    int cp = 1252;
+  /*XXX TODO: switch(getEncoding()) {
+    case Russian:
+      cp = 1251;
+      break;
+    case EastEurope:
+      cp = 1250;
+      break;
+    case Hebrew:
+      cp = 1255;
+      break;
+  }*/
+    int wlen = MultiByteToWideChar(cp, MB_PRECOMPOSED, ptr, len, buff, buff_pre_alloc);
+    buff[wlen-1] = 0;
+  }
+  return buff;
+}
+
+
+const char *xmlobject::get() const
+{
+  const char *ptr = getRaw();
+  if (ptr == 0)
+    return 0;
+  static char buff[buff_pre_alloc];
+  if (parser->isUTF) {
+    int len = strlen(ptr);
+    len = min(len+1, buff_pre_alloc-10);
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, ptr, len, parser->strbuffw, buff_pre_alloc);
+    parser->strbuffw[wlen-1] = 0;
+    for (int k = 0; k< wlen; k++) {
+      buff[k] = parser->strbuffw[k] & 0xFF; 
+    }
+  }
+  else {
+    return ptr;
+  }
+  return buff;
+}
+
 
 void xmlparser::convertString(const char *in, char *out, int maxlen) const
 {
@@ -702,6 +868,37 @@ void xmlparser::convertString(const char *in, char *out, int maxlen) const
   if (untranslated)
     unconverted++;
 }
+
+void xmlparser::convertString(const char *in, wchar_t *out, int maxlen) const
+{
+  if (in==0)
+    throw std::exception("Null pointer exception");
+
+  int len = strlen(in);
+  len = min(min(len+1, maxlen), buff_pre_alloc-10);
+
+  if (!isUTF) {
+    int cp = 1252;
+  /*XXX TODO: switch(getEncoding()) {
+    case Russian:
+      cp = 1251;
+      break;
+    case EastEurope:
+      cp = 1250;
+      break;
+    case Hebrew:
+      cp = 1255;
+      break;
+  }*/
+    int wlen = MultiByteToWideChar(cp, MB_PRECOMPOSED, in, len, out, maxlen);
+    out[wlen-1] = 0;
+    return;
+  }
+
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, in, len, out, maxlen);
+  out[wlen-1] = 0;
+}
+
 
 bool xmlobject::getObjectBool(const char *pname) const
 {
@@ -736,6 +933,29 @@ string &xmlobject::getObjectString(const char *pname, string &out) const
   return out;
 }
 
+wstring &xmlobject::getObjectString(const char *pname, wstring &out) const
+{
+  xmlobject x=getObject(pname);
+  if (x) {
+    const wchar_t *bf = x.getw();
+    if (bf) {
+      out = bf;
+      return out;
+    }
+  }
+
+  xmlattrib xa(getAttrib(pname));
+  if (xa && xa.data) {
+    parser->convertString(xa.get(), parser->strbuffw, buff_pre_alloc);
+    out = parser->strbuffw;
+  }
+  else
+    out = L"";
+
+  return out;
+}
+
+
 char *xmlobject::getObjectString(const char *pname, char *out, int maxlen) const
 {
   xmlobject x=getObject(pname);
@@ -745,6 +965,8 @@ char *xmlobject::getObjectString(const char *pname, char *out, int maxlen) const
       parser->convertString(bf, out, maxlen);
       return out;
     }
+    else
+      out[0] = 0;
   }
   else {
     xmlattrib xa(getAttrib(pname));
@@ -757,25 +979,27 @@ char *xmlobject::getObjectString(const char *pname, char *out, int maxlen) const
   return out;
 }
 
-const char *xmlobject::get() const
+wchar_t *xmlobject::getObjectString(const char *pname, wchar_t *out, int maxlen) const
 {
-  const char *ptr = getRaw();
-  if (ptr == 0)
-    return 0;
-  static char buff[buff_pre_alloc];
-  if (parser->isUTF) {
-    int len = strlen(ptr);
-    len = min(len+1, buff_pre_alloc-10);
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, ptr, len, parser->strbuffw, buff_pre_alloc);
-    parser->strbuffw[wlen-1] = 0;
-    for (int k = 0; k< wlen; k++) {
-      buff[k] = parser->strbuffw[k] & 0xFF; 
+  xmlobject x=getObject(pname);
+  if (x) {
+    const char *bf = x.getRaw();
+    if (bf) {
+      parser->convertString(bf, out, maxlen);
+      return out;
     }
+    else 
+      out[0] = 0;
   }
   else {
-    return ptr;
+    xmlattrib xa(getAttrib(pname));
+    if (xa && xa.data) {
+      inplaceDecodeXML(xa.data); //WCS XXX  Only once!?
+      parser->convertString(xa.data, out, maxlen);
+    } else
+       out[0] = 0;
   }
-  return buff;
+  return out;
 }
 
 
@@ -783,6 +1007,18 @@ const char *xmlattrib::get() const
 {
   if (data)
     return decodeXML(data);
+  else
+    return 0;
+}
+
+const wchar_t *xmlattrib::wget() const
+{
+  if (data) {
+    const char *dec = decodeXML(data);
+    static wchar_t xbf[buff_pre_alloc];
+    parser->convertString(dec, xbf, buff_pre_alloc);
+    return xbf;
+  }
   else
     return 0;
 }

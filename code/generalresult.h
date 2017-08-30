@@ -132,11 +132,11 @@ private:
   vector<MethodInfo> methods;
   mutable bool isCompiled;
   mutable Parser parser;
-  string name;
+  wstring name;
   string tag;
-  string description;
-  string annotation;
-  mutable string origin;
+  wstring description;
+  wstring annotation;
+  mutable wstring origin;
   string timeStamp;
   bool builtIn;
   mutable bool readOnly;
@@ -161,8 +161,8 @@ public:
 
   long long getHashCode() const;
 
-  void getSymbols(vector< pair<string, size_t> > &symb) const;
-  void getSymbolInfo(int ix, string &name, string &desc) const;
+  void getSymbols(vector< pair<wstring, size_t> > &symb) const;
+  void getSymbolInfo(int ix, wstring &name, wstring &desc) const;
 
   void declareSymbols(DynamicMethods m, bool clear) const;
 
@@ -200,16 +200,16 @@ public:
   void setTag(const string &t) {tag = t;}
   void setBuiltIn() {builtIn = true;}
   bool isBuiltIn() const {return builtIn;}
-  string getName(bool withAnnotation) const;
-  void setName(const string &n) {name = n;}
-  void setAnnotation(const string &a) {annotation = a;}
-  const string &getDescription() const {return description;}
-  void setDescription(const string &n) {description = n;}
+  wstring getName(bool withAnnotation) const;
+  void setName(const wstring &n) {name = n;}
+  void setAnnotation(const wstring &a) {annotation = a;}
+  const wstring &getDescription() const {return description;}
+  void setDescription(const wstring &n) {description = n;}
 
-  void save(const string &file) const;
+  void save(const wstring &file) const;
   void save(xmlparser &xml) const;
 
-  void load(const string &file);
+  void load(const wstring &file);
   void load(const xmlobject &xDef);
 
   void compile(bool forceRecompile) const;

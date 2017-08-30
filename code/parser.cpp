@@ -32,6 +32,7 @@
 #include "gdioutput.h"
 #include "gdifonts.h"
 #include "localizer.h"
+extern gdioutput *gdi_main;
 
 static string readWord(const string &expr, size_t &pos) {
   bool pureNum = true;
@@ -1351,29 +1352,29 @@ void Parser::takeVariable(const char*name, vector<int> &val) const {
     val.clear();
 }
 
-void Parser::getSymbols(vector< pair<string, size_t> > &symbOut) const {
+void Parser::getSymbols(vector< pair<wstring, size_t> > &symbOut) const {
   int iter = 0;
   for(map<string, Symbol>::const_iterator it = symb.begin(); it != symb.end(); ++it) {
     if (it->second.isMatrix)
-      symbOut.push_back(make_pair(it->first + "[][]\t" + lang.tl(it->second.desc), iter++));
+      symbOut.push_back(make_pair(gdi_main->widen(it->first) + L"[][]\t" + lang.tl(it->second.desc), iter++));
     else if (it->second.isVector)
-      symbOut.push_back(make_pair(it->first + "[]\t" + lang.tl(it->second.desc), iter++));
+      symbOut.push_back(make_pair(gdi_main->widen(it->first) + L"[]\t" + lang.tl(it->second.desc), iter++));
     else
-      symbOut.push_back(make_pair(it->first + "\t" + lang.tl(it->second.desc), iter++));
+      symbOut.push_back(make_pair(gdi_main->widen(it->first) + L"\t" + lang.tl(it->second.desc), iter++));
   }
 }
 
-void Parser::getSymbolInfo(int ix, string &name, string &desc) const {
+void Parser::getSymbolInfo(int ix, wstring &name, wstring &desc) const {
   int iter = 0;
   for(map<string, Symbol>::const_iterator it = symb.begin(); it != symb.end(); ++it) {
     if (ix == iter++) {
       if (it->second.isMatrix)
-        name = it->first + "[][]";
+        name = gdi_main->widen(it->first) + L"[][]";
       else if (it->second.isVector)
-        name = it->first + "[]";
+        name = gdi_main->widen(it->first) + L"[]";
       else
-        name = it->first;
-      desc = it->second.desc;
+        name = gdi_main->widen(it->first);
+      desc = gdi_main->widen(it->second.desc);
 
       return;
     }

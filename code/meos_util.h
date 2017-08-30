@@ -20,6 +20,7 @@
 
 ************************************************************************/
 
+#pragma once
 #include <vector>
 #include <map>
 
@@ -58,30 +59,52 @@ string getLocalTime();
 string getLocalDate();
 string getLocalTimeOnly();
 
+wstring convertSystemTimeW(const SYSTEMTIME &st);
+wstring convertSystemTimeOnlyW(const SYSTEMTIME &st);
+wstring convertSystemDateW(const SYSTEMTIME &st);
+wstring getLocalTimeW();
+wstring getLocalDateW();
+wstring getLocalTimeOnlyW();
+
+
 // Get a day number after a fixed day some time ago...
 int getRelativeDay();
 
 /// Get time and date in a format that forms a part of a filename
-string getLocalTimeFileName();
+wstring getLocalTimeFileName();
+
+const wstring &getTimeMSW(int m);
+const wstring &formatTimeW(int rt);
+const wstring &formatTimeHMSW(int rt);
 
 const string &getTimeMS(int m);
-const string &formatTime(int rt);
+const string &formatTimeN(int rt);
 const string &formatTimeHMS(int rt);
-string formatTimeIOF(int rt, int zeroTime);
+wstring formatTimeIOF(int rt, int zeroTime);
 
 int convertDateYMS(const string &m, bool checkValid);
 int convertDateYMS(const string &m, SYSTEMTIME &st, bool checkValid);
 
+int convertDateYMS(const wstring &m, bool checkValid);
+int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid);
+
+
 // Convert a "general" time string to a MeOS compatible time string
-void processGeneralTime(const string &generalTime, string &meosTime, string &meosDate);
+void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &meosDate);
 
 // Format number date 20160421 -> 2016-04-21 (if iso) or according to a custom format otherwise
 string formatDate(int m, bool useIsoFormat);
+wstring formatDateW(int m, bool useIsoFormat);
 
 __int64 SystemTimeToInt64Second(const SYSTEMTIME &st);
 SYSTEMTIME Int64SecondToSystemTime(__int64 time);
 
 #define NOTIME 0x7FFFFFFF
+
+//Returns a time converted from +/-MM:SS or NOTIME, in seconds
+int convertAbsoluteTimeMS(const wstring &m);
+// Parses a time on format HH:MM:SS+01:00Z or HHMMSS+0100Z (but ignores time zone)
+int convertAbsoluteTimeISO(const wstring &m);
 
 //Returns a time converted from +/-MM:SS or NOTIME, in seconds
 int convertAbsoluteTimeMS(const string &m);
@@ -93,41 +116,61 @@ int convertAbsoluteTimeISO(const string &m);
    @param daysZeroTime -1 do not support days syntax, positive interpret days w.r.t the specified zero time.
 */
 int convertAbsoluteTimeHMS(const string &m, int daysZeroTime);
+/** Returns a time converted from HH:MM:SS or -1, in seconds
+   @param m time to convert
+   @param daysZeroTime -1 do not support days syntax, positive interpret days w.r.t the specified zero time.
+*/
+int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime);
 
 const vector<string> &split(const string &line, const string &separators, vector<string> &split_vector);
 const string &unsplit(const vector<string> &split_vector, const string &separators, string &line);
 
-const string &MakeDash(const string &t);
-const string &MakeDash(const char *t);
-string FormatRank(int rank);
+const vector<wstring> &split(const wstring &line, const wstring &separators, vector<wstring> &split_vector);
+const wstring &unsplit(const vector<wstring> &split_vector, const wstring &separators, wstring &line);
+
+const wstring &makeDash(const wstring &t);
+const wstring &makeDash(const wchar_t *t);
+
+wstring formatRank(int rank);
 const string &itos(int i);
 string itos(unsigned long i);
 string itos(unsigned int i);
 string itos(__int64 i);
 
+const wstring &itow(int i);
+wstring itow(unsigned long i);
+wstring itow(unsigned int i);
+wstring itow(__int64 i);
+
+
 ///Lower case match (filt_lc must be lc)
 bool filterMatchString(const string &c, const char *filt_lc);
-bool matchNumber(int number, const char *key);
+bool filterMatchString(const wstring &c, const wchar_t *filt_lc);
+
+bool matchNumber(int number, const wchar_t *key);
 
 int getMeosBuild();
-string getMeosDate();
-string getMeosFullVersion();
-string getMajorVersion();
-string getMeosCompectVersion();
+wstring getMeosDate();
+wstring getMeosFullVersion();
+wstring getMajorVersion();
+wstring getMeosCompectVersion();
 
 void getSupporters(vector<string> &supp);
 
-int countWords(const char *p);
+int countWords(const wchar_t *p);
 
+wstring trim(const wstring &s);
 string trim(const string &s);
 
-bool fileExist(const char *file);
+bool fileExist(const wchar_t *file);
 
-bool stringMatch(const string &a, const string &b);
+bool stringMatch(const wstring &a, const wstring &b);
 
 const char *decodeXML(const char *in);
 const string &decodeXML(const string &in);
 const string &encodeXML(const string &in);
+const wstring &encodeXML(const wstring &in);
+const wstring &encodeHTML(const wstring &in);
 
 /** Extend a year from 03 -> 2003, 97 -> 1997 etc */
 int extendYear(int year);
@@ -136,27 +179,30 @@ int extendYear(int year);
 int getThisYear();
 
 /** Translate a char to lower/stripped of accents etc.*/
-int toLowerStripped(int c);
+int toLowerStripped(wchar_t c);
 
 /** Canonize a person/club name */
-const char *canonizeName(const char *name);
+//const char *canonizeName(const char *name);
+const wchar_t *canonizeName(const wchar_t *name);
 
 /** String distance between 0 and 1. 0 is equal*/
-double stringDistance(const char *a, const char *b);
+//double stringDistance(const char *a, const char *b);
+double stringDistance(const wchar_t *a, const wchar_t *b);
 
 
 /** Get a number suffix, Start 1 -> 1. Zero for none*/
 int getNumberSuffix(const string &str);
+int getNumberSuffix(const wstring &str);
 
 /// Extract any number from a string and return the number, prefix and suffix
-int extractAnyNumber(const string &str, string &prefix, string &suffix);
+int extractAnyNumber(const wstring &str, wstring &prefix, wstring &suffix);
 
 
 /** Compare classnames, match H21 Elit with H21E and H21 E */
-bool compareClassName(const string &a, const string &b);
+bool compareClassName(const wstring &a, const wstring &b);
 
 /** Get WinAPI error from code */
-string getErrorMessage(int code);
+wstring getErrorMessage(int code);
 
 class HLS {
 private:
@@ -175,46 +221,52 @@ public:
   DWORD HLStoRGB() const;
 };
 
-#ifndef MEOSDB
-  void unzip(const char *zipfilename, const char *password, vector<string> &extractedFiles);
-  int zip(const char *zipfilename, const char *password, const vector<string> &files);
-#endif
+void unzip(const wchar_t *zipfilename, const char *password, vector<wstring> &extractedFiles);
+int zip(const wchar_t *zipfilename, const char *password, const vector<wstring> &files);
+
+bool isAscii(const wstring &s);
+bool isNumber(const wstring &s);
 
 bool isAscii(const string &s);
 bool isNumber(const string &s);
-int convertDynamicBase(const string &s, long long &out);
-void convertDynamicBase(long long val, int base, char out[16]);
+int convertDynamicBase(const wstring &s, long long &out);
+void convertDynamicBase(long long val, int base, wchar_t out[16]);
 
 /// Find all files in dir matching given file pattern
-bool expandDirectory(const char *dir, const char *pattern, vector<string> &res);
+bool expandDirectory(const wchar_t *dir, const wchar_t *pattern, vector<wstring> &res);
 
 enum PersonSex {sFemale = 1, sMale, sBoth, sUnknown};
 
-PersonSex interpretSex(const string &sex);
+PersonSex interpretSex(const wstring &sex);
 
-string encodeSex(PersonSex sex);
+wstring encodeSex(PersonSex sex);
 
-string makeValidFileName(const string &input, bool strict);
+wstring makeValidFileName(const wstring &input, bool strict);
 
 /** Initial capital letter. */
-void capitalize(string &str);
+void capitalize(wstring &str);
 
 /** Initial capital letter for each word. */
-void capitalizeWords(string &str);
+void capitalizeWords(wstring &str);
 
-string getTimeZoneString(const string &date);
+/*
+void capitalize(string &str);
+void capitalizeWords(string &str);*/
+
+
+wstring getTimeZoneString(const wstring &date);
 
 /** Return bias in seconds. UTC = local time + bias. */
-int getTimeZoneInfo(const string &date);
+int getTimeZoneInfo(const wstring &date);
 
 /** Compare bib numbers (which may contain non-digits, e.g. A-203, or 301a, 301b)*/
-bool compareBib(const string &b1, const string &b2);
+bool compareBib(const wstring &b1, const wstring &b2);
 
 /** Split a name into Given, Family, and return Given.*/
-string getGivenName(const string &name);
+wstring getGivenName(const wstring &name);
 
 /** Split a name into Given, Family, and return Family.*/
-string getFamilyName(const string &name);
+wstring getFamilyName(const wstring &name);
 
 /** Simple file locking class to prevent opening in different MeOS session. */
 class MeOSFileLock {
@@ -228,9 +280,12 @@ public:
   ~MeOSFileLock() {unlockFile();}
 
   void unlockFile();
-  void lockFile(const string &file);
+  void lockFile(const wstring &file);
 };
 
 namespace MeOSUtil {
   extern int useHourFormat;
 }
+
+void string2Wide(const string &in, wstring &out);
+void wide2String(const wstring &in, string &out);

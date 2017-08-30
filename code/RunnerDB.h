@@ -4,7 +4,13 @@
 #include <map>
 #include "inthashmap.h"
 #include "oclub.h"
+
+#ifdef OLD
 #include <hash_set>
+#else
+#include <unordered_set>
+#endif
+
 /************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2017 Melin Software HB
@@ -27,14 +33,15 @@
 
 ************************************************************************/
 
-const int baseNameLength=32;
+const int baseNameLength=40;
+const int baseNameLengthUTF=56;
 
 //Has 0-clearing constructor. Must not contain any
 //dynamic data etc.
 struct RunnerDBEntryV1 {
   RunnerDBEntryV1();
 
-  char name[baseNameLength];
+  char name[32];
   int cardNo;
   int clubNo;
   char national[3];
@@ -43,13 +50,13 @@ struct RunnerDBEntryV1 {
   short int reserved;
 };
 
-struct RunnerDBEntry {
+struct RunnerDBEntryV2 {
   // Init from old struct
   void init(const RunnerDBEntryV1 &dbe);
-  RunnerDBEntry();
+  RunnerDBEntryV2();
 
   /** Binary compatible with V1*/
-  char name[baseNameLength];
+  char name[32];
   int cardNo;
   int clubNo;
   char national[3];
@@ -57,24 +64,79 @@ struct RunnerDBEntry {
   short int birthYear;
   short int reserved;
   /** End of V1*/
-
   __int64 extId;
 
-  void getName(string &name) const;
-  void setName(const char *name);
+  bool isRemoved() const {return (reserved & 1) == 1;}
+  void remove() {reserved |= 1;}
 
-  string getGivenName() const;
-  string getFamilyName() const;
+  bool isUTF() const {return (reserved & 2) == 2;}
+  void setUTF() {reserved |= 2;}
+};
 
+
+struct RunnerDBEntry {
+  // Init from old struct
+  void init(const RunnerDBEntryV2 &dbe);
+  RunnerDBEntry();
+
+  // 8 it versions
   string getNationality() const;
-  int getBirthYear() const {return birthYear;}
   string getSex() const;
+
+  char name[baseNameLengthUTF];
+  int cardNo;
+  int clubNo;
+  char national[3];
+  char sex;
+  short int birthYear;
+  short int reserved;
+  /** End of V1*/
+  __int64 extId;
+
+  bool isRemoved() const {return (reserved & 1) == 1;}
+  void remove() {reserved |= 1;}
+
+  bool isUTF() const {return (reserved & 2) == 2;}
+  void setUTF() {reserved |= 2;}
+};
+
+class RunnerDB;
+
+struct RunnerWDBEntry {
+
+private:
+  RunnerDB *owner;
+  size_t ix;
+public:
+  // Init from old struct
+  void init(RunnerDB *p, size_t ix);
+  RunnerWDBEntry();
+ 
+  // Link to narrow DB Entry
+  const RunnerDBEntry &dbe() const;
+  RunnerDBEntry &dbe();
+
+  void initName() const;
+  void recode(const RunnerDBEntry &dest) const;
+
+  mutable wchar_t name[baseNameLength];
+ 
+  void getName(wstring &name) const;
+  void setName(const wchar_t *name);
+  void setNameUTF(const char *name);
+
+  wstring getGivenName() const;
+  wstring getFamilyName() const;
+
+  wstring getNationality() const;
+  int getBirthYear() const {return dbe().birthYear;}
+  wstring getSex() const;
 
   __int64 getExtId() const;
   void setExtId(__int64 id);
 
-  bool isRemoved() const {return (reserved & 1) == 1;}
-  void remove() {reserved |= 1;}
+  bool isRemoved() const {return (dbe().reserved & 1) == 1;}
+  void remove() {dbe().reserved |= 1;}
 };
 
 typedef vector<RunnerDBEntry> RunnerDBVector;
@@ -100,6 +162,8 @@ private:
   void setupCNHash() const;
 
   vector<RunnerDBEntry> rdb;
+  vector<RunnerWDBEntry> rwdb;
+  
   vector<oDBClubEntry> cdb;
   vector<oDBRunnerEntry> oRDB;
 
@@ -116,12 +180,12 @@ private:
   int freeCIx;
 
   // Name hash
-  mutable multimap<string, int> nhash;
+  mutable multimap<wstring, int> nhash;
 
   // Club name hash
-  mutable multimap<string, int> cnhash;
+  mutable multimap<wstring, int> cnhash;
 
-  static void canonizeSplitName(const string &name, vector<string> &split);
+  static void canonizeSplitName(const wstring &name, vector<wstring> &split);
 
   bool loadedFromServer;
 
@@ -131,7 +195,7 @@ private:
   /** Time when database was updated. The format is HH:MM:SS */
   int dataTime;
 
-  void fillClubs(vector< pair<string, size_t> > &out) const;
+  void fillClubs(vector< pair<wstring, size_t> > &out) const;
 
 public:
 
@@ -161,46 +225,50 @@ public:
   /** Prepare for loading runner from server*/
   void prepareLoadFromServer(int nrunner, int nclub);
 
-  const vector<RunnerDBEntry>& getRunnerDB() const;
-  const vector<oDBClubEntry>& getClubDB() const;
+  const vector<RunnerWDBEntry>& getRunnerDB() const;
+  const vector<RunnerDBEntry>& getRunnerDBN() const;
+  const vector<oDBClubEntry>& getClubDB(bool checkProblems) const;
 
   void clearRunners();
   void clearClubs();
 
   /** Add a club. Create a new Id if necessary*/
   int addClub(oClub &c, bool createNewId);
-  RunnerDBEntry *addRunner(const char *name, __int64 extId,
-                           int club, int card);
+  RunnerWDBEntry *addRunner(const wchar_t *name, __int64 extId,
+                            int club, int card);
+  RunnerWDBEntry *addRunner(const char *nameUTF, __int64 extId,
+                            int club, int card);
 
   oDBRunnerEntry *addRunner();
   oClub *addClub();
 
-  RunnerDBEntry *getRunnerByIndex(size_t index) const;
-  RunnerDBEntry *getRunnerById(__int64 extId) const;
-  RunnerDBEntry *getRunnerByCard(int card) const;
-  RunnerDBEntry *getRunnerByName(const string &name, int clubId,
+  RunnerWDBEntry *getRunnerByIndex(size_t index) const;
+  RunnerWDBEntry *getRunnerById(__int64 extId) const;
+  RunnerWDBEntry *getRunnerByCard(int card) const;
+  RunnerWDBEntry *getRunnerByName(const wstring &name, int clubId,
                                  int expectedBirthYear) const;
 
-  bool getClub(int clubId, string &club) const;
+  bool getClub(int clubId, wstring &club) const;
   oClub *getClub(int clubId) const;
 
-  oClub *getClub(const string &name) const;
+  oClub *getClub(const wstring &name) const;
 
-  void saveClubs(const char *file);
-  void saveRunners(const char *file);
-  void loadRunners(const char *file);
-  void loadClubs(const char *file);
+  void saveClubs(const wstring &file);
+  void saveRunners(const wstring &file);
+  void loadRunners(const wstring &file);
+  void loadClubs(const wstring &file);
 
   void updateAdd(const oRunner &r, map<int, int> &clubIdMap);
 
   void importClub(oClub &club, bool matchName);
   void compactifyClubs();
 
-  void getAllNames(vector<string> &givenName, vector<string> &familyName);
+  void getAllNames(vector<wstring> &givenName, vector<wstring> &familyName);
   RunnerDB(oEvent *);
   ~RunnerDB(void);
   friend class oDBRunnerEntry;
   friend class oDBClubEntry;
+  friend struct RunnerWDBEntry;
 };
 
 class oDBRunnerEntry : public oBase {
@@ -220,9 +288,9 @@ public:
   const RunnerDBEntry &getRunner() const;
 
   void addTableRow(Table &table) const;
-  bool inputData(int id, const string &input,
-                 int inputId, string &output, bool noUpdate);
-  void fillInput(int id, vector< pair<string, size_t> > &out, size_t &selected);
+  bool inputData(int id, const wstring &input,
+                 int inputId, wstring &output, bool noUpdate);
+  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected);
 
   oDBRunnerEntry(oEvent *oe);
   virtual ~oDBRunnerEntry();
@@ -230,7 +298,7 @@ public:
   void remove();
   bool canRemove() const;
 
-  string getInfo() const {return "Database Runner";}
+  wstring getInfo() const {return L"Database Runner";}
 };
 
 

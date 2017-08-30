@@ -41,6 +41,7 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
+extern gdioutput *gdi_main;
 
 oTimeLine::oTimeLine(int time_, TimeLineType type_, Priority priority_, int classId_, int ID_, oAbstractRunner *source) :
   time(time_), type(type_), priority(priority_), classId(classId_), ID(ID_)
@@ -277,65 +278,65 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
                           int leaderTime, int type, vector<SpeakerString> &row, bool shortName) {
 
   if (r.place > 0)
-    row.push_back(SpeakerString(textRight, itos(r.place)));
+    row.push_back(SpeakerString(textRight, itow(r.place)));
   else
     row.push_back(SpeakerString());
 
-  string names;
+  wstring names;
   for (size_t k = 0; k < r.names.size(); k++) {
     if (names.empty()) {
       if (!r.bib.empty())
-        names += r.bib + ": ";
+        names += r.bib + L": ";
     }
     else {
-      names += "/";
+      names += L"/";
     }
     if (!shortName) {
       names += r.names[k];
     }
     else {
-      vector<string> splt;
-      split(r.names[k], " ", splt);
+      vector<wstring> splt;
+      split(r.names[k], L" ", splt);
       for (size_t j = 0; j < splt.size(); j++) {
         if (j == 0) {
           if (splt.size()>1 && splt[j].length() > 1)
-            names += splt[j].substr(0, 1) + ".";
+            names += splt[j].substr(0, 1) + L".";
           else
             names += splt[j];
         }
         else
-          names += " " + splt[j];
+          names += L" " + splt[j];
       }
     }
   }
 
   if (r.runnersFinishedLeg < r.runnersTotalLeg && r.runnersFinishedLeg>0) {
     // Fraction of runners has finished on leg
-    names += " (" + itos(r.runnersFinishedLeg) + "/" + itos(r.runnersTotalLeg) + ")";
+    names += L" (" + itow(r.runnersFinishedLeg) + L"/" + itow(r.runnersTotalLeg) + L")";
   }
 
   for (size_t k = 0; k < r.outgoingnames.size(); k++) {
     if (k == 0) {
-      names += " > ";
+      names += L" > ";
     }
     else 
-      names += "/";
+      names += L"/";
 
     if (!shortName) {
       names += r.outgoingnames[k];
     }
     else {
-      vector<string> splt;
-      split( r.outgoingnames[k], " ", splt);
+      vector<wstring> splt;
+      split( r.outgoingnames[k], L" ", splt);
       for (size_t j = 0; j < splt.size(); j++) {
         if (j == 0) {
           if (splt.size()>1 && splt[j].length() > 1)
-            names += splt[j].substr(0, 1) + ".";
+            names += splt[j].substr(0, 1) + L".";
           else
             names += splt[j];
         }
         else
-          names += " " + splt[j];
+          names += L" " + splt[j];
       }
     }
   }
@@ -343,15 +344,15 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
   if (r.finishStatus<=1 || r.finishStatus==r.status)
     row.push_back(SpeakerString(normalText, names));
   else
-    row.push_back(SpeakerString(normalText, names + " ("+ oEvent::formatStatus(r.finishStatus) +")"));
+    row.push_back(SpeakerString(normalText, names + L" ("+ oEvent::formatStatus(r.finishStatus) +L")"));
 
   row.push_back(SpeakerString(normalText, r.club));
 
   if (r.status == StatusOK) {
-    row.push_back(SpeakerString(textRight, formatTime(r.runningTime.preliminary)));
+    row.push_back(SpeakerString(textRight, formatTimeW(r.runningTime.preliminary)));
 
     if (r.runningTime.time != r.runningTimeLeg.time)
-      row.push_back(SpeakerString(textRight, formatTime(r.runningTimeLeg.time)));
+      row.push_back(SpeakerString(textRight, formatTimeW(r.runningTimeLeg.time)));
     else
       row.push_back(SpeakerString());
 
@@ -395,7 +396,7 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
     }
     else{
       //gdi.addStringUT(y, x+dx[4], textRight, "["+r.startTimeS+"]");
-      row.push_back(SpeakerString(textRight, "["+r.startTimeS+"]"));
+      row.push_back(SpeakerString(textRight, L"["+r.startTimeS+L"]"));
 
       if (!r.missingStartTime)
         row.push_back(SpeakerString(timerCanBeNegative|textRight, r.runningTimeLeg.preliminary));
@@ -416,27 +417,27 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
 
   int ownerId = r.owner ? r.owner->getId(): 0;
   if (type==1) {
-    row.push_back(SpeakerString(normalText, lang.tl("[Bort]")));
+    row.push_back(SpeakerString(normalText, lang.tl(L"[Bort]")));
     row.back().color = colorRed;
     row.back().moveKey = "D" + itos(ownerId);
   }
   else if (type==2) {
-    row.push_back(SpeakerString(normalText, lang.tl("[Bevaka]")));
+    row.push_back(SpeakerString(normalText, lang.tl(L"[Bevaka]")));
     row.back().color = colorGreen;
     row.back().moveKey = "U" + itos(ownerId);
 
-    row.push_back(SpeakerString(normalText, lang.tl("[Bort]")));
+    row.push_back(SpeakerString(normalText, lang.tl(L"[Bort]")));
     row.back().color = colorRed;
     row.back().moveKey = "D" + itos(ownerId);
   }
   else if (type == 3) {
     if (r.status <= StatusOK) {
       if (r.priority < 0) {
-        row.push_back(SpeakerString(normalText, lang.tl("[Återställ]")));
+        row.push_back(SpeakerString(normalText, lang.tl(L"[Återställ]")));
         row.back().moveKey = "M" + itos(ownerId);
       }
       else{
-        row.push_back(SpeakerString(normalText, lang.tl("[Bevaka]")));
+        row.push_back(SpeakerString(normalText, lang.tl(L"[Bevaka]")));
         row.back().moveKey = "U" + itos(ownerId);
       }
     }
@@ -511,7 +512,7 @@ void oEvent::calculateResults(list<oSpeakerObject> &rl)
 void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
                          int PreviousControlId, bool totalResults, bool shortNames) {
 #ifdef _DEBUG
-  OutputDebugString("SpeakerListUpdate\n");
+  OutputDebugString(L"SpeakerListUpdate\n");
 #endif
 
   DWORD clsIds = 0, ctrlIds = 0, cLegs = 0, cTotal = 0, cShort = 0;
@@ -614,7 +615,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   pCourse crs = deduceSampleCourse(pCls, stages, leg);
   
   //char bf2[64]="";
-  string legName, cname = pCls->getName();
+  wstring legName, cname = pCls->getName();
   size_t istage = -1;
   for (size_t k = 0; k < stages.size(); k++) {
     if (stages[k].first >= leg) {
@@ -623,13 +624,13 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
     }
   }
   if (stages.size()>1 && istage < stages.size())
-    cname += lang.tl(", Sträcka X#" + itos(stages[istage].second));
+    cname += lang.tl(L", Sträcka X#" + itow(stages[istage].second));
 
   if (ControlId != oPunch::PunchFinish  && crs) {
-    cname += ", " + crs->getRadioName(ControlId);
+    cname += L", " + crs->getRadioName(ControlId);
   }
   else {
-    cname += lang.tl(", Mål");
+    cname += lang.tl(L", Mål");
   }
 
   int y=gdi.getCY()+5;
@@ -758,20 +759,20 @@ void oEvent::clearPrewarningSounds()
     it->hasBeenPlayed=true;
 }
 
-void oEvent::tryPrewarningSounds(const string &basedir, int number)
+void oEvent::tryPrewarningSounds(const wstring &basedir, int number)
 {
-  char wave[20];
-  sprintf_s(wave, "%d.wav", number);
+  wchar_t wave[20];
+  swprintf_s(wave, L"%d.wav", number);
 
-  string file=basedir+"\\"+wave;
+  wstring file=basedir+L"\\"+wave;
 
-  if (_access(file.c_str(), 0)==-1)
-    gdibase.alert("Fel: hittar inte filen X.#" + file);
+  if (_waccess(file.c_str(), 0)==-1)
+    gdibase.alert(L"Fel: hittar inte filen X.#" + file);
 
   PlaySound(file.c_str(), 0, SND_SYNC|SND_FILENAME );
 }
 
-void oEvent::playPrewarningSounds(const string &basedir, set<int> &controls)
+void oEvent::playPrewarningSounds(const wstring &basedir, set<int> &controls)
 {
   oFreePunchList::reverse_iterator it;
   for (it=punches.rbegin(); it!=punches.rend() && !it->hasBeenPlayed; ++it) {
@@ -780,13 +781,13 @@ void oEvent::playPrewarningSounds(const string &basedir, set<int> &controls)
       pRunner r = getRunnerByCardNo(it->CardNo, it->getAdjustedTime());
 
       if (r){
-        char wave[20];
-        sprintf_s(wave, "%d.wav", r->getStartNo());
+        wchar_t wave[20];
+        swprintf_s(wave, L"%d.wav", r->getStartNo());
 
-        string file=basedir+"\\"+r->getDI().getString("Nationality")+"\\"+wave;
+        wstring file=basedir+L"\\"+ r->getDI().getString("Nationality") +L"\\"+wave;
 
-        if (_access(file.c_str(), 0)==-1)
-          file=basedir+"\\"+wave;
+        if (_waccess(file.c_str(), 0)==-1)
+          file=basedir+L"\\"+wave;
 
         PlaySound(file.c_str(), 0, SND_SYNC|SND_FILENAME );
         it->hasBeenPlayed=true;
@@ -806,71 +807,69 @@ struct TimeRunner {
   bool operator<(const TimeRunner &b) const {return time<b.time;}
 };
 
-string getOrder(int k) {
-  string str;
+wstring getOrder(int k) {
+  wstring str;
   if (k==1)
-    str = "första";
+    str = L"första";
   else if (k==2)
-    str = "andra";
+    str = L"andra";
   else if (k==3)
-    str = "tredje";
+    str = L"tredje";
   else if (k==4)
-    str = "fjärde";
+    str = L"fjärde";
   else if (k==5)
-    str = "femte";
+    str = L"femte";
   else if (k==6)
-    str = "sjätte";
+    str = L"sjätte";
   else if (k==7)
-    str = "sjunde";
+    str = L"sjunde";
   else if (k==8)
-    str = "åttonde";
+    str = L"åttonde";
   else if (k==9)
-    str = "nionde";
+    str = L"nionde";
   else if (k==10)
-    str = "tionde";
+    str = L"tionde";
   else if (k==11)
-    str = "elfte";
+    str = L"elfte";
   else if (k==12)
-    str = "tolfte";
+    str = L"tolfte";
   else
-    return lang.tl("X:e#" + itos(k));
+    return lang.tl(L"X:e#" + itow(k));
 
   return lang.tl(str);
 }
 
-string getNumber(int k) {
-  string str;
+wstring getNumber(int k) {
+  wstring str;
   if (k==1)
-    str = "etta";
+    str = L"etta";
   else if (k==2)
-    str = "tvåa";
+    str = L"tvåa";
   else if (k==3)
-    str = "trea";
+    str = L"trea";
   else if (k==4)
-    str = "fyra";
+    str = L"fyra";
   else if (k==5)
-    str = "femma";
+    str = L"femma";
   else if (k==6)
-    str = "sexa";
+    str = L"sexa";
   else if (k==7)
-    str = "sjua";
+    str = L"sjua";
   else if (k==8)
-    str = "åtta";
+    str = L"åtta";
   else if (k==9)
-    str = "nia";
+    str = L"nia";
   else if (k==10)
-    str = "tia";
+    str = L"tia";
   else if (k==11)
-    str = "elva";
+    str = L"elva";
   else if (k==12)
-    str = "tolva";
+    str = L"tolva";
   else
-    return lang.tl("X:e#" + itos(k));
+    return lang.tl(L"X:e#" + itow(k));
 
   return lang.tl(str);
 }
-
-
 
 struct BestTime {
   static const int nt = 4;
@@ -1092,7 +1091,7 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
 
     oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, oTimeLine::PHigh, r.getClassId(), 0, 0);
     TimeLineIterator it = timeLineEvents.insert(pair<int, oTimeLine>(r.tStartTime, tl));
-    it->second.setMessage("X har startat.#" + r.getClass());
+    it->second.setMessage(L"X har startat.#" + r.getClass());
   }
   else {
     for (size_t j = 0; j<started.size(); j++) {
@@ -1109,13 +1108,13 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
             prio = oTimeLine::PMedium;
           oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, prio, r.getClassId(), r.getId(), &r);
           TimeLineIterator it = timeLineEvents.insert(pair<int, oTimeLine>(r.tStartTime + 1, tl));
-          it->second.setMessage("har startat.");
+          it->second.setMessage(L"har startat.");
         }
         else if (!startedClass) {
           // The entire class started
           oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, oTimeLine::PHigh, r.getClassId(), 0, 0);
           TimeLineIterator it = timeLineEvents.insert(pair<int, oTimeLine>(r.tStartTime, tl));
-          it->second.setMessage("X har startat.#" + r.getClass());
+          it->second.setMessage(L"X har startat.#" + r.getClass());
           startedClass = true;
         }
       }
@@ -1151,52 +1150,52 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
   return nextKnownEvent;
 }
 
-string getTimeDesc(int t1, int t2);
+wstring getTimeDesc(int t1, int t2);
 
 
-void getTimeAfterDetail(string &detail, int timeAfter, int deltaTime, bool wasAfter) {
-  string aTimeS = getTimeDesc(timeAfter, 0);
+void getTimeAfterDetail(wstring &detail, int timeAfter, int deltaTime, bool wasAfter) {
+  wstring aTimeS = getTimeDesc(timeAfter, 0);
   if (timeAfter > 0) {
     if (!wasAfter || deltaTime == 0)
-      detail = "är X efter#" + aTimeS;
+      detail = L"är X efter#" + aTimeS;
     else {
-      string deltaS = getTimeDesc(deltaTime, 0);
+      wstring deltaS = getTimeDesc(deltaTime, 0);
       if (deltaTime > 0)
-        detail = "är X efter; har tappat Y#" + aTimeS + "#" + deltaS;
+        detail = L"är X efter; har tappat Y#" + aTimeS + L"#" + deltaS;
       else
-        detail = "är X efter; har tagit in Y#" + aTimeS + "#" + deltaS;
+        detail = L"är X efter; har tagit in Y#" + aTimeS + L"#" + deltaS;
     }
   }
   else if (timeAfter < 0) {
 
     if (wasAfter && deltaTime != 0) {
-      string deltaS = getTimeDesc(deltaTime, 0);
+      wstring deltaS = getTimeDesc(deltaTime, 0);
       if (deltaTime > 0)
-        detail = "leder med X; har tappat Y.#" + aTimeS + "#" + deltaS;
+        detail = L"leder med X; har tappat Y.#" + aTimeS + L"#" + deltaS;
       else if (deltaTime < 0)
-        detail = "leder med X; sprang Y snabbare än de jagande.#" + aTimeS + "#" + deltaS;
+        detail = L"leder med X; sprang Y snabbare än de jagande.#" + aTimeS + L"#" + deltaS;
       else
-        detail = "leder med X#" + aTimeS;
+        detail = L"leder med X#" + aTimeS;
     }
   }
 }
 
 void oEvent::timeLinePrognose(TempResultMap &results, TimeRunner &tr, int prelT,
-                              int radioNumber, const string &rname, int radioId) {
+                              int radioNumber, const wstring &rname, int radioId) {
   TempResultMap::iterator place_it = results.lower_bound(prelT);
   int p = place_it != results.end() ? place_it->second.place : results.size() + 1;
   int prio = tr.runner->getSpeakerPriority();
 
   if ((radioNumber == 0 && prio > 0) || (radioNumber > 0 && p <= 10) || (radioNumber > 0 && prio > 0 && p <= 20)) {
-    string msg;
+    wstring msg;
     if (radioNumber > 0) {
       if (p == 1)
-        msg = "väntas till X om någon minut, och kan i så fall ta ledningen.#" + rname;
+        msg = L"väntas till X om någon minut, och kan i så fall ta ledningen.#" + rname;
       else
-        msg = "väntas till X om någon minut, och kan i så fall ta en Y plats.#" + rname + getOrder(p);
+        msg = L"väntas till X om någon minut, och kan i så fall ta en Y plats.#" + rname + getOrder(p);
     }
     else
-      msg = "väntas till X om någon minut.#" + rname;
+      msg = L"väntas till X om någon minut.#" + rname;
 
     oTimeLine::Priority mp = oTimeLine::PMedium;
     if (p <= (3 + prio * 3))
@@ -1233,7 +1232,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
         radio.push_back(TimeRunner(0, &r));
 
       if (rt > 0) {
-        bestTotalTime[j].addTime(r.getTotalRunningTime(rt + r.tStartTime));
+        bestTotalTime[j].addTime(r.getTotalRunningTime(rt + r.tStartTime, true));
         bestRaceTime[j].addTime(rt);
         // Calculate leg time since last radio (or start)
         int lt = 0;
@@ -1247,7 +1246,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
 
         if (j == rc.size()-1 && r.FinishTime>0 && r.tStatus == StatusOK) {
           // Get best total time
-          bestTotalTime[j+1].addTime(r.getTotalRunningTime(r.FinishTime));
+          bestTotalTime[j+1].addTime(r.getTotalRunningTime(r.FinishTime, true));
 
           // Calculate best time from last radio to finish
           int ft = r.FinishTime - (rt + r.tStartTime);
@@ -1340,14 +1339,14 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
     vector<TimeRunner> &radio = radioResults[j];
     vector<TimeRunner> &expectedRadio = expectedAtNext[j];
 
-    string rname;// = ->getRadioName(rc[j].first);
+    wstring rname;// = ->getRadioName(rc[j].first);
     if (rc[j].second->Name.empty())
-      rname = lang.tl("radio X#" + itos(numbered++)) + "#";
+      rname = lang.tl("radio X#" + itos(numbered++)) + L"#";
     else {
       if (rc[j].second->tNumberDuplicates > 1)
-        rname = rc[j].second->Name + "-" + itos(numbered++) + "#";
+        rname = rc[j].second->Name + L"-" + itow(numbered++) + L"#";
       else
-        rname = rc[j].second->Name + "#";
+        rname = rc[j].second->Name + L"#";
     }
     // Sort according to pass time
     sort(radio.begin(), radio.end());
@@ -1361,7 +1360,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       if (radio[k].time > 0) {
         while (expIndex < expectedRadio.size() && expectedRadio[expIndex].time < radio[k].time) {
           TimeRunner &tr = expectedRadio[expIndex];
-          int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime);
+          int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime, true);
 
           timeLinePrognose(results, tr, prelT, j, rname, rc[j].first);
           expIndex++;
@@ -1372,35 +1371,35 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
         bool sharedPlace = false;
         vector<pRunner> preRunners;
         int time = radio[k].time - r.tStartTime;
-        int totTime = r.getTotalRunningTime(radio[k].time);
+        int totTime = r.getTotalRunningTime(radio[k].time, true);
         insertResult(results, r, totTime, place, sharedPlace, preRunners);
         int leaderTime = results.begin()->first;
         int timeAfter = totTime - leaderTime;
         int deltaTime = timeAfter - r.tTimeAfter;
 
-        string timeS = formatTime(time);
-        string msg, detail;
+        wstring timeS = formatTimeW(time);
+        wstring msg, detail;
         getTimeAfterDetail(detail, timeAfter, deltaTime, r.tTimeAfter > 0);
         r.tTimeAfter = timeAfter;
 
         if (place == 1) {
           if (results.size() == 1)
-            msg = "är först vid X med tiden Y.#" + rname + timeS;
+            msg = L"är först vid X med tiden Y.#" + rname + timeS;
           else if (!sharedPlace)
-            msg = "tar ledningen vid X med tiden Y.#" + rname + timeS;
+            msg = L"tar ledningen vid X med tiden Y.#" + rname + timeS;
           else
-            msg = "går upp i delad ledning vid X med tiden Y.#" + rname + timeS;
+            msg = L"går upp i delad ledning vid X med tiden Y.#" + rname + timeS;
         }
         else {
           if (!sharedPlace) {
-            msg = "stämplar vid X som Y, på tiden Z.#" +
+            msg = L"stämplar vid X som Y, på tiden Z.#" +
                           rname + getNumber(place) +
-                          "#" + timeS;
+                          L"#" + timeS;
 
           }
           else {
-            msg = "stämplar vid X som delad Y med tiden Z.#" + rname + getNumber(place) +
-                                                         "#" + timeS;
+            msg = L"stämplar vid X som delad Y med tiden Z.#" + rname + getNumber(place) +
+                                                         L"#" + timeS;
           }
         }
 
@@ -1422,16 +1421,16 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
   TempResultMap results;
   sort(started.begin(), started.end(), compareFinishTime);
 
-  string location, locverb, thelocation;
+  wstring location, locverb, thelocation;
   if (finish) {
-    location = "i mål";
-    locverb = "går i mål";
-    thelocation = lang.tl("målet") + "#";
+    location = L"i mål";
+    locverb = L"går i mål";
+    thelocation = lang.tl(L"målet") + L"#";
   }
   else {
-    location = "vid växeln";
-    locverb = "växlar";
-    thelocation = lang.tl("växeln") + "#";
+    location = L"vid växeln";
+    locverb = L"växlar";
+    thelocation = lang.tl(L"växeln") + L"#";
   }
 
   vector<TimeRunner> &expectedFinish = expectedAtNext.back();
@@ -1446,7 +1445,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
 
       while (expIndex < expectedFinish.size() && expectedFinish[expIndex].time < r.FinishTime) {
         TimeRunner &tr = expectedFinish[expIndex];
-        int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime);
+        int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime, true);
         timeLinePrognose(results, tr, prelT, 1, thelocation, 0);
         expIndex++;
       }
@@ -1454,7 +1453,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       int place = 1;
       bool sharedPlace = false;
       vector<pRunner> preRunners;
-      int time = r.getTotalRunningTime(r.FinishTime);
+      int time = r.getTotalRunningTime(r.FinishTime, true);
 
       insertResult(results, r, time, place, sharedPlace, preRunners);
 
@@ -1462,9 +1461,9 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       int timeAfter = time - leaderTime;
       int deltaTime = timeAfter - r.tInitialTimeAfter;
 
-      string timeS = formatTime(time);
+      wstring timeS = formatTimeW(time);
 
-      string msg, detail;
+      wstring msg, detail;
       getTimeAfterDetail(detail, timeAfter, deltaTime, r.tInitialTimeAfter > 0);
 
       // Transfer time after to next runner
@@ -1478,27 +1477,27 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
 
       if (place == 1) {
         if (results.size() == 1)
-          msg = "är först " + location + " med tiden X.#" + timeS;
+          msg = L"är först " + location + L" med tiden X.#" + timeS;
         else if (!sharedPlace)
-          msg = "tar ledningen med tiden X.#" + timeS;
+          msg = L"tar ledningen med tiden X.#" + timeS;
         else
-          msg = "går upp i delad ledning med tiden X.#" + timeS;
+          msg = L"går upp i delad ledning med tiden X.#" + timeS;
       }
       else {
         if (!sharedPlace) {
           if (preRunners.size() == 1 && place < 10)
-            msg = locverb + " på X plats, efter Y, på tiden Z.#" +
+            msg = locverb + L" på X plats, efter Y, på tiden Z.#" +
                         getOrder(place) +
-                        "#" + preRunners[0]->getCompleteIdentification() +
-                        "#" + timeS;
+                        L"#" + preRunners[0]->getCompleteIdentification() +
+                        L"#" + timeS;
           else
-             msg = locverb + " på X plats med tiden Y.#" +
-                        getOrder(place) + "#" + timeS;
+             msg = locverb + L" på X plats med tiden Y.#" +
+                        getOrder(place) + L"#" + timeS;
 
         }
         else {
-          msg = locverb + " på delad X plats med tiden Y.#" + getOrder(place) +
-                                                       "#" + timeS;
+          msg = locverb + L" på delad X plats med tiden Y.#" + getOrder(place) +
+                                                       L"#" + timeS;
         }
       }
 
@@ -1522,7 +1521,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       int place = 1000;
       if (r.FinishTime > 0) {
         place = results.size() + 1;
-        int rt = r.getTotalRunningTime(r.FinishTime);
+        int rt = r.getTotalRunningTime(r.FinishTime, true);
         if (rt > 0) {
           TempResultMap::iterator place_it = results.lower_bound(rt);
           place = place_it != results.end() ? place_it->second.place : results.size() + 1;
@@ -1538,11 +1537,11 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
 
       oTimeLine tl(r.FinishTime, oTimeLine::TLTFinish, mp, r.getClassId(), r.getId(), &r);
       TimeLineIterator tlit = timeLineEvents.insert(pair<int, oTimeLine>(t, tl));
-      string msg;
+      wstring msg;
       if (r.getStatus() != StatusDQ)
-        msg = "är inte godkänd.";
+        msg = L"är inte godkänd.";
       else
-        msg = "är diskvalificerad.";
+        msg = L"är diskvalificerad.";
 
       tlit->second.setMessage(msg);
     }
@@ -1556,13 +1555,13 @@ void oEvent::renderTimeLineEvents(gdioutput &gdi) const
   gdi.fillDown();
   for (TimeLineMap::const_iterator it = timeLineEvents.begin(); it != timeLineEvents.end(); ++it) {
     int t = it->second.getTime();
-    string msg = t>0 ? getAbsTime(t) : MakeDash("--:--:--");
+    wstring msg = t>0 ? getAbsTime(t) : makeDash(L"--:--:--");
     oAbstractRunner *r = it->second.getSource(*this);
     if (r) {
-      msg += " (" + r->getClass() + ") ";
-      msg += r->getName() + ", " + r->getClub();
+      msg += L" (" + r->getClass() + L") ";
+      msg += r->getName() + L", " + r->getClub();
     }
-    msg += ", " + lang.tl(it->second.getMessage());
+    msg += L", " + lang.tl(it->second.getMessage());
     gdi.addStringUT(0, msg);
   }
 }
@@ -1586,7 +1585,7 @@ int oEvent::getTimeLineEvents(const set<int> &classes, vector<oTimeLine> &events
       eval = true;
   }
   if (eval) {
-    OutputDebugString("SetupTimeLine\n");
+    OutputDebugStringA("SetupTimeLine\n");
     nextTimeLineEvent = setupTimeLineEvents(currentTime);
   }
 //  else

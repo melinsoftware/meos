@@ -56,13 +56,13 @@ public:
     InvalidateRect(getControlWindow(), 0, true);
   }
 
-  BaseInfo &setExtra(const char *e) {extra=(void *)e; dataString = true; return *this;}
+  BaseInfo &setExtra(const wchar_t *e) {extra=(void *)e; dataString = true; return *this;}
 
   BaseInfo &setExtra(int e) {extra = (void *)(e); return *this;}
   BaseInfo &setExtra(size_t e) {extra = (void *)(e); return *this;}
 
   bool isExtraString() const {return dataString;}
-  char *getExtra() const {assert(extra == 0 || dataString); return (char *)extra;}
+  wchar_t *getExtra() const {assert(extra == 0 || dataString); return (wchar_t *)extra;}
   int getExtraInt() const {return int(extra);}
   size_t getExtraSize() const {return size_t(extra);}
 
@@ -149,7 +149,7 @@ public:
   }
 
   TextInfo &setColor(GDICOLOR c) {color = c; return *this;}
-  TextInfo &changeFont(const string &fnt) {font = fnt; return *this;} //Note: size not updated
+  TextInfo &changeFont(const wstring &fnt) {font = fnt; return *this;} //Note: size not updated
 
   int getHeight() {return int(textRect.bottom-textRect.top);}
   gdiFonts getGdiFont() const {return gdiFonts(format & 0xFF);}
@@ -157,8 +157,8 @@ public:
   TextInfo &setAbsPrintPos(int x, int y) {
     absPrintX = x; absPrintY = y; return *this;
   }
-  string text;
-  string font;
+  wstring text;
+  wstring font;
 
   int xp;
   int yp;
@@ -204,7 +204,7 @@ public:
   int xp;
   int yp;
   int width;
-  string text;
+  wstring text;
   HWND hWnd;
   bool AbsPos;
   bool fixedRightTop;
@@ -234,7 +234,7 @@ class InputInfo : public BaseInfo
 {
 public:
   InputInfo();
-  string text;
+  wstring text;
 
   bool changed() const {return text!=original;}
   void ignore(bool ig) {ignoreCheck=ig;}
@@ -249,7 +249,7 @@ public:
   
   HWND getControlWindow() const {return hWnd;}
   
-  InputInfo &setSynchData(string *variable) {updateLastData = variable; return *this;}
+  InputInfo &setSynchData(wstring *variable) {updateLastData = variable; return *this;}
 
   int getX() const {return xp;}
   int getY() const {return yp;}
@@ -258,7 +258,7 @@ private:
   HWND hWnd;
   GUICALLBACK callBack;
   void synchData() const {if (updateLastData) *updateLastData = text;}
-  string *updateLastData;
+  wstring *updateLastData;
   int xp;
   int yp;
   double width;
@@ -268,8 +268,8 @@ private:
   GDICOLOR fgColor;
   bool isEditControl;
   bool writeLock;
-  string original;
-  string focusText; // Test when got focus
+  wstring original;
+  wstring focusText; // Test when got focus
   bool ignoreCheck; // True if changed-state should be ignored
   friend class gdioutput;
 };
@@ -282,7 +282,7 @@ public:
               originalProc(0), lbiSync(0), multipleSelection(false), 
               xp(0), yp(0), width(0), height(0), data(0), lastTabStop(0),
               updateLastData(0) {}
-  string text;
+  wstring text;
   size_t data;
   int index;
   bool changed() const {return text!=original;}
@@ -313,7 +313,7 @@ private:
   bool multipleSelection;
   bool isEditControl;
   bool writeLock;
-  string original;
+  wstring original;
   int originalIdx;
   bool ignoreCheck; // True if changed-state should be ignored
 
@@ -355,12 +355,22 @@ public:
 class TimerInfo : public BaseInfo
 {
 private:
-  DWORD data;
+  DWORD dataInt;
+  wstring dataString;
   gdioutput *parent;
   TimerInfo(gdioutput *gdi, GUICALLBACK cb) : parent(gdi), callBack(cb) {}
 
 public:
-  BaseInfo &setExtra(void *e) {return BaseInfo::setExtra((const char *)e);}
+  BaseInfo &setExtra(const wchar_t *e) {return BaseInfo::setExtra(e);}
+  BaseInfo &setExtra(int e) {return BaseInfo::setExtra(e);}
+
+  void setData(DWORD d, const wstring &s) {dataInt = d; dataString = s;}
+  const wstring &getDataString() {
+    return dataString;
+  }
+  DWORD getData() {
+    return dataInt;
+  }
 
   GUICALLBACK callBack;
   friend class gdioutput;
@@ -374,7 +384,7 @@ class InfoBox : public BaseInfo
 {
 public:
   InfoBox() : callBack(0), HasCapture(0), HasTCapture(0), TimeOut(0) {}
-  string text;
+  wstring text;
   GUICALLBACK callBack;
 
   RECT TextRect;

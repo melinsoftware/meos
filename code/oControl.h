@@ -71,7 +71,7 @@ protected:
   bool checkedNumbers[32];
 
   ControlStatus Status;
-  string Name;
+  wstring Name;
   bool decodeNumbers(string s);
 
   static const int dataSize = 32;
@@ -81,11 +81,11 @@ protected:
 
   /// Table methods
   void addTableRow(Table &table) const;
-  bool inputData(int id, const string &input,
-                 int inputId, string &output, bool noUpdate);
+  bool inputData(int id, const wstring &input,
+                 int inputId, wstring &output, bool noUpdate);
 
   /// Table methods
-  void fillInput(int id, vector< pair<string, size_t> > &elements, size_t &selected);
+  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected);
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -126,7 +126,7 @@ public:
   void remove();
   bool canRemove() const;
 
-  string getInfo() const;
+  wstring getInfo() const;
 
   bool isSingleStatusOK() const {return Status == StatusOK || Status == StatusNoTiming;}
 
@@ -165,22 +165,22 @@ public:
   */
   bool controlCompleted(bool supportRogaiing) const;
 
-  string codeNumbers(char sep=';') const;
-  bool setNumbers(const string &numbers);
+  wstring codeNumbers(char sep=';') const;
+  bool setNumbers(const wstring &numbers);
 
   ControlStatus getStatus() const {return Status;}
-  const string getStatusS() const;
+  const wstring getStatusS() const;
 
   bool hasName() const {return !Name.empty();}
   /// Get name or [id]
-  string getName() const;
+  wstring getName() const;
   /// Get name or id
-  string getIdS() const;
+  wstring getIdS() const;
 
   bool isRogaining(bool useRogaining) const {return useRogaining && (Status == StatusRogaining);}
 
   void setStatus(ControlStatus st);
-  void setName(string name);
+  void setName(wstring name);
 
   //Returns true if control has number and checks it.
   bool hasNumber(int i);
@@ -190,25 +190,25 @@ public:
   // Uncheck a given number
   bool uncheckNumber(int i);
 
-  string getString();
-  string getLongString();
+  wstring getString();
+  wstring getLongString();
 
   //For a control that requires several punches,
   //return the number of required punches.
   int getNumMulti();
 
   int getTimeAdjust() const;
-  string getTimeAdjustS() const;
+  wstring getTimeAdjustS() const;
   void setTimeAdjust(int v);
-  void setTimeAdjust(const string &t);
+  void setTimeAdjust(const wstring &t);
 
   int getMinTime() const;
-  string getMinTimeS() const;
+  wstring getMinTimeS() const;
   void setMinTime(int v);
-  void setMinTime(const string &t);
+  void setMinTime(const wstring &t);
 
   int getRogainingPoints() const;
-  string getRogainingPointsS() const;
+  wstring getRogainingPointsS() const;
   void setRogainingPoints(int v);
   void setRogainingPoints(const string &t);
 
@@ -217,7 +217,7 @@ public:
   void getNumbers(vector<int> &numbers) const;
 
   void set(const xmlobject *xo);
-  void set(int pId, int pNumber, string pName);
+  void set(int pId, int pNumber, wstring pName);
   bool write(xmlparser &xml);
   oControl(oEvent *poe);
   oControl(oEvent *poe, int id);

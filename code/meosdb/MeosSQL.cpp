@@ -40,6 +40,25 @@
 
 using namespace mysqlpp;
 
+wstring fromUTF(const string w) {
+  const int buff_pre_alloc = 1024*8;
+  static wchar_t buff[buff_pre_alloc];
+  int len = w.length();
+  len = min(len+1, buff_pre_alloc-10);
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, w.c_str(), len, buff, buff_pre_alloc);
+  buff[wlen-1] = 0;
+  return buff;
+}
+
+string toString(const wstring &w) {
+  string &output = StringCache::getInstance().get();
+  size_t alloc = w.length()*4+4;
+  output.resize(alloc);
+  WideCharToMultiByte(CP_UTF8, 0, w.c_str(), w.length()+1, (char *)output.c_str(), alloc, 0, 0);
+  output.resize(strlen(output.c_str()));
+  return output;
+}
+
 MeosSQL::MeosSQL(void)
 {
   monitorId=0;
@@ -120,6 +139,14 @@ string limitLength(const string &in, size_t max) {
     return in.substr(0, max);
 }
 
+string limitLength(const wstring &in, size_t max) {
+  if (in.length() < max)
+    return toString(in);
+  else
+    return toString(in.substr(0, max));
+}
+
+
 bool MeosSQL::listCompetitions(oEvent *oe, bool keepConnection) {
   errorMessage.clear();
   CmpDataBase="";
@@ -169,6 +196,16 @@ bool MeosSQL::listCompetitions(oEvent *oe, bool keepConnection) {
   Query query = con.query();
 
   try{
+    mysqlpp::Query queryset = con.query();
+    queryset << "SET NAMES UTF8";
+    queryset.execute();
+  }
+  catch (const mysqlpp::Exception& ){
+  }
+
+  query.reset();
+
+  try{
     query << C_START("oEvent")
       << C_STRING("Name", 128)
       << C_STRING("Annotation", 128)
@@ -212,12 +249,12 @@ bool MeosSQL::listCompetitions(oEvent *oe, bool keepConnection) {
 
         if (int(row["Version"]) <= oe->dbVersion) {
           CompetitionInfo ci;
-          ci.Name = row["Name"];
-          ci.Annotation = row["Annotation"];
+          ci.Name = fromUTF((string)row["Name"]);
+          ci.Annotation = fromUTF((string)row["Annotation"]);
           ci.Id = row["Id"];
-          ci.Date = row["Date"];
-          ci.FullPath = row["NameId"];
-          ci.NameId = row["NameId"];
+          ci.Date = fromUTF((string)row["Date"]);
+          ci.FullPath = fromUTF((string)row["NameId"]);
+          ci.NameId = fromUTF((string)row["NameId"]);
           ci.Server = oe->MySQLServer;
           ci.ServerPassword = oe->MySQLPassword;
           ci.ServerUser = oe->MySQLUser;
@@ -227,12 +264,12 @@ bool MeosSQL::listCompetitions(oEvent *oe, bool keepConnection) {
         }
         else {
           CompetitionInfo ci;
-          ci.Name = row["Name"];
-          ci.Date = row["Date"];
-          ci.Annotation = row["Annotation"];
+          ci.Name = fromUTF(string(row["Name"]));
+          ci.Date = fromUTF(string(row["Date"]));
+          ci.Annotation = fromUTF(string(row["Annotation"]));
           ci.Id=0;
           ci.Server="bad";
-          ci.FullPath=row["NameId"];
+          ci.FullPath=fromUTF(string(row["NameId"]));
           oe->cinfo.push_front(ci);
         }
       }
@@ -299,7 +336,7 @@ bool MeosSQL::createRunnerDB(oEvent *oe, Query &query)
   query.reset();
 
   query << C_START_noid("dbRunner")
-  << C_STRING("Name", 31) << C_INT("CardNo")
+  << C_STRING("Name", 40) << C_INT("CardNo")
   << C_INT("Club") << C_STRING("Nation", 3)
   << C_STRING("Sex", 1) << C_INT("BirthYear")
   << C_INT64("ExtId") << C_END_noindex();
@@ -387,7 +424,7 @@ bool MeosSQL::openDB(oEvent *oe)
     return 0;
   }
   monitorId=0;
-  string dbname=oe->CurrentNameId;
+  string dbname(oe->currentNameId.begin(), oe->currentNameId.end());//WCS
 
   try {
     Query query = con.query();
@@ -646,6 +683,14 @@ bool MeosSQL::reConnect()
     errorMessage=er.what();
     return false;
   }
+ 
+  try{
+    mysqlpp::Query queryset = con.query();
+    queryset << "SET NAMES UTF8";
+    queryset.execute();
+  }
+  catch (const mysqlpp::Exception& ){
+  }
 
   return true;
 }
@@ -663,8 +708,8 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
     mysqlpp::Query queryset = con.query();
     queryset << "UPDATE oEvent SET Name=" << quote << limitLength(oe->Name, 128) << ", "
         << " Annotation="  << quote << limitLength(oe->Annotation, 128) << ", "
-        << " Date="  << quote << oe->Date << ", "
-        << " NameId="  << quote << oe->CurrentNameId << ", "
+        << " Date="  << quote << toString(oe->Date) << ", "
+        << " NameId="  << quote << toString(oe->currentNameId) << ", "
         << " ZeroTime=" << unsigned(oe->ZeroTime)
         << " WHERE Id=" << oe->Id;
 
@@ -699,8 +744,8 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
     mysqlpp::Query queryset = con.query();
     queryset << " Name=" << quote << limitLength(oe->Name, 128) << ", "
         << " Annotation="  << quote << limitLength(oe->Annotation, 128) << ", "
-        << " Date="  << quote << oe->Date << ", "
-        << " NameId="  << quote << oe->CurrentNameId << ", "
+        << " Date="  << quote << toString(oe->Date) << ", "
+        << " NameId="  << quote << toString(oe->currentNameId) << ", "
         << " ZeroTime=" << unsigned(oe->ZeroTime) << ", "
         << " BuildVersion=" << buildVersion << ", "
         << " Lists=" << quote << listEnc
@@ -794,13 +839,14 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
   if (CmpDataBase.empty())
     return opStatusFail;
   int errorCount = 0;
-
+  int totErrorCount = 0;
   ProgressWindow pw(oe->hWnd());
   try {
-    const vector<oDBClubEntry> &cdb = oe->runnerDB->getClubDB();
+    const vector<oDBClubEntry> &cdb = oe->runnerDB->getClubDB(true);
     size_t size = cdb.size();
 
-    const vector<RunnerDBEntry> &rdb = oe->runnerDB->getRunnerDB();
+    const vector<RunnerDBEntry> &rdb = oe->runnerDB->getRunnerDBN();
+    const vector<RunnerWDBEntry> &rwdb = oe->runnerDB->getRunnerDB();
 
     if (cdb.size() + rdb.size() > 2000)
       pw.init();
@@ -819,14 +865,16 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
 
       mysqlpp::Query query = con.query();
       string setId = "Id=" + itos(cdb[k].Id) + ", ";
-      query << "INSERT INTO dbClub SET " << setId << "Name=" << quote << cdb[k].name
+      query << "INSERT INTO dbClub SET " << setId << "Name=" << quote << toString(cdb[k].name)
         <<  cdb[k].getDCI().generateSQLSet(true);
 
       try {
         query.execute();
+        errorCount = 0;
       }
       catch (const mysqlpp::Exception& ex) {
         errorMessage = ex.what();
+        totErrorCount++;
         if (++errorCount > 5)
           throw;
       }
@@ -839,6 +887,9 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
     for (size_t k = 0; k<size; k++) {
       if (rdb[k].isRemoved())
         continue;
+      if (!rdb[k].isUTF()) {
+        rwdb[k].recode(rdb[k]);
+      }
 
       mysqlpp::Query query = con.query();
       query << "INSERT INTO dbRunner SET " <<
@@ -847,7 +898,17 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
         ", CardNo=" << rdb[k].cardNo << ", Sex=" << quote << rdb[k].getSex() <<
         ", Nation=" << quote << rdb[k].getNationality() << ", BirthYear=" << rdb[k].birthYear;
 
-      query.execute();
+      try {
+        query.execute();
+        errorCount = 0;
+      }
+      catch (const mysqlpp::Exception& ex) {
+        totErrorCount++;
+        errorMessage = ex.what();
+        if (++errorCount > 5)
+          throw;
+      }
+
       if (k%200 == 150)
         pw.setProgress(s1 + (k*s2)/size);
     }
@@ -903,7 +964,8 @@ bool MeosSQL::storeData(oDataInterface odi, const Row &row, unsigned long &revis
     odi.getVariableString(varstring);
     list<oVariableString>::iterator it_string;
     for(it_string=varstring.begin(); it_string!=varstring.end(); it_string++) {
-      if (it_string->store(row[it_string->name].c_str()))
+      wstring w(fromUTF(row[it_string->name].c_str()));
+      if (it_string->store(w.c_str()))
         updated = true;
     }
   }
@@ -949,11 +1011,11 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
 
     Row row;
     if (row=res.at(0)){
-      oe->Name = row["Name"];
-      oe->Annotation = row["Annotation"];
-      oe->Date = row["Date"];
+      oe->Name = fromUTF(string(row["Name"]));
+      oe->Annotation = fromUTF(string(row["Annotation"]));
+      oe->Date = fromUTF(string(row["Date"]));
       oe->ZeroTime = row["ZeroTime"];
-      strcpy_s(oe->CurrentNameId, row["NameId"].c_str());
+      oe->currentNameId = fromUTF(string(row["NameId"]));
     }
 
     con.select_db(CmpDataBase);
@@ -988,7 +1050,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
     cnt = query.store("SELECT COUNT(*) FROM dbRunner WHERE Modified>'" + time + "'");
     int modrunner = cnt.at(0).at(0);
 
-    bool skipDB = modclub==0 && modrunner==0 && nClubDB == oe->runnerDB->getClubDB().size() &&
+    bool skipDB = modclub==0 && modrunner==0 && nClubDB == oe->runnerDB->getClubDB(false).size() &&
                                       nRunnerDB == oe->runnerDB->getRunnerDB().size();
 
     if (skipDB) {
@@ -1024,11 +1086,11 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
 
     Row row;
     if (row=res.at(0)) {
-      oe->Name = row["Name"];
-      oe->Annotation = row["Annotation"];
-      oe->Date = row["Date"];
+      oe->Name = fromUTF(string(row["Name"]));
+      oe->Annotation = fromUTF(string(row["Annotation"]));
+      oe->Date = fromUTF(string(row["Date"]));
       oe->ZeroTime = row["ZeroTime"];
-      strcpy_s(oe->CurrentNameId, row["NameId"].c_str());
+      oe->currentNameId = fromUTF(string(row["NameId"]));
       oe->sqlUpdated = row["Modified"];
       oe->counter = row["Counter"];
 
@@ -1049,7 +1111,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
       oDataInterface odi=oe->getDI();
       storeData(odi, row, oe->dataRevision);
       oe->changed = false;
-      oe->setCurrency(-1, "", "", false); // Set currency tmp data
+      oe->setCurrency(-1, L"", L"", false); // Set currency tmp data
       oe->getMeOSFeatures().deserialize(oe->getDCI().getString("Features"), *oe);
     }
   }
@@ -1302,7 +1364,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
         oClub t(oe, row["Id"]);
 
         string n = row["Name"];
-        t.internalSetName(n);
+        t.internalSetName(fromUTF(n));
         storeData(t.getDI(), row, oe->dataRevision);
 
         oe->runnerDB->addClub(t, false);
@@ -1328,24 +1390,25 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
     if (res) {
       Row row;
       while (row = res.fetch_row()) {
-        string name = row["Name"];
+        string name = (string)row["Name"];
         string ext = row["ExtId"];
         string club = row["Club"];
         string card = row["CardNo"];
         string sex = row["Sex"];
         string nat = row["Nation"];
         string birth = row["BirthYear"];
-        RunnerDBEntry *db = oe->runnerDB->addRunner(name.c_str(), _atoi64(ext.c_str()),
-                              atoi(club.c_str()), atoi(card.c_str()));
+        RunnerWDBEntry *db = oe->runnerDB->addRunner(name.c_str(), _atoi64(ext.c_str()),
+                               atoi(club.c_str()), atoi(card.c_str()));
         if (db) {
+          RunnerDBEntry &dbn = db->dbe();
           if (sex.length()==1)
-            db->sex = sex[0];
-          db->birthYear = short(atoi(birth.c_str()));
+            dbn.sex = sex[0];
+          dbn.birthYear = short(atoi(birth.c_str()));
 
           if (nat.length()==3) {
-            db->national[0] = nat[0];
-            db->national[1] = nat[1];
-            db->national[2] = nat[2];
+            dbn.national[0] = nat[0];
+            dbn.national[1] = nat[1];
+            dbn.national[2] = nat[2];
           }
         }
 
@@ -1370,7 +1433,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
 void MeosSQL::storeClub(const Row &row, oClub &c)
 {
   string n = row["Name"];
-  c.internalSetName(n);
+  c.internalSetName(fromUTF(n));
 
   c.sqlUpdated = row["Modified"];
   c.counter = row["Counter"];
@@ -1385,8 +1448,8 @@ void MeosSQL::storeClub(const Row &row, oClub &c)
 
 void MeosSQL::storeControl(const Row &row, oControl &c)
 {
-  c.Name = row["Name"];
-  c.setNumbers(string(row["Numbers"]));
+  c.Name = fromUTF((string)row["Name"]);
+  c.setNumbers(fromUTF((string)row["Numbers"]));
   oControl::ControlStatus oldStat = c.Status;
   c.Status = oControl::ControlStatus(int(row["Status"]));
 
@@ -1430,7 +1493,7 @@ void MeosSQL::storePunch(const Row &row, oFreePunch &p, bool rehash)
   if (rehash) {
     p.setCardNo(row["CardNo"], true);
     p.setTimeInt(row["Time"], true);
-    p.setType(string(row["Type"]), true);
+    p.setType(fromUTF(string(row["Type"])), true);
   }
   else {
     p.CardNo = row["CardNo"];
@@ -1452,7 +1515,7 @@ OpFailStatus MeosSQL::storeClass(const Row &row, oClass &c,
 {
   OpFailStatus success = opStatusOK;
 
-  c.Name=row["Name"];
+  c.Name=fromUTF(string(row["Name"]));
   string multi = row["MultiCourse"];
 
   string lm(row["LegMethod"]);
@@ -1499,7 +1562,7 @@ OpFailStatus MeosSQL::storeCourse(const Row &row, oCourse &c,
 {
   OpFailStatus success = opStatusOK;
 
-  c.Name = row["Name"];
+  c.Name = fromUTF((string)row["Name"]);
   c.importControls(string(row["Controls"]), false);
   c.Length = row["Length"];
   c.importLegLengths(string(row["Legs"]), false);
@@ -1544,9 +1607,9 @@ OpFailStatus MeosSQL::storeRunner(const Row &row, oRunner &r,
     r.markClassChanged(-1);
 
   int oldSno = r.StartNo;
-  const string &oldBib = r.getBib();
+  const wstring &oldBib = r.getBib();
 
-  r.sName = row["Name"];
+  r.sName = fromUTF((string)row["Name"]);
   oRunner::getRealName(r.sName, r.tRealName);
   r.setCardNo(row["CardNo"], false, true);
   r.StartNo = row["StartNo"];
@@ -1678,9 +1741,9 @@ OpFailStatus MeosSQL::storeTeam(const Row &row, oTeam &t,
     t.Class->markSQLChanged(-1,-1);
 
   int oldSno = t.StartNo;
-  const string &oldBib = t.getBib();
+  const wstring &oldBib = t.getBib();
 
-  t.sName=row["Name"];
+  t.sName=fromUTF((string)row["Name"]);
   t.StartNo=row["StartNo"];
   t.tStartTime  =  t.startTime = row["StartTime"];
   t.FinishTime=row["FinishTime"];
@@ -1740,7 +1803,7 @@ OpFailStatus MeosSQL::storeTeam(const Row &row, oTeam &t,
           success = min(success, syncRead(true, &or, readRecursive, readRecursive));
 
           if (or.sName.empty()) {
-            or.sName = "@AutoCorrection";
+            or.sName = L"@AutoCorrection";
             oRunner::getRealName(or.sName, or.tRealName);
           }
           pRns[k] = oe->addRunner(or, false);
@@ -1837,7 +1900,7 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll)
     return opStatusFail;
 
   mysqlpp::Query queryset = con.query();
-  queryset << " Name=" << quote << r->sName << ", "
+  queryset << " Name=" << quote << toString(r->sName) << ", "
       << " CardNo=" << r->CardNo << ", "
       << " StartNo=" << r->StartNo << ", "
       << " StartTime=" << r->startTime << ", "
@@ -1854,10 +1917,10 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll)
       << " MultiR=" << quote << r->codeMultiR()
       << r->getDI().generateSQLSet(forceWriteAll);
 
-  
-  string str = "write runner " + r->sName + ", st = " + itos(r->startTime) + "\n";
+  /*
+  wstring str = L"write runner " + r->sName + L", st = " + itow(r->startTime) + L"\n";
   OutputDebugString(str.c_str());
-
+  */
   return syncUpdate(queryset, "oRunner", r);
 }
 
@@ -2034,7 +2097,7 @@ OpFailStatus MeosSQL::syncUpdate(oTeam *t, bool forceWriteAll) {
 
   mysqlpp::Query queryset = con.query();
 
-  queryset << " Name=" << quote << t->sName << ", "
+  queryset << " Name=" << quote << toString(t->sName) << ", "
       << " Runners=" << quote << t->getRunners() << ", "
       << " StartTime=" << t->startTime << ", "
       << " FinishTime=" << t->FinishTime << ", "
@@ -2044,8 +2107,8 @@ OpFailStatus MeosSQL::syncUpdate(oTeam *t, bool forceWriteAll) {
       << " Status=" << t->status
       << t->getDI().generateSQLSet(forceWriteAll);
 
-  string str = "write team " + t->sName + "\n";
-  OutputDebugString(str.c_str());
+  //wstring str = L"write team " + t->sName + L"\n";
+  //OutputDebugString(str.c_str());
   return syncUpdate(queryset, "oTeam", t);
 }
 
@@ -2130,7 +2193,7 @@ OpFailStatus MeosSQL::syncUpdate(oClass *c, bool forceWriteAll)
     return opStatusFail;
   mysqlpp::Query queryset = con.query();
 
-  queryset << " Name=" << quote << c->Name << ","
+  queryset << " Name=" << quote << toString(c->Name) << ","
     << " Course=" << c->getCourseId() << ","
     << " MultiCourse=" << quote << c->codeMultiCourse() << ","
     << " LegMethod=" << quote << c->codeLegMethod()
@@ -2327,7 +2390,7 @@ OpFailStatus MeosSQL::syncUpdate(oClub *c, bool forceWriteAll)
   if (!c || !con.connected())
     return opStatusFail;
   mysqlpp::Query queryset = con.query();
-  queryset << " Name=" << quote << c->name
+  queryset << " Name=" << quote << toString(c->name)
     << c->getDI().generateSQLSet(forceWriteAll);
 
   return syncUpdate(queryset, "oClub", c);
@@ -2394,8 +2457,8 @@ OpFailStatus MeosSQL::syncUpdate(oControl *c, bool forceWriteAll) {
     return opStatusFail;
 
   mysqlpp::Query queryset = con.query();
-  queryset << " Name=" << quote << c->Name << ", "
-    << " Numbers=" << quote << c->codeNumbers() << ","
+  queryset << " Name=" << quote << toString(c->Name) << ", "
+    << " Numbers=" << quote << toString(c->codeNumbers()) << ","
     << " Status=" << c->Status
     << c->getDI().generateSQLSet(forceWriteAll);
 
@@ -2462,7 +2525,7 @@ OpFailStatus MeosSQL::syncUpdate(oCourse *c, bool forceWriteAll)
   if (!c || !con.connected())
     return opStatusFail;
   mysqlpp::Query queryset = con.query();
-  queryset << " Name=" << quote << c->Name << ", "
+  queryset << " Name=" << quote << toString(c->Name) << ", "
     << " Length=" << unsigned(c->Length) << ", "
     << " Controls=" << quote << c->getControls() << ", "
     << " Legs=" << quote << c->getLegLengths()
@@ -2681,7 +2744,7 @@ OpFailStatus MeosSQL::syncUpdate(mysqlpp::Query &updateqry,
 {
   nUpdate++;
   if (nUpdate % 100 == 99)
-    OutputDebugString((itos(nUpdate) +" updates\n").c_str());
+    OutputDebugStringA((itos(nUpdate) +" updates\n").c_str());
 
   assert(ob->getEvent());
   if (!ob->getEvent())
@@ -2810,9 +2873,9 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
         oldVersion=true;
 */
       if (isOld(counter, Modified, oe)) {
-        oe->Name=row["Name"];
-        oe->Annotation = row["Annotation"];
-        oe->Date=row["Date"];
+        oe->Name=fromUTF(string(row["Name"]));
+        oe->Annotation = fromUTF(string(row["Annotation"]));
+        oe->Date=fromUTF(string(row["Date"]));
         oe->ZeroTime=row["ZeroTime"];
         oe->sqlUpdated=Modified;
         const string &lRaw = row.raw_string(res.field_num("Lists"));
@@ -2825,7 +2888,7 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
         oe->counter = counter;
         oDataInterface odi=oe->getDI();
         storeData(odi, row, oe->dataRevision);
-        oe->setCurrency(-1, "", "", false);//Init temp data from stored data
+        oe->setCurrency(-1, L"", L"", false);//Init temp data from stored data
         oe->getMeOSFeatures().deserialize(oe->getDCI().getString("Features"), *oe);
         oe->changed=false;
         oe->changedObject();
@@ -2844,8 +2907,8 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
         mysqlpp::Query queryset = con.query();
         queryset << " Name=" << quote << limitLength(oe->Name, 128) << ", "
                  << " Annotation="  << quote << limitLength(oe->Annotation, 128) << ", "
-                 << " Date="  << quote << oe->Date << ", "
-                 << " NameId="  << quote << oe->CurrentNameId << ", "
+                 << " Date="  << quote << toString(oe->Date) << ", "
+                 << " NameId="  << quote << toString(oe->currentNameId) << ", "
                  << " ZeroTime=" << unsigned(oe->ZeroTime) << ", "
                  << " BuildVersion=if (BuildVersion<" <<
                       buildVersion << "," << buildVersion << ",BuildVersion), "
@@ -2859,8 +2922,8 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
         queryset.reset();
         queryset << "UPDATE oEvent SET Name=" << quote << limitLength(oe->Name, 128) << ", "
                  << " Annotation="  << quote << limitLength(oe->Annotation, 128) << ", "
-                 << " Date="  << quote << oe->Date << ", "
-                 << " NameId="  << quote << oe->CurrentNameId << ", "
+                 << " Date="  << quote << toString(oe->Date) << ", "
+                 << " NameId="  << quote << toString(oe->currentNameId) << ", "
                  << " ZeroTime=" << unsigned(oe->ZeroTime)
                  << " WHERE Id=" << oe->Id;
 
@@ -2876,8 +2939,8 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
       mysqlpp::Query queryset = con.query();
       queryset << " Name=" << quote << limitLength(oe->Name, 128) << ", "
                << " Annotation="  << quote << limitLength(oe->Annotation, 128) << ", "
-               << " Date="  << quote << oe->Date << ","
-               << " NameId="  << quote << oe->CurrentNameId << ","
+               << " Date="  << quote << toString(oe->Date) << ","
+               << " NameId="  << quote << toString(oe->currentNameId) << ","
                << " ZeroTime=" << unsigned(oe->ZeroTime) << ","
                << " BuildVersion=if (BuildVersion<" <<
                     buildVersion << "," << buildVersion << ",BuildVersion),"
@@ -2891,8 +2954,8 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
       queryset.reset();
       queryset << "UPDATE oEvent SET Name=" << quote << limitLength(oe->Name, 128) << ", "
                << " Annotation="  << quote << limitLength(oe->Annotation, 128) << ", "
-               << " Date="  << quote << oe->Date << ", "
-               << " NameId="  << quote << oe->CurrentNameId << ", "
+               << " Date="  << quote << toString(oe->Date) << ", "
+               << " NameId="  << quote << toString(oe->currentNameId) << ", "
                << " ZeroTime=" << unsigned(oe->ZeroTime)
                << " WHERE Id=" << oe->Id;
 
@@ -3424,7 +3487,7 @@ bool MeosSQL::checkConnection(oEvent *oe)
   if (monitorId==0) {
     try {
       Query query = con.query();
-      query << "INSERT INTO oMonitor SET Count=1, Client=" << quote << oe->clientName;
+      query << "INSERT INTO oMonitor SET Count=1, Client=" << quote << toString(oe->clientName);
       ResNSel res=query.execute();
       if (res)
         monitorId=static_cast<int>(res.insert_id);
@@ -3437,7 +3500,7 @@ bool MeosSQL::checkConnection(oEvent *oe)
   else {
     try {
       Query query = con.query();
-      query << "Update oMonitor SET Count=Count+1, Client=" << quote << oe->clientName
+      query << "Update oMonitor SET Count=Count+1, Client=" << quote << toString(oe->clientName)
             << " WHERE Id = " << monitorId;
       query.execute();
     }
@@ -3543,14 +3606,14 @@ bool MeosSQL::dropDatabase(oEvent *oe)
 }
 
 void MeosSQL::importLists(oEvent *oe, const char *bf) {
-  xmlparser xml(0);
+  xmlparser xml;
   xml.readMemory(bf, 0);
   oe->listContainer->clearExternal();
   oe->listContainer->load(MetaListContainer::ExternalList, xml.getObject("Lists"), false);
 }
 
 void MeosSQL::encodeLists(const oEvent *oe, string &listEnc) const {
-  xmlparser parser(0);
+  xmlparser parser;
   parser.openMemoryOutput(true);
   parser.startTag("Lists");
   oe->listContainer->save(MetaListContainer::ExternalList, parser, oe);
@@ -3600,7 +3663,7 @@ void MeosSQL::synchronized(const oBase &entity) {
   readTimes[make_pair(id, entity.getId())] = GetTickCount();
   readent++;
   if (readent % 100 == 99)
-    OutputDebugString("Read 100 entities\n");
+    OutputDebugStringA("Read 100 entities\n");
 }
 
 bool MeosSQL::skipSynchronize(const oBase &entity) const {

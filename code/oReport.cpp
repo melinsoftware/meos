@@ -359,11 +359,11 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   int x=gdi.getCX();
   int lh=gdi.getLineHeight();
 
-  gdi.addStringUT(2, lang.tl("Rapport inför: ") + getName());
+  gdi.addStringUT(2, lang.tl(L"Rapport inför: ") + getName());
 
   gdi.addStringUT(1, getDate());
   gdi.dropLine();
-  char bf[256];
+  wchar_t bf[256];
 
   list<pRunner> no_card;
   list<pRunner> no_start;
@@ -459,77 +459,76 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   
   const string Ellipsis="[ ... ]";
 
-  sprintf_s(bf, lang.tl("Löpare utan klass: %d.").c_str(), no_class.size());
+  swprintf_s(bf, lang.tl("Löpare utan klass: %d.").c_str(), no_class.size());
   gdi.addStringUT(1, bf);
   i=0;
 
   while(!no_class.empty() && ++i<20){
     pRunner r=no_class.front();
     no_class.pop_front();
-    string name = r->getName();
+    wstring name = r->getName();
     if (!r->getClub().empty())
-      name += " ("+r->getClub()+")";
+      name += L" ("+r->getClub()+L")";
     gdi.addStringUT(0, name);
   }
   if (!no_class.empty()) gdi.addStringUT(1, Ellipsis);
 
   gdi.dropLine();
-  sprintf_s(bf, lang.tl("Löpare utan bana: %d.").c_str(), no_course.size());
+  swprintf_s(bf, lang.tl("Löpare utan bana: %d.").c_str(), no_course.size());
   gdi.addStringUT(1, bf);
   i=0;
 
   while(!no_course.empty() && ++i<20){
     pRunner r=no_course.front();
     no_course.pop_front();
-    string name = r->getClass() + ": " + r->getName();
+    wstring name = r->getClass() + L": " + r->getName();
     if (!r->getClub().empty())
-      name += " ("+r->getClub()+")";
+      name += L" ("+ r->getClub()+ L")";
     gdi.addStringUT(0, name);
   }
   if (!no_course.empty()) gdi.addStringUT(1, Ellipsis);
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
     gdi.dropLine();
-    sprintf_s(bf, lang.tl("Löpare utan klubb: %d.").c_str(), no_club.size());
+    swprintf_s(bf, lang.tl("Löpare utan klubb: %d.").c_str(), no_club.size());
     gdi.addStringUT(1, bf);
     i=0;
 
     while(!no_club.empty() && ++i<20){
       pRunner r=no_club.front();
       no_club.pop_front();
-      sprintf_s(bf, "%s: %s", r->getClass().c_str(), r->getName().c_str());
-      gdi.addStringUT(0, bf);
+      gdi.addStringUT(0, r->getClass() + L": " + r->getName());
     }
     if (!no_club.empty()) gdi.addStringUT(1, Ellipsis);
   }
 
   gdi.dropLine();
-  sprintf_s(bf, lang.tl("Löpare utan starttid: %d.").c_str(), no_start.size());
+  swprintf_s(bf, lang.tl("Löpare utan starttid: %d.").c_str(), no_start.size());
   gdi.addStringUT(1, bf);
   i=0;
 
   while(!no_start.empty() && ++i<20){
     pRunner r=no_start.front();
     no_start.pop_front();
-    string name = r->getClass() + ": " + r->getName();
+    wstring name = r->getClass() + L": " + r->getName();
     if (!r->getClub().empty())
-      name += " ("+r->getClub()+")";
+      name += L" (" + r->getClub() + L")";
     
     gdi.addStringUT(0, name);
   }
   if (!no_start.empty()) gdi.addStringUT(1, Ellipsis);
 
   gdi.dropLine();
-  sprintf_s(bf, lang.tl("Löpare utan SI-bricka: %d.").c_str(), no_card.size());
+  swprintf_s(bf, lang.tl("Löpare utan SI-bricka: %d.").c_str(), no_card.size());
   gdi.addStringUT(1, bf);
   i=0;
 
   while(!no_card.empty() && ++i<20){
     pRunner r=no_card.front();
     no_card.pop_front();
-    string name = r->getClass() + ": " + r->getName();
+    wstring name = r->getClass() + L": " + r->getName();
     if (!r->getClub().empty())
-      name += " ("+r->getClub()+")";
+      name += L" (" + r->getClub() + L")";
     
     gdi.addStringUT(0, name);
   }
@@ -537,17 +536,17 @@ void oEvent::generatePreReport(gdioutput &gdi) {
 
 
   gdi.dropLine();
-  sprintf_s(bf, lang.tl("SI-dubbletter: %d.").c_str(), si_duplicate.size());
+  swprintf_s(bf, lang.tl("SI-dubbletter: %d.").c_str(), si_duplicate.size());
   gdi.addStringUT(1, bf);
   i=0;
 
   while(!si_duplicate.empty() && ++i<50){
     pRunner r=si_duplicate.front();
     si_duplicate.pop_front();
-    string name = r->getClass() + " / " + r->getName();
+    wstring name = r->getClass() + L" / " + r->getName();
     if (!r->getClub().empty())
-      name += " ("+r->getClub()+")";
-    name += ": " + itos(r->getCardNo());
+      name += L" (" + r->getClub() + L")";
+    name += L": " + itow(r->getCardNo());
     gdi.addStringUT(0, name);
   }
   if (!si_duplicate.empty()) gdi.addStringUT(1, Ellipsis);
@@ -563,15 +562,14 @@ void oEvent::generatePreReport(gdioutput &gdi) {
       if (r_it->getCardNo() > 0 && r_it->getCardNo() < 300000) {
         if (!header) {
           gdi.dropLine();
-          sprintf_s(bf, lang.tl("Gamla brickor utan stöd för långa tider").c_str(), si_duplicate.size());
-          gdi.addStringUT(1, bf);
+          gdi.addStringUT(1, "Gamla brickor utan stöd för långa tider");
           header = true;
         }
         
-        string name = r->getClass() + " / " + r->getName();
+        wstring name = r->getClass() + L" / " + r->getName();
         if (!r->getClub().empty())
-          name += " ("+r->getClub()+")";
-        name += ": " + itos(r->getCardNo());
+          name += L" (" + r->getClub() + L")";
+        name += L": " + itow(r->getCardNo());
         gdi.addStringUT(0, name);
 
         if (++i > 5) {
@@ -605,10 +603,10 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     gdi.addString("", 1, "Löpare som förekommer i mer än ett lag:");
     bool any = false;
     for (r_it=Runners.begin(); r_it != Runners.end(); ++r_it){
-      if (r_it->_objectmarker>1){
-        string name = r_it->getClass() + ": " + r_it->getName();
+      if (r_it->_objectmarker>1) {
+        wstring name = r_it->getClass() + L": " + r_it->getName();
         if (!r_it->getClub().empty())
-          name += " ("+r_it->getClub()+")";
+          name += L" (" + r_it->getClub() + L")";
     
         gdi.addStringUT(0, name);
         any = true;
@@ -629,9 +627,9 @@ void oEvent::generatePreReport(gdioutput &gdi) {
       continue;
     if (r_it->_objectmarker==0){ //Only consider runners not in a team.
       gdi.addStringUT(y, x+tab[0], 0, r_it->getClass(), tab[1]-tab[0]);
-      string name = r_it->getName();
+      wstring name = r_it->getName();
       if (!r_it->getClub().empty())
-        name += " ("+r_it->getClub()+")";
+        name += L" (" + r_it->getClub() + L")";
       gdi.addStringUT(y, x+tab[1], 0, name, tab[2]-tab[1]);
       gdi.addStringUT(y, x+tab[2], 0, itos(r_it->getCardNo()), tab[3]-tab[2]);
       gdi.addStringUT(y, x+tab[3], 0, r_it->getCourseName(), tab[4]-tab[3]);
@@ -639,7 +637,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
       pCourse pc=r_it->getCourse(true);
 
       if (pc){
-        vector<string> res = pc->getCourseReadable(101);
+        vector<wstring> res = pc->getCourseReadable(101);
         for (size_t k = 0; k<res.size(); k++) {
           gdi.addStringUT(y, x+tab[1], 0, res[k]);
           y+=lh;
@@ -654,19 +652,19 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   for (t_it=Teams.begin(); t_it != Teams.end(); ++t_it){
     pClass pc=getClass(t_it->getClassId());
 
-    gdi.addStringUT(0, t_it->getClass() + ": " + t_it->getName() + "  " +t_it->getStartTimeS());
+    gdi.addStringUT(0, t_it->getClass() + L": " + t_it->getName() + L"  " + t_it->getStartTimeS());
 
     if (pc){
       for(unsigned i=0;i<pc->getNumStages();i++){
         pRunner r=t_it->getRunner(i);
         if (r){
-          gdi.addStringUT(0, r->getName()+ " SI: " +itos(r->getCardNo()));
+          gdi.addStringUT(0, r->getName()+ L" SI: " +itow(r->getCardNo()));
 
           pCourse pcourse=r->getCourse(true);
 
           if (pcourse){
             y = gdi.getCY();
-            vector<string> res = pcourse->getCourseReadable(101);
+            vector<wstring> res = pcourse->getCourseReadable(101);
             for (size_t k = 0; k<res.size(); k++) {
               gdi.addStringUT(y, x+tab[1], 0, res[k]);
               y+=lh;

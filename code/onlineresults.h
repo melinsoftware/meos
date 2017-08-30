@@ -29,23 +29,24 @@ class OnlineResults :
   public AutoMachine
 {
 protected:
-  string file;
-  string url;
-  string passwd;
-  string prefix;
+  wstring file;
+  wstring url;
+  wstring passwd;
+  wstring prefix;
   int cmpId;
   set<int> classes;
+  set<int> controls;
   int dataType;
   bool zipFile;
   bool sendToURL;
   bool sendToFile;
   mutable InfoCompetition *infoServer;
-  string exportScript;
+  wstring exportScript;
   int exportCounter;
   void enableURL(gdioutput &gdi, bool state);
   void enableFile(gdioutput &gdi, bool state);
 
-  string getExportFileName() const;
+  wstring getExportFileName() const;
   int bytesExported;
   DWORD lastSync;
 

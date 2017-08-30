@@ -64,7 +64,7 @@ void ProgressWindow::init()
   speed = 0;
   RECT rc;
   GetClientRect(hWnd, &rc);
-  hWnd=CreateWindowEx(WS_EX_TOPMOST, "STATIC", "",  WS_VISIBLE|WS_CHILD,
+  hWnd=CreateWindowEx(WS_EX_TOPMOST, L"STATIC", L"",  WS_VISIBLE|WS_CHILD,
     (rc.right-p_width)/2, rc.bottom/2, p_width, p_height+1, hWnd, NULL,
       (HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), NULL);
 

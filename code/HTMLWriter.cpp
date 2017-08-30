@@ -31,10 +31,10 @@
 #include "Localizer.h"
 #include "gdiconstants.h"
 
-double getLocalScale(const string &fontName, string &faceName);
-string getMeosCompectVersion();
+double getLocalScale(const wstring &fontName, wstring &faceName);
+wstring getMeosCompectVersion();
 
-static void generateStyles(ostream &fout, bool withTbl, const list<TextInfo> &TL,
+static void generateStyles(const gdioutput &gdi, ostream &fout, bool withTbl, const list<TextInfo> &TL,
                            map< pair<gdiFonts, string>, pair<string, string> > &styles) {
   fout << "<style type=\"text/css\">\n";
   fout << "body {background-color: rgb(250,250,255)}\n";
@@ -59,7 +59,7 @@ static void generateStyles(ostream &fout, bool withTbl, const list<TextInfo> &TL
     if (!it->font.empty() || (font == italicMediumPlus)
                           || (font == fontMediumPlus)) {
 
-      if (styles.find(make_pair(font, it->font)) != styles.end()) {
+      if (styles.find(make_pair(font, gdi.narrow(it->font))) != styles.end()) {
         ++it;
         continue;
       }
@@ -92,20 +92,20 @@ static void generateStyles(ostream &fout, bool withTbl, const list<TextInfo> &TL
          break;
       }
 
-      string faceName;
+      wstring faceName;
       double scale = 1.0;
       if (it->font.empty()) {
-        faceName = "arial,sans-serif";
+        faceName = L"arial,sans-serif";
       }
       else
         scale = getLocalScale(it->font, faceName);
 
       fout << element << "." <<  style
-           << "{font-family:" << faceName << ";font-size:"
+           << "{font-family:" << gdi.narrow(faceName) << ";font-size:"
            << itos(int(floor(scale * baseSize + 0.5)))
            << "px;font-weight:normal;white-space:nowrap}\n";
 
-      styles[make_pair(font, it->font)] = make_pair(element, style);
+      styles[make_pair(font, gdi.narrow(it->font))] = make_pair(element, style);
     }
     ++it;
   }
@@ -187,7 +187,7 @@ static void getStyle(const map< pair<gdiFonts, string>, pair<string, string> > &
   }
 }
 
-bool gdioutput::writeHTML(const wstring &file, const string &title, int refreshTimeOut) const
+bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refreshTimeOut) const
 {
   ofstream fout(file.c_str());
 
@@ -207,7 +207,7 @@ bool gdioutput::writeHTML(const wstring &file, const string &title, int refreshT
   fout << "<title>" << toUTF8(title) << "</title>\n";
 
   map< pair<gdiFonts, string>, pair<string, string> > styles;
-  generateStyles(fout, false, TL, styles);
+  generateStyles(*this, fout, false, TL, styles);
 
   fout << "</head>\n";
 
@@ -246,7 +246,7 @@ bool gdioutput::writeHTML(const wstring &file, const string &title, int refreshT
               xp + "px;top:" + yp + "px\"";
     }
     string starttag, endtag;
-    getStyle(styles, it->getGdiFont(), it->font, estyle, starttag, endtag);
+    getStyle(styles, it->getGdiFont(), narrow(it->font), estyle, starttag, endtag);
 
     if (!it->text.empty())
       fout << starttag << toUTF8(encodeXML(it->text)) << endtag << endl;
@@ -264,8 +264,8 @@ bool gdioutput::writeHTML(const wstring &file, const string &title, int refreshT
 
   char bf1[256];
   char bf2[256];
-  GetTimeFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf2, 256);
-  GetDateFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf1, 256);
+  GetTimeFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf2, 256);
+  GetDateFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf1, 256);
   //fout << "Skapad av <i>MeOS</i>: " << bf1 << " "<< bf2 << "\n";
   fout << toUTF8(lang.tl("Skapad av ")) + "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: " << bf1 << " "<< bf2 << "\n";
   fout << "</p>\n";
@@ -276,10 +276,10 @@ bool gdioutput::writeHTML(const wstring &file, const string &title, int refreshT
   return false;
 }
 
-string html_table_code(const string &in)
+wstring html_table_code(const wstring &in)
 {
   if (in.size()==0)
-    return "&nbsp;";
+    return L"&nbsp;";
   else {
     return encodeXML(in);
   }
@@ -292,7 +292,7 @@ bool sortTL_X(const TextInfo *a, const TextInfo *b)
 
 
 bool gdioutput::writeTableHTML(const wstring &file, 
-                               const string &title, int refreshTimeOut) const
+                               const wstring &title, int refreshTimeOut) const
 {
   ofstream fout(file.c_str());
 
@@ -303,7 +303,7 @@ bool gdioutput::writeTableHTML(const wstring &file,
 }
 
 bool gdioutput::writeTableHTML(ostream &fout, 
-                               const string &title,
+                               const wstring &title,
                                bool simpleFormat,
                                int refreshTimeOut) const {
 
@@ -317,7 +317,7 @@ bool gdioutput::writeTableHTML(ostream &fout,
   fout << "<title>" << toUTF8(title) << "</title>\n";
 
   map< pair<gdiFonts, string>, pair<string, string> > styles;
-  generateStyles(fout, true, TL, styles);
+  generateStyles(*this, fout, true, TL, styles);
 
   fout << "</head>\n";
 
@@ -332,16 +332,15 @@ bool gdioutput::writeTableHTML(ostream &fout,
     ++it;
   }
 
-  map<int, int>::iterator mit=tableCoordinates.begin();
-  int k=0;
-
-  while (mit!=tableCoordinates.end()) {
-    mit->second=k++;
+  int kr = 0;
+  map<int, int>::iterator mit = tableCoordinates.begin();
+  while (mit != tableCoordinates.end()) {
+    mit->second = kr++;
     ++mit;
   }
-  tableCoordinates[MaxX]=k;
-
-  vector<bool> sizeSet(k+1, false);
+  tableCoordinates[MaxX] = kr;
+  
+  vector<bool> sizeSet(kr + 1, false);
 
   fout << "<table cellspacing=\"0\" border=\"0\">\n";
 
@@ -492,7 +491,7 @@ bool gdioutput::writeTableHTML(ostream &fout,
 
       gdiFonts font = row[k]->getGdiFont();
       string starttag, endtag;
-      getStyle(styles, font, row[k]->font, "", starttag, endtag);
+      getStyle(styles, font, narrow(row[k]->font), "", starttag, endtag);
 
       fout << starttag << toUTF8(html_table_code(row[k]->text)) << endtag << "</td>" << endl;
 
@@ -508,11 +507,11 @@ bool gdioutput::writeTableHTML(ostream &fout,
     fout << "<br><p>";
     char bf1[256];
     char bf2[256];
-    GetTimeFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf2, 256);
-    GetDateFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf1, 256);
-    string meos = getMeosCompectVersion();
+    GetTimeFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf2, 256);
+    GetDateFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf1, 256);
+    wstring meos = getMeosCompectVersion();
     fout << toUTF8(lang.tl("Skapad av ")) + "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS "
-         << meos << "</i></a>: " << bf1 << " "<< bf2 << "\n";
+         << toUTF8(meos) << "</i></a>: " << bf1 << " "<< bf2 << "\n";
     fout << "</p><br>\n";
   }
   fout << "</body>\n";

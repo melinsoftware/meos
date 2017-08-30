@@ -70,13 +70,13 @@ private:
     bool isValid() const {return r != 0;}
   };
 
-
   oEvent &oe;
   SpeakerMonitor &operator=(const SpeakerMonitor&); // Not used
 
   set<int> classFilter;
   set<int> controlIdFilter;
   vector<oEvent::ResultEvent> results;
+  bool totalResults;
 
   int placeLimit;
   int numLimit;
@@ -87,7 +87,7 @@ private:
   int  timeWidth;
   int totWidth;
   int extraWidth;
-  string dash;
+  wstring dash;
   
   void renderResult(gdioutput &gdi, 
                     const oEvent::ResultEvent *ahead,
@@ -99,12 +99,12 @@ private:
                               const oEvent::ResultEvent &b);
                     
   void getSharedResult(const oEvent::ResultEvent &res, vector<pRunner> &shared) const;
-  void getSharedResult(const oEvent::ResultEvent &res, string &detail) const;
+  void getSharedResult(const oEvent::ResultEvent &res, wstring &detail) const;
 
   void splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r);
 
   void getMessage(const oEvent::ResultEvent &res, 
-                  string &message, deque<string> &details);
+                  wstring &message, deque<wstring> &details);
 
   map<ResultKey, int> firstTimes;
   map<ResultKey, int> totalLeaderTimes;
@@ -133,6 +133,14 @@ public:
   virtual ~SpeakerMonitor();
 
   void setClassFilter(const set<int> &filter, const set<int> &controlIdFilter);
+  
+  void useTotalResults(bool total) {
+    totalResults = total;
+  }
+  
+  bool useTotalResults() const {
+    return totalResults;
+  }
 
   void setLimits(int placeLimit, int numLimit);
   void show(gdioutput &gdi);

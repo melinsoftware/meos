@@ -18,6 +18,7 @@ Ported to C++ and modified to suite MeOS.
 #include <direct.h>
 #include <io.h>
 
+#include "meosexception.h"
 #include "meos_util.h"
 #include "minizip/unzip.h"
 #include "minizip/zip.h"
@@ -35,11 +36,11 @@ const char *zipError = "Error processing zip-file";
 filename : the filename of the file where date/time must be modified
 dosdate : the new date at the MSDos format (4 bytes)
 tmu_date : the SAME new date at the tm_unz format */
-void change_file_date(const char *filename, uLong dosdate, tm_unz tmu_date) {
+void change_file_date(const wchar_t *filename, uLong dosdate, tm_unz tmu_date) {
   HANDLE hFile;
   FILETIME ftm,ftLocal,ftCreate,ftLastAcc,ftLastWrite;
 
-  hFile = CreateFileA(filename,GENERIC_READ | GENERIC_WRITE,
+  hFile = CreateFile(filename,GENERIC_READ | GENERIC_WRITE,
     0,NULL,OPEN_EXISTING,0,NULL);
   GetFileTime(hFile,&ftCreate,&ftLastAcc,&ftLastWrite);
   DosDateTimeToFileTime((WORD)(dosdate>>16),(WORD)dosdate,&ftLocal);
@@ -52,21 +53,21 @@ void change_file_date(const char *filename, uLong dosdate, tm_unz tmu_date) {
 /* mymkdir and change_file_date are not 100 % portable
 As I don't know well Unix, I wait feedback for the unix portion */
 
-int mymkdir(const char *dirname)
+int mymkdir(const wchar_t *dirname)
 {
   int ret=0;
-  ret = _mkdir(dirname);
+  ret = _wmkdir(dirname);
   return ret;
 }
 
-int makedir (const char *newdir)
+int makedir (const wchar_t *newdir)
 {
-  int  len = (int)strlen(newdir);
+  int  len = (int)wcslen(newdir);
 
   if (len <= 0)
     return 0;
 
-  string buffer = newdir;
+  wstring buffer = newdir;
 
   if (buffer[len-1] == '/') {
     buffer = buffer.substr(0, len-1);
@@ -81,9 +82,9 @@ int makedir (const char *newdir)
 
     while(index<buffer.length() && buffer[index] != '\\' && buffer[index] != '/')
       index++;
-    char hold = buffer[index];
+    wchar_t hold = buffer[index];
 
-    string sub = buffer.substr(0, index);
+    wstring sub = buffer.substr(0, index);
     if ((mymkdir(sub.c_str()) == -1) && (errno == ENOENT)) {
       throw std::exception("Error creating directories");
     }
@@ -94,9 +95,9 @@ int makedir (const char *newdir)
   return 1;
 }
 
-string do_extract_currentfile(unzFile uf, const string &baseDir, const char* password)
+wstring do_extract_currentfile(unzFile uf, const wstring &baseDir, const char* password)
 {
-  string write_filename;
+  wstring write_filename;
   char filename_inzip[256];
   char* filename_withoutpath;
   char* p;
@@ -126,21 +127,27 @@ string do_extract_currentfile(unzFile uf, const string &baseDir, const char* pas
   }
 
   if ((*filename_withoutpath)=='\0') {
-    if (createSubdir)
-      mymkdir(filename_inzip);
+    if (createSubdir) {
+      string x(filename_inzip);
+      wstring wx(x.begin(), x.end());
+      mymkdir(wx.c_str());
+    }
   }
   else {
-
-    if (createSubdir)
-      write_filename = baseDir + filename_inzip;
-    else
-      write_filename = baseDir + filename_withoutpath;
-
+    write_filename = baseDir;
+    if (createSubdir) {
+      string x(filename_inzip);
+      write_filename.insert(write_filename.begin() + write_filename.length(), x.begin(), x.end());
+    }
+    else {
+      string x(filename_withoutpath);
+      write_filename.insert(write_filename.begin() + write_filename.length(), x.begin(), x.end());
+    }
     err = unzOpenCurrentFilePassword(uf,password);
     if (err!=UNZ_OK)
       throw std::exception(zipError);
 
-    fout = fopen64(write_filename.c_str(),"wb");
+    fout = fopen64(write_filename.c_str(),L"wb");
 
     // some zipfile doesn't contain directory alone before file
     if ((fout==NULL) && createSubdir &&
@@ -149,12 +156,12 @@ string do_extract_currentfile(unzFile uf, const string &baseDir, const char* pas
       *(filename_withoutpath-1)='\0';
       makedir(write_filename.c_str());
       *(filename_withoutpath-1)=c;
-      fout=fopen64(write_filename.c_str(),"wb");
+      fout=fopen64(write_filename.c_str(),L"wb");
     }
 
     if (fout==NULL) {
-      string err = "Error opening" + write_filename;
-      throw std::exception(err.c_str());
+      wstring err = L"Error opening " + write_filename;
+      throw meosException(err);
     }
 
     do {
@@ -184,7 +191,7 @@ string do_extract_currentfile(unzFile uf, const string &baseDir, const char* pas
 }
 
 
-void do_extract(unzFile uf, const char *basePath, const char* password, vector<string> &extractedFiles)
+void do_extract(unzFile uf, const wchar_t *basePath, const char* password, vector<wstring> &extractedFiles)
 {
   uLong i;
   unz_global_info64 gi;
@@ -195,7 +202,7 @@ void do_extract(unzFile uf, const char *basePath, const char* password, vector<s
     throw std::exception(zipError);
 
   for (i=0;i<gi.number_entry;i++) {
-    string name = do_extract_currentfile(uf, basePath, password);
+    wstring name = do_extract_currentfile(uf, basePath, password);
     registerTempFile(name);
     extractedFiles.push_back(name);
 
@@ -209,34 +216,35 @@ void do_extract(unzFile uf, const char *basePath, const char* password, vector<s
   }
 }
 
-void unzip(const char *zipfilename, const char *password, vector<string> &extractedFiles)
+void unzip(const wchar_t *wzipfilename, const char *password, vector<wstring> &extractedFiles)
 {
+  wstring wzfn(wzipfilename);
+  string zfn(wzfn.begin(), wzfn.end());
   extractedFiles.clear();
   zlib_filefunc64_def ffunc;
-  fill_win32_filefunc64A(&ffunc);
-  unzFile uf = unzOpen2_64(zipfilename,&ffunc);
+  fill_win32_filefunc64W(&ffunc);
+  unzFile uf = unzOpen2_64(wzfn.c_str(),&ffunc);
 
   if (uf==NULL)
     throw std::exception("Cannot open zip file");
 
-  string base = getTempPath();
-  char end = base[base.length()-1];
+  wstring base = getTempPath();
+  wchar_t end = base[base.length()-1];
   if (end != '\\' && end != '/')
-    base += "\\";
+    base += L"\\";
 
   int id = rand();
-  string target;
+  wstring target;
   do {
-    target = base + "zip" + itos(id) + "\\";
+    target = base + L"zip" + itow(id) + L"\\";
     id++;
   }
-  while ( access( target.c_str(), 0 ) == 0 );
+  while ( _waccess( target.c_str(), 0 ) == 0 );
 
   if (CreateDirectory(target.c_str(), NULL) == 0)
     throw std::exception("Failed to create temporary folder");
 
   registerTempFile(target);
-
   do_extract(uf, target.c_str(), password, extractedFiles);
 
   unzClose(uf);
@@ -244,13 +252,13 @@ void unzip(const char *zipfilename, const char *password, vector<string> &extrac
 
 
 
-uLong filetime(const char *f, uLong *dt) {
+uLong filetime(const wchar_t *f, uLong *dt) {
   int ret = 0;
   FILETIME ftLocal;
   HANDLE hFind;
-  WIN32_FIND_DATAA ff32;
+  WIN32_FIND_DATA ff32;
 
-  hFind = FindFirstFileA(f,&ff32);
+  hFind = FindFirstFile(f,&ff32);
   if (hFind != INVALID_HANDLE_VALUE)
   {
     FileTimeToLocalFileTime(&(ff32.ftLastWriteTime),&ftLocal);
@@ -261,11 +269,11 @@ uLong filetime(const char *f, uLong *dt) {
   return ret;
 }
 
-int check_exist_file(const char* filename)
+int check_exist_file(const wchar_t* filename)
 {
   FILE* ftestexist;
   int ret = 1;
-  ftestexist = fopen64(filename,"rb");
+  ftestexist = fopen64(filename,L"rb");
   if (ftestexist==NULL)
       ret = 0;
   else
@@ -312,11 +320,11 @@ int check_exist_file(const char* filename)
     return err;
 }*/
 
-int isLargeFile(const char* filename)
+int isLargeFile(const wchar_t* filename)
 {
   int largeFile = 0;
   ZPOS64_T pos = 0;
-  FILE* pFile = fopen64(filename, "rb");
+  FILE* pFile = fopen64(filename, L"rb");
 
   if (pFile != NULL) {
     fseeko64(pFile, 0, SEEK_END);
@@ -329,13 +337,13 @@ int isLargeFile(const char* filename)
   return largeFile;
 }
 
-int zip(const char *zipfilename, const char *password, const vector<string> &files) {
-  int opt_compress_level=Z_DEFAULT_COMPRESSION;
+int zip(const wchar_t *zipfilename, const char *password, const vector<wstring> &files) {
+  int opt_compress_level= Z_BEST_COMPRESSION;
   const int opt_exclude_path = 1;
-  char filename_try[MAXFILENAME+16];
+  wchar_t filename_try[MAXFILENAME+16];
   int err=0;
   int size_buf=0;
-  char eb[256];
+  wchar_t eb[256];
 
   size_buf = WRITEBUFFERSIZE;
   vector<BYTE> vbuff(size_buf, 0);
@@ -344,20 +352,24 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
   zipFile zf;
   int errclose;
   zlib_filefunc64_def ffunc;
-  fill_win32_filefunc64A(&ffunc);
-  strcpy(filename_try, zipfilename);
+  fill_win32_filefunc64W(&ffunc);
+  //wstring wzipfn(zipfilename);
+  //string zipfn(wzipfn.begin(), wzipfn.end());
+  wcscpy_s(filename_try, zipfilename);
   zf = zipOpen2_64(filename_try, 0,NULL, &ffunc);
 
   if (zf == NULL) {
-    sprintf_s(eb, "Error opening %s.",filename_try);
-    throw std::exception(eb);
+    swprintf_s(eb, L"Error opening %s.",filename_try);
+    throw meosException(eb);
   }
 
   for (size_t i=0; i < files.size(); i++) {
     FILE * fin;
     int size_read;
-    const char* filenameinzip = files[i].c_str();
-    const char *savefilenameinzip;
+    const wstring &wfn = files[i];
+    //string asciiName(wfn.begin(), wfn.end());
+    const wchar_t* filenameinzip = wfn.c_str();
+    const wchar_t *savefilenameinzip;
     zip_fileinfo zi;
     unsigned long crcFile=0;
     int zip64 = 0;
@@ -373,7 +385,7 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
     if ((password != NULL) && (err==ZIP_OK))
         err = getFileCrc(filenameinzip,buf,size_buf,&crcFile);
         */
-    zip64 = isLargeFile(filenameinzip);
+    zip64 = isLargeFile(wfn.c_str());
 
     /* The path name saved, should not include a leading slash. */
     /*if it did, windows/xp and dynazip couldn't read the zip file. */
@@ -384,8 +396,8 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
 
     /*should the zip file contain any path at all?*/
     if ( opt_exclude_path ) {
-      const char *tmpptr;
-      const char *lastslash = 0;
+      const wchar_t *tmpptr;
+      const wchar_t *lastslash = 0;
       for( tmpptr = savefilenameinzip; *tmpptr; tmpptr++) {
         if ( *tmpptr == '\\' || *tmpptr == '/')
           lastslash = tmpptr;
@@ -396,7 +408,9 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
     }
 
     /**/
-    err = zipOpenNewFileInZip3_64(zf,savefilenameinzip,&zi,
+    wstring wn = savefilenameinzip;
+    string asciiName(wn.begin(), wn.end());
+    err = zipOpenNewFileInZip3_64(zf, asciiName.c_str(),&zi,
                       NULL,0,NULL,0,NULL /* comment*/,
                       (opt_compress_level != 0) ? Z_DEFLATED : 0,
                       opt_compress_level,0,
@@ -405,14 +419,14 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
                       password,crcFile, zip64);
 
     if (err != ZIP_OK) {
-      sprintf_s(eb, "Error opening %s in zipfile",filenameinzip);
-      throw std::exception(eb);
+      swprintf_s(eb, L"Error opening %s in zipfile",filenameinzip);
+      throw meosException(eb);
     }
     else {
-      fin = fopen64(filenameinzip,"rb");
+      fin = fopen64(wfn.c_str(),L"rb");
       if (fin==NULL)  {
-        sprintf_s(eb, "Error opening %s for reading",filenameinzip);
-        throw std::exception(eb);
+        swprintf_s(eb, L"Error opening %s for reading",filenameinzip);
+        throw meosException(eb);
       }
     }
 
@@ -422,16 +436,16 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
         size_read = (int)fread(buf,1,size_buf,fin);
         if (size_read < size_buf) {
           if (feof(fin)==0) {
-            sprintf_s(eb, "Error reading %s",filenameinzip);
-            throw std::exception(eb);
+            swprintf_s(eb, L"Error reading %s",filenameinzip);
+            throw meosException(eb);
           }
         }
 
         if (size_read > 0) {
           err = zipWriteInFileInZip (zf,buf,size_read);
           if (err<0) {
-            sprintf_s(eb, "Error in writing %s in the zipfile",filenameinzip);
-            throw std::exception(eb);
+            swprintf_s(eb, L"Error in writing %s in the zipfile",filenameinzip);
+            throw meosException(eb);
           }
         }
       } while ((err == ZIP_OK) && (size_read>0));
@@ -444,16 +458,16 @@ int zip(const char *zipfilename, const char *password, const vector<string> &fil
     else {
       err = zipCloseFileInZip(zf);
       if (err!=ZIP_OK) {
-        sprintf_s(eb, "Error closing %s in the zipfile", filenameinzip);
-        throw std::exception(eb);
+        swprintf_s(eb, L"Error closing %s in the zipfile", filenameinzip);
+        throw meosException(eb);
       }
     }
   }
 
   errclose = zipClose(zf,NULL);
   if (errclose != ZIP_OK) {
-    sprintf_s(eb, "Error closing %s",filename_try);
-    throw std::exception(eb);
+    swprintf_s(eb, L"Error closing %s",filename_try);
+    throw meosException(eb);
   }
 
   return 0;

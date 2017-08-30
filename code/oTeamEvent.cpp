@@ -50,12 +50,12 @@
 
 void oEvent::fillTeams(gdioutput &gdi, const string &id, int classId)
 {
-  vector< pair<string, size_t> > d;
+  vector< pair<wstring, size_t> > d;
   oe->fillTeams(d, classId);
   gdi.addItem(id, d);
 }
 
-const vector< pair<string, size_t> > &oEvent::fillTeams(vector< pair<string, size_t> > &out, int ClassId)
+const vector< pair<wstring, size_t> > &oEvent::fillTeams(vector< pair<wstring, size_t> > &out, int ClassId)
 {
   synchronizeList(oLTeamId);
   oTeamList::iterator it;
@@ -63,7 +63,7 @@ const vector< pair<string, size_t> > &oEvent::fillTeams(vector< pair<string, siz
 
   out.clear();
 
-  string tn;
+  wstring tn;
   int maxBib = 0;
   for (it=Teams.begin(); it != Teams.end(); ++it) {
     if (!it->Removed) {
@@ -71,15 +71,15 @@ const vector< pair<string, size_t> > &oEvent::fillTeams(vector< pair<string, siz
     }
   }
   
-  string rawDash = "";
+  wstring rawDash = L"";
   for (int i = 0; i < min(maxBib, 2); i++)
-    rawDash  += "-";
-  rawDash += " ";
-  string dashes = getMeOSFeatures().hasFeature(MeOSFeatures::Bib) ?  MakeDash(rawDash) : _EmptyString;
+    rawDash  += L"-";
+  rawDash += L" ";
+  wstring dashes = getMeOSFeatures().hasFeature(MeOSFeatures::Bib) ?  makeDash(rawDash) : _EmptyWString;
   
   for (it=Teams.begin(); it != Teams.end(); ++it) {
     if (!it->Removed) {
-      const string &bib = it->getBib();
+      const wstring &bib = it->getBib();
       if (!bib.empty()) {
         /*int nb = atoi(bib.c_str());
         if (nb > 0 && nb == it->getStartNo()) {
@@ -92,17 +92,17 @@ const vector< pair<string, size_t> > &oEvent::fillTeams(vector< pair<string, siz
           tn = bf + it->Name;
         }
         else*/
-        string paddedBib;
+        wstring paddedBib;
         for (int i = 0; i < int(maxBib - bib.length()); i++)
-          paddedBib += "0";
+          paddedBib += L"0";
         
-        tn = paddedBib + bib + " " + it->getName();
+        tn = paddedBib + bib + L" " + it->getName();
       }
       else {
         tn = dashes + it->getName();
       }
       if (it->Class)
-        out.push_back(make_pair(tn + (" (" + it->getClass() + ")"), it->Id));
+        out.push_back(make_pair(tn + L" (" + it->getClass() + L")", it->Id));
       else
         out.push_back(make_pair(tn, it->Id));
     }
@@ -137,7 +137,7 @@ int oEvent::getFreeStartNo() const {
 }
 
 
-pTeam oEvent::getTeamByName(const string &pName) const {
+pTeam oEvent::getTeamByName(const wstring &pName) const {
   oTeamList::const_iterator it;
 
   for (it=Teams.begin(); it != Teams.end(); ++it) {
@@ -147,7 +147,7 @@ pTeam oEvent::getTeamByName(const string &pName) const {
   return 0;
 }
 
-pTeam oEvent::addTeam(const string &pname, int ClubId, int ClassId)
+pTeam oEvent::addTeam(const wstring &pname, int ClubId, int ClassId)
 {
   oTeam t(this);
   t.sName=pname;
@@ -222,15 +222,15 @@ bool oEvent::writeTeams(xmlparser &xml)
   return true;
 }
 
-pTeam oEvent::findTeam(const string &s, int lastId, stdext::hash_set<int> &filter) const
+pTeam oEvent::findTeam(const wstring &s, int lastId, unordered_set<int> &filter) const
 {
-  string trm = trim(s);
+  wstring trm = trim(s);
   int len = trm.length();
-  char s_lc[1024];
-  strcpy_s(s_lc, trm.c_str());
+  wchar_t s_lc[1024];
+  wcscpy_s(s_lc, trm.c_str());
   CharLowerBuff(s_lc, len);
 
-  int sn = atoi(s.c_str());
+  int sn = _wtoi(s.c_str());
   oTeamList::const_iterator it;
 /*
   if (sn>0) {
@@ -282,7 +282,7 @@ pTeam oEvent::findTeam(const string &s, int lastId, stdext::hash_set<int> &filte
   return ret;
 }
 
-bool oTeam::matchTeam(int number, const char *s_lc) const
+bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
 {
   if (number) {
     if (matchNumber(StartNo, s_lc ))
@@ -393,7 +393,7 @@ void oEvent::setupRelayInfo(PredefinedTypes type, bool &useNLeg, bool &useStart)
   }
 }
 
-void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const string &start)
+void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstring &start)
 {
   // Make sure we are up-to-date
   autoSynchronizeLists(false);
@@ -419,8 +419,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STTime, false);
       cls.setStartData(0, start);
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
       cls.setCoursePool(type == PPool);
 
       if (crs) {
@@ -433,9 +433,9 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setNumStages(1);
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STDrawn, false);
-      cls.setStartData(0, "-");
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setStartData(0, L"-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
       cls.setCoursePool(true);
 
       if (crs) {
@@ -447,15 +447,15 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setNumStages(2);
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STDrawn, false);
-      cls.setStartData(0, "-");
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setStartData(0, L"-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       cls.setLegType(1, LTParallel);
       cls.setStartType(1, STDrawn, false);
-      cls.setStartData(1, "-");
-      cls.setRestartTime(1, "-");
-      cls.setRopeTime(1, "-");
+      cls.setStartData(1, L"-");
+      cls.setRestartTime(1, L"-");
+      cls.setRopeTime(1, L"-");
 
       if (crs) {
         cls.addStageCourse(0, crsId);
@@ -468,15 +468,15 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setNumStages(2);
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STDrawn, false);
-      cls.setStartData(0, "-");
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setStartData(0, L"-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       cls.setLegType(1, LTParallelOptional);
       cls.setStartType(1, STDrawn, false);
-      cls.setStartData(1, "-");
-      cls.setRestartTime(1, "-");
-      cls.setRopeTime(1, "-");
+      cls.setStartData(1, L"-");
+      cls.setRestartTime(1, L"-");
+      cls.setRopeTime(1, L"-");
 
       if (crs) {
         cls.addStageCourse(0, crsId);
@@ -489,15 +489,15 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setNumStages(2);
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STDrawn, false);
-      cls.setStartData(0, "-");
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setStartData(0, L"-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       cls.setLegType(1, LTIgnore);
       cls.setStartType(1, STDrawn, false);
       cls.setStartData(1, start);
-      cls.setRestartTime(1, "-");
-      cls.setRopeTime(1, "-");
+      cls.setRestartTime(1, L"-");
+      cls.setRopeTime(1, L"-");
 
       if (crs) {
         cls.addStageCourse(0, crsId);
@@ -512,15 +512,15 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STTime, false);
       cls.setStartData(0, start);
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       for (int k=1;k<nleg;k++) {
         cls.setLegType(k, LTNormal);
         cls.setStartType(k, STChange, false);
-        cls.setStartData(k, "-");
-        cls.setRestartTime(k, "-");
-        cls.setRopeTime(k, "-");
+        cls.setStartData(k, L"-");
+        cls.setRestartTime(k, L"-");
+        cls.setRopeTime(k, L"-");
       }
       cls.setCoursePool(false);
       break;
@@ -530,15 +530,15 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STTime, false);
       cls.setStartData(0, start);
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       for (int k=1;k<nleg;k++) {
         cls.setLegType(k, LTNormal);
         cls.setStartType(k, STChange, false);
-        cls.setStartData(k, "-");
-        cls.setRestartTime(k, "-");
-        cls.setRopeTime(k, "-");
+        cls.setStartData(k, L"-");
+        cls.setRestartTime(k, L"-");
+        cls.setRopeTime(k, L"-");
 
         if (k>=2)
           cls.setLegRunner(k, k%2);
@@ -554,28 +554,28 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setLegType(0, LTNormal);
       cls.setStartType(0, STTime, false);
       cls.setStartData(0, start);
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       last=nleg+(nleg-2)*2-1;
       cls.setLegType(last, LTNormal);
       cls.setStartType(last, STChange, false);
-      cls.setStartData(last, "-");
-      cls.setRestartTime(last, "-");
-      cls.setRopeTime(last, "-");
+      cls.setStartData(last, L"-");
+      cls.setRestartTime(last, L"-");
+      cls.setRopeTime(last, L"-");
 
       for (int k=0;k<nleg-2;k++) {
         cls.setLegType(1+k*3, LTNormal);
         cls.setStartType(1+k*3, STChange, false);
-        cls.setStartData(1+k*3, "-");
-        cls.setRestartTime(1+k*3, "-");
-        cls.setRopeTime(1+k*3, "-");
+        cls.setStartData(1+k*3, L"-");
+        cls.setRestartTime(1+k*3, L"-");
+        cls.setRopeTime(1+k*3, L"-");
         for (int j=0;j<2;j++) {
           cls.setLegType(2+k*3+j, LTExtra);
           cls.setStartType(2+k*3+j, STChange, false);
-          cls.setStartData(2+k*3+j, "-");
-          cls.setRestartTime(2+k*3+j, "-");
-          cls.setRopeTime(2+k*3+j, "-");
+          cls.setStartData(2+k*3+j, L"-");
+          cls.setRestartTime(2+k*3+j, L"-");
+          cls.setRopeTime(2+k*3+j, L"-");
         }
       }
       cls.setCoursePool(false);
@@ -586,15 +586,15 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const strin
       cls.setLegType(0, LTSum);
       cls.setStartType(0, STDrawn, false);
       cls.setStartData(0, start);
-      cls.setRestartTime(0, "-");
-      cls.setRopeTime(0, "-");
+      cls.setRestartTime(0, L"-");
+      cls.setRopeTime(0, L"-");
 
       cls.setLegType(1, LTSum);
       cls.setStartType(1, STHunting, false); 
       int t = convertAbsoluteTimeHMS(start, ZeroTime)+3600;
-      cls.setStartData(1, formatTimeHMS(t));
-      cls.setRestartTime(1, formatTimeHMS(t+1800));
-      cls.setRopeTime(1, formatTimeHMS(t+1800));
+      cls.setStartData(1, formatTimeHMSW(t));
+      cls.setRestartTime(1, formatTimeHMSW(t+1800));
+      cls.setRopeTime(1, formatTimeHMSW(t+1800));
       cls.setLegRunner(1, 0);
       cls.setCoursePool(false);
       break;
@@ -685,7 +685,7 @@ void oEvent::makeUniqueTeamNames() {
   for (oClassList::const_iterator cls = Classes.begin(); cls != Classes.end(); ++cls) {
     if (cls->isRemoved())
       continue;
-    map<string, list<pTeam> > teams;
+    map<wstring, list<pTeam> > teams;
     for (oTeamList::iterator it = Teams.begin(); it != Teams.end(); ++it) {
       if (it->skip())
         continue;
@@ -694,12 +694,12 @@ void oEvent::makeUniqueTeamNames() {
       teams[it->sName].push_back(&*it);
     }
 
-    for (map<string, list<pTeam> >::iterator it = teams.begin(); it != teams.end(); ++it) {
+    for (map<wstring, list<pTeam> >::iterator it = teams.begin(); it != teams.end(); ++it) {
       list<pTeam> &t = it->second;
       if (t.size() > 1) {
         int counter = 1;
         for (list<pTeam>::iterator tit = t.begin(); tit != t.end(); ) {
-          string name = (*tit)->sName + " " + itos(counter);
+          wstring name = (*tit)->sName + L" " + itow(counter);
           if (teams.count(name) == 0) {
             (*tit)->setName(name, true);
             (*tit)->synchronize();
@@ -720,4 +720,73 @@ void oTeam::changeId(int newId) {
   oBase::changeId(newId);
 
   oe->teamById[newId] = this;
+}
+
+void oTeam::checkClassesWithReferences(oEvent &oe, std::set<int> &clsWithRef) {
+  vector<pRunner> r;
+  oe.getRunners(-1, -1, r, false);
+  map<int, pair<int, int> > pairedUnpairedPerClass;
+  for (size_t k = 0; k < r.size(); k++) {
+    if (r[k]->getReference())
+      ++pairedUnpairedPerClass[r[k]->getClassId()].first;
+    else
+      ++pairedUnpairedPerClass[r[k]->getClassId()].second;
+  }
+
+  for (auto it : pairedUnpairedPerClass) {
+    if (it.second.first > it.second.second)
+      clsWithRef.insert(it.first);
+  }
+}
+
+void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &clsWithRef) {
+  vector<pRunner> r;
+  oe.getRunners(-1, -1, r, true);
+
+  for(auto it : r) {
+    if (clsWithRef.count(it->getClassId())) {
+      pClass cls = it->getClassRef();
+
+      if (cls->getNumStages() == 0) {
+        pCourse crs = cls->getCourse();
+
+        cls->setNumStages(2);
+
+        if (crs) { // Preserve courses
+          vector< vector<int> > mc(2);
+          mc[0].push_back(crs->getId());
+          mc[1].push_back(crs->getId());
+          cls->importCourses(mc);
+        }
+        cls->setLegType(0, LTNormal);
+        cls->setLegType(1, LTParallel);
+        cls->synchronize();
+      }
+
+      if (cls->getClassType() == oClassPatrol) {
+        wstring pname = it->getName();
+        if (it->getReference())
+          pname += L"/" + it->getReference()->getName();
+
+        if (it->getTeam() == 0) {          
+          pTeam patrol = oe.addTeam(pname, it->getClubId(), cls->getId());
+          patrol->setRunner(0, it, false);
+          patrol->setRunner(1, it->getReference(), false);
+          patrol->synchronize();
+        }
+        else {
+          pTeam patrol = it->getTeam();
+
+          bool hasOther = it->getReference() == 0 || patrol->getRunner(0) == it->getReference() || patrol->getRunner(1) == it->getReference();
+
+          if (!hasOther) {
+            patrol->setName(pname, false);
+            patrol->setRunner(0, it, false);
+            patrol->setRunner(1, it->getReference(), false);
+            patrol->synchronize();
+          }
+        }        
+      }
+    }
+  }
 }

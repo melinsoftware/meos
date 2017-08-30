@@ -38,12 +38,12 @@ class LiveResult : public GuiHandler {
   int screenSize;
   bool isDuel;
 
-  string baseFont;
+  wstring baseFont;
   void showDefaultView(gdioutput &gdi);
   map<int, pair<int, int> > startFinishTime;
   int showResultList;
   int resYPos;  
-  string getFont(const gdioutput &gdi, double relScale) const;
+  wstring getFont(const gdioutput &gdi, double relScale) const;
   double timerScale;
   struct Result {
     int place;

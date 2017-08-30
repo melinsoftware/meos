@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 
+const wstring _EmptyWString=L"";
 const string _EmptyString="";
 const string _VacantName="Vakant";
 const string _UnkownName="N.N.";

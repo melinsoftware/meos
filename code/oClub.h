@@ -53,21 +53,21 @@ protected:
 
   struct InvoiceLine {
     InvoiceLine() : fee(0), rent(0), paid(0), payMode(0) {}
-    vector< pair<int, pair<bool, string> > > xposAndString;
+    vector< pair<int, pair<bool, wstring> > > xposAndString;
     int fee;
     int rent;
     int paid;
     int payMode;
-    void addString(int xpos, const string &str, bool right = false) {
+    void addString(int xpos, const wstring &str, bool right = false) {
       xposAndString.push_back(make_pair(xpos, make_pair(right, str)));
     }
   };
 
-  string name;
-  vector<string> altNames;
-  string tPrettyName;
+  wstring name;
+  vector<wstring> altNames;
+  wstring tPrettyName;
 
-  static const int dataSize = 384;
+  static const int dataSize = 768;
   int getDISize() const {return dataSize;}
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
@@ -78,17 +78,17 @@ protected:
 
   virtual int getTableId() const;
 
-  bool inputData(int id, const string &input, int inputId,
-                        string &output, bool noUpdate);
+  bool inputData(int id, const wstring &input, int inputId,
+                        wstring &output, bool noUpdate);
 
-  void fillInput(int id, vector< pair<string, size_t> > &elements, size_t &selected);
+  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected);
 
   void exportIOFClub(xmlparser &xml, bool compact) const;
 
   void exportClubOrId(xmlparser &xml) const;
 
   // Set name internally, and update pretty name
-  void internalSetName(const string &n);
+  void internalSetName(const wstring &n);
 
   void changeId(int newId);
 
@@ -128,10 +128,10 @@ protected:
   void addInvoiceLine(gdioutput &gdi, const InvoiceLine &lines, InvoiceData &data) const;
 
   void addRunnerInvoiceLine(const pRunner r, bool inTeam, 
-                            const map<int, string> &definedPayModes,
+                            const map<int, wstring> &definedPayModes,
                             const InvoiceData &data, list<InvoiceLine> &lines) const;
   void addTeamInvoiceLine(const pTeam r, 
-                          const map<int, string> &definedPayModes, 
+                          const map<int, wstring> &definedPayModes, 
                           const InvoiceData &data, list<InvoiceLine> &lines) const;
 
   /** Get internal data buffers for DI */
@@ -146,7 +146,7 @@ public:
 
   static int getFirstInvoiceNumber(oEvent &oe);
 
-  static void definedPayModes(oEvent &oe, map<int, string> &definedPayModes);
+  static void definedPayModes(oEvent &oe, map<int, wstring> &definedPayModes);
 
 
   /** Remove all clubs from a competion (and all belong to club relations)*/
@@ -162,17 +162,17 @@ public:
 
   bool operator<(const oClub &c) const;
   void generateInvoice(gdioutput &gdi, int &toPay, int &hasPaid, 
-                       const map<int, string> &definedPayModes, 
+                       const map<int, wstring> &definedPayModes, 
                        map<int, int> &paidPerMode);
 
-  string getInfo() const {return "Klubb " + name;}
+  wstring getInfo() const;
   bool sameClub(const oClub &c);
 
-  const string &getName() const {return name;}
+  const wstring &getName() const {return name;}
 
-  const string &getDisplayName() const {return tPrettyName.empty() ?  name : tPrettyName;}
+  const wstring &getDisplayName() const {return tPrettyName.empty() ?  name : tPrettyName;}
 
-  void setName(const string &n);
+  void setName(const wstring &n);
 
   void set(const xmlobject &xo);
   bool write(xmlparser &xml);

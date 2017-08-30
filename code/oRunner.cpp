@@ -47,13 +47,13 @@
 
 oRunner::RaceIdFormatter oRunner::raceIdFormatter;
 
-const string &oRunner::RaceIdFormatter::formatData(oBase *ob) const {
-  return itos(dynamic_cast<oRunner *>(ob)->getRaceIdentifier());
+const wstring &oRunner::RaceIdFormatter::formatData(oBase *ob) const {
+  return itow(dynamic_cast<oRunner *>(ob)->getRaceIdentifier());
 }
 
-string oRunner::RaceIdFormatter::setData(oBase *ob, const string &input) const {
-  int rid = atoi(input.c_str());
-  if (input == "0")
+wstring oRunner::RaceIdFormatter::setData(oBase *ob, const wstring &input) const {
+  int rid = _wtoi(input.c_str());
+  if (input == L"0")
     ob->getDI().setInt("RaceId", 0);
   else if (rid>0 && rid != dynamic_cast<oRunner *>(ob)->getRaceIdentifier())
     ob->getDI().setInt("RaceId", rid);
@@ -91,17 +91,17 @@ oAbstractRunner::oAbstractRunner(oEvent *poe, bool loading):oBase(poe)
   tAdjustDataRevision = -1;
 }
 
-string oAbstractRunner::getInfo() const
+wstring oAbstractRunner::getInfo() const
 {
   return getName();
 }
 
-void oAbstractRunner::setFinishTimeS(const string &t)
+void oAbstractRunner::setFinishTimeS(const wstring &t)
 {
   setFinishTime(oe->getRelativeTime(t));
 }
 
-void oAbstractRunner::setStartTimeS(const string &t)
+void oAbstractRunner::setStartTimeS(const wstring &t)
 {
   setStartTime(oe->getRelativeTime(t), true, false);
 }
@@ -253,7 +253,7 @@ void oRunner::Set(const xmlobject &xo)
       Id = it->getInt();
     }
     else if (it->is("Name")){
-      sName = it->get();
+      sName = it->getw();
       getRealName(sName, tRealName);
     }
     else if (it->is("Start")){
@@ -285,9 +285,9 @@ void oRunner::Set(const xmlobject &xo)
     else if (it->is("oData"))
       getDI().set(*it);
     else if (it->is("Updated"))
-      Modified.setStamp(it->get());
+      Modified.setStamp(it->getRaw());
     else if (it->is("MultiR"))
-      decodeMultiR(it->get());
+      decodeMultiR(it->getRaw());
     else if (it->is("InputTime")) {
       inputTime = it->getInt();
     }
@@ -327,7 +327,7 @@ void oAbstractRunner::addClassDefaultFee(bool resetFees) {
         di.setInt("CardFee", 0);
       return;
     }
-    string date = getEntryDate();
+    wstring date = getEntryDate();
     int currentFee = di.getInt("Fee");
 
     pTeam t = getTeam();
@@ -348,16 +348,16 @@ void oAbstractRunner::addClassDefaultFee(bool resetFees) {
 }
 
 // Get entry date of runner (or its team)
-string oRunner::getEntryDate(bool useTeamEntryDate) const {
+wstring oRunner::getEntryDate(bool useTeamEntryDate) const {
   if (useTeamEntryDate && tInTeam) {
-    string date = tInTeam->getEntryDate(false);
+    wstring date = tInTeam->getEntryDate(false);
     if (!date.empty())
       return date;
   }
   oDataConstInterface dci = getDCI();
   int date = dci.getInt("EntryDate");
   if (date == 0) {
-    (const_cast<oRunner *>(this)->getDI()).setDate("EntryDate", getLocalDate());
+    (const_cast<oRunner *>(this)->getDI()).setDate("EntryDate", getLocalDateW());
   }
   return dci.getDate("EntryDate");
 }
@@ -568,16 +568,16 @@ void oRunner::setFinishTime(int t)
     oe->reCalculateLeaderTimes(Class->getId());
 }
 
-const string &oAbstractRunner::getStartTimeS() const {
+const wstring &oAbstractRunner::getStartTimeS() const {
   if (tStartTime>0)
     return oe->getAbsTime(tStartTime);
   else if (Class && Class->hasFreeStart())
-    return _EmptyString;
+    return _EmptyWString;
   else  
-    return MakeDash("-");
+    return makeDash(L"-");
 }
 
-const string &oAbstractRunner::getStartTimeCompact() const {
+const wstring &oAbstractRunner::getStartTimeCompact() const {
   if (tStartTime>0) {
     if (oe->useStartSeconds())
       return oe->getAbsTime(tStartTime);
@@ -585,16 +585,16 @@ const string &oAbstractRunner::getStartTimeCompact() const {
       return oe->getAbsTimeHM(tStartTime);
   }
   else if (Class && Class->hasFreeStart())
-    return _EmptyString;
+    return _EmptyWString;
   else 
-    return MakeDash("-");
+    return makeDash(L"-");
 }
 
-const string &oAbstractRunner::getFinishTimeS() const
+const wstring &oAbstractRunner::getFinishTimeS() const
 {
   if (FinishTime>0)
     return oe->getAbsTime(FinishTime);
-  else return MakeDash("-");
+  else return makeDash(L"-");
 }
 
 int oAbstractRunner::getRunningTime() const {
@@ -605,14 +605,14 @@ int oAbstractRunner::getRunningTime() const {
     return 0;
 }
 
-const string &oAbstractRunner::getRunningTimeS() const
+const wstring &oAbstractRunner::getRunningTimeS() const
 {
-  return formatTime(getRunningTime());
+  return formatTimeW(getRunningTime());
 }
 
-const string &oAbstractRunner::getTotalRunningTimeS() const
+const wstring &oAbstractRunner::getTotalRunningTimeS() const
 {
-  return formatTime(getTotalRunningTime());
+  return formatTimeW(getTotalRunningTime());
 }
 
 int oAbstractRunner::getTotalRunningTime() const {
@@ -624,16 +624,16 @@ int oAbstractRunner::getTotalRunningTime() const {
 }
 
 int oRunner::getTotalRunningTime() const {
-  return getTotalRunningTime(getFinishTime());
+  return getTotalRunningTime(getFinishTime(), true);
 }
 
 
-const string &oAbstractRunner::getStatusS() const
+const wstring &oAbstractRunner::getStatusS() const
 {
   return oEvent::formatStatus(tStatus);
 }
 
-const string &oAbstractRunner::getTotalStatusS() const
+const wstring &oAbstractRunner::getTotalStatusS() const
 {
   return oEvent::formatStatus(getTotalStatus());
 }
@@ -655,31 +655,30 @@ const string &oAbstractRunner::getTotalStatusS() const
             restrictions
    - Cancelled
 */
-const char *formatIOFStatus(RunnerStatus s) {
+const wchar_t *formatIOFStatus(RunnerStatus s) {
   switch(s) {
   case StatusOK:
-    return "OK";
+    return L"OK";
   case StatusDNS:
-    return "DidNotStart";
+    return L"DidNotStart";
   case StatusMP:
-    return "MisPunch";
+    return L"MisPunch";
   case StatusDNF:
-    return "DidNotFinish";
+    return L"DidNotFinish";
   case StatusDQ:
-    return "Disqualified";
+    return L"Disqualified";
   case StatusMAX:
-    return "OverTime";
+    return L"OverTime";
   }
-  return "Inactive";
-
+  return L"Inactive";
 }
 
-string oAbstractRunner::getIOFStatusS() const
+wstring oAbstractRunner::getIOFStatusS() const
 {
   return formatIOFStatus(tStatus);
 }
 
-string oAbstractRunner::getIOFTotalStatusS() const
+wstring oAbstractRunner::getIOFTotalStatusS() const
 {
   return formatIOFStatus(getTotalStatus());
 }
@@ -874,11 +873,11 @@ pCourse oRunner::getCourse(bool useAdaptedCourse) const {
   return tCrs;
 }
 
-const string &oRunner::getCourseName() const
+const wstring &oRunner::getCourseName() const
 {
   pCourse oc=getCourse(false);
   if (oc) return oc->getName();
-  return MakeDash("-");
+  return makeDash(L"-");
 }
 
 #define NOTATIME 0xF0000000
@@ -1249,7 +1248,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
 
     int point_limit = course->getMinimumRogainingPoints();
     if (point_limit>0 && tRogainingPoints<point_limit) {
-      tProblemDescription = "X poäng fattas.#" + itos(point_limit-tRogainingPoints);
+      tProblemDescription = L"X poäng fattas.#" + itow(point_limit-tRogainingPoints);
       OK = false;
     }
 
@@ -1301,7 +1300,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
   }
   else if (FinishTime<=0) {
     *refStatus=RunnerStatus(max(int(StatusDNF), int(tStatus)));
-    tProblemDescription = "Måltid saknas.";
+    tProblemDescription = L"Måltid saknas.";
     FinishTime=0;
   }
 
@@ -1309,15 +1308,15 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
     *refStatus = StatusMAX; //Maxtime
 
   if (!MissingPunches.empty()) {
-    tProblemDescription  = "Stämplingar saknas: X#" + itos(MissingPunches[0]);
+    tProblemDescription  = L"Stämplingar saknas: X#" + itow(MissingPunches[0]);
     for (unsigned j = 1; j<3; j++) {
       if (MissingPunches.size()>j)
-        tProblemDescription += ", " + itos(MissingPunches[j]);
+        tProblemDescription += L", " + itow(MissingPunches[j]);
     }
     if (MissingPunches.size()>3)
-      tProblemDescription += "...";
+      tProblemDescription += L"...";
     else
-      tProblemDescription += ".";
+      tProblemDescription += L".";
   }
 
   // Adjust times on course, including finish time
@@ -1331,7 +1330,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
       if (overTime > 0) {
         tRogainingOvertime = overTime;
         tReduction = course->calculateReduction(overTime);
-        tProblemDescription = "Tidsavdrag: X poäng.#" + itos(tReduction);
+        tProblemDescription = L"Tidsavdrag: X poäng.#" + itow(tReduction);
         tRogainingPoints = max(0, tRogainingPoints - tReduction);
       }
     }
@@ -1681,8 +1680,8 @@ bool oRunner::operator <(const oRunner &c) {
     else {
       //if (StartNo != c.StartNo && !(getBib().empty() && c.getBib().empty()))
       //  return StartNo < c.StartNo;
-      const string &b1 = getBib();
-      const string &b2 = c.getBib();
+      const wstring &b1 = getBib();
+      const wstring &b2 = c.getBib();
       if (b1 != b2) {
         return compareBib(b1, b2);
       }
@@ -1764,8 +1763,8 @@ bool oRunner::operator <(const oRunner &c) {
                       c.tRealName.c_str(), c.tRealName.length()) == CSTR_LESS_THAN;
   }
   else if (oe->CurrentSortOrder==SortByLastName) {
-    string a = getFamilyName();
-    string b = c.getFamilyName();
+    wstring a = getFamilyName();
+    wstring b = c.getFamilyName();
     if (a.empty() && !b.empty())
       return false;
     else if (b.empty() && !a.empty())
@@ -1852,8 +1851,8 @@ bool oRunner::operator <(const oRunner &c) {
                                tRealName.c_str(), tRealName.length(),
                                c.tRealName.c_str(), c.tRealName.length()) == CSTR_LESS_THAN;
         }
-        int t = getTotalRunningTime(FinishTime);
-        int ct = c.getTotalRunningTime(c.FinishTime);
+        int t = getTotalRunningTime(FinishTime, true);
+        int ct = c.getTotalRunningTime(c.FinishTime, true);
         if (t!=ct)
           return t < ct;
       }
@@ -1922,8 +1921,8 @@ bool oRunner::operator <(const oRunner &c) {
       else return tStartTime < c.tStartTime;
     }
     else {
-      const string &b1 = getBib();
-      const string &b2 = c.getBib();
+      const wstring &b1 = getBib();
+      const wstring &b2 = c.getBib();
       if (StartNo != c.StartNo && b1 != b2)
         return StartNo < c.StartNo;
     }
@@ -1935,10 +1934,10 @@ bool oRunner::operator <(const oRunner &c) {
 
 }
 
-void oAbstractRunner::setClub(const string &Name)
+void oAbstractRunner::setClub(const wstring &clubName)
 {
   pClub pc=Club;
-  Club = Name.empty() ? 0 : oe->getClubCreate(0, Name);
+  Club = clubName.empty() ? 0 : oe->getClubCreate(0, clubName);
   if (pc != Club) {
     updateChanged();
     if (Class) {
@@ -1962,12 +1961,12 @@ pClub oAbstractRunner::setClubId(int clubId)
   return Club;
 }
 
-void oRunner::setClub(const string &Name)
+void oRunner::setClub(const wstring &clubName)
 {
   if (tParentRunner)
-    tParentRunner->setClub(Name);
+    tParentRunner->setClub(clubName);
   else {
-    oAbstractRunner::setClub(Name);
+    oAbstractRunner::setClub(clubName);
 
     for (size_t k=0;k<multiRunner.size();k++)
       if (multiRunner[k] && multiRunner[k]->Club!=Club) {
@@ -2040,63 +2039,63 @@ int oRunner::getTotalPlace() const
     return tTotalPlace;
 }
 
-string oAbstractRunner::getPlaceS() const
+wstring oAbstractRunner::getPlaceS() const
 {
-  char bf[16];
+  wchar_t bf[16];
   int p=getPlace();
   if (p>0 && p<10000){
-    _itoa_s(p, bf, 16, 10);
+    _itow_s(p, bf, 16, 10);
     return bf;
   }
-  else return _EmptyString;
+  else return _EmptyWString;
 }
 
-string oAbstractRunner::getPrintPlaceS(bool withDot) const
+wstring oAbstractRunner::getPrintPlaceS(bool withDot) const
 {
-  char bf[16];
+  wchar_t bf[16];
   int p=getPlace();
   if (p>0 && p<10000){
     if (withDot) {
-      _itoa_s(p, bf, 16, 10);
-      return string(bf)+".";
+      _itow_s(p, bf, 16, 10);
+      return wstring(bf)+L".";
     }
     else
-      return itos(p);
+      return itow(p);
   }
-  else return _EmptyString;
+  else return _EmptyWString;
 }
 
-string oAbstractRunner::getTotalPlaceS() const
+wstring oAbstractRunner::getTotalPlaceS() const
 {
-  char bf[16];
+  wchar_t bf[16];
   int p=getTotalPlace();
   if (p>0 && p<10000){
-    _itoa_s(p, bf, 16, 10);
+    _itow_s(p, bf, 16, 10);
     return bf;
   }
-  else return _EmptyString;
+  else return _EmptyWString;
 }
 
-string oAbstractRunner::getPrintTotalPlaceS(bool withDot) const
+wstring oAbstractRunner::getPrintTotalPlaceS(bool withDot) const
 {
-  char bf[16];
+  wchar_t bf[16];
   int p=getTotalPlace();
   if (p>0 && p<10000){
     if (withDot) {
-      _itoa_s(p, bf, 16, 10);
-      return string(bf)+".";
+      _itow_s(p, bf, 16, 10);
+      return wstring(bf)+L".";
     }
     else
-      return itos(p);
+      return itow(p);
   }
-  else return _EmptyString;
+  else return _EmptyWString;
 }
-string oRunner::getGivenName() const
+wstring oRunner::getGivenName() const
 {
   return ::getGivenName(sName);
 }
 
-string oRunner::getFamilyName() const
+wstring oRunner::getFamilyName() const
 {
   return ::getFamilyName(sName);
 }
@@ -2155,9 +2154,9 @@ int oRunner::setCard(int cardId)
   return oldId;
 }
 
-void oAbstractRunner::setName(const string &n, bool manualUpdate)
+void oAbstractRunner::setName(const wstring &n, bool manualUpdate)
 {
-  string tn = trim(n);
+  wstring tn = trim(n);
   if (tn.empty())
     throw std::exception("Tomt namn är inte tillåtet.");
   if (tn != sName){
@@ -2168,14 +2167,14 @@ void oAbstractRunner::setName(const string &n, bool manualUpdate)
   }
 }
 
-void oRunner::setName(const string &in, bool manualUpdate)
+void oRunner::setName(const wstring &in, bool manualUpdate)
 {
-  string n = trim(in);
+  wstring n = trim(in);
   
   if (n.empty())
     throw std::exception("Tomt namn är inte tillåtet.");
   for (size_t k = 0; k < n.length(); k++) {
-    if (BYTE(n[k]) == BYTE(160))
+    if (iswspace(n[k]))
       n[k] = ' ';
   }
   if (n.length() <= 4 || n == lang.tl("N.N."))
@@ -2184,9 +2183,9 @@ void oRunner::setName(const string &in, bool manualUpdate)
   if (tParentRunner)
     tParentRunner->setName(n, manualUpdate);
   else {
-    string oldName = sName;
-    string oldRealName = tRealName;
-    string newRealName;
+    wstring oldName = sName;
+    wstring oldRealName = tRealName;
+    wstring newRealName;
     getRealName(n, newRealName);
     if (newRealName != tRealName || n != sName) {
       sName = n;
@@ -2212,27 +2211,27 @@ void oRunner::setName(const string &in, bool manualUpdate)
   }
 }
 
-const string &oRunner::getName() const {
+const wstring &oRunner::getName() const {
   return tRealName;
 }
 
-const string &oRunner::getNameLastFirst() const {
+const wstring &oRunner::getNameLastFirst() const {
   if (sName.find_first_of(',') != sName.npos)
     return sName;  // Already "Fiske, Eric"
   if (sName.find_first_of(' ') == sName.npos)
     return sName; // No space "Vacant", "Eric"
   
-  string &res = StringCache::getInstance().get();
-  res = getFamilyName() + ", " + getGivenName();
+  wstring &res = StringCache::getInstance().wget();
+  res = getFamilyName() + L", " + getGivenName();
   return res;
 }
 
-void oRunner::getRealName(const string &input, string &output) {
+void oRunner::getRealName(const wstring &input, wstring &output) {
   size_t comma = input.find_first_of(',');
   if (comma == string::npos)
     output = input;
   else 
-    output = trim(input.substr(comma+1) + " " + input.substr(0, comma));
+    output = trim(input.substr(comma+1) + L" " + input.substr(0, comma));
 }
 
 bool oAbstractRunner::setStatus(RunnerStatus st, bool updateSource, bool tmpOnly, bool recalculate) {
@@ -2271,10 +2270,10 @@ int oAbstractRunner::getPrelRunningTime() const
   else return 0;
 }
 
-string oAbstractRunner::getPrelRunningTimeS() const
+wstring oAbstractRunner::getPrelRunningTimeS() const
 {
   int rt=getPrelRunningTime();
-  return formatTime(rt);
+  return formatTimeW(rt);
 }
 
 oDataContainer &oRunner::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const {
@@ -2371,7 +2370,7 @@ void oEvent::setupCardHash(bool clear) {
   }
 }
 
-typedef stdext::hash_multimap<int, pRunner>::const_iterator hashConstIter;
+typedef unordered_multimap<int, pRunner>::const_iterator hashConstIter;
 
 pRunner oEvent::getRunnerByCardNo(int cardNo, int time, bool onlyWithNoCard, bool ignoreRunnersWithNoStart) const
 {
@@ -2550,9 +2549,9 @@ int oRunner::getRaceIdentifier() const {
     return 1000000 * (tLeg+1) + (tInTeam->Id & 0xFFFFFFF) * 2 + 1;//Odd
 }
 
-static int getEncodedBib(const string &bib) {
+static int getEncodedBib(const wstring &bib) {
   int enc = 0;
-  for (size_t j = 0; j < bib.length(); j++) {
+  for (size_t j = 0; j < bib.length(); j++) { //WCS
     int x = toupper(bib[j])-32;
     if (x<0)
       return 0; // Not a valid bib
@@ -2568,8 +2567,8 @@ int oAbstractRunner::getEncodedBib() const {
 
 typedef multimap<int, oAbstractRunner*>::iterator BSRTIterator;
 
-pRunner oEvent::getRunnerByBibOrStartNo(const string &bib, bool findWithoutCardNo) const {
-  if (bib.empty() || bib == "0")
+pRunner oEvent::getRunnerByBibOrStartNo(const wstring &bib, bool findWithoutCardNo) const {
+  if (bib.empty() || bib == L"0")
     return 0;
 
   if (bibStartNoToRunnerTeam.empty()) {
@@ -2600,7 +2599,7 @@ pRunner oEvent::getRunnerByBibOrStartNo(const string &bib, bool findWithoutCardN
     }
   }
 
-  int sno = atoi(bib.c_str());
+  int sno = _wtoi(bib.c_str());
 
   pair<BSRTIterator, BSRTIterator> res;
   if (sno > 0) {
@@ -2658,13 +2657,13 @@ pRunner oEvent::getRunnerByBibOrStartNo(const string &bib, bool findWithoutCardN
   return 0;
 }
 
-pRunner oEvent::getRunnerByName(const string &pname, const string &pclub) const
+pRunner oEvent::getRunnerByName(const wstring &pname, const wstring &pclub) const
 {
   oRunnerList::const_iterator it;
   vector<pRunner> cnd;
 
   for (it=Runners.begin(); it != Runners.end(); ++it) {
-    if (!it->skip() && (it->sName==pname || it->tRealName==pname)) {
+    if (!it->skip() && it->matchName(pname)) {
       if (pclub.empty() || pclub==it->getClub())
         cnd.push_back(pRunner(&*it));
     }
@@ -2678,14 +2677,14 @@ pRunner oEvent::getRunnerByName(const string &pname, const string &pclub) const
 
 void oEvent::fillRunners(gdioutput &gdi, const string &id, bool longName, int filter)
 {
-  vector< pair<string, size_t> > d;
-  oe->fillRunners(d, longName, filter, stdext::hash_set<int>());
+  vector< pair<wstring, size_t> > d;
+  oe->fillRunners(d, longName, filter, unordered_set<int>());
   gdi.addItem(id, d);
 }
 
-const vector< pair<string, size_t> > &oEvent::fillRunners(vector< pair<string, size_t> > &out,
-                                                          bool longName, int filter,
-                                                          const stdext::hash_set<int> &personFilter)
+const vector< pair<wstring, size_t> > &oEvent::fillRunners(vector< pair<wstring, size_t> > &out,
+                                                           bool longName, int filter,
+                                                           const unordered_set<int> &personFilter)
 {
   const bool showAll = (filter & RunnerFilterShowAll) == RunnerFilterShowAll;
   const bool noResult = (filter & RunnerFilterOnlyNoResult) ==  RunnerFilterOnlyNoResult;
@@ -2706,7 +2705,7 @@ const vector< pair<string, size_t> > &oEvent::fillRunners(vector< pair<string, s
   else
     out.reserve(personFilter.size());
 
-  char bf[512];
+  wchar_t bf[512];
   const bool usePersonFilter = !personFilter.empty();
 
   if (longName) {
@@ -2719,14 +2718,14 @@ const vector< pair<string, size_t> > &oEvent::fillRunners(vector< pair<string, s
         continue;
       if (!it->skip() || (showAll && !it->isRemoved())) {
         if (compact) {
-          sprintf_s(bf, "%s, %s (%s)", it->getNameAndRace(true).c_str(),
-                                      it->getClub().c_str(),
-                                      it->getClass().c_str());
+          swprintf_s(bf, L"%s, %s (%s)", it->getNameAndRace(true).c_str(),
+                                         it->getClub().c_str(),
+                                         it->getClass().c_str());
 
         } else {
-          sprintf_s(bf, "%s\t%s\t%s", it->getNameAndRace(true).c_str(),
-                                      it->getClass().c_str(),
-                                      it->getClub().c_str());
+          swprintf_s(bf, L"%s\t%s\t%s", it->getNameAndRace(true).c_str(),
+                                        it->getClass().c_str(),
+                                        it->getClub().c_str());
         }
         out.push_back(make_pair(bf, it->Id));
       }
@@ -2745,7 +2744,7 @@ const vector< pair<string, size_t> > &oEvent::fillRunners(vector< pair<string, s
         if ( it->getClubId() != lVacId || lVacId == 0)
           out.push_back(make_pair(it->getUIName(), it->Id));
         else {
-          sprintf_s(bf, "%s (%s)", it->getUIName().c_str(), it->getClass().c_str());
+          swprintf_s(bf, L"%s (%s)", it->getUIName().c_str(), it->getClass().c_str());
           out.push_back(make_pair(bf, it->Id));
         }
       }
@@ -2758,17 +2757,16 @@ void oRunner::resetPersonalData()
 {
   oDataInterface di = getDI();
   di.setInt("BirthYear", 0);
-  di.setString("Nationality", "");
-  di.setString("Country", "");
+  di.setString("Nationality", L"");
+  di.setString("Country", L"");
   di.setInt64("ExtId", 0);
-  //getDI().initData();
 }
 
-string oRunner::getNameAndRace(bool userInterface) const
+wstring oRunner::getNameAndRace(bool userInterface) const
 {
   if (tDuplicateLeg>0 || multiRunner.size()>0) {
-    char bf[16];
-    sprintf_s(bf, " (%d)", getRaceNo()+1);
+    wchar_t bf[16];
+    swprintf_s(bf, L" (%d)", getRaceNo()+1);
     if (userInterface)
       return getUIName() + bf;
     return getName()+bf;
@@ -2975,7 +2973,7 @@ void oRunner::cloneData(const pRunner r) {
 Table *oEvent::getRunnersTB()//Table mode
 {
   if (tables.count("runner") == 0) {
-    Table *table=new Table(this, 20, "Deltagare", "runners");
+    Table *table=new Table(this, 20, L"Deltagare", "runners");
 
     table->addColumn("Id", 70, true, true);
     table->addColumn("Ändrad", 70, false);
@@ -3028,7 +3026,21 @@ void oEvent::generateRunnerTableData(Table &table, oRunner *addRunner)
   }
 }
 
-const string &oRunner::getUIName() const {
+pRunner oRunner::getReference() const
+{
+  int rid = getDCI().getInt("Reference");
+  if (rid != 0)
+    return oe->getRunner(rid, 0);
+  else 
+    return 0;
+}
+
+void oRunner::setReference(int runnerId)
+{
+  getDI().setInt("Reference", runnerId);
+}
+
+const wstring &oRunner::getUIName() const {
   oEvent::NameMode nameMode = oe->getNameMode();
   
   switch (nameMode) {
@@ -3048,7 +3060,7 @@ void oRunner::addTableRow(Table &table) const
   table.addRow(getId(), &it);
 
   int row = 0;
-  table.set(row++, it, TID_ID, itos(getId()), false);
+  table.set(row++, it, TID_ID, itow(getId()), false);
   table.set(row++, it, TID_MODIFIED, getTimeStamp(), false);
 
   table.set(row++, it, TID_RUNNER, getUIName(), true);
@@ -3057,11 +3069,11 @@ void oRunner::addTableRow(Table &table) const
   table.set(row++, it, TID_COURSE, getCourseName(), true, cellSelection);
   table.set(row++, it, TID_CLUB, getClub(), true, cellCombo);
 
-  table.set(row++, it, TID_TEAM, tInTeam ? tInTeam->getName() : "", false);
-  table.set(row++, it, TID_LEG, tInTeam ? itos(tLeg+1) : "" , false);
+  table.set(row++, it, TID_TEAM, tInTeam ? tInTeam->getName() : L"", false);
+  table.set(row++, it, TID_LEG, tInTeam ? itow(tLeg+1) : L"" , false);
 
   int cno = getCardNo();
-  table.set(row++, it, TID_CARD, cno>0 ? itos(cno) : "", true);
+  table.set(row++, it, TID_CARD, cno>0 ? itow(cno) : L"", true);
 
   table.set(row++, it, TID_START, getStartTimeS(), true);
   table.set(row++, it, TID_FINISH, getFinishTimeS(), true);
@@ -3069,18 +3081,18 @@ void oRunner::addTableRow(Table &table) const
   table.set(row++, it, TID_RUNNINGTIME, getRunningTimeS(), false);
 
   table.set(row++, it, TID_PLACE, getPlaceS(), false);
-  table.set(row++, it, TID_STARTNO, itos(getStartNo()), true);
+  table.set(row++, it, TID_STARTNO, itow(getStartNo()), true);
 
   row = oe->oRunnerData->fillTableCol(it, table, true);
 
   table.set(row++, it, TID_INPUTTIME, getInputTimeS(), true);
   table.set(row++, it, TID_INPUTSTATUS, getInputStatusS(), true, cellSelection);
-  table.set(row++, it, TID_INPUTPOINTS, itos(inputPoints), true);
-  table.set(row++, it, TID_INPUTPLACE, itos(inputPlace), true);
+  table.set(row++, it, TID_INPUTPOINTS, itow(inputPoints), true);
+  table.set(row++, it, TID_INPUTPLACE, itow(inputPlace), true);
 }
 
-bool oRunner::inputData(int id, const string &input,
-                        int inputId, string &output, bool noUpdate)
+bool oRunner::inputData(int id, const wstring &input,
+                        int inputId, wstring &output, bool noUpdate)
 {
   int t,s;
   vector<int> mp;
@@ -3092,9 +3104,9 @@ bool oRunner::inputData(int id, const string &input,
   }
   switch(id) {
     case TID_CARD:
-      setCardNo(atoi(input.c_str()), true);
+      setCardNo(_wtoi(input.c_str()), true);
       synchronizeAll();
-      output = itos(getCardNo());
+      output = itow(getCardNo());
       return true;
     case TID_RUNNER:
       if (trim(input).empty())
@@ -3105,7 +3117,7 @@ bool oRunner::inputData(int id, const string &input,
         setName(input, true);
         synchronizeAll();
       }
-      output=getName();
+      output = getName();
       return true;
     break;
 
@@ -3117,7 +3129,7 @@ bool oRunner::inputData(int id, const string &input,
       if (s!=t)
         throw std::exception("Starttiden är definerad genom klassen eller löparens startstämpling.");
       synchronize(true);
-      output=getStartTimeS();
+      output = getStartTimeS();
       return true;
     break;
 
@@ -3129,7 +3141,7 @@ bool oRunner::inputData(int id, const string &input,
       if (s!=t)
         throw std::exception("För att ändra måltiden måste löparens målstämplingstid ändras.");
       synchronize(true);
-      output=getStartTimeS();
+      output = getStartTimeS();
       return true;
     break;
 
@@ -3149,7 +3161,7 @@ bool oRunner::inputData(int id, const string &input,
 
         updateFromDB(getName(), pc ? pc->getId():0, getClassId(), getCardNo(), getBirthYear());
 
-        setClub(pc ? pc->getName() : "");
+        setClub(pc ? pc->getName() : L"");
         synchronize(true);
         output = getClub();
       }
@@ -3173,9 +3185,9 @@ bool oRunner::inputData(int id, const string &input,
     break;
 
     case TID_STARTNO:
-      setStartNo(atoi(input.c_str()), false);
+      setStartNo(_wtoi(input.c_str()), false);
       synchronize(true);
-      output = itos(getStartNo());
+      output = itow(getStartNo());
       break;
 
     case TID_INPUTSTATUS:
@@ -3191,22 +3203,22 @@ bool oRunner::inputData(int id, const string &input,
       break;
 
     case TID_INPUTPOINTS:
-      setInputPoints(atoi(input.c_str()));
+      setInputPoints(_wtoi(input.c_str()));
       synchronize(true);
-      output = itos(getInputPoints());
+      output = itow(getInputPoints());
       break;
 
     case TID_INPUTPLACE:
-      setInputPlace(atoi(input.c_str()));
+      setInputPlace(_wtoi(input.c_str()));
       synchronize(true);
-      output = itos(getInputPlace());
+      output = itow(getInputPlace());
       break;
   }
 
   return false;
 }
 
-void oRunner::fillInput(int id, vector< pair<string, size_t> > &out, size_t &selected)
+void oRunner::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected)
 {
   if (id>1000) {
     oe->oRunnerData->fillInput(oData, id, 0, out, selected);
@@ -3215,17 +3227,17 @@ void oRunner::fillInput(int id, vector< pair<string, size_t> > &out, size_t &sel
 
   if (id==TID_COURSE) {
     oe->fillCourses(out, true);
-    out.push_back(make_pair(lang.tl("Klassens bana"), 0));
+    out.push_back(make_pair(lang.tl(L"Klassens bana"), 0));
     selected = getCourseId();
   }
   else if (id==TID_CLASSNAME) {
     oe->fillClasses(out, oEvent::extraNone, oEvent::filterNone);
-    out.push_back(make_pair(lang.tl("Ingen klass"), 0));
+    out.push_back(make_pair(lang.tl(L"Ingen klass"), 0));
     selected = getClassId();
   }
   else if (id==TID_CLUB) {
     oe->fillClubs(out);
-    out.push_back(make_pair(lang.tl("Klubblös"), 0));
+    out.push_back(make_pair(lang.tl(L"Klubblös"), 0));
     selected = getClubId();
   }
   else if (id==TID_STATUS) {
@@ -3296,14 +3308,14 @@ int oRunner::getNamedSplit(int controlNumber) const
   return -1;
 }
 
-string oRunner::getSplitTimeS(int controlNumber, bool normalized) const
+wstring oRunner::getSplitTimeS(int controlNumber, bool normalized) const
 {
-  return formatTime(getSplitTime(controlNumber, normalized));
+  return formatTimeW(getSplitTime(controlNumber, normalized));
 }
 
-string oRunner::getNamedSplitS(int controlNumber) const
+wstring oRunner::getNamedSplitS(int controlNumber) const
 {
-  return formatTime(getNamedSplit(controlNumber));
+  return formatTimeW(getNamedSplit(controlNumber));
 }
 
 int oRunner::getPunchTime(int controlNumber, bool normalized) const
@@ -3321,14 +3333,15 @@ int oRunner::getPunchTime(int controlNumber, bool normalized) const
   return -1;
 }
 
-string oRunner::getPunchTimeS(int controlNumber, bool normalized) const
+wstring oRunner::getPunchTimeS(int controlNumber, bool normalized) const
 {
-  return formatTime(getPunchTime(controlNumber, normalized));
+  return formatTimeW(getPunchTime(controlNumber, normalized));
 }
 
 bool oAbstractRunner::isVacant() const
 {
-  return getClubId()==oe->getVacantClubIfExist(false);
+  int vacClub = oe->getVacantClubIfExist(false);
+  return vacClub > 0 && getClubId()==vacClub;
 }
 
 bool oRunner::needNoCard() const {
@@ -3394,7 +3407,7 @@ void oRunner::fillSpeakerObject(int leg, int courseControlId, int previousContro
   spk.bib = getBib();
   spk.names.push_back(getName());
 
-  spk.club=getClub();
+  spk.club = getClub();
   spk.finishStatus=totalResult ? getTotalStatus() : getStatus();
 
   spk.startTimeS=getStartTimeCompact();
@@ -3431,21 +3444,21 @@ void oRunner::fillSpeakerObject(int leg, int courseControlId, int previousContro
   }
 }
 
-pRunner oEvent::findRunner(const string &s, int lastId, const stdext::hash_set<int> &inputFilter,
-                           stdext::hash_set<int> &matchFilter) const
+pRunner oEvent::findRunner(const wstring &s, int lastId, const unordered_set<int> &inputFilter,
+                           unordered_set<int> &matchFilter) const
 {
   matchFilter.clear();
-  string trm = trim(s);
+  wstring trm = trim(s);
   int len = trm.length();
-  int sn = atoi(trm.c_str());
-  char s_lc[1024];
-  strcpy_s(s_lc, s.c_str());
+  int sn = _wtoi(trm.c_str());
+  wchar_t s_lc[1024];
+  wcscpy_s(s_lc, s.c_str());
   CharLowerBuff(s_lc, len);
 
   pRunner res = 0;
 
   if (!inputFilter.empty() && inputFilter.size() < Runners.size() / 2) {
-    for (stdext::hash_set<int>::const_iterator it = inputFilter.begin(); it!= inputFilter.end(); ++it) {
+    for (unordered_set<int>::const_iterator it = inputFilter.begin(); it!= inputFilter.end(); ++it) {
       int id = *it;
       pRunner r = getRunner(id, 0);
       if (!r)
@@ -3599,12 +3612,12 @@ bool oRunner::synchronizeAll()
   return true;
 }
 
-const string &oAbstractRunner::getBib() const
+const wstring &oAbstractRunner::getBib() const
 {
   return getDCI().getString("Bib");
 }
 
-void oRunner::setBib(const string &bib, int bibNumerical, bool updateStartNo, bool tmpOnly) {
+void oRunner::setBib(const wstring &bib, int bibNumerical, bool updateStartNo, bool tmpOnly) {
   if (tParentRunner)
     tParentRunner->setBib(bib, bibNumerical, updateStartNo, tmpOnly);
   else {
@@ -3761,7 +3774,7 @@ static void addMissingControl(bool wideFormat, gdioutput &gdi,
                               int &xcol, int &cx, int &cy, 
                               int colDeltaX, int numCol, int baseCX) {
   int xx = cx;
-  string str = MakeDash("-");
+  wstring str = makeDash(L"-");
   int posy = wideFormat ? cy : cy-int(gdi.getLineHeight()*0.4);
   const int endx = cx + colDeltaX - 27;
 
@@ -3807,14 +3820,14 @@ void oRunner::printSplits(gdioutput &gdi) const {
   gdi.dropLine(0.5);
   pCourse pc = getCourse(true);
 
-  gdi.addStringUT(bnormal, getName() + ", " + getClass());
+  gdi.addStringUT(bnormal, getName() + L", " + getClass());
   gdi.addStringUT(normal, getClub());
   gdi.dropLine(0.5);
   gdi.addStringUT(normal, lang.tl("Start: ") + getStartTimeS() + lang.tl(", Mål: ") + getFinishTimeS());
-  string statInfo = lang.tl("Status: ") + getStatusS() + lang.tl(", Tid: ") + getRunningTimeS();
+  wstring statInfo = lang.tl("Status: ") + getStatusS() + lang.tl(", Tid: ") + getRunningTimeS();
   if (withSpeed && pc && pc->getLength() > 0) {
     int kmt = (getRunningTime() * 1000) / pc->getLength();
-    statInfo += " (" + formatTime(kmt) + lang.tl(" min/km") + ")";
+    statInfo += L" (" + formatTimeW(kmt) + lang.tl(" min/km") + L")";
   }
   if (pc && withSpeed) {
     if (pc->legLengths.empty() || *max_element(pc->legLengths.begin(), pc->legLengths.end()) <= 0)
@@ -3897,14 +3910,14 @@ void oRunner::printSplits(gdioutput &gdi) const {
         int st = Card->getSplitTime(getStartTime(), &*it);
 
         if (st>0)
-          gdi.addStringUT(cy, cx + c2, fontSmall|textRight, formatTime(st));
+          gdi.addStringUT(cy, cx + c2, fontSmall|textRight, formatTimeW(st));
 
         gdi.addStringUT(cy, cx+c3, fontSmall, it->getTime());
 
         int pt = it->getAdjustedTime();
         st = getStartTime();
         if (st>0 && pt>0 && pt>st) {
-          string punchTime = formatTime(pt-st);
+          wstring punchTime = formatTimeW(pt-st);
           gdi.addStringUT(cy, cx+c4, fontSmall|textRight, punchTime);
         }
 
@@ -3913,7 +3926,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
       }
 
       int cid = it->tMatchControlId;
-      string punchTime;
+      wstring punchTime;
       int sp;
       int controlLegIndex = -1;
       if (it->isFinish(finishType)) {
@@ -3931,8 +3944,8 @@ void oRunner::printSplits(gdioutput &gdi) const {
         gdi.addString("", cy, cx, fontSmall, "Mål");
         sp = getSplitTime(splitTimes.size(), false);
         if (sp>0) {
-          gdi.addStringUT(cy, cx+c2, fontSmall|textRight, formatTime(sp));
-          punchTime = formatTime(getRunningTime());
+          gdi.addStringUT(cy, cx+c2, fontSmall|textRight, formatTimeW(sp));
+          punchTime = formatTimeW(getRunningTime());
         }
         gdi.addStringUT(cy, cx+c3, fontSmall, oe->getAbsTime(it->Time + adjust));
         any = true;
@@ -3982,12 +3995,12 @@ void oRunner::printSplits(gdioutput &gdi) const {
           sp = getSplitTime(controlLegIndex, false);
           if (sp>0) {
             punchTime = getPunchTimeS(controlLegIndex, false);
-            gdi.addStringUT(cy, cx+c2, fontSmall|textRight, formatTime(sp));
+            gdi.addStringUT(cy, cx+c2, fontSmall|textRight, formatTimeW(sp));
           }
         }
         else {
           if (!it->isUsed) {
-            gdi.addStringUT(cy, cx, fontSmall, MakeDash("-"));
+            gdi.addStringUT(cy, cx, fontSmall, makeDash(L"-"));
           }
           sprintf_s(bf, "(%d)", it->Type);
           gdi.addStringUT(cy, cx+c1, fontSmall, bf);
@@ -3995,7 +4008,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
         if (it->Time > 0)
           gdi.addStringUT(cy, cx+c3, fontSmall, oe->getAbsTime(it->Time + adjust));
         else {
-          string str = MakeDash("-");
+          wstring str = makeDash(L"-");
           gdi.addStringUT(cy, cx+c3, fontSmall, str);
         }
 
@@ -4009,7 +4022,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
         int length = pc->legLengths[controlLegIndex];
         if (length > 0) {
           int tempo=(sp*1000)/length;
-          gdi.addStringUT(cy, cx+c5, fontSmall|textRight, formatTime(tempo));
+          gdi.addStringUT(cy, cx+c5, fontSmall|textRight, formatTimeW(tempo));
         }
       }
 
@@ -4035,7 +4048,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
     }
     
     if (withAnalysis) {
-      vector<string> misses;
+      vector<wstring> misses;
       int last = ctrl.size();
       if (pc->useLastAsFinish())
         last--;
@@ -4043,7 +4056,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
       for (int k = pc->useFirstAsStart() ? 1 : 0; k < last; k++) {
         int missed = getMissedTime(k);
         if (missed>0) {
-          misses.push_back(pc->getControlOrdinal(k) + "/" + formatTime(missed));
+          misses.push_back(pc->getControlOrdinal(k) + L"/" + formatTimeW(missed));
         }
       }
       if (misses.size()==0) {
@@ -4061,7 +4074,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
           gdi.addString("", normal, "Inga bommar registrerade.");
       }
       else {
-        string out = lang.tl("Tidsförluster (kontroll-tid): ");
+        wstring out = lang.tl("Tidsförluster (kontroll-tid): ");
         for (size_t k = 0; k<misses.size(); k++) {
           if (out.length() > (wideFormat ? 80u : (withSpeed ? 40u : 35u))) {
             gdi.addStringUT(normal, out);
@@ -4069,9 +4082,9 @@ void oRunner::printSplits(gdioutput &gdi) const {
           }
           out += misses[k];
           if (k < misses.size()-1)
-            out += ", ";
+            out += L", ";
           else
-            out += ".";
+            out += L".";
         }
         gdi.addStringUT(fontSmall, out);
       }
@@ -4085,17 +4098,17 @@ void oRunner::printSplits(gdioutput &gdi) const {
       if (tInTeam)
         oe->calculateTeamResults(tLeg, true);
 
-      string place = oe->formatListString(lRunnerGeneralPlace, pRunner(this), "%s");
-      string timestatus;
+      wstring place = oe->formatListString(lRunnerGeneralPlace, pRunner(this), L"%s");
+      wstring timestatus;
       if (tInTeam || hasInputData()) {
         timestatus = oe->formatListString(lRunnerGeneralTimeStatus, pRunner(this));
         if (!place.empty() && !timestatus.empty())
-          timestatus = ", " + timestatus;
+          timestatus = L", " + timestatus;
       }
 
-      string after = oe->formatListString(lRunnerGeneralTimeAfter, pRunner(this));
+      wstring after = oe->formatListString(lRunnerGeneralTimeAfter, pRunner(this));
       if (!after.empty() && !(place.empty() && timestatus.empty()))
-        after = ", " + after;
+        after = L", " + after;
       
       gdi.fillRight();
       gdi.pushX();
@@ -4110,7 +4123,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
   }
   gdi.dropLine();
 
-  vector< pair<string, int> > lines;
+  vector< pair<wstring, int> > lines;
   oe->getExtraLines("SPExtra", lines);
 
   for (size_t k = 0; k < lines.size(); k++) {
@@ -4126,32 +4139,32 @@ void oRunner::printSplits(gdioutput &gdi) const {
 void oRunner::printStartInfo(gdioutput &gdi) const {
   gdi.setCX(10);
   gdi.fillDown();
-  gdi.addString("", boldText, "Startbevis X#" + oe->getName());
+  gdi.addString("", boldText, L"Startbevis X#" + oe->getName());
   gdi.addStringUT(fontSmall, oe->getDate());
   gdi.dropLine(0.5);
 
-  string bib = getBib();
+  wstring bib = getBib();
   if (!bib.empty())
-    bib = bib + ": ";
+    bib = bib + L": ";
 
-  gdi.addStringUT(boldSmall, bib + getName() + ", " + getClass());
+  gdi.addStringUT(boldSmall, bib + getName() + L", " + getClass());
   gdi.addStringUT(fontSmall, getClub());
   gdi.dropLine(0.5);
   
-  string startName;
+  wstring startName;
   if (getCourse(false)) {
     startName = trim(getCourse(false)->getStart());
     if (!startName.empty())
-      startName = " (" + startName + ")";
+      startName = L" (" + startName + L")";
   }    
   if (getStartTime() > 0)
-    gdi.addStringUT(fontSmall, lang.tl("Start: ") + getStartTimeS() + startName);
+    gdi.addStringUT(fontSmall, lang.tl(L"Start: ") + getStartTimeS() + startName);
   else
-    gdi.addStringUT(fontSmall, lang.tl("Fri starttid") + startName);
+    gdi.addStringUT(fontSmall, lang.tl(L"Fri starttid") + startName);
 
-  string borrowed = getDCI().getInt("CardFee") != 0 ? " (" + lang.tl("Hyrd") + ")" : "";
+  wstring borrowed = getDCI().getInt("CardFee") != 0 ? L" (" + lang.tl(L"Hyrd") + L")" : L"";
       
-  gdi.addStringUT(fontSmall, lang.tl("Bricka: ") + itos(getCardNo()) +  borrowed);
+  gdi.addStringUT(fontSmall, lang.tl(L"Bricka: ") + itow(getCardNo()) +  borrowed);
   
   int cardFee = getDCI().getInt("CardFee");
   if (cardFee < 0)
@@ -4160,17 +4173,17 @@ void oRunner::printStartInfo(gdioutput &gdi) const {
   int fee = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy) ? getDCI().getInt("Fee") + cardFee : 0;
 
   if (fee > 0) {
-    string info;
+    wstring info;
     if (getDCI().getInt("Paid") == fee)
       info = lang.tl("Betalat");
     else
       info = lang.tl("Faktureras");
     
-    gdi.addStringUT(fontSmall, lang.tl("Anmälningsavgift: ") + itos(fee)  + " (" + info + ")");
+    gdi.addStringUT(fontSmall, lang.tl("Anmälningsavgift: ") + itow(fee)  + L" (" + info + L")");
   }
 
   gdi.dropLine(1);
-  vector< pair<string, int> > lines;
+  vector< pair<wstring, int> > lines;
   oe->getExtraLines("EntryExtra", lines);
 
   for (size_t k = 0; k < lines.size(); k++) {
@@ -4179,7 +4192,7 @@ void oRunner::printStartInfo(gdioutput &gdi) const {
   if (lines.size()>0)
     gdi.dropLine(0.5);
 
-  gdi.addStringUT(fontSmall, "Av MeOS " + getMeosCompectVersion() + " / www.melin.nu/meos");
+  gdi.addStringUT(fontSmall, L"Av MeOS " + getMeosCompectVersion() + L" / www.melin.nu/meos");
 }
 
 vector<pRunner> oRunner::getRunnersOrdered() const {
@@ -4237,7 +4250,7 @@ void oEvent::updateRunnersFromDB()
   }
 }
 
-bool oRunner::updateFromDB(const string &name, int clubId, int classId,
+bool oRunner::updateFromDB(const wstring &name, int clubId, int classId,
                            int cardNo, int birthYear) {
   if (!oe->useRunnerDb())
     return false;
@@ -4329,32 +4342,32 @@ int oRunner::getSpeakerPriority() const {
   return p;
 }
 
-void oRunner::setNationality(const string &nat)
+void oRunner::setNationality(const wstring &nat)
 {
   getDI().setString("Nationality", nat);
 }
 
-string oRunner::getNationality() const
+wstring oRunner::getNationality() const
 {
   return getDCI().getString("Nationality");
 }
 
-bool oRunner::matchName(const string &pname) const
+bool oRunner::matchName(const wstring &pname) const
 {
   if (pname == sName || pname == tRealName)
     return true;
 
-  vector<string> myNames, inNames;
+  vector<wstring> myNames, inNames;
 
-  split(tRealName, " ", myNames);
-  split(pname, " ", inNames);
+  split(tRealName, L" ", myNames);
+  split(pname, L" ", inNames);
 
   for (size_t k = 0; k < myNames.size(); k++)
     myNames[k] = canonizeName(myNames[k].c_str());
 
   int nMatched = 0;
   for (size_t j = 0; j < inNames.size(); j++) {
-    string inName = canonizeName(inNames[j].c_str());
+    wstring inName = canonizeName(inNames[j].c_str());
     for (size_t k = 0; k < myNames.size(); k++) {
       if (myNames[k] == inName) {
         nMatched++;
@@ -4376,12 +4389,12 @@ bool oRunner::autoAssignBib() {
     return !getBib().empty();
 
   int maxbib = 0;
-  char pattern[32];
+  wchar_t pattern[32];
   int noBib = 0;
   int withBib = 0;
   for(oRunnerList::iterator it = oe->Runners.begin(); it !=oe->Runners.end();++it) {
     if (it->Class == Class) {
-      const string &bib = it->getBib();
+      const wstring &bib = it->getBib();
       if (!bib.empty()) {
         withBib++;
         int ibib = oClass::extractBibPattern(bib, pattern); 
@@ -4393,8 +4406,8 @@ bool oRunner::autoAssignBib() {
   }
 
   if (maxbib>0 && withBib>noBib) {
-    char bib[32];
-    sprintf_s(bib, pattern, maxbib+1);
+    wchar_t bib[32];
+    swprintf_s(bib, pattern, maxbib+1);
     setBib(bib, maxbib+1, true, false);
     return true;
   }
@@ -4707,7 +4720,7 @@ int oRunner::getMissedTime(int ctrlNo) const {
     return -1;
 }
 
-string oRunner::getMissedTimeS() const
+wstring oRunner::getMissedTimeS() const
 {
   setupRunnerStatistics();
   int t = 0;
@@ -4715,16 +4728,16 @@ string oRunner::getMissedTimeS() const
     if (tMissedTime[k]>0)
       t += tMissedTime[k];
 
-  return getTimeMS(t);
+  return getTimeMSW(t);
 }
 
-string oRunner::getMissedTimeS(int ctrlNo) const
+wstring oRunner::getMissedTimeS(int ctrlNo) const
 {
   int t = getMissedTime(ctrlNo);
   if (t>0)
-    return getTimeMS(t);
+    return getTimeMSW(t);
   else
-    return "";
+    return L"";
 }
 
 int oRunner::getLegPlace(int ctrlNo) const {
@@ -4839,21 +4852,21 @@ pRunner oRunner::getMatchedRunner(const SICard &sic) const {
     return pRunner(this);
 }
 
-int oRunner::getTotalRunningTime(int time) const {
+int oRunner::getTotalRunningTime(int time, bool includeInput) const {
   if (tStartTime < 0)
     return 0;
   if (tInTeam == 0 || tLeg == 0) {
     if (time == FinishTime)
-      return getRunningTime() + inputTime;
+      return getRunningTime() + (includeInput ? inputTime : 0);
     else
-      return time-tStartTime + inputTime;
+      return time-tStartTime + (includeInput ? inputTime : 0);
   }
   else {
     if (Class == 0 || unsigned(tLeg) >= Class->legInfo.size())
       return 0;
 
     if (time == FinishTime) {
-      return tInTeam->getLegRunningTime(tLeg, true); // Use the official running time in this case (which works with parallel legs)
+      return tInTeam->getLegRunningTime(tLeg, includeInput); // Use the official running time in this case (which works with parallel legs)
     }
 
     int baseleg = tLeg;
@@ -4867,26 +4880,26 @@ int oRunner::getTotalRunningTime(int time) const {
       leg--;
     }
 
-    int pt = leg>=0 ? tInTeam->getLegRunningTime(leg, true) : 0;
+    int pt = leg>=0 ? tInTeam->getLegRunningTime(leg, includeInput) : 0;
     if (pt>0)
       return pt + time - tStartTime;
     else if (tInTeam->tStartTime > 0)
-      return (time - tInTeam->tStartTime) + tInTeam->inputTime;
+      return (time - tInTeam->tStartTime) + (includeInput ? tInTeam->inputTime : 0);
     else
       return 0;
   }
 }
 
   // Get the complete name, including team and club.
-string oRunner::getCompleteIdentification(bool includeExtra) const {
+wstring oRunner::getCompleteIdentification(bool includeExtra) const {
   if (tInTeam == 0 || !Class || tInTeam->getName() == sName) {
     if (Club)
-      return getName() + " (" + Club->name + ")";
+      return getName() + L" (" + Club->name + L")";
     else
       return getName();
   }
   else {
-    string names;
+    wstring names;
     pClass clsToUse = tInTeam->Class != 0 ? tInTeam->Class : Class;
     // Get many names for paralell legs
     int firstLeg = tLeg;
@@ -4900,7 +4913,7 @@ string oRunner::getCompleteIdentification(bool includeExtra) const {
         if (names.empty())
           names = r->tRealName;
         else
-          names += "/" + r->tRealName;
+          names += L"/" + r->tRealName;
       }
       lt = clsToUse->getLegType(k + 1);
       if ( !(lt==LTIgnore || lt==LTParallel || lt == LTParallelOptional || (lt==LTExtra && includeExtra)))
@@ -4908,9 +4921,9 @@ string oRunner::getCompleteIdentification(bool includeExtra) const {
     }
 
     if (clsToUse->legInfo.size() <= 2)
-      return names + " (" + tInTeam->sName + ")";
+      return names + L" (" + tInTeam->sName + L")";
     else
-      return tInTeam->sName + " (" + names + ")";
+      return tInTeam->sName + L" (" + names + L")";
   }
 }
 
@@ -4958,7 +4971,7 @@ bool oRunner::canRemove() const
   return !oe->isRunnerUsed(Id);
 }
 
-void oAbstractRunner::setInputTime(const string &time) {
+void oAbstractRunner::setInputTime(const wstring &time) {
   int t = convertAbsoluteTimeMS(time);
   if (t != inputTime) {
     inputTime = t;
@@ -4966,11 +4979,11 @@ void oAbstractRunner::setInputTime(const string &time) {
   }
 }
 
-string oAbstractRunner::getInputTimeS() const {
+wstring oAbstractRunner::getInputTimeS() const {
   if (inputTime > 0)
-    return formatTime(inputTime);
+    return formatTimeW(inputTime);
   else
-    return "-";
+    return makeDash(L"-");
 }
 
 void oAbstractRunner::setInputStatus(RunnerStatus s) {
@@ -4980,7 +4993,7 @@ void oAbstractRunner::setInputStatus(RunnerStatus s) {
   }
 }
 
-string oAbstractRunner::getInputStatusS() const {
+wstring oAbstractRunner::getInputStatusS() const {
   return oe->formatStatus(inputStatus);
 }
 
@@ -5008,7 +5021,7 @@ void oRunner::setInputData(const oRunner &r) {
     oDataConstInterface src = r.getDCI();
 
     if (r.tStatus != StatusNotCompetiting) {
-      inputTime = r.getTotalRunningTime(r.FinishTime);
+      inputTime = r.getTotalRunningTime(r.FinishTime, true);
       inputStatus = r.getTotalStatus();
       if (r.tInTeam) { // If a team has not status ok, transfer this status to all team members.
         if (r.tInTeam->getTotalStatus() > StatusOK)
@@ -5057,26 +5070,26 @@ void oEvent::getDBRunnersInEvent(intkeymap<pClass, __int64> &runners) const {
   }
 }
 
-void oRunner::init(const RunnerDBEntry &dbr) {
+void oRunner::init(const RunnerWDBEntry &dbr) {
   setTemporary();
   dbr.getName(sName);
   getRealName(sName, tRealName);
-  CardNo = dbr.cardNo;
-  Club = oe->getRunnerDatabase().getClub(dbr.clubNo);
+  CardNo = dbr.dbe().cardNo;
+  Club = oe->getRunnerDatabase().getClub(dbr.dbe().clubNo);
   getDI().setString("Nationality", dbr.getNationality());
   getDI().setInt("BirthYear", dbr.getBirthYear());
   getDI().setString("Sex", dbr.getSex());
   setExtIdentifier(dbr.getExtId());
 }
 
-void oEvent::selectRunners(const string &classType, int lowAge,
-                           int highAge, const string &firstDate,
-                           const string &lastDate, bool includeWithFee,
+void oEvent::selectRunners(const wstring &classType, int lowAge,
+                           int highAge, const wstring &firstDate,
+                           const wstring &lastDate, bool includeWithFee,
                            vector<pRunner> &output) const {
   oRunnerList::const_iterator it;
   int cid = 0;
-  if (classType.length() > 2 && classType.substr(0,2) == "::")
-    cid = atoi(classType.c_str() + 2);
+  if (classType.length() > 2 && classType.substr(0,2) == L"::")
+    cid = _wtoi(classType.c_str() + 2);
 
   output.clear();
 
@@ -5084,17 +5097,17 @@ void oEvent::selectRunners(const string &classType, int lowAge,
   if (!firstDate.empty()) {
     firstD = convertDateYMS(firstDate, true);
     if (firstD <= 0)
-      throw meosException("Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + firstDate);
+      throw meosException(L"Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + firstDate);
   }
 
   if (!lastDate.empty()) {
     lastD = convertDateYMS(lastDate, true);
     if (lastD <= 0)
-      throw meosException("Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + lastDate);
+      throw meosException(L"Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + lastDate);
   }
 
 
-  bool allClass = classType == "*";
+  bool allClass = classType == L"*";
   for (it=Runners.begin(); it != Runners.end(); ++it) {
     if (it->skip())
       continue;
@@ -5314,7 +5327,7 @@ void oAbstractRunner::setTempResultZero(const TempResult &tr)  {
   tmpResult = tr;
 }
 
-const string &oAbstractRunner::TempResult::getStatusS(RunnerStatus inputStatus) const {
+const wstring &oAbstractRunner::TempResult::getStatusS(RunnerStatus inputStatus) const {
   if (inputStatus == StatusOK)
     return oEvent::formatStatus(getStatus());
   else if (inputStatus == StatusUnknown)
@@ -5323,39 +5336,39 @@ const string &oAbstractRunner::TempResult::getStatusS(RunnerStatus inputStatus) 
     return oEvent::formatStatus(max(inputStatus, getStatus()));
 }
 
-const string &oAbstractRunner::TempResult::getPrintPlaceS(bool withDot) const {
+const wstring &oAbstractRunner::TempResult::getPrintPlaceS(bool withDot) const {
   int p=getPlace();
   if (p>0 && p<10000){
     if (withDot) {
-      string &res = StringCache::getInstance().get();
-      res = itos(p);
-      res += ".";
+      wstring &res = StringCache::getInstance().wget();
+      res = itow(p);
+      res += L".";
       return res;
     }
     else
-      return itos(p);
+      return itow(p);
   }
-  return _EmptyString;
+  return _EmptyWString;
 }
 
-const string &oAbstractRunner::TempResult::getRunningTimeS(int inputTime) const {
-  return formatTime(getRunningTime() + inputTime);
+const wstring &oAbstractRunner::TempResult::getRunningTimeS(int inputTime) const {
+  return formatTimeW(getRunningTime() + inputTime);
 }
 
-const string &oAbstractRunner::TempResult::getFinishTimeS(const oEvent *oe) const {
+const wstring &oAbstractRunner::TempResult::getFinishTimeS(const oEvent *oe) const {
   return oe->getAbsTime(getFinishTime());
 }
 
-const string &oAbstractRunner::TempResult::getStartTimeS(const oEvent *oe) const {
+const wstring &oAbstractRunner::TempResult::getStartTimeS(const oEvent *oe) const {
   int st = getStartTime();
   if (st > 0)
       return oe->getAbsTime(st);
-  else return MakeDash("-");
+  else return makeDash(L"-");
 }
 
-const string &oAbstractRunner::TempResult::getOutputTime(int ix) const {
+const wstring &oAbstractRunner::TempResult::getOutputTime(int ix) const {
   int t = size_t(ix) < outputTimes.size() ? outputTimes[ix] : 0;
-  return formatTime(t);
+  return formatTimeW(t);
 }
 
 int oAbstractRunner::TempResult::getOutputNumber(int ix) const {
@@ -5550,10 +5563,10 @@ bool oAbstractRunner::hasLateEntryFee() const {
   else if (fee == highFee && highFee > normalFee && normalFee > 0)
     return true;
 
-  string date = getEntryDate(true);
+  wstring date = getEntryDate(true);
   oDataConstInterface odc = oe->getDCI();
-  string oentry = odc.getDate("OrdinaryEntry");
-  bool late = date > oentry && oentry>="2010-01-01";
+  wstring oentry = odc.getDate("OrdinaryEntry");
+  bool late = date > oentry && oentry >= L"2010-01-01";
 
   return late;
 }

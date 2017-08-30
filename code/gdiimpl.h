@@ -42,16 +42,15 @@ class GDIImplFontSet {
   HFONT pfItalic;
   void deleteFonts();
 
-  string gdiName;
+  wstring gdiName;
   mutable vector<double> avgWidthCache;
-  int charSet;
 public:
   static float baseSize(int format, float scale);
   void getInfo(FontInfo &fi) const;
 
   GDIImplFontSet();
   virtual ~GDIImplFontSet();
-  void init(double scale, int charSet, const string &font, const string &gdiName);
+  void init(double scale, const wstring &font, const wstring &gdiName);
   void selectFont(HDC hDC, int format) const;
   HFONT getGUIFont() const {return pfMedium;}
   HFONT getFont(int format) const;
@@ -63,12 +62,12 @@ private:
   int width;
   int height;
   double relScale;
-  string face;
+  wstring face;
 public:
   GDIImplFontEnum();
   virtual ~GDIImplFontEnum();
 
-  const string &getFace() const {return face;}
+  const wstring &getFace() const {return face;}
   double getRelScale() const {return relScale;}
 
   friend int CALLBACK enumFontProc(const LOGFONT* logFont, const TEXTMETRIC *metric, DWORD id, LPARAM lParam);

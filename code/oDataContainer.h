@@ -34,8 +34,8 @@ class Table;
 class oDataDefiner {
 public:
   virtual ~oDataDefiner() {}
-  virtual const string &formatData(oBase *obj) const = 0;
-  virtual string setData(oBase *obj, const string &input) const = 0;
+  virtual const wstring &formatData(oBase *obj) const = 0;
+  virtual wstring setData(oBase *obj, const wstring &input) const = 0;
   /** Used to define/add the table column in the table*/
   virtual int addTableColumn(Table *table, const string &description, int minWidth) const = 0;
 };
@@ -50,7 +50,7 @@ struct oDataInfo {
   char Description[48];
   int decimalSize;
   int decimalScale;
-  vector< pair<string, string> > enumDescription;
+  vector< pair<wstring, wstring> > enumDescription;
   const oDataDefiner *dataDefiner;
   int zeroSortPadding;
   oDataInfo();
@@ -66,15 +66,15 @@ struct oVariableInt {
 
 class oVariableString {
   public:
-    oVariableString(char *buff, int size) : data(buff), maxSize(size), strData(0), strIndex(-2) {}
-    oVariableString(vector<string> &vec) : data(0), maxSize(0), strData(&vec), strIndex(-1) {}
-    oVariableString(vector<string> &vec, int position) : data(0), maxSize(0), strData(&vec), strIndex(position) {}
+    oVariableString(wchar_t *buff, int size) : data(buff), maxSize(size), strData(0), strIndex(-2) {}
+    oVariableString(vector<wstring> &vec) : data(0), maxSize(0), strData(&vec), strIndex(-1) {}
+    oVariableString(vector<wstring> &vec, int position) : data(0), maxSize(0), strData(&vec), strIndex(position) {}
     char name[20];
-    bool store(const char *str);
+    bool store(const wchar_t *str);
   private:
-    char *data;
+    wchar_t *data;
     int maxSize;
-    vector<string> *strData;
+    vector<wstring> *strData;
     int strIndex; //-1 means array, otherwise string in fixed position
 };
 
@@ -103,15 +103,15 @@ protected:
 
   oDataInfo *findVariable(const char *name);
   const oDataInfo *findVariable(const char *Name) const;
-  bool formatNumber(int nr, const oDataInfo &di, char bf[64]) const;
+  bool formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) const;
 
-  static string encodeArray(const vector<string> &input);
-  static void decodeArray(const string &input, vector<string> &output);
+  static wstring encodeArray(const vector<wstring> &input);
+  static void decodeArray(const string &winput, vector<wstring> &output);
 
   bool isModified(const oDataInfo &di,
-                                const void *data,
-                                const void *oldData,
-                                vector< vector<string> > *strptr) const;
+                  const void *data,
+                  const void *oldData,
+                  vector< vector<wstring> > *strptr) const;
 
   oDataInfo &addVariable(oDataInfo &odi);
   static string C_INT(const string & name);
@@ -121,7 +121,7 @@ protected:
   static string C_SMALLINTU(const string & name);
   static string C_TINYINTU(const string & name);
   static string C_STRING(const string & name, int len);
-  static string SQL_quote(const char *in);
+  static string SQL_quote(const wchar_t *in);
 public:
   enum oIntSize{oISDecimal = 28, oISTime = 29, oISCurrency = 30, oISDate = 31, oIS64=64, oIS32=32, oIS16=16, oIS8=8, oIS16U=17, oIS8U=9};
   enum oStringSubType {oSSString = 0, oSSEnum = 1};
@@ -148,7 +148,7 @@ public:
   oDataInfo &addVariableString(const char *name, const char *descr, const oDataDefiner *dataDef = 0);
 
   oDataInfo &addVariableEnum(const char *name, int maxChar, const char *descr,
-                                  const vector< pair<string, string> > enumValues);
+                                  const vector< pair<wstring, wstring> > enumValues);
 
   void initData(oBase *ob, int datasize);
 
@@ -158,11 +158,11 @@ public:
   bool setInt64(void *data, const char *Name, __int64 V);
   __int64 getInt64(const void *data, const char *Name) const;
 
-  bool setString(oBase *ob, const char *name, const string &v);
-  const string &getString(const oBase *ob, const char *name) const;
+  bool setString(oBase *ob, const char *name, const wstring &v);
+  const wstring &getString(const oBase *ob, const char *name) const;
 
-  bool setDate(void *data, const char *Name, const string &V);
-  const string &getDate(const void *data, const char *Name) const;
+  bool setDate(void *data, const char *Name, const wstring &V);
+  const wstring &getDate(const void *data, const char *Name) const;
 
   bool write(const oBase *ob, xmlparser &xml) const;
   void set(oBase *ob, const xmlobject &xo);
@@ -178,10 +178,10 @@ public:
 
   int fillTableCol(const oBase &owner, Table &table, bool canEdit) const;
   void buildTableCol(Table *table);
-  bool inputData(oBase *ob, int id, const string &input, int inputId, string &output, bool noUpdate);
+  bool inputData(oBase *ob, int id, const wstring &input, int inputId, wstring &output, bool noUpdate);
 
   // Use id (table internal) or name
-  void fillInput(const void *data, int id, const char *name, vector< pair<string, size_t> > &out, size_t &selected) const;
+  void fillInput(const void *data, int id, const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const;
 
   bool setEnum(oBase *ob, const char *name, int selectedIndex);
 
@@ -224,10 +224,10 @@ public:
   inline __int64 getInt64(const char *Name) const
     {return oDC->getInt64(Data, Name);}
 
-  inline bool setStringNoUpdate(const char *Name, const string &Value)
+  inline bool setStringNoUpdate(const char *Name, const wstring &Value)
     {return oDC->setString(oB, Name, Value);}
 
-  inline bool setString(const char *Name, const string &Value)
+  inline bool setString(const char *Name, const wstring &Value)
   {
     if (oDC->setString(oB, Name, Value)){
       oB->updateChanged();
@@ -236,10 +236,10 @@ public:
     else return false;
   }
 
-  inline string getString(const char *Name) const
+  inline wstring getString(const char *Name) const
     {return oDC->getString(oB, Name);}
 
-  inline bool setDate(const char *Name, const string &Value)
+  inline bool setDate(const char *Name, const wstring &Value)
   {
     if (oDC->setDate(Data, Name, Value)){
       oB->updateChanged();
@@ -248,7 +248,7 @@ public:
     else return false;
   }
 
-  inline const string &getDate(const char *Name) const
+  inline const wstring &getDate(const char *Name) const
     {return oDC->getDate(Data, Name);}
 
   inline void buildDataFields(gdioutput &gdi) const
@@ -291,7 +291,7 @@ public:
   inline void set(const xmlobject &xo)
     {oDC->set(oB, xo);}
 
-  void fillInput(const char *name, vector< pair<string, size_t> > &out, size_t &selected) const {
+  void fillInput(const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const {
     oDC->fillInput(Data, -1, name, out, selected);
   }
 
@@ -324,10 +324,10 @@ public:
   inline __int64 getInt64(const char *Name) const
     {return oDC->getInt64(Data, Name);}
 
-  inline const string &getString(const char *Name) const
+  inline const wstring &getString(const char *Name) const
     {return oDC->getString(oB, Name);}
 
-  inline const string &getDate(const char *Name) const
+  inline const wstring &getDate(const char *Name) const
     {return oDC->getDate(Data, Name);}
 
   inline int getInt(const string &name) const
@@ -336,10 +336,10 @@ public:
   inline __int64 getInt64(const string &name) const
     {return oDC->getInt64(Data, name.c_str());}
 
-  inline const string &getString(const string &name) const
+  inline const wstring &getString(const string &name) const
     {return oDC->getString(oB, name.c_str());}
 
-  inline const string &getDate(const string &name) const
+  inline const wstring &getDate(const string &name) const
     {return oDC->getDate(Data, name.c_str());}
 
   inline void buildDataFields(gdioutput &gdi) const
@@ -369,7 +369,7 @@ public:
   int getDataAmountMeasure() const
     {return oDC->getDataAmountMeasure(Data);}
 
-  void fillInput(const char *name, vector< pair<string, size_t> > &out, size_t &selected) const {
+  void fillInput(const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const {
     oDC->fillInput(Data, -1, name, out, selected);
   }
 

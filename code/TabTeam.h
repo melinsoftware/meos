@@ -30,8 +30,8 @@ class TabTeam :
 private:
   bool save(gdioutput &gdi, bool dontReloadTeams);
 
-  string lastSearchExpr;
-  stdext::hash_set<int> lastFilter;
+  wstring lastSearchExpr;
+  unordered_set<int> lastFilter;
   DWORD timeToFill;
   int inputId;
   int searchCB(gdioutput &gdi, int type, void *data);
@@ -45,7 +45,7 @@ private:
 
   int shownRunners;
   int shownDistinctRunners;
-  const string &getSearchString() const;
+  const wstring &getSearchString() const;
 
   void fillTeamList(gdioutput &gdi);
   void addToolbar(gdioutput &gdi) const;
@@ -59,13 +59,13 @@ private:
   void doAddTeamMembers(gdioutput &gdi);
 
   void showRunners(gdioutput &gdi, const char *title,
-                   const set< pair<string, int> > &rToList, 
+                   const set< pair<wstring, int> > &rToList, 
                    int limitX, set<int> &usedR);
 
   
   void processChangeRunner(gdioutput &gdi, pTeam t, int leg, pRunner r);
 
-  pRunner findRunner(const string &name, int cardNo) const;
+  pRunner findRunner(const wstring &name, int cardNo) const;
   vector<TeamLineup> teamLineup;
 
   // Returns true if the warning concerns the same team

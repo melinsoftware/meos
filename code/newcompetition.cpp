@@ -70,8 +70,13 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "DoImportEntries") {
       createCompetition(gdi);
       try {
-		    gdi.autoRefresh(true);
-        saveEntries(gdi, false, true);
+        gdi.autoRefresh(true);
+        FlowOperation res = saveEntries(gdi, false, true);
+        if (res != FlowContinue) {
+          if (res == FlowCancel)
+            newCompetitionGuide(gdi, 1);
+          return 0;
+        }
       }
       catch (std::exception &) {
         newCompetitionGuide(gdi, 1);
@@ -216,7 +221,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       }
 
       if (t <= 0 || d <= 0) {
-        gdi.setTextTranslate("AllowedInterval", "Felaktigt datum/tid", true);
+        gdi.setTextTranslate("AllowedInterval", L"Felaktigt datum/tid", true);
       }
       else {
         long long absT = SystemTimeToInt64Second(st);
@@ -224,7 +229,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
         long long stopT = absT + 23 * 3600;
         SYSTEMTIME start = Int64SecondToSystemTime(absT);
         SYSTEMTIME end = Int64SecondToSystemTime(stopT);
-        string s = "Tävlingen måste avgöras mellan X och Y.#" + convertSystemTime(start) + "#" + convertSystemTime(end);
+        wstring s = L"Tävlingen måste avgöras mellan X och Y.#" + convertSystemTimeW(start) + L"#" + convertSystemTimeW(end);
         gdi.setTextTranslate("AllowedInterval", s, true);
       }
     }
@@ -252,13 +257,13 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
     gdi.addString("", fontMediumPlus, "Namn och tidpunkt");
 
     gdi.dropLine(0.5);
-    gdi.addInput("Name", lang.tl("Ny tävling"), 34, 0, "Tävlingens namn:");
+    gdi.addInput("Name", lang.tl("Ny tävling"), 34, 0, L"Tävlingens namn:");
 
     gdi.pushX();
     gdi.fillRight();
-    InputInfo &date = gdi.addInput("Date", getLocalDate(), 16, NewGuideCB, "Datum (för första start):");
+    InputInfo &date = gdi.addInput("Date", getLocalDateW(), 16, NewGuideCB, L"Datum (för första start):");
 
-    gdi.addInput("FirstStart", "07:00:00", 12, NewGuideCB, "Första tillåtna starttid:");
+    gdi.addInput("FirstStart", L"07:00:00", 12, NewGuideCB, L"Första tillåtna starttid:");
 
     gdi.popX();
     gdi.fillDown();
@@ -375,18 +380,18 @@ void TabCompetition::entryChoice(gdioutput &gdi) {
 }
 
 void TabCompetition::createCompetition(gdioutput &gdi) {
-  string name = gdi.getText("Name");
-  string date = gdi.getText("Date");
-  string start = gdi.getText("FirstStart");
+  wstring name = gdi.getText("Name");
+  wstring date = gdi.getText("Date");
+  wstring start = gdi.getText("FirstStart");
 
-  oe->newCompetition("tmp");
+  oe->newCompetition(L"tmp");
   oe->setName(name);
   oe->setDate(date);
 
   int t = convertAbsoluteTimeHMS(start, -1);
   if (t > 0 && t < 3600*24) {
     t = max(0, t-3600);
-    oe->setZeroTime(formatTimeHMS(t));
+    oe->setZeroTime(formatTimeHMSW(t));
   }
   else
     throw meosException("Ogiltig tid");

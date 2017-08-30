@@ -31,45 +31,45 @@
 MeOSFeatures::MeOSFeatures(void)
 {
   addHead("General");
-  add(DrawStartList, "SL", "Prepare start lists");
-  add(Bib, "BB", "Bibs");
-  add(Clubs, "CL", "Clubs");
-  add(EditClub, "CC", "Edit Clubs").require(Clubs);
+  add(DrawStartList, L"SL", "Prepare start lists");
+  add(Bib, L"BB", "Bibs");
+  add(Clubs, L"CL", "Clubs");
+  add(EditClub, L"CC", "Edit Clubs").require(Clubs);
 
-  add(InForest, "RF", "Track runners in forest");
-  add(Network, "NW", "Several MeOS Clients in a network");
+  add(InForest, L"RF", "Track runners in forest");
+  add(Network, L"NW", "Several MeOS Clients in a network");
 
   addHead("MeOS Features");
-  add(Speaker, "SP", "Använd speakerstöd");
-  add(SeveralStages, "ST", "Several stages");
-  add(Economy, "EC", "Economy and fees").require(EditClub).require(Clubs);
-  add(Vacancy, "VA", "Vacancies and entry cancellations").require(DrawStartList);
-  add(TimeAdjust, "TA", "Manual time penalties and adjustments");
-  add(RunnerDb, "RD", "Club and runner database").require(Clubs);
+  add(Speaker, L"SP", "Använd speakerstöd");
+  add(SeveralStages, L"ST", "Several stages");
+  add(Economy, L"EC", "Economy and fees").require(EditClub).require(Clubs);
+  add(Vacancy, L"VA", "Vacancies and entry cancellations").require(DrawStartList);
+  add(TimeAdjust, L"TA", "Manual time penalties and adjustments");
+  add(RunnerDb, L"RD", "Club and runner database").require(Clubs);
   addHead("Teams and forking");
-  add(ForkedIndividual, "FO", "Forked individual courses");
-  add(Patrol, "PT", "Patrols");
-  add(Relay, "RL", "Relays");
-  add(MultipleRaces, "MR", "Several races for a runner").require(Relay);
+  add(ForkedIndividual, L"FO", "Forked individual courses");
+  add(Patrol, L"PT", "Patrols");
+  add(Relay, L"RL", "Relays");
+  add(MultipleRaces, L"MR", "Several races for a runner").require(Relay);
 
   addHead("Rogaining");
-  add(Rogaining, "RO", "Rogaining");
-  add(PointAdjust, "PA", "Manual point reductions and adjustments").require(Rogaining);
+  add(Rogaining, L"RO", "Rogaining");
+  add(PointAdjust, L"PA", "Manual point reductions and adjustments").require(Rogaining);
 }
 
-MeOSFeatures::FeatureDescriptor &MeOSFeatures::add(Feature feat, const char *code, const char *descr) {
+MeOSFeatures::FeatureDescriptor &MeOSFeatures::add(Feature feat, const wchar_t *code, const char *descr) {
   assert(codeToIx.count(code) == 0);
   assert(featureToIx.count(feat) == 0);
 
   featureToIx[feat] = desc.size();
-  string codeS = code;
+  wstring codeS = code;
   codeToIx[codeS] = desc.size();
   desc.push_back(FeatureDescriptor(feat, codeS, descr));
   return desc.back();
 }
 
 MeOSFeatures::FeatureDescriptor &MeOSFeatures::addHead(const char *descr) {
-  desc.push_back(FeatureDescriptor(_Head, "-", descr));
+  desc.push_back(FeatureDescriptor(_Head, L"-", descr));
   return desc.back();
 }
 
@@ -86,7 +86,7 @@ const string &MeOSFeatures::getHead(int featureIx) const {
 }
 
 MeOSFeatures::FeatureDescriptor::FeatureDescriptor(Feature featIn,
-                                                   string codeIn,
+                                                   wstring codeIn,
                                                    string descIn) :
   feat(featIn), code(codeIn), desc(descIn)
 {
@@ -146,7 +146,7 @@ const string &MeOSFeatures::getDescription(Feature f) const  {
   return desc[getIndex(f)].desc;
 }
 
-const string &MeOSFeatures::getCode(Feature f) const {
+const wstring &MeOSFeatures::getCode(Feature f) const {
   return desc[getIndex(f)].code;
 }
 
@@ -157,32 +157,32 @@ int MeOSFeatures::getIndex(Feature f) const {
   return  res->second;
 }
 
-string MeOSFeatures::serialize() const {
+wstring MeOSFeatures::serialize() const {
   if (features.empty())
-    return "NONE";
+    return L"NONE";
 
-  string st;
+  wstring st;
   for (set<Feature>::const_iterator it = features.begin(); it != features.end(); ++it) {
     if (!st.empty())
-      st += "+";
+      st += L"+";
     st += getCode(*it);
   }
   return st;
 }
 
-void MeOSFeatures::deserialize(const string &input, oEvent &oe) {
+void MeOSFeatures::deserialize(const wstring &input, oEvent &oe) {
   features.clear();
 
-  if (input == "NONE")
+  if (input == L"NONE")
     return;
   else if (input.empty()) {
     loadDefaults(oe);
   }
 
-  vector<string> ff;
-  split(input, "+", ff);
+  vector<wstring> ff;
+  split(input, L"+", ff);
   for (size_t k = 0; k < ff.size(); k++) {
-    map<string, int>::iterator res = codeToIx.find(ff[k]);
+    map<wstring, int>::iterator res = codeToIx.find(ff[k]);
     if (res != codeToIx.end())
       features.insert(desc[res->second].feat);
   }

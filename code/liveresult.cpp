@@ -32,13 +32,13 @@
 #include "liveresult.h"
 
 LiveResult::LiveResult(oEvent *oe) : oe(oe), active(false), lastTime(0), rToWatch(0) {
-  baseFont = oe->getPropertyString("LiveResultFont", "Consolas");
+  baseFont = oe->getPropertyString("LiveResultFont", L"Consolas");
   showResultList = -1;
   timerScale = 1.0;
 }
 
 
-string LiveResult::getFont(const gdioutput &gdi, double relScale) const {
+wstring LiveResult::getFont(const gdioutput &gdi, double relScale) const {
   int h,w;
   gdi.getTargetDimension(w, h);
   if (!gdi.isFullScreen())
@@ -47,9 +47,9 @@ string LiveResult::getFont(const gdioutput &gdi, double relScale) const {
   double fact = min(h/180.0, w/300.0);
 
   double size = relScale * fact;
-  char ss[32];
-  sprintf_s(ss, "%f", size);
-  string font = baseFont + ";" + ss;
+  wchar_t ss[32];
+  swprintf_s(ss, L"%f", size);
+  wstring font = baseFont + L";" + ss;
   return font;
 }
 
@@ -65,11 +65,11 @@ void LiveResult::showDefaultView(gdioutput &gdi) {
   rc.right = w - 30;
   rc.bottom = h - 22;
   
-  string font = getFont(gdi, 1.0);
+  wstring font = getFont(gdi, 1.0);
   gdi.addRectangle(rc, colorLightYellow, true);
-  gdi.addString("timing", 50, w / 2, textCenter|boldHuge, "MeOS Timing", 0, 0, font.c_str());
+  gdi.addString("timing", 50, w / 2, textCenter|boldHuge, L"MeOS Timing", 0, 0, font.c_str());
 
-  TextInfo &ti = gdi.addString("measure", 0, 0, boldHuge,  "55:55:55", 0, 0, font.c_str());
+  TextInfo &ti = gdi.addString("measure", 0, 0, boldHuge,  L"55:55:55", 0, 0, font.c_str());
   int tw = ti.textRect.right - ti.textRect.left;
   timerScale = double(w) * 0.8 / double(tw); 
   gdi.removeString("measure");
@@ -234,19 +234,19 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
       startFinishTime[newRToWatch->getId()].first = fp->getAdjustedTime();
       isDuel = false;
       if (rToWatch.size() == 1) {
-        string font = getFont(gdi, timerScale);
+        wstring font = getFont(gdi, timerScale);
         BaseInfo *bi = gdi.setText("timing", newRToWatch->getName(), false);
         dynamic_cast<TextInfo &>(*bi).changeFont(getFont(gdi, 0.7));
         gdi.addTimer(h/2, w/2, boldHuge|textCenter|timeWithTenth, 0, 0, 0, NOTIMEOUT, font.c_str());
         screenSize = 1;
       }
       else if (rToWatch.size() == 2) {
-        string font = getFont(gdi, timerScale * 0.6);
+        wstring font = getFont(gdi, timerScale * 0.6);
   
         pRunner r0 = oe->getRunner(rToWatch[0], 0);
         pRunner r1 = oe->getRunner(rToWatch[1], 0);
 
-        string n = (r0 ? r0->getName(): "-") + " / " + (r1 ? r1->getName() : "-");
+        wstring n = (r0 ? r0->getName(): L"-") + L" / " + (r1 ? r1->getName() : L"-");
         bool duel = r0 && r1 && fromPunch == oPunch::PunchStart && 
                           r0->getTeam() != 0 && 
                           r0->getTeam() == r1->getTeam();
@@ -257,13 +257,13 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
           ti.changeFont(getFont(gdi, 0.5));
         }
         else {
-          BaseInfo *bi = gdi.setText("timing", "", false);
+          BaseInfo *bi = gdi.setText("timing", L"", false);
           TextInfo &ti = dynamic_cast<TextInfo &>(*bi);
-          string sfont = getFont(gdi, 0.5);
+          wstring sfont = getFont(gdi, 0.5);
           TextInfo &ti2 = gdi.addString("n1", ti.yp, gdi.scaleLength(20), boldHuge, 
-                                        "#" + (r0 ? r0->getName() : string("")), 0, 0, sfont.c_str());
+                                        L"#" + (r0 ? r0->getName() : wstring(L"")), 0, 0, sfont.c_str());
           gdi.addString("n2", ti.yp + ti2.getHeight() + 4, gdi.getWidth(), boldHuge | textRight, 
-                        "#" + (r1 ? r1->getName() : string("")), 0, 0, sfont.c_str());
+                        L"#" + (r1 ? r1->getName() : wstring(L"")), 0, 0, sfont.c_str());
         }
         int id1 = rToWatch[0];
         int id2 = rToWatch[1];
@@ -312,14 +312,14 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
       
         if (screenSize == 1) {
           gdi.restore("LiveResult", false);
-          string font = getFont(gdi, timerScale);
-          gdi.addString("", h/2, w/2, boldHuge|textCenter, formatTime(rt), 0, 0, font.c_str()).setColor(colorGreen);
+          wstring font = getFont(gdi, timerScale);
+          gdi.addString("", h/2, w/2, boldHuge|textCenter, formatTimeW(rt), 0, 0, font.c_str()).setColor(colorGreen);
           gdi.addTimeout(5, 0).setHandler(this);
         }
         else if (screenSize == 2) {
           string id = "timer" + itos(runner2ScreenPos[rToFinish->getId()]);
-          BaseInfo *bi = gdi.setText(id, formatTime(rt), false);
-          string font = getFont(gdi, timerScale * 0.6);
+          BaseInfo *bi = gdi.setText(id, formatTimeW(rt), false);
+          wstring font = getFont(gdi, timerScale * 0.6);
   
           if (bi) {
             TextInfo &ti = dynamic_cast<TextInfo &>(*bi);
@@ -359,7 +359,7 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
     int h,w;
     gdi.getTargetDimension(w, h);
     gdi.fillDown();
-    BaseInfo *bi = gdi.setTextTranslate("timing", "MeOS Timing", false);
+    BaseInfo *bi = gdi.setTextTranslate("timing", L"MeOS Timing", false);
     TextInfo &ti = dynamic_cast<TextInfo &>(*bi);
     ti.changeFont(getFont(gdi, 0.7));
     gdi.refreshFast();
@@ -372,7 +372,7 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
     if (size_t(showResultList) >= results.size())
       return;
     Result &res = results[showResultList];
-    string font = getFont(gdi, 0.7);
+    wstring font = getFont(gdi, 0.7);
     int y = resYPos;
     pRunner r = oe->getRunner(res.runnerId, 0);
     if (!r) {
@@ -384,11 +384,11 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
       gdi.getTargetDimension(w, h);
    
       gdi.takeShownStringsSnapshot();
-      TextInfo &ti = gdi.addStringUT(y, 30, fontLarge, itos(res.place) + ".", 0, 0, font.c_str());
+      TextInfo &ti = gdi.addStringUT(y, 30, fontLarge, itow(res.place) + L".", 0, 0, font.c_str());
       int ht = ti.textRect.bottom - ti.textRect.top;
       gdi.addStringUT(y, 30 + ht * 2 , fontLarge, r->getName(), 0, 0, font.c_str());
       //int w = gdi.getWidth();
-      gdi.addStringUT(y, w - 4 * ht, fontLarge, formatTime(res.time), 0, 0, font.c_str());
+      gdi.addStringUT(y, w - 4 * ht, fontLarge, formatTimeW(res.time), 0, 0, font.c_str());
       gdi.refreshSmartFromSnapshot(false);
       resYPos += int (ht * 1.1);
       showResultList++;

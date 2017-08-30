@@ -28,15 +28,15 @@ class TabClub :
 {
   int clubCB(gdioutput &gdi, int type, void *data);
 
-  string firstDate;
-  string lastDate;
+  wstring firstDate;
+  wstring lastDate;
   bool filterAge;
   bool onlyNoFee;
   bool useManualFee;
   int highAge;
   int lowAge;
   int baseFee;
-  string typeS;
+  wstring typeS;
 
   int firstInvoice;
 
@@ -50,7 +50,7 @@ protected:
 public:
   void selectClub(gdioutput &gdi,  pClub pc);
 
-  void importAcceptedInvoice(gdioutput &gdi, const string &file);
+  void importAcceptedInvoice(gdioutput &gdi, const wstring &file);
 
   const char * getTypeStr() const {return "TClubTab";}
   TabType getType() const {return TClubTab;}

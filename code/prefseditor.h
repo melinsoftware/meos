@@ -37,8 +37,8 @@ private:
 
   int userCB(gdioutput &gdi, int type, const BaseInfo &data);
 
-  string codeValue(const string &in, PropertyType p) const;
-  GDICOLOR selectColor(const string &val, PropertyType p) const;
+  wstring codeValue(const wstring &in, PropertyType p) const;
+  GDICOLOR selectColor(const wstring &val, PropertyType p) const;
 
 public:
   void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);

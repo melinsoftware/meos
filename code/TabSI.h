@@ -66,7 +66,7 @@ private:
   
   vector<PunchInfo> punches;
   vector<SICard> cards;
-  vector<string> filterDate;
+  vector<wstring> filterDate;
 
   int runnerMatchedId;
   bool printErrorShown;
@@ -76,7 +76,7 @@ private:
   SIMode mode;
   int currentAssignIndex;
 
-  void printSIInfo(gdioutput &gdi, const string &port) const;
+  void printSIInfo(gdioutput &gdi, const wstring &port) const;
 
   void assignCard(gdioutput &gdi, const SICard &sic);
   void entryCard(gdioutput &gdi, const SICard &sic);
@@ -85,12 +85,12 @@ private:
   void generateEntryLine(gdioutput &gdi, pRunner r);
   int lastClassId;
   int lastClubId;
-  string lastFee;
+  wstring lastFee;
   int inputId;
 
   void showCheckCardStatus(gdioutput &gdi, const string &cmd);
   
-  string getCardInfo(bool param, vector<int> &count) const;
+  wstring getCardInfo(bool param, vector<int> &count) const;
   // Formatting for card tick off
   bool checkHeader;
   int cardPosX;
@@ -177,12 +177,12 @@ public:
   bool checkpPrintQueue(gdioutput &gdi);
 
   struct StoredStartInfo {
-    string storedName;
-    string storedCardNo;
-    string storedClub;
-    string storedFee;
-    string storedPhone;
-    string storedStartTime;
+    wstring storedName;
+    wstring storedCardNo;
+    wstring storedClub;
+    wstring storedFee;
+    wstring storedPhone;
+    wstring storedStartTime;
     bool allStages;
     bool rentState;
     bool hasPaid;

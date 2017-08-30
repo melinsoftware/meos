@@ -292,9 +292,9 @@ public:
 
   void takeVariable(const char*name, vector<int> &val) const;
 
-  void getSymbols(vector< pair<string, size_t> > &symb) const;
+  void getSymbols(vector< pair<wstring, size_t> > &symb) const;
 
-  void getSymbolInfo(int ix, string &name, string &desc) const;
+  void getSymbolInfo(int ix, wstring &name, wstring &desc) const;
 
   void dumpVariables(gdioutput &gdi, int c1, int c2) const;
   void dumpSymbols(gdioutput &gdi, int c1, int c2) const;

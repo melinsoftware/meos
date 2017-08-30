@@ -52,7 +52,7 @@ public:
   // True if there are rented cards
   bool hasRentedCard;
 
-  vector<string> classWithoutCourse;
+  vector<wstring> classWithoutCourse;
 
   void clear();
 

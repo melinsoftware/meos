@@ -29,9 +29,9 @@
 #include "meosdb/sqltypes.h"
 #include <process.h>
 
-MySQLReconnect::MySQLReconnect(const string &errorIn) : AutoMachine("MySQL-daemon"), error(errorIn)
+MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-daemon"), error(errorIn)
 {
-  timeError = getLocalTime();
+  timeError = getLocalTimeW();
   hThread=0;
 }
 
@@ -46,8 +46,8 @@ bool MySQLReconnect::stop()
   if (interval==0)
     return true;
 
-  return MessageBox(0, "If this daemon is stopped, then MeOS will not reconnect to the network. Continue?",
-    "Warning", MB_YESNO|MB_ICONWARNING)==IDYES;
+  return MessageBox(0, L"If this daemon is stopped, then MeOS will not reconnect to the network. Continue?",
+    L"Warning", MB_YESNO|MB_ICONWARNING)==IDYES;
 }
 
 static CRITICAL_SECTION CS_MySQL;
@@ -105,12 +105,12 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     mysqlStatus=0;
     char bf[256];
     if (!oe->reConnect(bf)) {
-      gdi.addInfoBox("", "warning:dbproblem#" + string(bf), 9000);
+      gdi.addInfoBox("", L"warning:dbproblem#" + gdi.widen(bf), 9000);
       interval = 10;
     }
     else {
-      gdi.addInfoBox("", "Återansluten mot databasen, tävlingen synkroniserad.", 10000);
-      timeReconnect = getLocalTime();
+      gdi.addInfoBox("", L"Återansluten mot databasen, tävlingen synkroniserad.", 10000);
+      timeReconnect = getLocalTimeW();
       gdi.setDBErrorState(false);
       gdi.setWindowTitle(oe->getTitleName());
       interval=0;
@@ -145,15 +145,15 @@ void MySQLReconnect::status(gdioutput &gdi) {
   gdi.addString("", 1, name);
   gdi.pushX();
   if (interval>0){
-    gdi.addStringUT(1, timeError + ": " + lang.tl("DATABASE ERROR")).setColor(colorDarkRed);
+    gdi.addStringUT(1, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkRed);
     gdi.fillRight();
     gdi.addString("", 0, "Nästa försök:");
     gdi.addTimer(gdi.getCY(),  gdi.getCX()+10, timerCanBeNegative, (GetTickCount()-timeout)/1000);
   }
   else {
-    gdi.addStringUT(0, timeError + ": " + lang.tl("DATABASE ERROR")).setColor(colorDarkGrey);
+    gdi.addStringUT(0, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkGrey);
     gdi.fillRight();
-    gdi.addStringUT(0, timeReconnect + ":");
+    gdi.addStringUT(0, timeReconnect + L":");
     gdi.addString("", 1, "Återansluten mot databasen, tävlingen synkroniserad.").setColor(colorDarkGreen);
     gdi.dropLine();
     gdi.fillDown();

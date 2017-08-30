@@ -134,7 +134,7 @@ int NoStartRunnerCB(gdioutput *gdi, int type, void *data)
       ti->highlight=false;
       ti->active=false;
       ti->color=RGB(255,0,0);
-      gdi->setText(ti->id, "Ej start", true);
+      gdi->setText(ti->id, L"Ej start", true);
     }
   }
   return 0;
@@ -213,8 +213,8 @@ void TabList::generateList(gdioutput &gdi)
     oe->generateList(gdi, !noReEvaluate, currentList, false);
   }
   catch (const meosException &ex) {
-    string err = lang.tl(ex.what());
-    gdi.addString("", 1, "List Error: X#" + err).setColor(colorRed);
+    wstring err = lang.tl(ex.wwhat());
+    gdi.addString("", 1, L"List Error: X#" + err).setColor(colorRed);
   }
 
   gdi.setOffset(oX, oY, false);
@@ -300,37 +300,38 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       gdi.print(oe);
     }
     else if (bi.id=="HTML") {
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("Strukturerat webbdokument (html)", "*.html;*.htm"));
-      ext.push_back(make_pair("Formaterat webbdokument (html)", "*.html;*.htm"));
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Strukturerat webbdokument (html)", L"*.html;*.htm"));
+      ext.push_back(make_pair(L"Formaterat webbdokument (html)", L"*.html;*.htm"));
 
-      string file=gdi.browseForSave(ext, "html", index);
+      wstring file=gdi.browseForSave(ext, L"html", index);
 
       if (!file.empty()) {
         if (index == 1)
-          gdi.writeTableHTML(gdi.toWide(file), oe->getName(), 0);
+          gdi.writeTableHTML(file, oe->getName(), 0);
         else {
           assert(index == 2);
-          gdi.writeHTML(gdi.toWide(file), oe->getName(), 0);
+          gdi.writeHTML(file, oe->getName(), 0);
         }
         gdi.openDoc(file.c_str());
       }
     }
     else if (bi.id=="Copy") {
       ostringstream fout;
-      gdi.writeTableHTML(fout, "MeOS", true, 0);
+      gdi.writeTableHTML(fout, L"MeOS", true, 0);
       string res = fout.str();
-      gdi.copyToClipboard(res, false, "");
+      gdi.copyToClipboard(res, L"");
     }
     else if (bi.id=="PDF") {
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("Portable Document Format (PDF)", "*.pdf"));
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Portable Document Format (PDF)", L"*.pdf"));
 
-      string file=gdi.browseForSave(ext, "pdf", index);
+      wstring file=gdi.browseForSave(ext, L"pdf", index);
 
       if (!file.empty()) {
         pdfwriter pdf;
-        pdf.generatePDF(gdi, gdi.toWide(file), oe->getName() + ", " + currentList.getName(), oe->getDCI().getString("Organizer"), gdi.getTL());
+        pdf.generatePDF(gdi, file, oe->getName() + L", " + currentList.getName(),
+                                   oe->getDCI().getString("Organizer"), gdi.getTL());
         gdi.openDoc(file.c_str());
       }
     }
@@ -339,7 +340,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       gdioutput *gdi_new;
       TabList *tl_new = this;
       if (!ownWindow) {
-        gdi_new = createExtraWindow(uniqueTag("list"), MakeDash("MeOS - " + currentList.getName()), gdi.getWidth() + 64 + gdi.scaleLength(120));
+        gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - ") + currentList.getName(), gdi.getWidth() + 64 + gdi.scaleLength(120));
         if (gdi_new) {
           TabList &tl = dynamic_cast<TabList &>(*gdi_new->getTabs().get(TListTab));
           tl.currentList = currentList;
@@ -377,7 +378,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "Remember") {
       oListParam &par = currentList.getParam();
-      string baseName = par.getDefaultName();
+      wstring baseName = par.getDefaultName();
       baseName = oe->getListContainer().makeUniqueParamName(baseName);
       par.setName(baseName);
       oe->synchronize(false);
@@ -399,7 +400,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       if (gdi.getSelectedItem("SavedInstance", lbi)) {
         const oListParam &par = oe->getListContainer().getParam(lbi.data);
         gdi.clearPage(true);
-        gdi.addString("", boldLarge, "Döp om X#" + par.getName());
+        gdi.addString("", boldLarge, L"Döp om X#" + par.getName());
         gdi.setData("ParamIx", lbi.data);
         gdi.dropLine();
         gdi.fillRight();
@@ -413,7 +414,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "DoRenameSaved") {
       int ix = int(gdi.getData("ParamIx"));
       oListParam &par = oe->getListContainer().getParam(ix);
-      string name = gdi.getText("Name");
+      wstring name = gdi.getText("Name");
       par.setName(name);
       loadPage(gdi);
     }
@@ -423,11 +424,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         //oe->getListContainer().mergeParam(0, lbi.data);
         const oListParam &par = oe->getListContainer().getParam(lbi.data);
         gdi.clearPage(true);
-        gdi.addString("", boldLarge, "Slå ihop X#" + par.getName());
+        gdi.addString("", boldLarge, L"Slå ihop X#" + par.getName());
         gdi.setData("ParamIx", lbi.data);
         gdi.dropLine();
-        gdi.addListBox("Merge", 350, 250, 0, "Slå ihop med:");
-        vector < pair<string, size_t> > cand;
+        gdi.addListBox("Merge", 350, 250, 0, L"Slå ihop med:");
+        vector < pair<wstring, size_t> > cand;
         oe->getListContainer().getMergeCandidates(lbi.data, cand);
         gdi.addItem("Merge", cand);
         gdi.addCheckbox("ShowTitle", "Visa rubrik mellan listorna", 0, false);
@@ -558,7 +559,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         lastResultClassSelection = par.selection;
       par.filterMaxPer = gdi.getTextNo("ClassLimit");
       par.inputNumber = gdi.getTextNo("InputNumber");
-      lastInputNumber = itos(par.inputNumber);
+      lastInputNumber = itow(par.inputNumber);
 
       par.pageBreak = gdi.isChecked("PageBreak");
       par.listCode = (EStdListType)currentListType;
@@ -981,7 +982,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "ImportCustom") {
 
       MetaListContainer &lc = oe->getListContainer();
-      vector< pair<string, int> >  installedLists;
+      vector< pair<wstring, int> >  installedLists;
       set<string> installedId;
       for (int k = 0; k < lc.getNumLists(); k++) {
         if (lc.isExternal(k)) {
@@ -993,7 +994,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         }
       }
 
-      vector< pair<string, pair<string, string> > > lists;
+      vector< pair<wstring, pair<string, wstring> > > lists;
       lc.enumerateLists(lists);
       if (lists.empty() && installedLists.empty()) {
         bi.id = "BrowseList";
@@ -1061,11 +1062,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       gdi.refresh();
     }
     else if (bi.id == "BrowseList") {
-      vector< pair<string, string> > filter;
-      filter.push_back(make_pair("xml-data", "*.xml;*.meoslist"));
-      string file = gdi.browseForOpen(filter, "xml");
+      vector< pair<wstring, wstring> > filter;
+      filter.push_back(make_pair(L"xml-data", L"*.xml;*.meoslist"));
+      wstring file = gdi.browseForOpen(filter, L"xml");
       if (!file.empty()) {
-        xmlparser xml(0);
+        xmlparser xml;
         xml.read(file);
         xmlobject xlist = xml.getObject(0);
         oe->synchronize();
@@ -1074,13 +1075,6 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
 
         loadPage(gdi);
       }
-    }
-    else if (bi.id == "ResultListFT_ONATT") {
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("Semikolonseparerad", "*.csv;*.txt"));
-      string file=gdi.browseForSave(ext, "txt", index);
-      if (!file.empty())
-        oe->exportONattResults(gdi, file);
     }
     else if (bi.id == "EditInForest") {
       TabRunner &rt = dynamic_cast<TabRunner &>(*gdi.getTabs().get(TRunnerTab));
@@ -1140,11 +1134,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
   else if (type == GUI_LINK) {
     TextInfo ti = *(TextInfo *)data;
     if (ti.id == "CustomList") {
-      vector< pair<string, pair<string, string> > > lists;
+      vector< pair<wstring, pair<string, wstring> > > lists;
       oe->getListContainer().enumerateLists(lists);
       size_t ix = ti.getExtraSize();
       if (ix < lists.size()) {
-        xmlparser xml(0);
+        xmlparser xml;
         xml.read(lists[ix].second.second);
         xmlobject xlist = xml.getObject(0);
 
@@ -1159,11 +1153,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
 
     }
     else if (ti.id == "RemoveList") {
-      vector< pair<string, pair<string, string> > > lists;
+      vector< pair<wstring, pair<string, wstring> > > lists;
       oe->getListContainer().enumerateLists(lists);
       size_t ix = ti.getExtraSize();
       if (ix < lists.size()) {
-        if (gdi.ask("Vill du ta bort 'X'?#" + lists[ix].first)) {
+        if (gdi.ask(L"Vill du ta bort 'X'?#" + lists[ix].first)) {
           DeleteFile(lists[ix].second.second.c_str());
         }
       }
@@ -1173,7 +1167,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     }
     else if (ti.id == "RemoveInstalled") {
       int ix = ti.getExtraInt();
-      if (gdi.ask("Vill du ta bort 'X'?#" + oe->getListContainer().getList(ix).getListName())) {
+      if (gdi.ask(L"Vill du ta bort 'X'?#" + oe->getListContainer().getList(ix).getListName())) {
 
         oe->synchronize(false);
         oe->getListContainer().removeList(ix);
@@ -1199,12 +1193,12 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
 }
 
 void TabList::enableFromTo(oEvent &oe, gdioutput &gdi, bool from, bool to) {
-  vector< pair<string, size_t> > d;
+  vector< pair<wstring, size_t> > d;
   oe.fillControls(d, oEvent::CTCourseControl);
 
   if (from) {
     gdi.enableInput("ResultSpecialFrom");
-    vector< pair<string, size_t> > ds;
+    vector< pair<wstring, size_t> > ds;
     ds.push_back(make_pair(lang.tl("Start"), 0));
     ds.insert(ds.end(), d.begin(), d.end());
     gdi.addItem("ResultSpecialFrom", ds);
@@ -1261,7 +1255,7 @@ void TabList::selectGeneralList(gdioutput &gdi, EStdListType type)
     //gdi.enableInput("LegNumber");
     //oe->fillLegNumbers(gdi, "LegNumber", li.isTeamList(), true);
     set<int> clsUnused;
-    vector< pair<string, size_t> > out;
+    vector< pair<wstring, size_t> > out;
     oe->fillLegNumbers(clsUnused, li.isTeamList(), true, out);
     gdi.addItem("LegNumber", out);
     gdi.setInputStatus("LegNumber", !out.empty());    
@@ -1276,7 +1270,7 @@ void TabList::selectGeneralList(gdioutput &gdi, EStdListType type)
 
 void TabList::makeClassSelection(gdioutput &gdi) {
   gdi.fillDown();
-  gdi.addListBox("ListSelection", 250, 300, ListsCB, "Urval:", "", true);
+  gdi.addListBox("ListSelection", 250, 300, ListsCB, L"Urval:", L"", true);
 
   gdi.pushX();
   gdi.fillRight();
@@ -1295,7 +1289,7 @@ void TabList::loadGeneralList(gdioutput &gdi)
   gdi.addString("", boldLarge, "Skapa generell lista");
   gdi.dropLine(0.8);
   gdi.pushY();
-  gdi.addSelection("ListType", 250, 300, ListsCB, "Lista:");
+  gdi.addSelection("ListType", 250, 300, ListsCB, L"Lista:");
   oe->fillListTypes(gdi, "ListType", 0);
 
   makeClassSelection(gdi);
@@ -1313,11 +1307,11 @@ void TabList::loadGeneralList(gdioutput &gdi)
   if (lastLimitPer == -1) {
     lastLimitPer = oe->getPropertyInt("classlimit", 0);
   }
-  string lastClassLimit;
+  wstring lastClassLimit;
   if (lastLimitPer > 0)
-    lastClassLimit = itos(lastLimitPer);
+    lastClassLimit = itow(lastLimitPer);
   
-  gdi.addInput("ClassLimit", lastClassLimit, 5, 0, "Begränsa antal per klass:");
+  gdi.addInput("ClassLimit", lastClassLimit, 5, 0, L"Begränsa antal per klass:");
   gdi.dropLine();
 
   makeFromTo(gdi);
@@ -1333,10 +1327,10 @@ void TabList::loadGeneralList(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(3);
   */
-  gdi.addSelection("LegNumber", 140, 300, ListsCB, "Sträcka:");
+  gdi.addSelection("LegNumber", 140, 300, ListsCB, L"Sträcka:");
   gdi.disableInput("LegNumber");
 
-  gdi.addInput("InputNumber", lastInputNumber, 5, 0, "Listparameter:", "Ett värde vars tolkning beror på listan.");
+  gdi.addInput("InputNumber", lastInputNumber, 5, 0, L"Listparameter:", L"Ett värde vars tolkning beror på listan.");
   gdi.disableInput("InputNumber");
   gdi.popX();
 
@@ -1347,7 +1341,7 @@ void TabList::loadGeneralList(gdioutput &gdi)
 
 
   gdi.dropLine(3);
-  gdi.addInput("Title", "", 32, ListsCB, "Egen listrubrik:");
+  gdi.addInput("Title", L"", 32, ListsCB, L"Egen listrubrik:");
 
   gdi.dropLine();
   gdi.fillRight();
@@ -1372,10 +1366,10 @@ void TabList::makeFromTo(gdioutput &gdi) {
   gdi.fillRight();
   gdi.pushX();
 
-  gdi.addSelection("ResultSpecialFrom", 140, 300, ListsCB, "Från kontroll:");
+  gdi.addSelection("ResultSpecialFrom", 140, 300, ListsCB, L"Från kontroll:");
   gdi.disableInput("ResultSpecialFrom");
 
-  gdi.addSelection("ResultSpecialTo", 140, 300, ListsCB, "Till kontroll:");
+  gdi.addSelection("ResultSpecialTo", 140, 300, ListsCB, L"Till kontroll:");
   gdi.disableInput("ResultSpecialTo");
 
   gdi.popX();
@@ -1388,14 +1382,14 @@ void TabList::settingsResultList(gdioutput &gdi)
   oe->sanityCheck(gdi, true);
   gdi.fillDown();
   gdi.clearPage(false);
-  gdi.addString("", boldLarge, MakeDash("Resultatlista - inställningar"));
+  gdi.addString("", boldLarge, makeDash(L"Resultatlista - inställningar"));
 
   //gdi.addSelection("ListType", 200, 300, ListsCB, "Lista");
   //oe->fillListTypes(gdi, "ListType", 0);
   const int boxHeight = 380;
   gdi.pushY();
   gdi.fillDown();
-  gdi.addListBox("ListSelection", 200, boxHeight, ListsCB, "Urval:", "", true);
+  gdi.addListBox("ListSelection", 200, boxHeight, ListsCB, L"Urval:", L"", true);
 
   gdi.dropLine(0.5);
   gdi.fillRight();
@@ -1414,8 +1408,8 @@ void TabList::settingsResultList(gdioutput &gdi)
 
   gdi.addListBox("ResultType", 180, boxHeight, ListsCB);
   
-  vector< pair<string, size_t> > lists;
-  vector< pair<string, size_t> > dlists;
+  vector< pair<wstring, size_t> > lists;
+  vector< pair<wstring, size_t> > dlists;
   const MetaListContainer &lc = oe->getListContainer();
   lc.getLists(dlists, false, true, !oe->hasTeam());
   set<int> usedListIx;
@@ -1427,20 +1421,20 @@ void TabList::settingsResultList(gdioutput &gdi)
   }
   lists.reserve(dlists.size() + 10);
 
-  lists.push_back(make_pair(lang.tl("Individuell"), 1));
+  lists.push_back(make_pair(lang.tl(L"Individuell"), 1));
   
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Patrol)) 
-    lists.push_back(make_pair(lang.tl("Patrull"), 2));
+    lists.push_back(make_pair(lang.tl(L"Patrull"), 2));
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Relay)) {
-    lists.push_back(make_pair(lang.tl("Stafett - total"), 3));
-    lists.push_back(make_pair(lang.tl("Stafett - sammanställning"), 4));
+    lists.push_back(make_pair(lang.tl(L"Stafett - total"), 3));
+    lists.push_back(make_pair(lang.tl(L"Stafett - sammanställning"), 4));
     
-    lists.push_back(make_pair(lang.tl("Stafett - sträcka"), 
+    lists.push_back(make_pair(lang.tl(L"Stafett - sträcka"), 
                     getListIx(tag2ListIx, usedListIx, "legresult", 5)));
   }
   
-  lists.push_back(make_pair(lang.tl("Allmänna resultat"), 6));
+  lists.push_back(make_pair(lang.tl(L"Allmänna resultat"), 6));
   
   size_t startIx = lists.size();
   for (size_t k = 0; k < dlists.size(); k++) {
@@ -1479,28 +1473,28 @@ void TabList::settingsResultList(gdioutput &gdi)
   if (lastLimitPer == -1) {
     lastLimitPer = oe->getPropertyInt("classlimit", 0);
   }
-  string lastClassLimit;
+  wstring lastClassLimit;
   if (lastLimitPer > 0)
-    lastClassLimit = itos(lastLimitPer);
+    lastClassLimit = itow(lastLimitPer);
   
   gdi.addInput("ClassLimit", lastClassLimit, 5, 0);
   gdi.popX();
   gdi.dropLine(2); 
   gdi.addString("", 0, "Listparameter:");
   gdi.dropLine(-0.2);
-  gdi.addInput("InputNumber", lastInputNumber, 5, 0, "", "Ett värde vars tolkning beror på listan.");
+  gdi.addInput("InputNumber", lastInputNumber, 5, 0, L"", L"Ett värde vars tolkning beror på listan.");
   gdi.disableInput("InputNumber");
   gdi.popX();
   gdi.dropLine(2);
 
   makeFromTo(gdi);
 
-  gdi.addSelection("LegNumber", 140, 300, ListsCB, "Sträcka:");
+  gdi.addSelection("LegNumber", 140, 300, ListsCB, L"Sträcka:");
   gdi.disableInput("LegNumber");
   gdi.popX();
 
   gdi.dropLine(3);
-  gdi.addInput("Title", "", 32, ListsCB, "Egen listrubrik:");
+  gdi.addInput("Title", L"", 32, ListsCB, L"Egen listrubrik:");
   gdi.popX();
 
   gdi.dropLine(3.5);
@@ -1694,7 +1688,7 @@ bool TabList::loadPage(gdioutput &gdi)
   gdi.dropLine(3);
   gdi.fillDown();
 
-  vector< pair<string, size_t> > savedParams;
+  vector< pair<wstring, size_t> > savedParams;
   lc.getListParam(savedParams);
   if (savedParams.size() > 0) {
     gdi.addString("", 1, "Sparade listval");
@@ -1788,7 +1782,7 @@ bool TabList::loadPage(gdioutput &gdi)
     int v = k;
     if (v>12)
       v=(v-11)*10;
-    gdi.addItem("ClassLimit", itos(v), v);
+    gdi.addItem("ClassLimit", itow(v), v);
   }
   gdi.selectItemByData("ClassLimit", oe->getPropertyInt("classlimit", 0));
 
@@ -1867,15 +1861,15 @@ void TabList::splitPrintSettings(oEvent &oe, gdioutput &gdi, bool setupPrinter,
 
     if (returnMode == TSITab) {
       int printLen = oe.getPropertyInt("NumSplitsOnePage", 3);
-      vector< pair<string, size_t> > nsp;
+      vector< pair<wstring, size_t> > nsp;
       for (size_t j = 1; j < 8; j++)
-        nsp.push_back(make_pair(itos(j), j));
-      gdi.addSelection("NumPerPage", 90, 200, ListsCB, "Max antal brickor per sida");
+        nsp.push_back(make_pair(itow(j), j));
+      gdi.addSelection("NumPerPage", 90, 200, ListsCB, L"Max antal brickor per sida");
       gdi.addItem("NumPerPage", nsp);
       gdi.selectItemByData("NumPerPage", printLen);
 
       int maxWait = oe.getPropertyInt("SplitPrintMaxWait", 60);
-      gdi.addInput("MaxWaitTime", itos(maxWait), 8, 0, "Längsta tid i sekunder att vänta med utskrift");
+      gdi.addInput("MaxWaitTime", itow(maxWait), 8, 0, L"Längsta tid i sekunder att vänta med utskrift");
 
       enableWideFormat(gdi, wideFormat);
     }
@@ -1891,13 +1885,13 @@ void TabList::splitPrintSettings(oEvent &oe, gdioutput &gdi, bool setupPrinter,
 }
 
 void TabList::saveExtraLines(oEvent &oe, const char *dataField, gdioutput &gdi) {
-  vector< pair<string, int> > lines;
+  vector< pair<wstring, int> > lines;
   for (int k = 0; k < 5; k++) {
     string row = "row"+itos(k);
     string key = "font"+itos(k);
     ListBoxInfo lbi;
     gdi.getSelectedItem(key, lbi);
-    string r = gdi.getText(row);
+    wstring r = gdi.getText(row);
     lines.push_back(make_pair(r, lbi.data));
   }
   oe.setExtraLines(dataField, lines);
@@ -1907,8 +1901,8 @@ void TabList::customTextLines(oEvent &oe, const char *dataField, gdioutput &gdi)
   gdi.dropLine(2.5);
   gdi.addString("", boldText, "Egna textrader");
 
-  vector< pair<string, size_t> > fonts;
-  vector< pair<string, int> > lines;
+  vector< pair<wstring, size_t> > fonts;
+  vector< pair<wstring, int> > lines;
 
   MetaListPost::getAllFonts(fonts);
   oe.getExtraLines(dataField, lines);
@@ -1917,7 +1911,7 @@ void TabList::customTextLines(oEvent &oe, const char *dataField, gdioutput &gdi)
     gdi.fillRight();
     gdi.pushX();
     string row = "row"+itos(k);
-    gdi.addInput(row, "", 24);
+    gdi.addInput(row, L"", 24);
     string key = "font"+itos(k);
     gdi.addSelection(key, 100, 100);
     gdi.addItem(key, fonts);
@@ -1968,7 +1962,7 @@ EStdListType TabList::getTypeFromResultIndex(int ix) const {
 
 void TabList::setResultOptionsFromType(gdioutput &gdi, int data) {
   bool builtIn = data < CUSTOM_OFFSET;
-  string info, title;
+  wstring info, title;
   bool hasResMod = false;
   oListInfo li;
   EStdListType type = getTypeFromResultIndex(data);
@@ -1993,7 +1987,7 @@ void TabList::setResultOptionsFromType(gdioutput &gdi, int data) {
       
 
     set<int> clsUnused;
-    vector< pair<string, size_t> > out;
+    vector< pair<wstring, size_t> > out;
       
     oe->fillLegNumbers(clsUnused, li.isTeamList(), true, out);
     gdi.addItem("LegNumber", out);
@@ -2019,7 +2013,7 @@ void TabList::setResultOptionsFromType(gdioutput &gdi, int data) {
       gdi.enableInput("LegNumber");
       //oe->fillLegNumbers(gdi, "LegNumber", li.isTeamList(), true);
       set<int> clsUnused;
-      vector< pair<string, size_t> > out;
+      vector< pair<wstring, size_t> > out;
       oe->fillLegNumbers(clsUnused, li.isTeamList(), true, out);
       gdi.addItem("LegNumber", out);
       if (!out.empty() && lastLeg >= 0)

@@ -47,10 +47,10 @@ MethodEditor::MethodEditor(oEvent *oe_) {
 }
 
 MethodEditor::~MethodEditor() {
-  setCurrentResult(0, "");
+  setCurrentResult(0, L"");
 }
 
-void MethodEditor::setCurrentResult(DynamicResult *lst, const string &fileSrc) {
+void MethodEditor::setCurrentResult(DynamicResult *lst, const wstring &fileSrc) {
   delete currentResult;
   currentResult = lst;
   fileNameSource = fileSrc;
@@ -74,7 +74,7 @@ void MethodEditor::show(gdioutput &gdi) {
   gdi.pushX();
   gdi.setCX(gdi.getCX() + gdi.scaleLength(6));
   if (currentResult)
-    gdi.addString("", boldLarge, MakeDash("Result Module - X#") + currentResult->getName(true));
+    gdi.addString("", boldLarge, makeDash(L"Result Module - X#") + currentResult->getName(true));
   else
     gdi.addString("", boldLarge, "Edit Result Modules");
 
@@ -109,32 +109,32 @@ void MethodEditor::show(gdioutput &gdi) {
     if (currentResult->getTag().empty())
       currentResult->setTag(uniqueTag("result"));
 
-    gdi.addInput("Name", currentResult->getName(false), 20, methodCB, "Name of result module:");
+    gdi.addInput("Name", currentResult->getName(false), 20, methodCB, L"Name of result module:");
     
     string tag = currentResult->getTag();
     vector<int> listIx;
     oe->getListContainer().getListsByResultModule(tag, listIx);
     
     string udtag = DynamicResult::undecorateTag(tag);
-    gdi.addInput("Tag", udtag, 20, methodCB, "Result module identifier:");
+    gdi.addInput("Tag", gdi.widen(udtag), 20, methodCB, L"Result module identifier:");
     if (!listIx.empty()) {
       gdi.disableInput("Tag");
       gdi.getBaseInfo("Tag").setExtra(1);
-      string lists = oe->getListContainer().getList(listIx.front()).getListName();
+      wstring lists = oe->getListContainer().getList(listIx.front()).getListName();
       if (listIx.size() > 1)
-        lists += ", ...";
-      gdi.addString("", 0, "Resultatmodulen används i X.#" + lists);
+        lists += L", ...";
+      gdi.addString("", 0, L"Resultatmodulen används i X.#" + lists);
     }
 
-    string desc = currentResult->getDescription();
+    wstring desc = currentResult->getDescription();
     if (wasLoadedBuiltIn)
       desc = lang.tl(desc);
 
-    gdi.addInputBox("Desc", 300, 70, desc, methodCB, "Description:");
+    gdi.addInputBox("Desc", 300, 70, desc, methodCB, L"Description:");
 
     gdi.dropLine();
     gdi.fillRight();
-    gdi.addSelection("Method", 200, 200, methodCB, "Edit rule for:");
+    gdi.addSelection("Method", 200, 200, methodCB, L"Edit rule for:");
     vector< pair<DynamicResult::DynamicMethods, string> > mt;
     currentResult->getMethodTypes(mt);
 
@@ -158,7 +158,7 @@ void MethodEditor::show(gdioutput &gdi) {
 }
 
 bool MethodEditor::checkTag(const string &tag, bool throwError) const {
-  vector< pair<int, pair<string, string> > > tagNameList;
+  vector< pair<int, pair<string, wstring> > > tagNameList;
   oe->getGeneralResults(false, tagNameList, false);
   for (size_t k = 0; k < tag.length(); k++) {
     char c = tag[k];
@@ -189,7 +189,7 @@ bool MethodEditor::checkTag(const string &tag, bool throwError) const {
 }
 
 string MethodEditor::uniqueTag(const string &tag) const {
-  vector< pair<int, pair<string, string> > > tagNameList;
+  vector< pair<int, pair<string, wstring> > > tagNameList;
   oe->getGeneralResults(false, tagNameList, false);
   set<string> tags;
   for (size_t k = 0; k < tagNameList.size(); k++)
@@ -220,22 +220,22 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       ofstream fout("methoddoc.txt");
       DynamicResult dr;
       dr.declareSymbols(DynamicResult::MRScore, true);
-      vector< pair<string, size_t> > symbs;
+      vector< pair<wstring, size_t> > symbs;
       dr.getSymbols(symbs);
-      fout << "#head{" << lang.tl("Deltagare") << "}\n#table{2}" << endl;
+      fout << "#head{" << gdi.toUTF8(lang.tl("Deltagare")) << "}\n#table{2}" << endl;
       for (size_t k = 0; k < symbs.size(); k++) {
-        string name, desc;
+        wstring name, desc;
         dr.getSymbolInfo(symbs[k].second, name, desc);
-        fout << "{#mono{" << name << "}}{" << lang.tl(desc) << "}" << endl;
+        fout << "{#mono{" << gdi.toUTF8(name) << "}}{" << gdi.toUTF8(lang.tl(desc)) << "}" << endl;
       }
 
       dr.declareSymbols(DynamicResult::MTScore, true);
       dr.getSymbols(symbs);
-      fout << "#head{" << lang.tl("Lag") << "}\n#table{2}" << endl;
+      fout << "#head{" << gdi.toUTF8(lang.tl("Lag")) << "}\n#table{2}" << endl;
       for (size_t k = 0; k < symbs.size(); k++) {
-        string name, desc;
+        wstring name, desc;
         dr.getSymbolInfo(symbs[k].second, name, desc);
-        fout << "{#mono{" << name << "}}{" << lang.tl(desc) << "}" << endl;
+        fout << "{#mono{" << gdi.toUTF8(name) << "}}{" << gdi.toUTF8(lang.tl(desc)) << "}" << endl;
       }
     }
     else if (bi.id == "NewRules") {
@@ -245,7 +245,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       gdi.setData("MethodEditorClz", this);
       gdi.addString("", boldLarge, "New Set of Result Rules");
 
-      setCurrentResult(new DynamicResult(), "");
+      setCurrentResult(new DynamicResult(), L"");
       wasLoadedBuiltIn = false;
       currentResult->setName(lang.tl("Result Calculation"));
       currentIndex = -1;
@@ -258,17 +258,17 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         return 0;
       checkChangedSave(gdi);
       
-      string fileName;
+      wstring fileName;
 
       int ix = 0;
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("xml-data", "*.rules"));
-      fileName = gdi.browseForSave(ext, "rules", ix);
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"xml-data", L"*.rules"));
+      fileName = gdi.browseForSave(ext, L"rules", ix);
       if (fileName.empty())
         return 0;
 
       saveSettings(gdi);
-      string path = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
+      wstring path = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
       currentResult->save(path);
       fileNameSource = path;
       oe->loadGeneralResults(true);
@@ -284,7 +284,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       saveSettings(gdi);
       checkChangedSave(gdi);
 
-      string path = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
+      wstring path = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
       currentResult->save(path);
       fileNameSource = path;
 
@@ -300,7 +300,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           continue;
 
         if (utag == DynamicResult::undecorateTag(mtag)) {
-          doUpdate = gdi.ask("Vill du uppdatera resultatlistorna i den öppande tävlingen?");
+          doUpdate = gdi.ask(L"Vill du uppdatera resultatlistorna i den öppande tävlingen?");
           break;
         }
       }
@@ -319,14 +319,14 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
     else if (bi.id == "Remove") {
       if (!currentResult)
         return 0;
-      if (gdi.ask("Vill du ta bort 'X'?#" + currentResult->getName(true))) {
-        string path = fileNameSource;//getInternalPath(currentResult->getTag());
-        string rm = path + ".removed";
+      if (gdi.ask(L"Vill du ta bort 'X'?#" + currentResult->getName(true))) {
+        wstring path = fileNameSource;//getInternalPath(currentResult->getTag());
+        wstring rm = path + L".removed";
         DeleteFile(rm.c_str());
-        rename(path.c_str(), rm.c_str());
+        _wrename(path.c_str(), rm.c_str());
         oe->loadGeneralResults(true);
         makeDirty(gdi, ClearDirty);
-        setCurrentResult(0, "");
+        setCurrentResult(0, L"");
         gdi.clearPage(false);
         show(gdi);
       }
@@ -336,9 +336,9 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       if (!checkSave(gdi))
         return 0;
 
-      vector< pair<string, string> > ext;
-      ext.push_back(make_pair("xml-data", "*.rules"));
-      string fileName = gdi.browseForOpen(ext, "rules");
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"xml-data", L"*.rules"));
+      wstring fileName = gdi.browseForOpen(ext, L"rules");
       if (fileName.empty())
         return 0;
 
@@ -352,7 +352,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       }
 
       wasLoadedBuiltIn = false;
-      setCurrentResult(tmp, "");
+      setCurrentResult(tmp, L"");
       currentIndex = -1;
       gdi.clearPage(false);
 
@@ -369,26 +369,26 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       gdi.setData("MethodEditorClz", this);
 
       gdi.pushX();
-      vector< pair<string, size_t> > lists;
+      vector< pair<wstring, size_t> > lists;
       //oe->getListContainer().getLists(lists);
-      vector< pair<int, pair<string, string> > > tagNameList;
+      vector< pair<int, pair<string, wstring> > > tagNameList;
       oe->getGeneralResults(true, tagNameList, true);
       for (size_t k = 0; k < tagNameList.size(); k++) {
         string tag = tagNameList[k].second.first;
         string utag = DynamicResult::undecorateTag(tag);
         vector<int> listIx;
         oe->getListContainer().getListsByResultModule(tag, listIx);
-        string n = tagNameList[k].second.second + " (" + utag + ")";
+        wstring n = tagNameList[k].second.second + L" (" + gdi.widen(utag) + L")";
         
         if (listIx.size() > 0) {
-          n += " *";
+          n += L" *";
         }
 
         lists.push_back(make_pair(n, tagNameList[k].first));
       }
       sort(lists.begin(), lists.end());
       gdi.fillRight();
-      gdi.addSelection("OpenList", 350, 400, methodCB, "Choose result module:", "Rader markerade med (*) kommer från en lista i tävlingen.");
+      gdi.addSelection("OpenList", 350, 400, methodCB, L"Choose result module:", L"Rader markerade med (*) kommer från en lista i tävlingen.");
       gdi.addItem("OpenList", lists);
       gdi.autoGrow("OpenList");
       gdi.selectFirstItem("OpenList");
@@ -398,7 +398,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       gdi.addButton("DoOpenCopy", "Open a Copy", methodCB);
     
       if (!lists.empty()) {
-        string srcFile;
+        wstring srcFile;
         
         bool ro = dynamic_cast<DynamicResult &>(oe->getGeneralResult(tagNameList.front().second.first, srcFile)).isReadOnly();
         gdi.setInputStatus("DoOpen", !ro);
@@ -416,7 +416,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       ListBoxInfo lbi;
       DynamicResult *dr = 0;
       if (gdi.getSelectedItem("OpenList", lbi)) {
-        vector< pair<int, pair<string, string> > > tagNameList;
+        vector< pair<int, pair<string, wstring> > > tagNameList;
         oe->getGeneralResults(true, tagNameList, false);
         size_t ix = -1;
         for (size_t k = 0; k < tagNameList.size(); k++) {
@@ -427,14 +427,14 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         }
 
         if (ix < tagNameList.size()) {
-          string srcFile;
+          wstring srcFile;
           DynamicResult &drIn = dynamic_cast<DynamicResult &>(oe->getGeneralResult(tagNameList[ix].second.first, srcFile));
           wasLoadedBuiltIn = drIn.isReadOnly();
           dr = new DynamicResult(drIn);
           if (bi.id == "DoOpenCopy") {
             dr->setTag(uniqueTag("result"));
             dr->setName(lang.tl("Copy of ") + dr->getName(false));
-            setCurrentResult(dr, "");
+            setCurrentResult(dr, L"");
           }
           else
             setCurrentResult(dr, srcFile);
@@ -458,7 +458,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       if (!checkSave(gdi))
         return 0;
 
-      setCurrentResult(0, "");
+      setCurrentResult(0, L"");
       makeDirty(gdi, ClearDirty);
       currentIndex = -1;
       gdi.getTabs().get(TListTab)->loadPage(gdi);
@@ -466,9 +466,9 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
     }
     else if (bi.id == "SaveSource") {
       DynamicResult::DynamicMethods dm = DynamicResult::DynamicMethods(bi.getExtraInt());
-      string src = gdi.getText("Source");
+      string src = gdi.narrow(gdi.getText("Source"));
       currentResult->setMethodSource(dm, src);
-      gdi.setText("Source", src);
+      gdi.setText("Source", gdi.widen(src));
     }
     else if (bi.id == "CancelSource") {
       checkChangedSave(gdi);
@@ -520,7 +520,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       int yp = gdi.getCY();
       int diff = gdi.scaleLength(3);
       const int w[5] = {200, 70, 70, 70, 85};
-      set<string> errors;
+      set<wstring> errors;
       currentResult->prepareCalculations(*oe, tr.size()>0, inputNumber);
 
       for (size_t k = 0; k < rr.size(); k++) {
@@ -532,16 +532,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         int rt = 0, pt = 0;
         RunnerStatus st = StatusUnknown;
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             st = currentResult->deduceStatus(*rr[k]);
             str = oe->formatStatus(st);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -552,16 +552,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           txp += w[wi++];
         }
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             rt = currentResult->deduceTime(*rr[k], rr[k]->getStartTime());
-            str = formatTime(rt);
+            str = formatTimeW(rt);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -572,16 +572,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         }
 
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             pt = currentResult->deducePoints(*rr[k]);
-            str = itos(pt);
+            str = itow(pt);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -592,16 +592,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         }
 
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             int score = currentResult->score(*rr[k], st, rt, pt, false);
-            str = itos(score);
+            str = itow(score);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -634,16 +634,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         int rt = 0, pt = 0;
         RunnerStatus st = StatusUnknown;
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             st = currentResult->deduceStatus(*tr[k]);
             str = oe->formatStatus(st);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -653,16 +653,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           txp += w[wi++];
         }
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             rt = currentResult->deduceTime(*tr[k]);
-            str = formatTime(rt);
+            str = formatTimeW(rt);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -673,16 +673,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         }
 
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             pt = currentResult->deducePoints(*tr[k]);
-            str = itos(pt);
+            str = itow(pt);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -693,16 +693,16 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         }
 
         {
-          string err;
-          string str;
+          wstring err;
+          wstring str;
           try {
             int score = currentResult->score(*tr[k], st, rt, pt);
-            str = itos(score);
+            str = itow(score);
           }
           catch (meosException &ex) {
-            err = ex.what();
-            errors.insert(ex.what());
-            str = "Error";
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
           }
           TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
           if (!err.empty()) {
@@ -738,11 +738,11 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         gdi.pushX();
         gdi.setRestorePoint("NoSourceEdit");
         gdi.addInputBox("Source", 450, 300,
-                        src,
-                        methodCB, "Source code:").setFont(gdi, monoText);
+                        gdi.widen(src),
+                        methodCB, L"Source code:").setFont(gdi, monoText);
         gdi.fillDown();
         gdi.setCX(gdi.getCX() + gdi.getLineHeight());
-        gdi.addListBox("Symbols", 450, 300-20, methodCB, "Available symbols:");
+        gdi.addListBox("Symbols", 450, 300-20, methodCB, L"Available symbols:");
         gdi.setTabStops("Symbols", 180);
         gdi.addString("SymbInfo", gdi.getCY(), gdi.getCX(), 0, "", 350, 0);
         gdi.popX();
@@ -751,21 +751,21 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         gdi.scrollToBottom();
       }
       else {
-        gdi.setText("Source", src);
+        gdi.setText("Source", gdi.widen(src));
       }
 
       currentResult->declareSymbols(m, true);
-      vector< pair<string, size_t> > symb;
+      vector< pair<wstring, size_t> > symb;
       currentResult->getSymbols(symb);
       gdi.addItem("Symbols", symb);
     }
     else if (lbi.id == "Symbols") {
-      string name, desc;
+      wstring name, desc;
       currentResult->getSymbolInfo(lbi.data, name, desc);
-      gdi.setText("SymbInfo", name + ":"  + lang.tl(desc) +".", true);
+      gdi.setText("SymbInfo", name + L":"  + lang.tl(desc) + L".", true);
     }
     else if (lbi.id == "OpenList") {
-      vector< pair<int, pair<string, string> > > tagNameList;
+      vector< pair<int, pair<string, wstring> > > tagNameList;
       oe->getGeneralResults(true, tagNameList, false);
       size_t ix = -1;
       for (size_t k = 0; k < tagNameList.size(); k++) {
@@ -774,7 +774,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           break;
         }
       }
-      string srcFile;
+      wstring srcFile;
       if (ix < tagNameList.size()) {
         bool ro = dynamic_cast<DynamicResult &>(oe->getGeneralResult(tagNameList[ix].second.first, srcFile)).isReadOnly();
         gdi.setInputStatus("DoOpen", !ro);
@@ -786,7 +786,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
   else if (type == GUI_LISTBOXSELECT) {
     ListBoxInfo &lbi = dynamic_cast<ListBoxInfo &>(data);
     if (lbi.id == "Symbols") {
-      string name, desc;
+      wstring name, desc;
       currentResult->getSymbolInfo(lbi.data, name, desc);
       gdi.replaceSelection("Source", name);
     }
@@ -818,21 +818,21 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
 }
 
 void MethodEditor::saveSettings(gdioutput &gdi) {
-  string name = gdi.getText("Name");
+  wstring name = gdi.getText("Name");
   string tag;
   const bool updateTag = gdi.getBaseInfo("Tag").getExtraInt() == 0;
   if (updateTag)
-    tag = gdi.getText("Tag");
+    tag = gdi.narrow(gdi.getText("Tag"));
   else
     tag = currentResult->getTag();
 
-  string desc = gdi.getText("Desc");
+  wstring desc = gdi.getText("Desc");
 
   if (_strcmpi(currentResult->getTag().c_str(), tag.c_str()) != 0) {
     checkTag(tag, true);
-    string oldPath = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
-    string path = getInternalPath(tag);
-    rename(oldPath.c_str(), path.c_str());
+    wstring oldPath = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
+    wstring path = getInternalPath(tag);
+    _wrename(oldPath.c_str(), path.c_str());
     fileNameSource = path;
   }
 
@@ -840,7 +840,7 @@ void MethodEditor::saveSettings(gdioutput &gdi) {
   currentResult->setName(name);
   currentResult->setDescription(desc);
   gdi.setText("Name", name);
-  gdi.setText("Tag", tag);
+  gdi.setText("Tag", gdi.widen(tag));
   gdi.setText("Desc", desc);
 }
 
@@ -874,7 +874,7 @@ void MethodEditor::makeDirty(gdioutput &gdi, DirtyFlag inside) {
 
 bool MethodEditor::checkSave(gdioutput &gdi) {
   if (dirtyInt) {
-    gdioutput::AskAnswer answer = gdi.askCancel("Vill du spara ändringar?");
+    gdioutput::AskAnswer answer = gdi.askCancel(L"Vill du spara ändringar?");
     if (answer == gdioutput::AnswerCancel)
       return false;
 
@@ -891,24 +891,25 @@ void MethodEditor::checkChangedSave(gdioutput &gdi) {
   if (gdi.hasField("Source")) {
     gdi.getText("Source");
     if (dynamic_cast<InputInfo &>(gdi.getBaseInfo("Source")).changed() &&
-        gdi.ask("Save changes in rule code?")) {      
+        gdi.ask(L"Save changes in rule code?")) {      
       DynamicResult::DynamicMethods dm = DynamicResult::DynamicMethods(gdi.getExtraInt("SaveSource"));
-      string src = gdi.getText("Source");
+      string src = gdi.narrow(gdi.getText("Source"));
       currentResult->setMethodSource(dm, src);
-      gdi.setText("Source", src);
+      gdi.setText("Source", gdi.widen(src));
     }
   }
 }
+extern gdioutput *gdi_main;
 
-string MethodEditor::getInternalPath(const string &tag) {
+wstring MethodEditor::getInternalPath(const string &tag) {
   string udTag = DynamicResult::undecorateTag(tag);
-  string resFile;
+  wstring resFile;
   if (udTag == tag)
-    resFile = tag + ".rules";
+    resFile = gdi_main->widen(tag) + L".rules";
   else
-    resFile = "imp_" + udTag + ".rules";
+    resFile = L"imp_" + gdi_main->widen(udTag) + L".rules";
 
-  char path[260];
+  wchar_t path[260];
   getUserFile(path, resFile.c_str());
   return path;
 }
@@ -940,7 +941,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     throw meosException("Internal error");
 
   gdioutput *gdi_new = getExtraWindow("debug", true);
-  string title = lang.tl("Debug X for Y#" + currentResult->getName(false) + "#" + art->getName());
+  wstring title = lang.tl(L"Debug X for Y#" + currentResult->getName(false) + L"#" + art->getName());
   
   if (!gdi_new)
     gdi_new = createExtraWindow("debug", title, 
@@ -963,23 +964,23 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       st = currentResult->deduceStatus(r);
       currentResult->debugDumpVariables(gdi, true);
 
-      gdi.addStringUT(1, "ComputedStatus: " + oe->formatStatus(st)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedStatus: " + oe->formatStatus(st)).setColor(colorGreen);
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Status Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Status Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceRStatus))
       currentResult->debugDumpVariables(gdi, false);
     
     try {
       rt = currentResult->deduceTime(r, r.getStartTime());
-      gdi.addStringUT(1, "ComputedTime: " + formatTime(rt)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedTime: " + formatTimeW(rt)).setColor(colorGreen);
     }
     catch (meosException &ex) {
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Time Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Time Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceRTime))
       currentResult->debugDumpVariables(gdi, false);
@@ -989,8 +990,8 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       gdi.addStringUT(1, "ComputedPoints: " + itos(pt)).setColor(colorGreen);
     }
     catch (meosException &ex) {
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Points Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Points Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceRPoints))
       currentResult->debugDumpVariables(gdi, true);
@@ -1001,8 +1002,8 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Score Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Score Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MRScore))
       currentResult->debugDumpVariables(gdi, false);
@@ -1017,23 +1018,23 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       st = currentResult->deduceStatus(t);
       currentResult->debugDumpVariables(gdi, true);
 
-      gdi.addStringUT(1, "ComputedStatus: " + oe->formatStatus(st)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedStatus: " + oe->formatStatus(st)).setColor(colorGreen);
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Status Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Status Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceTStatus))
       currentResult->debugDumpVariables(gdi, false);
     
     try {
       rt = currentResult->deduceTime(t);
-      gdi.addStringUT(1, "ComputedTime: " + formatTime(rt)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedTime: " + formatTimeW(rt)).setColor(colorGreen);
     }
     catch (meosException &ex) {
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Time Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Time Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceRTime))
       currentResult->debugDumpVariables(gdi, false);
@@ -1043,8 +1044,8 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       gdi.addStringUT(1, "ComputedPoints: " + itos(pt)).setColor(colorGreen);
     }
     catch (meosException &ex) {
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Points Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Points Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceTPoints))
       currentResult->debugDumpVariables(gdi, true);
@@ -1055,8 +1056,8 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
-      string err = lang.tl(ex.what());
-      gdi.addString("", 0, "Status Calculation Failed: X#" + err).setColor(colorRed);
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Status Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MTScore))
       currentResult->debugDumpVariables(gdi, false);

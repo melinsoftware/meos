@@ -27,8 +27,9 @@
 //V2: ABCDEFGHIHJKMN
 //V31: a
 //V33: abcde
+//V35: abc
 int getMeosBuild() {
-  string revision("$Rev: 608 $");
+  string revision("$Rev: 611 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -38,35 +39,35 @@ int getMeosBuild() {
 //V31: abcde
 //V32: abcdefgh
 //V33: abcdefghij
-//V34: abcdfgh
-string getMeosDate() {
-  string date("$Date: 2017-08-27 21:13:26 +0200 (sö, 27 aug 2017) $");
+//V34: abcdfg
+wstring getMeosDate() {
+  wstring date(L"$Date: 2017-08-28 20:32:01 +0200 (må, 28 aug 2017) $");
   return date.substr(7,10);
 }
 
-string getBuildType() {
-  return "U2"; // No parantheses (...)
+wstring getBuildType() {
+  return L"Snapshot"; // No parantheses (...)
 }
 
-string getMajorVersion() {
-  return "3.4";
+wstring getMajorVersion() {
+  return L"3.5";
 }
 
-string getMeosFullVersion() {
-  char bf[256];
-  string maj = getMajorVersion();
+wstring getMeosFullVersion() {
+  wchar_t bf[256];
+  wstring maj = getMajorVersion();
   if (getBuildType().empty())
-    sprintf_s(bf, "Version X#%s.%d, %s", maj.c_str(), getMeosBuild(), getMeosDate().c_str());
+    swprintf_s(bf, L"Version X#%s.%d, %s", maj.c_str(), getMeosBuild(), getMeosDate().c_str());
   else
-    sprintf_s(bf, "Version X#%s.%d, %s %s", maj.c_str(), getMeosBuild(), getBuildType().c_str(), getMeosDate().c_str());
+    swprintf_s(bf, L"Version X#%s.%d, %s %s", maj.c_str(), getMeosBuild(), getBuildType().c_str(), getMeosDate().c_str());
   return bf;
 }
 
-string getMeosCompectVersion() {
+wstring getMeosCompectVersion() {
   if (getBuildType().empty())
-    return getMajorVersion() + "." + itos(getMeosBuild());
+    return getMajorVersion() + L"." + itow(getMeosBuild());
   else
-    return getMajorVersion() + "." + itos(getMeosBuild()) + " (" + getBuildType() + ")";
+    return getMajorVersion() + L"." + itow(getMeosBuild()) + L" (" + getBuildType() + L")";
 }
 
 void getSupporters(vector<string> &supp)

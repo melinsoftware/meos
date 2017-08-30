@@ -21,11 +21,28 @@
     Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
+#include "meos_util.h"
 
 class meosException : public std::exception {
+  wstring wideMessage;
+  static const char *narrow(const wstring &msg) {
+    static string nmsg(msg.begin(), msg.end());
+    return nmsg.c_str();
+  }
 public:
-  meosException(const string &msg) : std::exception(msg.c_str()) {}
-  meosException(const char *msg) : std::exception(msg) {}
+  meosException(const wstring &wmsg) : std::exception(narrow(wmsg)), wideMessage(wmsg) {
+    
+  }
+  meosException(const string &msg) : std::exception(msg.c_str()) {
+    string2Wide(msg, wideMessage);
+  }
+  meosException(const char *msg) : std::exception(msg) {
+    string2Wide(string(msg), wideMessage);
+  }
   meosException() : std::exception() {}
+
+  wstring wwhat() const{
+    return wideMessage;
+  }
 };
 

@@ -71,9 +71,9 @@ oCourse::~oCourse()
 {
 }
 
-string oCourse::getInfo() const
+wstring oCourse::getInfo() const
 {
-  return "Bana " + Name;
+  return L"Bana " + Name;
 }
 
 bool oCourse::Write(xmlparser &xml)
@@ -110,19 +110,19 @@ void oCourse::Set(const xmlobject *xo)
       Length=it->getInt();
     }
     else if (it->is("Name")){
-      Name=it->get();
+      Name=it->getw();
     }
     else if (it->is("Controls")){
-      importControls(it->get(), false);
+      importControls(it->getRaw(), false);
     }
     else if (it->is("Legs")) {
-      importLegLengths(it->get(), false);
+      importLegLengths(it->getRaw(), false);
     }
     else if (it->is("oData")){
       getDI().set(*it);
     }
     else if (it->is("Updated")){
-      Modified.setStamp(it->get());
+      Modified.setStamp(it->getRaw());
     }
   }
 }
@@ -150,30 +150,30 @@ string oCourse::getControls() const
   return str;
 }
 
-string oCourse::getControlsUI() const
+wstring oCourse::getControlsUI() const
 {
-  string str="";
-  char bf[16];
+  wstring str;
+  wchar_t bf[16];
   int m;
 
   for(m=0;m<nControls-1;m++){
-    sprintf_s(bf, 16, "%d, ", Controls[m]->Id);
-    str+=bf;
+    swprintf_s(bf, 16, L"%d, ", Controls[m]->Id);
+    str += bf;
   }
 
   if (m<nControls){
-    sprintf_s(bf, 16, "%d", Controls[m]->Id);
-    str+=bf;
+    swprintf_s(bf, 16, L"%d", Controls[m]->Id);
+    str += bf;
   }
 
   return str;
 }
 
-vector<string> oCourse::getCourseReadable(int limit) const
+vector<wstring> oCourse::getCourseReadable(int limit) const
 {
-  vector<string> res;
+  vector<wstring> res;
 
-  string str;
+  wstring str;
   if (!useFirstAsStart())
     str = lang.tl("Start").substr(0, 1);
   int m;
@@ -186,7 +186,7 @@ vector<string> oCourse::getCourseReadable(int limit) const
       rg.push_back(Controls[m]);
     else {
       if (!str.empty())
-        str += "-";
+        str += L"-";
       str += Controls[m]->getLongString();
       needFinish = true;
     }
@@ -198,7 +198,7 @@ vector<string> oCourse::getCourseReadable(int limit) const
 
   if (needFinish && !useLastAsFinish()) {
     if (!str.empty())
-      str += "-";
+      str += L"-";
     str += lang.tl("Mål").substr(0,1);
   }
   if (!str.empty()) {
@@ -213,7 +213,7 @@ vector<string> oCourse::getCourseReadable(int limit) const
     str = lang.tl("Rogaining: ");
     for (size_t k = 0; k<rg.size(); k++) {
       if (k>0)
-        str += ", ";
+        str += L", ";
 
       if (str.length() >= size_t(limit)) {
         res.push_back(str);
@@ -380,30 +380,30 @@ bool oCourse::fillCourse(gdioutput &gdi, const string &name)
   if (startIx == -1)
     gdi.addItem(name, lang.tl("Start"), -1);
   for (int k=0;k<nControls;k++) {
-    string c = Controls[k]->getString();
+    wstring c = Controls[k]->getString();
     if (c.length() > 32)
-      c= c.substr(0, 32) + "...";
+      c= c.substr(0, 32) + L"...";
     if (k == startIx)
-      c += " (" + lang.tl("Start") + ")";
+      c += L" (" + lang.tl("Start") + L")";
     else if (k == finishIx)
-      c += " (" + lang.tl("Mål") + ")";
+      c += L" (" + lang.tl("Mål") + L")";
 
     int multi = Controls[k]->getNumMulti();
     int submulti = 0;
-    char bf[256];
+    wchar_t bf[256];
     if (Controls[k]->isRogaining(rogaining)) {
-      sprintf_s(bf, 64, "R\t%s", c.c_str());
+      swprintf_s(bf, 64, L"R\t%s", c.c_str());
       offset--;
     }
     else if (multi == 1) {
-      sprintf_s(bf, 64, "%d\t%s", k+offset, c.c_str());
+      swprintf_s(bf, 64, L"%d\t%s", k+offset, c.c_str());
     }
     else
-      sprintf_s(bf, 64, "%d%c\t%s", k+offset, 'A', c.c_str());
+      swprintf_s(bf, 64, L"%d%c\t%s", k+offset, 'A', c.c_str());
     gdi.addItem(name, bf, k);
     while (multi>1) {
       submulti++;
-      sprintf_s(bf, 64, "%d%c\t-:-", k+offset, 'A'+submulti);
+      swprintf_s(bf, 64, L"%d%c\t-:-", k+offset, 'A'+submulti);
       gdi.addItem(name, bf, -1);
       multi--;
     }
@@ -504,12 +504,12 @@ int oCourse::distance(const SICard &card)
   return 0;
 }
 
-string oCourse::getLengthS() const
+wstring oCourse::getLengthS() const
 {
-  return itos(getLength());
+  return itow(getLength());
 }
 
-void oCourse::setName(const string &n)
+void oCourse::setName(const wstring &n)
 {
   if (Name!=n){
     Name=n;
@@ -563,7 +563,7 @@ pCourse oEvent::getCourse(int Id) const {
   return 0;
 }
 
-pCourse oEvent::getCourse(const string &n) const {
+pCourse oEvent::getCourse(const wstring &n) const {
   oCourseList::const_iterator it;
 
   for (it=Courses.begin(); it != Courses.end(); ++it) {
@@ -575,12 +575,12 @@ pCourse oEvent::getCourse(const string &n) const {
 
 void oEvent::fillCourses(gdioutput &gdi, const string &id, bool simple)
 {
-  vector< pair<string, size_t> > d;
+  vector< pair<wstring, size_t> > d;
   oe->fillCourses(d, simple);
   gdi.addItem(id, d);
 }
 
-const vector< pair<string, size_t> > &oEvent::fillCourses(vector< pair<string, size_t> > &out, bool simple)
+const vector< pair<wstring, size_t> > &oEvent::fillCourses(vector< pair<wstring, size_t> > &out, bool simple)
 {
   out.clear();
   oCourseList::iterator it;
@@ -609,7 +609,7 @@ const vector< pair<string, size_t> > &oEvent::fillCourses(vector< pair<string, s
     }
   }
 
-  string b;
+  wstring b;
   for (size_t k = 0; k < ac.size(); k++) {
     pCourse it = ac[k].first;
 
@@ -618,13 +618,13 @@ const vector< pair<string, size_t> > &oEvent::fillCourses(vector< pair<string, s
     else {
       b = it->Name;
       if (ac[k].second.first) {
-        b += " < " + ac[k].second.first->Name;
+        b += L" < " + ac[k].second.first->Name;
         if (ac[k].second.second)
-          b += ", ...";
+          b += L", ...";
       }
-      b += "\t(" + itos(it->nControls) + ")";
+      b += L"\t(" + itow(it->nControls) + L")";
       if (!it->getCourseProblems().empty())
-        b = "[!] " + b;
+        b = L"[!] " + b;
       out.push_back(make_pair(b, it->Id));
     }
   }
@@ -652,7 +652,7 @@ int oCourse::getNumUsedMaps(bool noVacant) const {
 }
 
 
-void oCourse::setStart(const string &start, bool sync)
+void oCourse::setStart(const wstring &start, bool sync)
 {
   if (getDI().setString("StartName", start)) {
     if (sync)
@@ -668,7 +668,7 @@ void oCourse::setStart(const string &start, bool sync)
   }
 }
 
-string oCourse::getStart() const
+wstring oCourse::getStart() const
 {
   return getDCI().getString("StartName");
 }
@@ -782,7 +782,7 @@ double oCourse::getPartOfCourse(int start, int end) const
 }
 
 
-const string &oCourse::getControlOrdinal(int controlIndex) const
+const wstring &oCourse::getControlOrdinal(int controlIndex) const
 {
   if ( (controlIndex + 1 == nControls && useLastAsFinish())  || controlIndex == nControls)
     return lang.tl("Mål");
@@ -804,7 +804,7 @@ const string &oCourse::getControlOrdinal(int controlIndex) const
     if (Controls[k] && !Controls[k]->isRogaining(rogaining))
       o++;
   }
-  cachedControlOrdinal[controlIndex] = itos(o);
+  cachedControlOrdinal[controlIndex] = itow(o);
   return cachedControlOrdinal[controlIndex];
 }
 
@@ -876,7 +876,7 @@ void oCourse::clearCache() const {
   tMapsUsedNoVacant = -1;
 }
 
-string oCourse::getCourseProblems() const
+wstring oCourse::getCourseProblems() const
 {
   int max_time = getMaximumRogainingTime();
   int min_point = getMinimumRogainingPoints();
@@ -884,9 +884,9 @@ string oCourse::getCourseProblems() const
   if (max_time > 0) {
     for (int k = 0; k<nControls; k++) {
       if (Controls[k]->isRogaining(true))
-        return "";
+        return L"";
     }
-    return "Banan saknar rogainingkontroller.";
+    return L"Banan saknar rogainingkontroller.";
   }
   else if (min_point > 0) {
     int max_p = 0;
@@ -896,10 +896,10 @@ string oCourse::getCourseProblems() const
     }
 
     if (max_p < min_point) {
-      return "Banans kontroller ger för få poäng för att täcka poängkravet.";
+      return L"Banans kontroller ger för få poäng för att täcka poängkravet.";
     }
   }
-  return "";
+  return L"";
 }
 
 void oCourse::remove()
@@ -1305,7 +1305,7 @@ int oCourse::getCourseControlId(int controlIx) const {
   return oControl::getCourseControlIdFromIdIndex(id, count);
 }
 
-string oCourse::getRadioName(int courseControlId) const {
+wstring oCourse::getRadioName(int courseControlId) const {
   pair<int,int> idix = oControl::getIdIndexFromCourseControlId(courseControlId);
   pControl pc = 0;
   int numRadio = 0;
@@ -1329,13 +1329,13 @@ string oCourse::getRadioName(int courseControlId) const {
   }
 
   if (pc == 0)
-    return "?";
+    return L"?";
 
-  string name;
+  wstring name;
   if (pc->hasName()) {
     name = pc->getName();
     if (pc->getNumberDuplicates() > 1)
-      name += MakeDash("-" + itos(clsix));
+      name += makeDash(L"-" + itow(clsix));
   }
   else {
     name = lang.tl("radio X#" + itos(numRadio));

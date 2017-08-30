@@ -48,16 +48,16 @@ struct PunchInfo {
 
 struct TeamLineup {
   struct TeamMember {
-    string name;
-    string club;
+    wstring name;
+    wstring club;
     int cardNo;
-    string course;
-    string cls;
+    wstring course;
+    wstring cls;
   };
 
-  string teamName;
-  string teamClass;
-  string teamClub;
+  wstring teamName;
+  wstring teamClass;
+  wstring teamClub;
   vector<TeamMember> members;
 };
 
@@ -71,13 +71,13 @@ protected:
   string ErrorMessage;
 
   // Returns true if a SI-manager line is identified
-  bool checkSimanLine(const oEvent &oe, const vector<char *> &sp, SICard &cards);
+  bool checkSimanLine(const oEvent &oe, const vector<wstring> &sp, SICard &cards);
 
   // Check and setup header for SIConfig import
-  void checkSIConfigHeader(const vector<char *> &sp);
+  void checkSIConfigHeader(const vector<wstring> &sp);
 
   // Return true if SIConfig line was detected 
-  bool checkSIConfigLine(const oEvent &oe, const vector<char *> &sp, SICard &card);
+  bool checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, SICard &card);
 
   enum SIConfigFields {
     sicSIID,
@@ -97,40 +97,42 @@ protected:
   };
 
   map<SIConfigFields, int> siconfigmap;
-  const char *getSIC(SIConfigFields sic, const vector<char *> &sp) const;
+  const wchar_t *getSIC(SIConfigFields sic, const vector<wstring> &sp) const;
 
   // Check and process a punch line
-  static int selectPunchIndex(const string &competitionDate, const vector<char *> &sp, 
+  static int selectPunchIndex(const wstring &competitionDate, const vector<wstring> &sp, 
                               int &cardIndex, int &timeIndex, int &dateIndex,
-                              string &processedTime, string &date);
+                              wstring &processedTime, wstring &date);
 
 public:
-  void parse(const string &file, list< vector<string> > &dataOutput);
+  //void parse(const wstring &file, list< vector<string> > &dataOutput);
+  void parse(const wstring &file, list< vector<wstring> > &dataOutput);
 
-  void importTeamLineup(const string &file,
-                        const map<string, int> &classNameToNumber,
+  void importTeamLineup(const wstring &file,
+                        const map<wstring, int> &classNameToNumber,
                         vector<TeamLineup> &teams);
 
-  bool openOutput(const char *file);
+  bool openOutput(const wstring &file);
   bool closeOutput();
   bool OutputRow(vector<string> &out);
   bool OutputRow(const string &row);
 
   int nimport;
-  bool ImportOCAD_CSV(oEvent &event, const char *file, bool addClasses);
-  bool ImportOS_CSV(oEvent &event, const char *file);
-  bool ImportRAID(oEvent &event, const char *file);
+  bool importOCAD_CSV(oEvent &oe, const wstring &file, bool addClasses);
+  bool importOS_CSV(oEvent &oe, const wstring &file);
+  bool importRAID(oEvent &oe, const wstring &file);
+  bool importOE_CSV(oEvent &oe, const wstring &file);
 
-  bool importPunches(const oEvent &oe, const char *file,
+  bool importPunches(const oEvent &oe, const wstring &file,
                      vector<PunchInfo> &punches);
 
-  bool importCards(const oEvent &oe, const char *file,
+  bool importCards(const oEvent &oe, const wstring &file,
                    vector<SICard> &punches);
 
   int split(char *line, vector<char *> &split);
+  int split(wchar_t *line, vector<wchar_t *> &split);
 
-  bool ImportOE_CSV(oEvent &event, const char *file);
-  int iscsv(const char *file);
+  int iscsv(const wstring &file);
   csvparser();
   virtual ~csvparser();
 

@@ -56,7 +56,7 @@ protected:
   pControl Controls[NControlsMax];
 
   int nControls;
-  string Name;
+  wstring Name;
   int Length;
   static const int dataSize = 128;
   int getDISize() const {return dataSize;}
@@ -80,7 +80,7 @@ protected:
   void changeId(int newId);
 
   // Caching.
-  mutable vector<string> cachedControlOrdinal;
+  mutable vector<wstring> cachedControlOrdinal;
   mutable int cachedHasRogaining;
   mutable int cacheDataRevision;
   void clearCache() const;
@@ -100,7 +100,7 @@ public:
   void remove();
   bool canRemove() const;
 
-  string getRadioName(int courseControlId) const;
+  wstring getRadioName(int courseControlId) const;
 
   bool hasControl(const oControl *ctrl) const;
 
@@ -151,7 +151,7 @@ public:
   bool constructLoopKeys(int commonControls, vector< vector<pControl> > &loopKeys, vector<int> &commonControlIndex) const;
 
   /// Check if course has problems
-  string getCourseProblems() const;
+  wstring getCourseProblems() const;
 
   int getNumControls() const {return nControls;}
   void setLegLengths(const vector<int> &legLengths);
@@ -176,14 +176,14 @@ public:
 
   // Get the control number as "printed on map". Do not count
   // rogaining controls
-  const string &getControlOrdinal(int controlIndex) const;
+  const wstring &getControlOrdinal(int controlIndex) const;
 
   /** Get the part of the course between the start and end. Use start = 0 for the
       start of the course, and end = 0 for the finish. Returns 0 if fraction
       cannot be determined */
   double getPartOfCourse(int start, int end) const;
 
-  string getInfo() const;
+  wstring getInfo() const;
 
   oControl *getControl(int index) const;
 
@@ -211,18 +211,18 @@ public:
   string getControls() const;
   string getLegLengths() const;
 
-  string getControlsUI() const;
-  vector<string> getCourseReadable(int limit) const;
+  wstring getControlsUI() const;
+  vector<wstring> getCourseReadable(int limit) const;
 
-  const string &getName() const {return Name;}
+  const wstring &getName() const {return Name;}
   int getLength() const {return Length;}
-  string getLengthS() const;
+  wstring getLengthS() const;
 
-  void setName(const string &n);
-  void setLength(int l);
+  void setName(const wstring &n);
+  void setLength(int len);
 
-  string getStart() const;
-  void setStart(const string &start, bool sync);
+  wstring getStart() const;
+  void setStart(const wstring &start, bool sync);
 
   bool Write(xmlparser &xml);
 
