@@ -380,7 +380,7 @@ void SpeakerMonitor::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r) {
       else
         first = false;
 
-      timeloss += pc->getControlOrdinal(j) + L". " + formatTimeW(delta[j]);
+      timeloss += pc->getControlOrdinal(j) + L". " + formatTime(delta[j]);
     }
     if (timeloss.length() > charlimit || (!timeloss.empty() && !first && j+1 == delta.size())) {
       gdi.addStringUT(yp, xp, 0, timeloss).setColor(colorDarkRed);
@@ -405,7 +405,7 @@ wstring getTimeDesc(int t1, int t2) {
   else if (tb <= 60)
     stime = itow(tb) + lang.tl(L" sekunder");
   else
-    stime = formatTimeW(tb);
+    stime = formatTime(tb);
 
   return stime;
 }
@@ -504,7 +504,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
     deltaTime = after - prevAfter; // Positive -> more after.
   }
 
-  wstring timeS = formatTimeW(res.runTime);
+  wstring timeS = formatTime(res.runTime);
 
   wstring detail;
   const wstring *cname = 0;

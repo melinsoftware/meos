@@ -79,18 +79,19 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
       const int numVisit = pc->getNumVisitors(true);
       const int numVisitExp = pc->getNumVisitors(false);
       
-      string info;
+      wstring info;
       if (numVisit > 0) {
-         info = "Antal besökare X, genomsnittlig bomtid Y, största bomtid Z#" +
-           itos(numVisit) + " (" + itos(numVisitExp) + ")#" + getTimeMS(pc->getMissedTimeTotal() / numVisit) +
-          "#" + getTimeMS(pc->getMissedTimeMax());
+         info = L"Antal besökare X, genomsnittlig bomtid Y, största bomtid Z#" +
+           itow(numVisit) + L" (" + itow(numVisitExp) + L")#" + getTimeMS(pc->getMissedTimeTotal() / numVisit) +
+          L"#" + getTimeMS(pc->getMissedTimeMax());
       }
       else if (numVisitExp > 0) {
-        info = "Förväntat antal besökare: X#" + itos(numVisitExp);
+        info = L"Förväntat antal besökare: X#" + itow(numVisitExp);
       }
       gdi.setText("ControlID", itow(pc->getId()), true);
 
-      gdi.setText("Info", lang.tl(info), true);
+      wstring winfo = lang.tl(info);
+      gdi.setText("Info", winfo, true);
       gdi.setText("Code", pc->codeNumbers());
       gdi.setText("Name", pc->getName());
       gdi.setText("TimeAdjust", pc->getTimeAdjustS());

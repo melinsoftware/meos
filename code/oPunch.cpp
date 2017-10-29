@@ -146,7 +146,7 @@ wstring oPunch::getRunningTime(int startTime) const
 {
   int t = getAdjustedTime();
   if (startTime>0 && t>0 && t>startTime)
-    return formatTimeW(t-startTime);
+    return formatTime(t-startTime);
   else
     return makeDash(L"-");
 }

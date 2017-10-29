@@ -662,7 +662,7 @@ void TabSpeaker::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r)
       else
         first = false;
 
-      timeloss += pc->getControlOrdinal(j) + L". " + formatTimeW(delta[j]);
+      timeloss += pc->getControlOrdinal(j) + L". " + formatTime(delta[j]);
     }
     if (timeloss.length() > charlimit || (!timeloss.empty() && !first && j+1 == delta.size())) {
       gdi.addStringUT(yp, xp, 0, timeloss).setColor(colorDarkRed);
@@ -876,7 +876,7 @@ int TabSpeaker::processListBox(gdioutput &gdi, const ListBoxInfo &bu)
     }
   }
   else if (bu.id == "MultiStage") {
-    getSpeakerMonitor()->useTotalResults(gdi.isChecked(bu.id));
+    getSpeakerMonitor()->useTotalResults(bu.data != 0);
     updateTimeLine(gdi);
   }
   else if (bu.id == "DetailLevel") {
@@ -1087,7 +1087,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
   wstring time=gdi.getText("Time");
 
   if (time.empty())
-    time=getLocalTimeOnlyW();
+    time=getLocalTimeOnly();
 
   int itime=oe->getRelativeTime(time);
 
@@ -1240,7 +1240,7 @@ void TabSpeaker::importSettings(gdioutput &gdi, multimap<string, wstring> &setti
   selectedControl.clear();
   int ctrl = 0, leg = 0, total = 0;
 
-  for (auto s : settings) {
+  for (auto &s : settings) {
     if (s.first == "currentClass") {
       if (s.second == L"@Events") {
         classId = -1;
@@ -1312,11 +1312,11 @@ void TabSpeaker::loadSettings(vector< multimap<string, wstring> > &settings) {
   xmlList xmlsettings;
   sp.getObjects(xmlsettings);
   
-  for (auto s : xmlsettings) {
+  for (auto &s : xmlsettings) {
     settings.push_back(multimap<string, wstring>());
     xmlList allS;
     s.getObjects(allS);
-    for (auto prop : allS) {
+    for (auto &prop : allS) {
       settings.back().insert(make_pair(prop.getName(), prop.getw()));
     }
   }
@@ -1326,9 +1326,9 @@ void TabSpeaker::saveSettings(const vector< multimap<string, wstring> > &setting
   xmlparser d;
   d.openOutput(getSpeakerSettingsFile().c_str(), false);
   d.startTag("Speaker");
-  for (auto s : settings) {
+  for (auto &s : settings) {
     d.startTag("SpeakerWindow");
-    for (auto prop : s) {
+    for (auto &prop : s) {
       d.write(prop.first.c_str(), prop.second);
     }
     d.endTag();

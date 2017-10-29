@@ -48,7 +48,7 @@ protected:
 
   static void createListButtons(gdioutput &gdi);
 
-  void generateList(gdioutput &gdi);
+  void generateList(gdioutput &gdi, bool forceUpdate = false);
   void selectGeneralList(gdioutput &gdi, EStdListType type);
 
   int offsetY;
@@ -78,6 +78,15 @@ private:
   TabList(const TabList &);
   const TabList &operator = (const TabList &);
   
+  string settingsTarget;
+  oListParam tmpSettingsParam;
+  void changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindow);
+  void leavingList(const string &wnd);
+
+  pair<gdioutput *, TabList *> makeOwnWindow(gdioutput &gdi);
+
+  /** Set animation mode*/
+  void setAnimationMode(gdioutput &gdi);
 public:
   bool loadPage(gdioutput &gdi);
   bool loadPage(gdioutput &gdi, const string &command);
@@ -94,6 +103,8 @@ public:
   void rebuildList(gdioutput &gdi);
   void settingsResultList(gdioutput &gdi);
 
+  void loadSettings(gdioutput &gdi, string targetTag);
+  void handleListSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi);
   enum PrintSettingsSelection {
     Splits = 0,
     StartInfo = 1,

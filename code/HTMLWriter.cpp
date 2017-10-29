@@ -189,6 +189,7 @@ static void getStyle(const map< pair<gdiFonts, string>, pair<string, string> > &
 
 bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refreshTimeOut) const
 {
+  checkWriteAccess(file);
   ofstream fout(file.c_str());
 
   if (fout.bad())
@@ -294,6 +295,7 @@ bool sortTL_X(const TextInfo *a, const TextInfo *b)
 bool gdioutput::writeTableHTML(const wstring &file, 
                                const wstring &title, int refreshTimeOut) const
 {
+  checkWriteAccess(file);
   ofstream fout(file.c_str());
 
   if (fout.bad())

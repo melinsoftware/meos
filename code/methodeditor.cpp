@@ -556,7 +556,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring str;
           try {
             rt = currentResult->deduceTime(*rr[k], rr[k]->getStartTime());
-            str = formatTimeW(rt);
+            str = formatTime(rt);
           }
           catch (meosException &ex) {
             err = ex.wwhat();
@@ -657,7 +657,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring str;
           try {
             rt = currentResult->deduceTime(*tr[k]);
-            str = formatTimeW(rt);
+            str = formatTime(rt);
           }
           catch (meosException &ex) {
             err = ex.wwhat();
@@ -976,7 +976,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     
     try {
       rt = currentResult->deduceTime(r, r.getStartTime());
-      gdi.addStringUT(1, L"ComputedTime: " + formatTimeW(rt)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedTime: " + formatTime(rt)).setColor(colorGreen);
     }
     catch (meosException &ex) {
       wstring err = lang.tl(ex.wwhat());
@@ -1030,7 +1030,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     
     try {
       rt = currentResult->deduceTime(t);
-      gdi.addStringUT(1, L"ComputedTime: " + formatTimeW(rt)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedTime: " + formatTime(rt)).setColor(colorGreen);
     }
     catch (meosException &ex) {
       wstring err = lang.tl(ex.wwhat());

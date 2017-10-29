@@ -1522,7 +1522,7 @@ void oEvent::getNumClassRunners(int id, int leg, int &total, int &finished, int 
 
           if (it->tStatus != StatusUnknown)
             finished++;
-          else if (it->tStatus==StatusDNS)
+          else if (it->tStatus==StatusDNS || it->tStatus == StatusCANCEL)
             dns++;
         }
         else {
@@ -1532,7 +1532,7 @@ void oEvent::getNumClassRunners(int id, int leg, int &total, int &finished, int 
             total++;
             if (r->tStatus!=StatusUnknown)
               finished++;
-            else if (it->tStatus==StatusDNS)
+            else if (it->tStatus==StatusDNS || it->tStatus == StatusCANCEL)
               dns++;
           }
         }
@@ -2698,7 +2698,7 @@ void oClass::getStatistics(const set<int> &feeLock, int &entries, int &started) 
     if (it->getClassId()==Id) {
       if (feeLock.empty() || feeLock.count(it->getDCI().getInt("Fee"))) {
         entries++;
-        if (it->getStatus()!= StatusUnknown && it->getStatus()!= StatusDNS)
+        if (it->getStatus()!= StatusUnknown && it->getStatus()!= StatusDNS && it->tStatus != StatusCANCEL)
           started++;
       }
     }
@@ -4144,4 +4144,12 @@ int oClass::getPreceedingLeg(int leg) const {
       return k-1;
   }
   return -1;
+}
+
+bool oClass::lockedForking() const {
+  return getDCI().getInt("Locked") != 0;
+}
+
+void oClass::lockedForking(bool locked) {
+  getDI().setInt("Locked", locked);
 }

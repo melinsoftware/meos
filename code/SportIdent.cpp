@@ -2140,13 +2140,19 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
   }
 }
 
+static string formatTimeN(int t) {
+  const wstring &wt = formatTime(t);
+  string nt(wt.begin(), wt.end());
+  return nt;
+}
+
 vector<string> SICard::codeLogData(int row) const
 {
   vector<string> log;
 
   log.push_back(itos(row));
   if (readOutTime[0] == 0)
-    log.push_back(getLocalTime());
+    log.push_back(getLocalTimeN());
   else
     log.push_back(readOutTime);
   log.push_back(itos(CardNumber));

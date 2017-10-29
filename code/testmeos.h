@@ -41,9 +41,10 @@ enum TestStatus {
 };
 
 struct meosAssertionFailure {
-  meosAssertionFailure() {message = "MeOS assertion failure";};
-  meosAssertionFailure(const string &err) : message(err) {}
-  string message;
+  meosAssertionFailure() {message = L"MeOS assertion failure";};
+  meosAssertionFailure(const string &err) : message(err.begin(), err.end()) {}
+  meosAssertionFailure(const wstring &err) : message(err) {}
+  wstring message;
 };
 
 class TestMeOS : public SubCommand {
@@ -57,7 +58,7 @@ private:
   mutable vector<wstring> tmpFiles;
 
   mutable TestStatus status;
-  mutable string message;
+  mutable wstring message;
   int testId;
   int *testIdMain; // Pointer to main test id
 
@@ -80,6 +81,10 @@ protected:
   void assertEquals(const string &expected, const string &value) const;
   void assertEquals(const char *message, const char *expected, const string &value) const;
   void assertEquals(const string &message, const string &expected, const string &value) const;
+
+  void assertEquals(const wstring &expected, const wstring &value) const;
+  void assertEquals(const wstring &message, const wstring &expected, const wstring &value) const;
+
 
   void assertTrue(const char *message, bool condition) const;
 

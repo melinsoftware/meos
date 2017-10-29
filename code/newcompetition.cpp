@@ -229,7 +229,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
         long long stopT = absT + 23 * 3600;
         SYSTEMTIME start = Int64SecondToSystemTime(absT);
         SYSTEMTIME end = Int64SecondToSystemTime(stopT);
-        wstring s = L"Tävlingen måste avgöras mellan X och Y.#" + convertSystemTimeW(start) + L"#" + convertSystemTimeW(end);
+        wstring s = L"Tävlingen måste avgöras mellan X och Y.#" + convertSystemTime(start) + L"#" + convertSystemTime(end);
         gdi.setTextTranslate("AllowedInterval", s, true);
       }
     }
@@ -261,7 +261,7 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
 
     gdi.pushX();
     gdi.fillRight();
-    InputInfo &date = gdi.addInput("Date", getLocalDateW(), 16, NewGuideCB, L"Datum (för första start):");
+    InputInfo &date = gdi.addInput("Date", getLocalDate(), 16, NewGuideCB, L"Datum (för första start):");
 
     gdi.addInput("FirstStart", L"07:00:00", 12, NewGuideCB, L"Första tillåtna starttid:");
 
@@ -301,6 +301,7 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
   }
   else if (step == 2) {
     rc.top = gdi.getCY();
+    oe->updateTabs(true, true);
     gdi.fillDown();
     gdi.dropLine();
     gdi.addString("", fontMediumPlus, "Funktioner i MeOS");
@@ -391,7 +392,7 @@ void TabCompetition::createCompetition(gdioutput &gdi) {
   int t = convertAbsoluteTimeHMS(start, -1);
   if (t > 0 && t < 3600*24) {
     t = max(0, t-3600);
-    oe->setZeroTime(formatTimeHMSW(t));
+    oe->setZeroTime(formatTimeHMS(t));
   }
   else
     throw meosException("Ogiltig tid");

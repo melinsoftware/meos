@@ -262,6 +262,10 @@ public:
 
   static void initClassId(oEvent &oe);
 
+  // Return true if forking in the class is locked
+  bool lockedForking() const;
+  void lockedForking(bool locked);
+
   // Draw data
   int getDrawFirstStart() const;
   void setDrawFirstStart(int st);

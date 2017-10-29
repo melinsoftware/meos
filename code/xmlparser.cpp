@@ -392,7 +392,7 @@ void xmlparser::openOutputT(const wchar_t *file, bool useCutMode, const string &
   toString = false;
   cutMode = useCutMode;
   foutFile.open(file);
-
+  checkWriteAccess(file);
   tagStackPointer=0;
 
   if (foutFile.bad())

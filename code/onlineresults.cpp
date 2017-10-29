@@ -54,6 +54,12 @@ static int OnlineCB(gdioutput *gdi, int type, void *data) {
       return ores.processButton(*gdi, bu);
     }
     case GUI_LISTBOX:{
+      ListBoxInfo lbi = *static_cast<ListBoxInfo *>(data);
+      if (lbi.id == "Format") {
+        if (gdi->hasField("IncludeTotal")) {
+          gdi->setInputStatus("IncludeTotal", lbi.data == 1);
+        }
+      }
     }
   }
   return 0;
@@ -113,13 +119,19 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
  // gdi.dropLine();
  // gdi.addInput("Interval", time, 10, 0, "Uppdateringsintervall (sekunder):");
 
-  gdi.addSelection("Format", 200, 200, 0, L"Exportformat:");
+  gdi.addSelection("Format", 200, 200, OnlineCB, L"Exportformat:");
   gdi.addItem("Format", L"MeOS Online Protocol XML", 1);
   gdi.addItem("Format", L"IOF XML 2.0.3", 2);
   gdi.addItem("Format", L"IOF XML 3.0", 3);
   gdi.selectItemByData("Format", dataType);
 
   gdi.addCheckbox("Zip", "Packa stora filer (zip)", 0, zipFile);
+  if (oe.hasPrevStage()) {
+    gdi.addCheckbox("IncludeTotal", "Inkludera resultat från tidigare etapper", 0, zipFile);
+    InfoCompetition &ic = getInfoServer();
+    gdi.check("IncludeTotal", ic.includeTotalResults());
+    gdi.setInputStatus("IncludeTotal", dataType == 1);
+  }
   int cx = gdi.getCX();
   gdi.fillRight();
 
@@ -239,10 +251,13 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
   prefix = gdi.getText("Prefix");
   exportScript = gdi.getText("ExportScript");
   zipFile = gdi.isChecked("Zip");
+  bool includeTotal = gdi.hasField("IncludeTotal") && gdi.isChecked("IncludeTotal");
 
   ListBoxInfo lbi;
   gdi.getSelectedItem("Format", lbi);
   dataType = lbi.data;
+  if (dataType == 1)
+    getInfoServer().includeTotalResults(includeTotal);
 
   gdi.getSelection("Classes", classes);
   if (sendToFile) {
@@ -334,7 +349,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 
   if (!sendToFile && !sendToURL)
     return;
-  ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWND() : 0);
+  ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWNDTarget() : 0);
   pwMain.init();
 
   wstring t;
@@ -342,7 +357,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   InfoCompetition &ic = getInfoServer();
   xmlbuffer xmlbuff;
   if (dataType == 1) {
-    if (ic.synchronize(*oe, classes, controls)) {
+    if (ic.synchronize(*oe, false, classes, controls)) {
       lastSync = tick; // If error, avoid to quick retry
       ic.getDiffXML(xmlbuff);
     }
@@ -508,7 +523,7 @@ void OnlineResults::formatError(gdioutput &gdi) {
   gdi.setRestorePoint("ServerError");
   gdi.dropLine();
   gdi.fillDown();
-  gdi.addString("", boldText, "Server response X:#" + getLocalTime()).setColor(colorRed);
+  gdi.addString("", boldText, L"Server response X:#" + getLocalTime()).setColor(colorRed);
   for (size_t k = 0; k < errorLines.size(); k++)
     gdi.addStringUT(0, errorLines[k]);
   gdi.scrollToBottom();

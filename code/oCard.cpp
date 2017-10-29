@@ -668,7 +668,7 @@ wstring oCard::getRogainingSplit(int ix, int startTime) const
     int t = it->getAdjustedTime();
     if (0 == ix--) {
       if (t > 0 && t > startTime)
-        return formatTimeW(t - startTime);
+        return formatTime(t - startTime);
     }
     if (it->isUsed)
       startTime = t;

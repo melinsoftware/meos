@@ -35,6 +35,7 @@
 #include "classconfiginfo.h"
 #include "onlineresults.h"
 #include "onlineinput.h"
+#include "RestService.h"
 
 #include "TabAuto.h"
 #include "TabSI.h"
@@ -78,6 +79,8 @@ AutoMachine* AutoMachine::construct(Machines ms) {
     return new OnlineResults();
   case mSaveBackup:
     return new SaveMachine();
+  case mInfoService:
+    return new RestService();
   }
   throw meosException("Invalid machine");
 }
@@ -315,6 +318,9 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
   else if (bu.id=="SaveBackup") {
     SaveMachine *sm=dynamic_cast<SaveMachine*>(getMachine(bu.getExtraInt()));
     settings(gdi, sm, mSaveBackup);
+  }
+  else if (bu.id == "InfoService") {
+    settings(gdi, getMachine(bu.getExtraInt()), mInfoService);
   }
   else if (bu.id=="StartResult") {
 #ifndef MEOSDB
@@ -602,12 +608,14 @@ bool TabAuto::loadPage(gdioutput &gdi)
   gdi.addButton("OnlineInput", "Inmatning online", AutomaticCB, "Hämta stämplingar m.m. från nätet");
   gdi.popX();
   gdi.dropLine(2.5);
-  gdi.addButton("Splits", "Sträcktider (WinSplits)", AutomaticCB, "Spara sträcktider till en fil för automatisk synkronisering med WinSplits");
-  gdi.addButton("Prewarning", "Förvarningsröst", AutomaticCB, "tooltip:voice");
+  gdi.addButton("SaveBackup", "Säkerhetskopiering", AutomaticCB);
+  gdi.addButton("InfoService", "Informationsserver", AutomaticCB);
   gdi.addButton("Punches", "Stämplingstest", AutomaticCB, "Simulera inläsning av stämplar");
   gdi.popX();
   gdi.dropLine(2.5);
-  gdi.addButton("SaveBackup", "Säkerhetskopiering", AutomaticCB);
+  gdi.addButton("Splits", "Sträcktider (WinSplits)", AutomaticCB, "Spara sträcktider till en fil för automatisk synkronisering med WinSplits");
+  gdi.addButton("Prewarning", "Förvarningsröst", AutomaticCB, "tooltip:voice");
+
 
   gdi.fillDown();
   gdi.dropLine(3);
@@ -682,7 +690,7 @@ void AutoMachine::startCancelInterval(gdioutput &gdi, char *startCommand, bool c
 
 void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   settingsTitle(gdi, "Resultatutskrift / export");
-  wstring time=created ? L"10:00" : getTimeMSW(interval);
+  wstring time=created ? L"10:00" : getTimeMS(interval);
   startCancelInterval(gdi, "StartResult", created, IntervalMinute, time);
 
   if (created) {
@@ -1097,7 +1105,7 @@ void SaveMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 
 void SaveMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   settingsTitle(gdi, "Säkerhetskopiering");
-  wstring time=created ? L"10:00" : getTimeMSW(interval);
+  wstring time=created ? L"10:00" : getTimeMS(interval);
   startCancelInterval(gdi, "StartBackup", created, IntervalMinute, time);
 
   int cx = gdi.getCX();

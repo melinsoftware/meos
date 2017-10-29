@@ -416,7 +416,7 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
 
 bool csvparser::openOutput(const wstring &filename)
 {
-  //Startnr;Bricka;Databas nr.;Efternamn;Förnamn;År;K;Block;ut;Start;Mål;Tid;Status;Klubb nr.;Namn;Ort;Land;Klass nr.;Kort;Lång;Num1;Num2;Num3;Text1;Text2;Text3;Adr. namn;Gata;Rad 2;Post nr.;Ort;Tel;Fax;E-post;Id/Club;Hyrd;Startavgift;Betalt;Bana nr.;Bana;km;Hm;Bana kontroller
+  checkWriteAccess(filename);
   fout.open(filename);
 
   if (fout.bad())

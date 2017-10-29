@@ -174,6 +174,7 @@ public:
     FlagFeeSpecified = 8,
     FlagUpdateClass = 16,
     FlagUpdateName = 32,
+    FlagAutoDNS = 64,
   };
 
   bool hasFlag(TransferFlags flag) const;
@@ -480,7 +481,7 @@ protected:
 
   class RaceIdFormatter : public oDataDefiner {
     public:
-      const wstring &formatData(oBase *obj) const;
+      const wstring &formatData(const oBase *obj) const;
       wstring setData(oBase *obj, const wstring &input) const;
       int addTableColumn(Table *table, const string &description, int minWidth) const;
   };

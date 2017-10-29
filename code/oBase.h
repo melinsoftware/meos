@@ -43,7 +43,7 @@ class oDataContainer;
 typedef void * pvoid;
 typedef vector< vector<wstring> > * pvectorstr;
 
-enum RunnerStatus {StatusOK=1, StatusDNS=20, StatusMP=3,
+enum RunnerStatus {StatusOK=1, StatusDNS=20, StatusCANCEL = 21, StatusMP=3,
                    StatusDNF=4, StatusDQ=5, StatusMAX=6,
                    StatusUnknown=0, StatusNotCompetiting=99};
 
@@ -64,6 +64,7 @@ enum SortOrder {ClassStartTime,
                 SortByFinishTimeReverse,
                 SortByStartTime,
                 CourseResult,
+                SortByEntryTime,
                 Custom,
                 SortEnumLastItem};
 

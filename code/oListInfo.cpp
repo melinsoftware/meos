@@ -232,7 +232,7 @@ public:
 
     int w = 0;
     TextInfo ti;
-    HDC hDC = GetDC(gdi.getHWND());
+    HDC hDC = GetDC(gdi.getHWNDTarget());
     
     for (multimap<int, T>::iterator it = words.begin(); it != words.end(); ++it) {
       ti.xp = 0;
@@ -247,7 +247,7 @@ public:
       }
     }
 
-    ReleaseDC(gdi.getHWND(), hDC);
+    ReleaseDC(gdi.getHWNDTarget(), hDC);
     return w;
   }
 
@@ -687,12 +687,12 @@ const wstring &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListP
 
     case lControlMedianLostTime:
       if (ctrl) 
-        wsptr = &formatTimeW(ctrl->getMissedTimeMedian()); 
+        wsptr = &formatTime(ctrl->getMissedTimeMedian()); 
     break;
 
     case lControlMaxLostTime:
       if (ctrl) 
-        wsptr = &formatTimeW(ctrl->getMissedTimeMax()); 
+        wsptr = &formatTime(ctrl->getMissedTimeMax()); 
       break;
     
     case lControlMistakeQuotient:
@@ -896,12 +896,15 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             break; // Common start time, skip
           }
         }
-        if (r->startTimeAvailable()) {
+        if (r->getStatus() == StatusCANCEL) {
+          wsptr = &oEvent::formatStatus(StatusCANCEL);
+        }
+        else if (r->startTimeAvailable()) {
           if (pp.type != lRunnerStartZero) 
             wsptr = &r->getStartTimeCompact();
           else {
             int st = r->getStartTime();
-            wsptr = &getTimeMSW(st-3600);
+            wsptr = &getTimeMS(st-oe->getFirstStart());
           }
         }
         else
@@ -1021,7 +1024,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
               RunnerStatus ts = r->getTotalStatus();
               int rt = r->getTotalRunningTime();
               if (ts == StatusOK || (ts == StatusUnknown && rt > 0)) {
-                wstring vts = formatTimeW(rt) + L" (" + timeStatus + L")";
+                wstring vts = formatTime(rt) + L" (" + timeStatus + L")";
                 swap(vts, timeStatus);
               }
               else {
@@ -1105,7 +1108,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
           int len = pc->getLength();
           if (len > 0 && t > 0) {
             int sperkm = (1000 * t) / len;
-            wsptr = &formatTimeW(sperkm);
+            wsptr = &formatTime(sperkm);
           }
         }
       }
@@ -1154,7 +1157,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
           wsptr = &lang.tl("Struken");
       else if (r) {
         if (r->tempStatus==StatusOK && pc && !pc->getNoTiming())
-          wcscpy_s(wbf, formatTimeW(r->tempRT).c_str());
+          wcscpy_s(wbf, formatTime(r->tempRT).c_str());
         else
           wcscpy_s(wbf, formatStatus(r->tempStatus).c_str() );
       }
@@ -1278,14 +1281,14 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (r && !invalidClass) {
         int a = r->getTimeAdjustment();
         if (a != 0)
-          wsptr = &getTimeMSW(a);
+          wsptr = &getTimeMS(a);
       }
       break;
     case lRunnerRogainingPointOvertime:
       if (r && !invalidClass) {
         int over = r->getRogainingOvertime();
         if (over > 0)
-          wsptr = &formatTimeW(over);
+          wsptr = &formatTime(over);
       }
       break;
 
@@ -1434,6 +1437,27 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         wcscpy_s(wbf, s.c_str());
       }
     break;
+    case lRunnerPaid:
+      if (r) {
+        wstring s = formatCurrency(r->getDCI().getInt("Paid"));
+        wcscpy_s(wbf, s.c_str());
+      }
+      break;
+    case lRunnerPayMethod:
+      if (r) {
+        wsptr = &r->getDCI().formatString(r, "PayMode");
+      }
+      break;
+    case lRunnerEntryDate:
+      if (r && r->getDCI().getInt("EntryDate") > 0) {
+        wsptr = &r->getDCI().getDate("EntryDate");
+      }
+      break;
+    case lRunnerEntryTime:
+      if (r) {
+        wsptr = &formatTime(r->getDCI().getInt("EntryTime"));
+      }
+      break;
     case lTeamFee:
       if (t) {
         wstring s = formatCurrency(t->getTeamFee());
@@ -1469,7 +1493,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             wsptr = &t->Runners[legIndex]->getStartTimeCompact();
           else {
             int st = t->Runners[legIndex]->getStartTime();
-            wsptr = &getTimeMSW(st-3600);
+            wsptr = &getTimeMS(st-3600);
           }
         }
       }
@@ -1544,7 +1568,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (t && !invalidClass) {
         int over = t->getRogainingOvertime();
         if (over > 0)
-          wsptr = &formatTimeW(over);
+          wsptr = &formatTime(over);
       }
       break;
 
@@ -1562,7 +1586,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (t && !invalidClass) {
         int a = t->getTimeAdjustment();
         if (a != 0)
-          wsptr = &getTimeMSW(a);
+          wsptr = &getTimeMS(a);
       }
       break;
 
@@ -1863,7 +1887,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             res.swap(out[ix]);
             if (res.find_first_of('%') != res.npos) {
               wchar_t bf2[256];
-              swprintf_s(bf2, res.c_str(), itos(nr).c_str());
+              swprintf_s(bf2, res.c_str(), itow(nr).c_str());
               res = bf2;
             }
           }
@@ -2274,12 +2298,11 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     GeneralResult *gResult = 0;
     if (!li.resultModule.empty()) {
       wstring src;
-      gResult = &getGeneralResult(li.resultModule, src);
       oListInfo::ResultType resType = li.getResultType();
+      gResult = &getGeneralResult(li.resultModule, src);
       gResult->calculateIndividualResults(rlist, resType, li.sortOrder == Custom, li.getParam().getInputNumber());
 
-      if (li.sortOrder == SortByFinishTime || li.sortOrder == SortByFinishTimeReverse
-          || li.sortOrder == SortByStartTime)
+      if (li.sortOrder == SortByFinishTime || li.sortOrder == SortByFinishTimeReverse || li.sortOrder == SortByStartTime)
         gResult->sort(rlist, li.sortOrder);
     }
 

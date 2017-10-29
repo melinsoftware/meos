@@ -43,6 +43,7 @@ const int MAXLISTPARAMID = 10000000;
 using namespace tr1;
 
 oListParam::oListParam() {
+  lockUpdate = false;
   listCode = EStdResultList; //Just need a default
   cb = 0;
   legNumber = 0;
@@ -59,6 +60,15 @@ oListParam::oListParam() {
   nextList = 0; // No linked list
   previousList = 0;
   relayLegIndex = -1;
+  bgColor = -1;
+  fgColor = -1;
+  bgColor2 = -1;
+
+  nColumns = 0;
+  animate = true;
+  timePerPage = 8000;
+  margin = 5;
+  screenMode = 0;
 }
 
 void oListParam::serialize(xmlparser &xml, 
@@ -90,6 +100,24 @@ void oListParam::serialize(xmlparser &xml,
     if (res != idToIndex.end())
       xml.write("NextList", res->second);
   }
+  if (bgColor != -1)
+    xml.write("BGColor", itos(bgColor));
+  if (bgColor2 != -1)
+    xml.write("BGColor2", itos(bgColor2));
+
+  if (fgColor != -1)
+    xml.write("FGColor", itos(fgColor));
+  xml.write("Image", bgImage);
+
+  xml.write("ScreenMode", screenMode);
+
+  if (nColumns != 0) {
+    xml.write("NumColumns", itos(nColumns));
+    xml.writeBool("Animate", animate);
+    xml.write("TimePerPage", timePerPage);
+    xml.write("Margin", margin);
+  }
+
   xml.endTag();
 }
 
@@ -120,6 +148,32 @@ void oListParam::deserialize(const xmlobject &xml, const MetaListContainer &cont
   showInterTitle = xml.getObjectBool("ShowInterTitle");
   inputNumber = xml.getObjectInt("InputNumber");
   nextList = xml.getObjectInt("NextList");
+
+  xmlobject bg = xml.getObject("BGColor");
+  if (bg)
+    bgColor = bg.getInt();
+
+  xmlobject bg2 = xml.getObject("BGColor2");
+  if (bg2)
+    bgColor2 = bg2.getInt();
+
+  xmlobject fg = xml.getObject("FGColor");
+  if (fg)
+    fgColor = fg.getInt();
+
+  xml.getObjectString("Image", bgImage);
+
+  int nColumns = xml.getObjectInt("NumColumns");
+
+  screenMode = xml.getObjectInt("ScreenMode");
+  animate = xml.getObjectBool("Animate");
+
+  if (xml.got("TimePerPage"))
+    timePerPage = xml.getObjectInt("TimePerPage");
+
+  if (xml.got("Margin"))
+    timePerPage = xml.getObjectInt("Margin");
+
   saved = true;
 }
 
@@ -961,7 +1015,7 @@ void MetaList::save(xmlparser &xml, const oEvent *oe) const {
 //  xml.write("Title", defaultTitle);
   xml.write("ListName", listName);
   if (listOrigin.empty())
-    listOrigin = gEvent->getName() + L" (" + getLocalDateW() + L")";
+    listOrigin = gEvent->getName() + L" (" + getLocalDate() + L")";
   xml.write("ListOrigin", listOrigin);
   xml.write("Tag", tag);
   xml.write("UID", getUniqueId());
@@ -1604,6 +1658,10 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerNationality] = L"RunnerNationality";
     typeToSymbol[lRunnerPhone] = L"RunnerPhone";
     typeToSymbol[lRunnerFee] = L"RunnerFee";
+    typeToSymbol[lRunnerPaid] = L"RunnerPaid";
+    typeToSymbol[lRunnerPayMethod] = L"RunnerPayMethod";
+    typeToSymbol[lRunnerEntryDate] = L"RunnerEntryDate";
+    typeToSymbol[lRunnerEntryTime] = L"RunnerEntryTime";
 
     typeToSymbol[lTeamName] = L"TeamName";
     typeToSymbol[lTeamStart] = L"TeamStart";
@@ -1719,6 +1777,7 @@ void MetaList::initSymbols() {
     orderToSymbol[SortByFinishTimeReverse] = "FinishTimeReverse";
     orderToSymbol[ClassFinishTime] = "ClassFinishTime";
     orderToSymbol[SortByStartTime] = "StartTime";
+    orderToSymbol[SortByEntryTime] = "EntryTime";
     orderToSymbol[ClassPoints] = "ClassPoints";
     orderToSymbol[ClassTotalResult] = "ClassTotalResult";
     orderToSymbol[ClassTeamLegResult] = "ClassTeamLegResult";

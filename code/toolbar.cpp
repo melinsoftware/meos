@@ -158,7 +158,7 @@ void Toolbar::createToolbar(const string &id, const wstring &title)
   }
 
   wstring t = lang.tl(title);
-  HWND hParent = gdi.getHWND();
+  HWND hParent = gdi.getHWNDTarget();
   RECT rc;
   GetWindowRect(hParent, &rc);
   if (hwndFloater == 0) {
@@ -281,7 +281,7 @@ LRESULT CALLBACK ToolProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       Toolbar *tb = (Toolbar *)GetWindowLongPtr(hWnd, GWL_USERDATA);
       if (tb) {
         //DefWindowProc(tb->gdi.getHWND(), message, wParam, lParam);
-        SendMessage(tb->gdi.getMain(), message, wParam, lParam);
+        SendMessage(tb->gdi.getHWNDMain(), message, wParam, lParam);
       }
       return DefWindowProc(hWnd, message, wParam, lParam);
     }

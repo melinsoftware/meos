@@ -112,6 +112,10 @@ enum EPostType
   lRunnerNationality,
   lRunnerPhone,
   lRunnerFee,
+  lRunnerPaid,
+  lRunnerPayMethod,
+  lRunnerEntryDate,
+  lRunnerEntryTime,
 
   lTeamName,
   lTeamStart,
@@ -294,6 +298,8 @@ struct oListParam {
   GUICALLBACK cb;
   set<int> selection;
   
+  bool lockUpdate; // Temporary prevent animation update
+
   int useControlIdResultTo;
   int useControlIdResultFrom;
   int filterMaxPer;
@@ -313,6 +319,18 @@ struct oListParam {
   // Generate a large-size list (supported as input when supportLarge is true)
   bool useLargeSize;
   bool saved;
+
+  int bgColor;
+  int bgColor2;
+
+  int fgColor;
+  wstring bgImage;
+
+  int nColumns;
+  bool animate;
+  int timePerPage;
+  int margin;
+  int screenMode;// 0 normal window, 1 = page by page, 2 = scroll
 
   void updateDefaultName(const wstring &pname) const {defaultName = pname;}
   void setCustomTitle(const wstring &t) {title = t;}
@@ -346,8 +364,6 @@ struct oListParam {
   const int getLegNumberCoded() const {
     return legNumber >= 0 ? legNumber : 1000;
   }
-
-
 
 private:
    int legNumber;

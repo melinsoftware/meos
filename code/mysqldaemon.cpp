@@ -31,7 +31,7 @@
 
 MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-daemon"), error(errorIn)
 {
-  timeError = getLocalTimeW();
+  timeError = getLocalTime();
   hThread=0;
 }
 
@@ -110,7 +110,7 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     }
     else {
       gdi.addInfoBox("", L"Återansluten mot databasen, tävlingen synkroniserad.", 10000);
-      timeReconnect = getLocalTimeW();
+      timeReconnect = getLocalTime();
       gdi.setDBErrorState(false);
       gdi.setWindowTitle(oe->getTitleName());
       interval=0;

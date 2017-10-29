@@ -43,6 +43,7 @@ enum Machines {
   mOnlineResults,
   mOnlineInput,
   mSaveBackup,
+  mInfoService,
 };
 
 class AutoMachine

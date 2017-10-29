@@ -116,6 +116,9 @@ class TabCompetition :
 
   set<int> allTransfer;
 
+
+  void checkReadyForResultExport(gdioutput &gdi, const set<int> &classFilter);
+
   void displayRunners(gdioutput &gdi, const vector<pRunner> &changedClass) const;
 
   void meosFeatures(gdioutput &gdi, bool newGuide);

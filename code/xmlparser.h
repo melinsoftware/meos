@@ -220,6 +220,18 @@ public:
     return 0;
   }
 
+  bool got(const char *pname) const {
+    xmlobject x(getObject(pname));
+    if (x)
+      return true;
+    else {
+      xmlattrib xa(getAttrib(pname));
+      if (xa)
+        return true;
+    }
+    return false;
+  }
+
   bool getObjectBool(const char *pname) const;
 
   string &getObjectString(const char *pname, string &out) const;

@@ -52,20 +52,26 @@ public:
   }
 };
 
+string convertSystemTimeN(const SYSTEMTIME &st);
+
+/*
 string convertSystemTime(const SYSTEMTIME &st);
 string convertSystemTimeOnly(const SYSTEMTIME &st);
 string convertSystemDate(const SYSTEMTIME &st);
 string getLocalTime();
 string getLocalDate();
 string getLocalTimeOnly();
+*/
+string getLocalTimeN();
 
-wstring convertSystemTimeW(const SYSTEMTIME &st);
-wstring convertSystemTimeOnlyW(const SYSTEMTIME &st);
-wstring convertSystemDateW(const SYSTEMTIME &st);
-wstring getLocalTimeW();
-wstring getLocalDateW();
-wstring getLocalTimeOnlyW();
-
+wstring convertSystemTime(const SYSTEMTIME &st);
+wstring convertSystemTimeOnly(const SYSTEMTIME &st);
+wstring convertSystemDate(const SYSTEMTIME &st);
+wstring getLocalTime();
+wstring getLocalDate();
+wstring getLocalTimeOnly();
+// Returns time in seconds after midnight
+int getLocalAbsTime();
 
 // Get a day number after a fixed day some time ago...
 int getRelativeDay();
@@ -73,13 +79,11 @@ int getRelativeDay();
 /// Get time and date in a format that forms a part of a filename
 wstring getLocalTimeFileName();
 
-const wstring &getTimeMSW(int m);
-const wstring &formatTimeW(int rt);
-const wstring &formatTimeHMSW(int rt);
+const wstring &getTimeMS(int m);
+const wstring &formatTime(int rt);
+const wstring &formatTimeHMS(int rt);
 
-const string &getTimeMS(int m);
-const string &formatTimeN(int rt);
-const string &formatTimeHMS(int rt);
+//const string &formatTimeN(int rt);
 wstring formatTimeIOF(int rt, int zeroTime);
 
 int convertDateYMS(const string &m, bool checkValid);
@@ -93,8 +97,8 @@ int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid);
 void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &meosDate);
 
 // Format number date 20160421 -> 2016-04-21 (if iso) or according to a custom format otherwise
-string formatDate(int m, bool useIsoFormat);
-wstring formatDateW(int m, bool useIsoFormat);
+//string formatDate(int m, bool useIsoFormat);
+wstring formatDate(int m, bool useIsoFormat);
 
 __int64 SystemTimeToInt64Second(const SYSTEMTIME &st);
 SYSTEMTIME Int64SecondToSystemTime(__int64 time);
@@ -107,15 +111,16 @@ int convertAbsoluteTimeMS(const wstring &m);
 int convertAbsoluteTimeISO(const wstring &m);
 
 //Returns a time converted from +/-MM:SS or NOTIME, in seconds
-int convertAbsoluteTimeMS(const string &m);
+//int convertAbsoluteTimeMS(const string &m);
 // Parses a time on format HH:MM:SS+01:00Z or HHMMSS+0100Z (but ignores time zone)
-int convertAbsoluteTimeISO(const string &m);
+//int convertAbsoluteTimeISO(const string &m);
 
 /** Returns a time converted from HH:MM:SS or -1, in seconds
    @param m time to convert
    @param daysZeroTime -1 do not support days syntax, positive interpret days w.r.t the specified zero time.
 */
 int convertAbsoluteTimeHMS(const string &m, int daysZeroTime);
+
 /** Returns a time converted from HH:MM:SS or -1, in seconds
    @param m time to convert
    @param daysZeroTime -1 do not support days syntax, positive interpret days w.r.t the specified zero time.
@@ -123,7 +128,7 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime);
 int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime);
 
 const vector<string> &split(const string &line, const string &separators, vector<string> &split_vector);
-const string &unsplit(const vector<string> &split_vector, const string &separators, string &line);
+//const string &unsplit(const vector<string> &split_vector, const string &separators, string &line);
 
 const vector<wstring> &split(const wstring &line, const wstring &separators, vector<wstring> &split_vector);
 const wstring &unsplit(const vector<wstring> &split_vector, const wstring &separators, wstring &line);
@@ -289,3 +294,5 @@ namespace MeOSUtil {
 
 void string2Wide(const string &in, wstring &out);
 void wide2String(const wstring &in, string &out);
+
+void checkWriteAccess(const wstring &file);

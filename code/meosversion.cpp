@@ -29,7 +29,7 @@
 //V33: abcde
 //V35: abc
 int getMeosBuild() {
-  string revision("$Rev: 611 $");
+  string revision("$Rev: 621 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -41,7 +41,7 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfg
 wstring getMeosDate() {
-  wstring date(L"$Date: 2017-08-28 20:32:01 +0200 (mÃ¥, 28 aug 2017) $");
+  wstring date(L"$Date: 2017-10-21 22:43:38 +0200 (lÃ¶, 21 okt 2017) $");
   return date.substr(7,10);
 }
 
@@ -176,4 +176,5 @@ void getSupporters(vector<string> &supp)
   supp.push_back("Timrå SOK");
   supp.push_back("Åke Larsson, OK Hedströmmen");
   supp.push_back("Avesta OK");
+  supp.push_back("Motionsorientering Göteborg");
 }

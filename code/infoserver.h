@@ -114,9 +114,10 @@ class InfoClass : public InfoBase {
     int sortOrder;
     vector< vector<int> > radioControls;
     vector<int> linearLegNumberToActual;
+  public:
     bool synchronize(oClass &c, const set<int> &ctrls);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
-  public:
+
     InfoClass(int id);
     virtual ~InfoClass() {}
 
@@ -166,10 +167,12 @@ class InfoCompetitor : public InfoBaseCompetitor {
     int inputTime;
     int totalStatus;
     bool synchronize(const InfoCompetition &cmp, oRunner &c);
-    void serialize(xmlbuffer &xml, bool diffOnly) const;
     bool changeTotalSt;
     bool changeRadio;
   public:
+    bool synchronize(bool useTotalResults, oRunner &c);
+    void serialize(xmlbuffer &xml, bool diffOnly) const;
+
     InfoCompetitor(int id);
     virtual ~InfoCompetitor() {}
 
@@ -197,6 +200,8 @@ private:
 protected:
     bool forceComplete;
 
+    bool includeTotal;
+
     list<InfoBase *> toCommit;
 
     map<int, InfoRadioControl> controls;
@@ -206,13 +211,20 @@ protected:
     map<int, InfoTeam> teams;
 
     void needCommit(InfoBase &obj);
+   
+  public:
     void serialize(xmlbuffer &xml, bool diffOnly) const;
 
 
-  public:
-    const vector<int> &getControls(int classId, int legNumber) const;
-    bool synchronize(oEvent &oe, const set<int> &classes, const set<int> &ctrls);
+    bool includeTotalResults() const {return includeTotal;}
+    void includeTotalResults(bool inc) {includeTotal = inc;}
 
+    const vector<int> &getControls(int classId, int legNumber) const;
+    bool synchronize(oEvent &oe, bool onlyCmp, const set<int> &classes, const set<int> &ctrls);
+    bool synchronize(oEvent &oe) {
+      set<int> dmy;
+      return synchronize(oe, true, dmy, dmy);
+    }
     void getCompleteXML(xmlbuffer &xml);
     void getDiffXML(xmlbuffer &xml);
 

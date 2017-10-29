@@ -693,7 +693,7 @@ void oEvent::calculateNumRemainingMaps()
 
   
   for (oRunnerList::const_iterator it=Runners.begin(); it != Runners.end(); ++it) {
-    if (!it->isRemoved() && it->getStatus() != StatusDNS) {
+    if (!it->isRemoved() && it->getStatus() != StatusDNS && it->getStatus() != StatusCANCEL) {
       pCourse pc = it->getCourse(false);
       if (pc) {
         if (pc->tMapsRemaining != numeric_limits<int>::min())

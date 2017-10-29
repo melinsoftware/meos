@@ -33,6 +33,7 @@
 #include "gdiconstants.h"
 #include "meosexception.h"
 #include "recorder.h"
+#include "oDataContainer.h"
 
 extern HINSTANCE hInst;
 const char *tId="_TABLE_SEL";
@@ -103,9 +104,9 @@ void Table::clearCellSelection(gdioutput *gdi) {
   upperCol = -1;
   lowerCol = -1;
   if (gdi) {
-    HDC hDC = GetDC(gdi->getTarget());
+    HDC hDC = GetDC(gdi->getHWNDTarget());
     clearSelectionBitmap(gdi, hDC);
-    ReleaseDC(gdi->getTarget(), hDC);
+    ReleaseDC(gdi->getHWNDTarget(), hDC);
   }
 }
 
@@ -567,7 +568,7 @@ bool Table::mouseMove(gdioutput &gdi, int x, int y)
   if (row!=-1)
     col=getColumn(x);
 
-  HWND hWnd=gdi.getTarget();
+  HWND hWnd=gdi.getHWNDTarget();
 
   if (colSelected!=-1) {
     TableCell &cell=Data[0].cells[colSelected];
@@ -673,7 +674,7 @@ bool Table::mouseLeftUp(gdioutput &gdi, int x, int y)
 
     if (hdcCompatible) {
       TableCell &cell=Data[0].cells[colSelected];
-      HWND hWnd=gdi.getTarget();
+      HWND hWnd=gdi.getHWNDTarget();
       HDC hDC=GetDC(hWnd);
       stopMoveCell(hDC, cell, x-startX, y-startY);
       ReleaseDC(hWnd, hDC);
@@ -691,7 +692,7 @@ bool Table::mouseLeftUp(gdioutput &gdi, int x, int y)
     }
     else {
       moveColumn(colSelected, highCol);
-      InvalidateRect(gdi.getTarget(), 0, false);
+      InvalidateRect(gdi.getHWNDTarget(), 0, false);
       colSelected=-1;
       return true;
     }
@@ -726,7 +727,7 @@ void Table::selection(gdioutput &gdi, const wstring &text, int data) {
  reloadRow(id);
  RECT rc;
  getRowRect(selectionRow, rc);
- InvalidateRect(gdi.getTarget(), &rc, false);
+ InvalidateRect(gdi.getHWNDTarget(), &rc, false);
 }
 
 #ifndef MEOSDB
@@ -868,7 +869,7 @@ bool Table::mouseLeftDown(gdioutput &gdi, int x, int y) {
 
     hEdit=CreateWindowEx(0, L"EDIT", Titles[highCol].filter.c_str(),
         WS_TABSTOP|WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL|WS_BORDER,
-        rc.left+105, rc.top, tableWidth-105, (rc.bottom-rc.top-1), gdi.getTarget(),
+        rc.left+105, rc.top, tableWidth-105, (rc.bottom-rc.top-1), gdi.getHWNDTarget(),
         0, hInst, 0);
     drawFilterLabel=true;
     SendMessage(hEdit, EM_SETSEL, 0, -1);
@@ -877,8 +878,8 @@ bool Table::mouseLeftDown(gdioutput &gdi, int x, int y) {
     gdi.refresh();
   }
   else {
-    SetFocus(gdi.getHWND());
-    SetCapture(gdi.getTarget());
+    SetFocus(gdi.getHWNDTarget());
+    SetCapture(gdi.getHWNDTarget());
     lowerCol = getColumn(x);
     lowerRow = getRow(y);
     startSelect = true;
@@ -954,7 +955,7 @@ bool Table::editCell(gdioutput &gdi, int row, int col) {
   else if (cell.type==cellEdit) {
     hEdit=CreateWindowEx(0, L"EDIT", cell.contents.c_str(),
       WS_TABSTOP|WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL|WS_BORDER,
-      rc.left, rc.top, rc.right-rc.left+1, (rc.bottom-rc.top), gdi.getTarget(),
+      rc.left, rc.top, rc.right-rc.left+1, (rc.bottom-rc.top), gdi.getHWNDTarget(),
       0, hInst, 0);
     SendMessage(hEdit, EM_SETSEL, 0, -1);
     SetFocus(hEdit);
@@ -1276,7 +1277,7 @@ void Table::draw(gdioutput &gdi, HDC hDC, int dx, int dy, const RECT &screen)
 
   RECT desktop, target;
   GetClientRect(GetDesktopWindow(), &desktop);
-  GetClientRect(gdi.getTarget(), &target);
+  GetClientRect(gdi.getHWNDTarget(), &target);
   int marginPixel = (desktop.bottom - desktop.top)  - (target.bottom - target.top);
 
   int margin = max(5, (marginPixel + rowHeight) / rowHeight);
@@ -1398,7 +1399,7 @@ void Table::restoreSelection(gdioutput &gdi, HDC hDC) {
     rc.right -= gdi.OffsetX;
     rc.top -= gdi.OffsetY;
     rc.bottom -= gdi.OffsetY;
-    InvalidateRect(gdi.getTarget(), &rc, false);
+    InvalidateRect(gdi.getHWNDTarget(), &rc, false);
     partialCell = false;
   }
   else if (hdcCompatibleCell) {
@@ -1598,7 +1599,7 @@ void Table::setTableText(gdioutput &gdi, int editRow, int editCol, const wstring
   reloadRow(Data[editRow].id);
   RECT rc;
   getRowRect(editRow, rc);
-  InvalidateRect(gdi.getTarget(), &rc, false);
+  InvalidateRect(gdi.getHWNDTarget(), &rc, false);
 }
 
 const wstring &Table::getTableText(gdioutput &gdi, int editRow, int editCol) {
@@ -1802,6 +1803,8 @@ void Table::resetColumns()
 
 void Table::update()
 {
+  for (auto &dd : dataDefiners)
+    dd.second->prepare(oe);
   int oldSort = PrevSort;
   Data.clear();
   sortIndex.clear();
@@ -1820,7 +1823,6 @@ void Table::update()
   //Refilter all
   for (size_t k=0;k<nTitles;k++)
     filter(k, Titles[k].filter, true);
-
 
   PrevSort = -1;
   if (oldSort != -1)
@@ -1980,7 +1982,7 @@ void Table::importClipboard(gdioutput &gdi)
     throw std::exception("Operationen stöds ej");
 
   wstring str;
-  if (OpenClipboard(gdi.getHWND()) != false) {
+  if (OpenClipboard(gdi.getHWNDMain()) != false) {
     
     HANDLE data = GetClipboardData(CF_UNICODETEXT);
     if (data) {
@@ -2187,7 +2189,7 @@ void Table::autoAdjust(gdioutput &gdi) {
   initEmpty();
   if (Titles.empty())
     return;
-  HDC hDC = GetDC(gdi.getTarget());
+  HDC hDC = GetDC(gdi.getHWNDTarget());
   RECT rc = {0,0,0,0};
   TextInfo ti;
   wstring filterText = lang.tl("Urval...");
@@ -2241,7 +2243,7 @@ void Table::autoAdjust(gdioutput &gdi) {
       Titles[columns[k]].baseWidth += dx;
     }
   }
-  ReleaseDC(gdi.getTarget(), hDC);
+  ReleaseDC(gdi.getHWNDTarget(), hDC);
   updateDimension(gdi);
 }
 
@@ -2322,4 +2324,8 @@ void TableRow::setObject(oBase &obj) {
     if (cells[k].owner != 0)
       cells[k].owner = &obj;
   }
+}
+
+void Table::addDataDefiner(const string &key, const oDataDefiner *definer) {
+  dataDefiners[key] = definer;
 }

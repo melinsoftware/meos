@@ -302,7 +302,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
 
     int card = punches[k].getObjectInt("card");
     int time = punches[k].getObjectInt("time") / 10;
-    time = oe.getRelativeTime(formatTimeHMSW(time));
+    time = oe.getRelativeTime(formatTimeHMS(time));
 
     if (startno.length() > 0)
       r = oe.getRunnerByBibOrStartNo(startno, false);

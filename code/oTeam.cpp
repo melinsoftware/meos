@@ -574,7 +574,7 @@ wstring oTeam::getLegRunningTimeS(int leg, bool multidayTotal) const
     leg = Runners.size()-1;
 
   int rt=getLegRunningTime(leg, multidayTotal);
-  const wstring &bf = formatTimeW(rt);
+  const wstring &bf = formatTime(rt);
   if (rt>0) {
     if ((unsigned(leg)<Runners.size() && Runners[leg] &&
       Class && Runners[leg]->getStartTime()==Class->getRestartTime(leg)) || getNumShortening(leg)>0)
@@ -780,20 +780,21 @@ bool oTeam::isRunnerUsed(int Id) const
   return false;
 }
 
-void oTeam::setTeamNoStart(bool dns)
+void oTeam::setTeamNoStart(bool dns, RunnerStatus dnsStatus)
 {
   if (dns) {
-    setStatus(StatusDNS, true, false);
+    assert(dnsStatus == StatusCANCEL || dnsStatus == StatusDNS);
+    setStatus(dnsStatus, true, false);
     for(unsigned i=0;i<Runners.size(); i++) {
       if (Runners[i] && Runners[i]->getStatus()==StatusUnknown) {
-        Runners[i]->setStatus(StatusDNS, true, false);
+        Runners[i]->setStatus(dnsStatus, true, false);
       }
     }
   }
   else {
     setStatus(StatusUnknown, true, false);
     for(unsigned i=0;i<Runners.size(); i++) {
-      if (Runners[i] && Runners[i]->getStatus()==StatusDNS) {
+      if (Runners[i] && (Runners[i]->getStatus()==StatusDNS || Runners[i]->getStatus() == StatusCANCEL)) {
         Runners[i]->setStatus(StatusUnknown, true, false);
       }
     }
@@ -1090,7 +1091,6 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
               else {//The else below should only be run by mistake (for an incomplete team)
                 Runners[i]->setStartTime(Class->getRestartTime(i), false, setTmpOnly);
                 Runners[i]->tUseStartPunch=false;
-                //Runners[i]->setStatus(StatusDNS);
               }
             }
             break;
@@ -1546,6 +1546,9 @@ wstring oTeam::getLegStartTimeCompact(int leg) const
 }
 
 void oTeam::setBib(const wstring &bib, int bibnumerical, bool updateStartNo, bool setTmpOnly) {
+  if (updateStartNo)
+    updateStartNo = !Class || !Class->lockedForking();
+
   if (setTmpOnly) {
     tmpStore.bib = bib;
     if (updateStartNo)
@@ -1745,8 +1748,10 @@ void oEvent::getTeams(int classId, vector<pTeam> &t, bool sort) {
 wstring oTeam::getEntryDate(bool dummy) const {
   oDataConstInterface dci = getDCI();
   int date = dci.getInt("EntryDate");
-  if (date == 0) {
-    (const_cast<oTeam *>(this)->getDI()).setDate("EntryDate", getLocalDateW());
+  if (date == 0 && !isVacant()) {
+    auto di = (const_cast<oTeam *>(this)->getDI());
+    di.setDate("EntryDate", getLocalDate());
+    di.setInt("EntryTime", getLocalAbsTime());
   }
   return dci.getDate("EntryDate");
 }
@@ -1968,14 +1973,14 @@ bool oTeam::inputData(int id, const wstring &input,
 
     case TID_STATUS: {
       RunnerStatus sIn = RunnerStatus(inputId);
-      if (sIn != StatusDNS) {
-        if (getStatus() == StatusDNS && sIn == StatusUnknown)
-          setTeamNoStart(false);
+      if (sIn != StatusDNS && sIn != StatusCANCEL) {
+        if ((getStatus() == StatusDNS || getStatus() == StatusCANCEL) && sIn == StatusUnknown)
+          setTeamNoStart(false, StatusUnknown);
         else
           setStatus(sIn, true, false);
       }
-      else if (getStatus() != StatusDNS)
-        setTeamNoStart(true);
+      else if (getStatus() != sIn)
+        setTeamNoStart(true, sIn);
 
       apply(true, 0, false);
       RunnerStatus sOut = getStatus();

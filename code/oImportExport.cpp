@@ -73,6 +73,8 @@ int ConvertStatusToOE(int i)
       case StatusOK:
       return 0;
       case StatusDNS:  // Ej start
+      case StatusCANCEL:
+      case StatusNotCompetiting:
       return 1;
       case StatusDNF:  // Utg.
       return 2;
@@ -206,7 +208,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
     // Excel format HH:MM:SS
     
     if (it->getRunningTime() > 0)
-      row[OEtime] = formatTimeHMS(it->getRunningTime());
+      row[OEtime] = gdibase.recodeToNarrow(formatTimeHMS(it->getRunningTime()));
 
     row[OEstatus] = conv_is(ConvertStatusToOE(it->getStatus()));
     row[OEclubno] = conv_is(it->getClubId());
@@ -259,7 +261,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
           continue;
         row.push_back(gdibase.recodeToNarrow(pc->getControl(k)->getIdS()));
         if (unsigned(k) < sp.size() && sp[k].time > 0)
-          row.push_back(formatTimeHMS(sp[k].time - it->tStartTime));
+          row.push_back(gdibase.recodeToNarrow(formatTimeHMS(sp[k].time - it->tStartTime)));
         else
           row.push_back("-----");
       }
@@ -276,7 +278,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
 
           int t = punch->getAdjustedTime();
           if (it->tStartTime > 0 && t > 0 && t > it->tStartTime)
-            row.push_back(formatTimeHMS(t - it->tStartTime));
+            row.push_back(gdibase.recodeToNarrow(formatTimeHMS(t - it->tStartTime)));
           else
             return "-----";
         }
@@ -1178,7 +1180,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
 {
   if (!clubfile.empty()) {
     xmlparser xml_club;
-    xml_club.setProgress(gdibase.getHWND());
+    xml_club.setProgress(gdibase.getHWNDTarget());
 
     if (clear)
       runnerDB->clearClubs();
@@ -1218,7 +1220,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
 
   if (!competitorfile.empty()) {
     xmlparser xml_cmp;
-    xml_cmp.setProgress(gdibase.getHWND());
+    xml_cmp.setProgress(gdibase.getHWNDTarget());
     gdibase.dropLine();
     gdibase.addString("",0,"Läser löpare...");
     gdibase.refresh();
@@ -2270,7 +2272,8 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             if (pc) xml.write("CourseLength", "unit", L"m", pc->getLengthS());
 
             pCourse pcourse=pc;
-            if (pcourse && it->getLegStatus(-1, false)>0 && it->getLegStatus(-1, false)!=StatusDNS) {
+            auto legStatus = it->getLegStatus(-1, false);
+            if (pcourse && legStatus>0 && legStatus!=StatusDNS && legStatus!=StatusCANCEL) {
               int no = 1;
               bool hasRogaining = pcourse->hasRogaining();
               int startIx = pcourse->useFirstAsStart() ? 1 : 0;
@@ -2375,7 +2378,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
 
         pCourse pcourse=it->getCourse(true);
         if (pcourse && it->getStatus()>0 && it->getStatus()!=StatusDNS
-          && it->getStatus()!=StatusNotCompetiting) {
+          && it->getStatus()!=StatusNotCompetiting && it->getStatus() != StatusCANCEL) {
           bool hasRogaining = pcourse->hasRogaining();
           int no = 1;
           int startIx = pcourse->useFirstAsStart() ? 1 : 0;
@@ -2527,7 +2530,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
             }
             pCourse pcourse=pc;
             if (pcourse && r->getStatus()>0 && r->getStatus()!=StatusDNS
-                  && r->getStatus()!=StatusNotCompetiting) {
+                  && r->getStatus()!=StatusNotCompetiting && r->getStatus() != StatusCANCEL) {
               int no = 1;
               bool hasRogaining = pcourse->hasRogaining();
               int startIx = pcourse->useFirstAsStart() ? 1 : 0;

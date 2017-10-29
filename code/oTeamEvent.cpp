@@ -592,9 +592,9 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setLegType(1, LTSum);
       cls.setStartType(1, STHunting, false); 
       int t = convertAbsoluteTimeHMS(start, ZeroTime)+3600;
-      cls.setStartData(1, formatTimeHMSW(t));
-      cls.setRestartTime(1, formatTimeHMSW(t+1800));
-      cls.setRopeTime(1, formatTimeHMSW(t+1800));
+      cls.setStartData(1, formatTimeHMS(t));
+      cls.setRestartTime(1, formatTimeHMS(t+1800));
+      cls.setRopeTime(1, formatTimeHMS(t+1800));
       cls.setLegRunner(1, 0);
       cls.setCoursePool(false);
       break;
@@ -733,7 +733,7 @@ void oTeam::checkClassesWithReferences(oEvent &oe, std::set<int> &clsWithRef) {
       ++pairedUnpairedPerClass[r[k]->getClassId()].second;
   }
 
-  for (auto it : pairedUnpairedPerClass) {
+  for (auto &it : pairedUnpairedPerClass) {
     if (it.second.first > it.second.second)
       clsWithRef.insert(it.first);
   }

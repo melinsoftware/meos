@@ -840,7 +840,7 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
     return opStatusFail;
   int errorCount = 0;
   int totErrorCount = 0;
-  ProgressWindow pw(oe->hWnd());
+  ProgressWindow pw(oe->gdiBase().getHWNDTarget());
   try {
     const vector<oDBClubEntry> &cdb = oe->runnerDB->getClubDB(true);
     size_t size = cdb.size();
@@ -1000,7 +1000,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
 
   if (!oe->Id) return SyncUpdate(oe);
 
-  ProgressWindow pw(oe->hWnd());
+  ProgressWindow pw(oe->gdiBase().getHWNDTarget());
 
   try {
     con.select_db("MeOSMain");

@@ -560,9 +560,6 @@ public:
   void saveProperties(const wchar_t *file);
   void loadProperties(const wchar_t *file);
 
-  // Get window handle
-  HWND hWnd() const;
-
   /** Get number of classes*/
   int getNumClasses() const {return Classes.size();}
 
@@ -799,10 +796,11 @@ protected:
   int tClubDataRevision;
   bool readOnly;
   mutable int tLongTimesCached;
-
+  mutable map<int, pair<int, int> > cachedFirstStart; //First start per classid.
   map<pair<int, int>, oFreePunch> advanceInformationPunches;
 
 public:
+  void updateStartTimes(int delta);
 
   void useDefaultProperties(bool useDefault);
 
@@ -864,7 +862,8 @@ public:
   void updateRunnerDatabase();
   void updateRunnerDatabase(pRunner r, map<int, int> &clubIdMap);
 
-  int getFirstStart(int ClassId=0);
+  /** Returns the first start in a class */
+  int getFirstStart(int classId = 0) const;
   void convertTimes(SICard &sic) const;
 
   pCard getCard(int Id) const;
@@ -1273,7 +1272,7 @@ public:
   bool checkCardUsed(gdioutput &gdi, oRunner &runnerToAssignCard, int CardNo);
 
   void analyseDNS(vector<pRunner> &unknown_dns, vector<pRunner> &known_dns,
-                  vector<pRunner> &known, vector<pRunner> &unknown);
+                  vector<pRunner> &known, vector<pRunner> &unknown, bool &hasSetDNS);
 
   void importOECSV_Data(const wstring &oecsvfile, bool clear);
   void importXML_IOF_Data(const wstring &clubfile, const wstring &competitorfile, bool clear);

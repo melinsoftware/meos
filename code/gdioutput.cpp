@@ -55,6 +55,7 @@
 #include "gdiimpl.h"
 #include "Printer.h"
 #include "recorder.h"
+#include "animationdata.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -133,6 +134,10 @@ void gdioutput::constructor(double _scale)
   lockUpDown = false;
 
   Background = 0;
+  backgroundColor1 = -1;
+  backgroundColor2 = -1;
+  foregroundColor = -1;
+  backgroundImage = -1;
 
   toolbar = 0;
   initCommon(_scale, L"Arial");
@@ -190,12 +195,12 @@ int transformX(int x, double scale) {
     return int((x-40) * scale + 0.5) + 40;
 }
 
-void gdioutput::scaleSize(double scale_) {
+void gdioutput::scaleSize(double scale_, bool allowSmallScale, bool doRefresh) {
   if (fabs(scale_ - 1.0) < 1e-4)
     return; // No scaling
   double ns = scale*scale_;
 
-  if (ns + 1e-6 < 1.0 ) {
+  if (!allowSmallScale && ns + 1e-6 < 1.0 ) {
     ns = 1.0;
     scale_ = 1.0;
   }
@@ -273,7 +278,16 @@ void gdioutput::scaleSize(double scale_) {
     r.sOY = int (r.sOY * scale_ + 0.5);
 
   }
-  refresh();
+  if (doRefresh) {
+    refresh();
+  }
+  else {
+    HDC hDC = GetDC(hWndTarget);
+    for (auto &ti : TL) {
+      calcStringSize(ti, hDC);
+    }
+    ReleaseDC(hWndTarget, hDC);
+  }
 }
 
 void gdioutput::initCommon(double _scale, const wstring &font)
@@ -317,16 +331,7 @@ const GDIImplFontSet & gdioutput::loadFont(const wstring &font) {
       relScale = enumeratedFonts[fontIx[k].second].getRelScale();
     }
   }
-  /*vector<string> res;
-  split(font, ";", res);
-  double locScale = 1.0;
-  if (res.empty() || res.size() > 2)
-    throw meosException("Cannot load font: " + font);
-  if (res.size() == 2) {
-    locScale = atof(res[1].c_str());
-    if (!(locScale>0.001 && locScale < 100))
-      throw meosException("Cannot scale font with factor: " + res[1]);
-  }*/
+
   wstring faceName;
   double locScale = getLocalScale(font, faceName);
 
@@ -351,9 +356,11 @@ gdioutput::~gdioutput()
 {
   while(!timers.empty()) {
     KillTimer(hWndTarget, (UINT_PTR)&timers.back());
+    timers.back().setWnd = 0;
     timers.back().parent = 0;
     timers.pop_back();
   }
+  animationData.reset();
 
   deleteFonts();
 
@@ -397,6 +404,18 @@ void gdioutput::fetchPrinterSettings(PrinterObject &po) const {
 
 void gdioutput::drawBackground(HDC hDC, RECT &rc)
 {
+  if (backgroundColor1 != -1) {
+    SelectObject(hDC, GetStockObject(NULL_PEN));
+    SelectObject(hDC, GetStockObject(DC_BRUSH));
+    SetDCBrushColor(hDC, backgroundColor1);
+    Rectangle(hDC, -1, -1, rc.right + 1, rc.bottom + 1);
+    return;
+  }
+  else if (!backgroundImage.empty()) {
+    // TODO
+
+  }
+
   GRADIENT_RECT gr[1];
 
   SelectObject(hDC, GetStockObject(NULL_PEN));
@@ -575,21 +594,17 @@ void gdioutput::draw(HDC hDC, RECT &rc, RECT &drawArea)
     return;
   }
 
-  list<RectangleInfo>::iterator rit;
-  SelectObject(hDC,GetStockObject(DC_BRUSH));
-
-  for(rit=Rectangles.begin();rit!=Rectangles.end(); ++rit){
-    if (rit->drawBorder)
-      SelectObject(hDC, GetStockObject(BLACK_PEN));
-    else
-      SelectObject(hDC, GetStockObject(NULL_PEN));
-    SetDCBrushColor(hDC, rit->color);
-
-    RECT rect_rc=rit->rc;
-    OffsetRect(&rect_rc, -OffsetX, -OffsetY);
-    Rectangle(hDC, rect_rc.left, rect_rc.top, rect_rc.right, rect_rc.bottom);
+  if (animationData) {
+    int page = 0;
+    animationData->renderPage(hDC, *this, GetTickCount());
+    return;
   }
 
+  SelectObject(hDC,GetStockObject(DC_BRUSH));
+
+  for (auto &rit : Rectangles)
+    renderRectangle(hDC, 0, rit);
+  
   if (useTables)
     for(list<TableInfo>::iterator tit=Tables.begin();tit!=Tables.end(); ++tit){
       tit->table->draw(*this, hDC, tit->xp, tit->yp, rc);
@@ -641,11 +656,17 @@ void gdioutput::renderRectangle(HDC hDC, RECT *clipRegion, const RectangleInfo &
     SelectObject(hDC, GetStockObject(BLACK_PEN));
   else
     SelectObject(hDC, GetStockObject(NULL_PEN));
-  SetDCBrushColor(hDC, ri.color);
-
+  
+  if (ri.color == colorTransparent) 
+    SelectObject(hDC, GetStockObject(NULL_BRUSH));
+  else {
+    SetDCBrushColor(hDC, ri.color);
+  }
   RECT rect_rc=ri.rc;
   OffsetRect(&rect_rc, -OffsetX, -OffsetY);
   Rectangle(hDC, rect_rc.left, rect_rc.top, rect_rc.right, rect_rc.bottom);
+  if (ri.color == colorTransparent)
+    SelectObject(hDC, GetStockObject(DC_BRUSH));
 }
 
 void gdioutput::updateStringPosCache() {
@@ -723,6 +744,7 @@ void CALLBACK gdiTimerProc(HWND hWnd, UINT a, UINT_PTR ptr, DWORD b) {
   wstring msg;
   KillTimer(hWnd, ptr);
   TimerInfo *it = (TimerInfo *)ptr;
+  it->setWnd = 0;
   try {
     if (it->parent) {
       it->parent->timerProc(*it, b);
@@ -745,25 +767,49 @@ void CALLBACK gdiTimerProc(HWND hWnd, UINT a, UINT_PTR ptr, DWORD b) {
   }
 }
 
+int TimerInfo::globalTimerId = 0;
+
 void gdioutput::timerProc(TimerInfo &timer, DWORD timeout) {
+  int timerId = timer.timerId;
   if (timer.handler)
     timer.handler->handle(*this, timer, GUI_TIMER);
   else if (timer.callBack)
     timer.callBack(this, GUI_TIMER, &timer);
 
-  for (list<TimerInfo>::iterator it = timers.begin(); it != timers.end(); ++it) {
-    if (&*it == &timer) {
-      timers.erase(it);
-      return;
-    }
+  remove_if(timers.begin(), timers.end(), [timerId](TimerInfo &x) {return x.getId() == timerId; });
+}
+
+void gdioutput::removeHandler(GuiHandler *h) {
+  for (auto &it : timers) {
+    if (it.handler == h)
+      it.handler = 0;
+  }
+
+  for (auto &it : BI) {
+    if (it.handler == h)
+      it.handler = 0;
+  }
+
+
+  for (auto &it : II) {
+    if (it.handler == h)
+      it.handler = 0;
+  }
+  
+  for (auto &it : TL) {
+    if (it.handler == h)
+      it.handler = 0;
+  }
+
+  for (auto &it : LBI) {
+    if (it.handler == h)
+      it.handler = 0;
   }
 }
 
 void gdioutput::removeTimeoutMilli(const string &id) {
   for (list<TimerInfo>::iterator it = timers.begin(); it != timers.end(); ++it) {
     if (it->id == id) {
-      UINT_PTR ptr = (UINT_PTR)&*it;
-      KillTimer(hWndTarget, ptr);
       timers.erase(it);
       return;
     }
@@ -775,12 +821,17 @@ TimerInfo &gdioutput::addTimeoutMilli(int timeOut, const string &id, GUICALLBACK
   removeTimeoutMilli(id);
   timers.push_back(TimerInfo(this, cb));
   timers.back().id = id;
-  //timers.back().data = 0;
   SetTimer(hWndTarget, (UINT_PTR)&timers.back(), timeOut, gdiTimerProc);
+  timers.back().setWnd = hWndTarget;
   return timers.back();
 }
 
-
+TimerInfo:: ~TimerInfo() {
+  handler = 0;
+  callBack = 0;
+  if (setWnd)
+    KillTimer(setWnd, (UINT_PTR)this);
+}
 TextInfo &gdioutput::addStringUT(int yp, int xp, int format, const string &text,
                                  int xlimit, GUICALLBACK cb, const wchar_t *fontFace) {
   return addStringUT(yp, xp, format, widen(text), xlimit, cb, fontFace);
@@ -951,21 +1002,40 @@ ButtonInfo &gdioutput::addButton(int x, int y, const string &id, const string &t
 }
 
 ButtonInfo &gdioutput::addButton(int x, int y, const string &id, const wstring &text, GUICALLBACK cb,
-                                 const wstring &tooltip)
+  const wstring &tooltip)
 {
-  SIZE size;
+  HANDLE bm = 0;
+  int width = 0;
+  if (text[0] == '@') {
+    HINSTANCE hInst = GetModuleHandle(0);//(HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE);
+    int ir = _wtoi(text.c_str() + 1);
+   // bm = LoadImage(hInst, MAKEINTRESOURCE(ir), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
+    bm = LoadBitmap(hInst, MAKEINTRESOURCE(ir));// , IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
 
-  HDC hDC=GetDC(hWndTarget);
-  SelectObject(hDC, getGUIFont());
-  wstring ttext = lang.tl(text);
-  if (lang.capitalizeWords())
-    capitalizeWords(ttext);
-  GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
-  ReleaseDC(hWndTarget, hDC);
-  int width = size.cx+scaleLength(30);
-  if (text != L"...")
-    width = max<int>(width, scaleLength(75));
+    SIZE size;
+    size.cx = 24;
+    //GetBitmapDimensionEx(bm, &size);
+    width = size.cx+4;
+  }
+  else {
+    SIZE size;
+    HDC hDC = GetDC(hWndTarget);
+    SelectObject(hDC, getGUIFont());
+    wstring ttext = lang.tl(text);
+    if (lang.capitalizeWords())
+      capitalizeWords(ttext);
+    GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
+    ReleaseDC(hWndTarget, hDC);
+    width = size.cx + scaleLength(30);
+    if (text != L"...")
+      width = max<int>(width, scaleLength(75));
+  }
+
   ButtonInfo &bi=addButton(x, y, width, id, text, cb, tooltip, false, false);
+
+  if (bm != 0) {
+    SendMessage(bi.hWnd, BM_SETIMAGE, IMAGE_BITMAP, LPARAM(bm));
+  }
 
   return bi;
 }
@@ -1015,6 +1085,10 @@ ButtonInfo &gdioutput::addButton(int x, int y, int w, const string &id,
                                  bool AbsPos, bool hasState)
 {
   int style = hasState ? BS_CHECKBOX|BS_PUSHLIKE : BS_PUSHBUTTON;
+  
+  if (text[0] == '@')
+    style |= BS_BITMAP;
+
   ButtonInfo bi;
   wstring ttext = lang.tl(text);
   if (lang.capitalizeWords())
@@ -1369,7 +1443,7 @@ void gdioutput::synchronizeListScroll(const string &id1, const string &id2)
 ListBoxInfo &gdioutput::addListBox(int x, int y, const string &id, int width, int height, GUICALLBACK cb, 
                                    const wstring &explanation, const wstring &tooltip, bool multiple) {
   if (explanation.length()>0) {
-    addString(id+"_expl", y, x, 0, explanation);
+    addString(id+"_label", y, x, 0, explanation);
     y+=lineHeight;
   }
   ListBoxInfo lbi;
@@ -1461,7 +1535,7 @@ ListBoxInfo &gdioutput::addSelection(int x, int y, const string &id, int width, 
                                      GUICALLBACK cb, const wstring &explanation, const wstring &tooltip)
 {
   if (explanation.length()>0) {
-    addString("", y, x, 0, explanation);
+    addString(id + "_label", y, x, 0, explanation);
     y+=lineHeight;
   }
 
@@ -1504,7 +1578,7 @@ ListBoxInfo &gdioutput::addCombo(const string &id, int width, int height, GUICAL
 ListBoxInfo &gdioutput::addCombo(int x, int y, const string &id, int width, int height, GUICALLBACK cb, 
                                  const wstring &explanation, const wstring &tooltip) {
   if (explanation.length()>0) {
-    addString("", y, x, 0, explanation);
+    addString(id + "_label", y, x, 0, explanation);
     y+=lineHeight;
   }
 
@@ -1697,18 +1771,19 @@ bool gdioutput::getSelectedItem(ListBoxInfo &lbi) {
 }
 
 int gdioutput::getItemDataByName(const char *id, const char *name) const{
+  wstring wname = recodeToWide(name);
   list<ListBoxInfo>::const_iterator it;
   for(it = LBI.begin(); it != LBI.end(); ++it){
     if (it->id==id) {
       if (it->IsCombo) {
-        int ix = SendMessage(it->hWnd, CB_FINDSTRING, -1, LPARAM(name));
+        int ix = SendMessage(it->hWnd, CB_FINDSTRING, -1, LPARAM(wname.c_str()));
         if (ix >= 0) {
           return SendMessage(it->hWnd, CB_GETITEMDATA, ix, 0);
         }
         return -1;
       }
       else {
-        int ix = SendMessage(it->hWnd, LB_FINDSTRING, -1, LPARAM(name));
+        int ix = SendMessage(it->hWnd, LB_FINDSTRING, -1, LPARAM(wname.c_str()));
         if (ix >= 0) {
           return SendMessage(it->hWnd, LB_GETITEMDATA, ix, 0);
         }
@@ -2441,8 +2516,6 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
           return 0;*/
   }
   else if (iMessage == WM_CTLCOLOREDIT) {
-    //for (list<InputInfo>::const_iterator it = II.begin(); it != II.end(); ++it) {
-    //  if (it->hWnd == HWND(lParam)) {
     unordered_map<HWND, InputInfo*>::iterator it = iiByHwnd.find(HWND(lParam));
     if (it != iiByHwnd.end()) {
       InputInfo &ii = *it->second;
@@ -2460,8 +2533,10 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
           return LRESULT(GetStockObject(DC_BRUSH));
         }
     }
-
     return 0;
+  }
+  else if (iMessage == WM_DESTROY) {
+    canClear();// Ignore return value
   }
 
   return 0;
@@ -2747,6 +2822,7 @@ void gdioutput::doEscape()
 }
 
 void gdioutput::clearPage(bool autoRefresh, bool keepToolbar) {
+  animationData.reset();
   lockUpDown = false;
   hasAnyTimer = false;
   enableTables();
@@ -2757,6 +2833,7 @@ void gdioutput::clearPage(bool autoRefresh, bool keepToolbar) {
 
   while(!timers.empty()) {
     KillTimer(hWndTarget, (UINT_PTR)&timers.back());
+    timers.back().setWnd = 0;
     timers.back().parent = 0;
     timers.pop_back();
   }
@@ -2844,6 +2921,12 @@ void gdioutput::clearPage(bool autoRefresh, bool keepToolbar) {
   OffsetY=0;
 
   renderOptimize=true;
+
+  backgroundColor1 = -1;
+  backgroundColor2 = -1;
+  foregroundColor = -1;
+  backgroundImage = -1;
+
 
   setRestorePoint();
 
@@ -3149,6 +3232,32 @@ bool gdioutput::getData(const string &id, DWORD &data) const
   }
 
   data=0;
+  return false;
+}
+
+void gdioutput::setData(const string &id, const string &data) {
+  for (auto &it : DataInfo) {
+    if (it.id == id) {
+      it.sdata = data;
+      return;
+    }
+  }
+
+  DataStore ds;
+  ds.id = id;
+  ds.sdata = data;
+  DataInfo.push_front(ds);
+  return;
+}
+
+bool gdioutput::getData(const string &id, string &out) const {
+  for (auto &it : DataInfo) {
+    if (it.id == id) {
+      out = it.sdata;
+      return true;
+    }
+  }
+  out.clear();
   return false;
 }
 
@@ -4095,6 +4204,8 @@ void gdioutput::formatString(const TextInfo &ti, HDC hDC) const
     SetTextColor(hDC, RGB(255,0,0));
   else if (ti.highlight)
     SetTextColor(hDC, RGB(64,64,128));
+  else if (ti.color == 0 && foregroundColor != -1)
+    SetTextColor(hDC, foregroundColor);
   else
     SetTextColor(hDC, ti.color);
 }
@@ -4488,6 +4599,9 @@ bool gdioutput::removeControl(const string &id)
     if (it->id==id) {
       DestroyWindow(it->hWnd);
       biByHwnd.erase(it->hWnd);
+
+      if (it->isCheckbox)
+        removeString("T" + id);
       BI.erase(it);
       return true;
     }
@@ -4500,6 +4614,7 @@ bool gdioutput::removeControl(const string &id)
     if (lit->id==id) {
       DestroyWindow(lit->hWnd);
       lbiByHwnd.erase(lit->hWnd);
+      removeString(id + "_label");
       if (lit->writeLock)
         hasCleared = true;
       LBI.erase(lit);
@@ -4515,6 +4630,7 @@ bool gdioutput::removeControl(const string &id)
       DestroyWindow(iit->hWnd);
       iiByHwnd.erase(iit->hWnd);
       II.erase(iit);
+      removeString(id + "_label");
       return true;
     }
     ++iit;
@@ -4843,7 +4959,11 @@ RectangleInfo &RectangleInfo::changeDimension(gdioutput &gdi, int dx, int dy) {
 RectangleInfo &gdioutput::addRectangle(RECT &rc, GDICOLOR color, bool drawBorder, bool addFirst) {
   RectangleInfo ri;
 
-  ri.rc = rc;
+  ri.rc.left = min<int>(rc.left, rc.right);
+  ri.rc.right = max<int>(rc.left, rc.right);
+  ri.rc.top = min<int>(rc.top, rc.bottom);
+  ri.rc.bottom = max<int>(rc.top, rc.bottom);
+
   if (color==colorDefault)
     ri.color = GetSysColor(COLOR_INFOBK);
   else if (color == colorWindowBar) {
@@ -4861,7 +4981,7 @@ RectangleInfo &gdioutput::addRectangle(RECT &rc, GDICOLOR color, bool drawBorder
   }
 
   int ex = scaleLength(5);
-  updatePos(rc.left, rc.top, rc.right-rc.left+ex, rc.bottom-rc.top+ex);
+  updatePos(ri.rc.left, ri.rc.top, ri.rc.right-ri.rc.left+ex, ri.rc.bottom-ri.rc.top+ex);
   if (addFirst) {
     Rectangles.push_front(ri);
     return Rectangles.front();
@@ -5022,6 +5142,12 @@ void gdioutput::scrollToBottom()
 
 bool gdioutput::clipOffset(int PageX, int PageY, int &MaxOffsetX, int &MaxOffsetY)
 {
+  if (animationData) {
+    MaxOffsetX = 0;
+    MaxOffsetY = 0;
+    return false;
+  }
+
   if (highContrast)
     setHighContrastMaxWidth();
 
@@ -5732,10 +5858,38 @@ void gdioutput::storeAutoPos(double pos) {
 }
 
 void gdioutput::setFullScreen(bool useFullScreen) {
-  SetWindowLong(hWndTarget, GWL_STYLE, WS_POPUP|WS_BORDER);
-  ShowWindow(hWndTarget, SW_MAXIMIZE);
-  UpdateWindow(hWndTarget);
-  fullScreen = true;
+  if (useFullScreen && !fullScreen) {
+    SetWindowLong(hWndTarget, GWL_STYLE, WS_POPUP | WS_BORDER);
+    ShowWindow(hWndTarget, SW_MAXIMIZE);
+    UpdateWindow(hWndTarget);
+  }
+  else if (fullScreen) {
+    SetWindowLong(hWndTarget, GWL_STYLE, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+    ShowWindow(hWndTarget, SW_NORMAL);
+    UpdateWindow(hWndTarget);
+  }
+  fullScreen = useFullScreen;
+}
+
+void gdioutput::setColorMode(DWORD bgColor1, DWORD bgColor2,
+                             DWORD fgColor, const wstring &bgImage) {
+  backgroundColor1 = bgColor1;
+  backgroundColor2 = bgColor2;
+  foregroundColor = fgColor;
+  backgroundImage = bgImage;
+}
+
+DWORD gdioutput::getFGColor() const {
+  return foregroundColor != -1 ? foregroundColor : 0;
+}
+DWORD gdioutput::getBGColor() const {
+  return backgroundColor1 != -1 ? backgroundColor1 : RGB(255,255,255);
+}
+DWORD gdioutput::getBGColor2() const {
+  return backgroundColor2;
+}
+const wstring &gdioutput::getBGImage() const {
+  return backgroundImage;
 }
 
 bool gdioutput::hasCommandLock() const {
@@ -6249,7 +6403,7 @@ InputInfo &InputInfo::setFont(gdioutput &gdi, gdiFonts font) {
 
 void gdioutput::copyToClipboard(const string &html, const wstring &txt) const {
 
-  if (OpenClipboard(getHWND()) != false) {
+  if (OpenClipboard(getHWNDMain()) != false) {
     EmptyClipboard();
 
     size_t len = html.length() + 1;
@@ -6658,4 +6812,43 @@ void gdioutput::getVirtualScreenSize(RECT &rc) {
   rc.right = px;
   rc.top = 0;
   rc.bottom = py;
+}
+
+DWORD gdioutput::selectColor(wstring &def, DWORD input) {
+  CHOOSECOLOR cc;
+  memset(&cc, 0, sizeof(cc));
+  cc.lStructSize = sizeof(cc);
+  cc.hwndOwner = getHWNDMain();
+  cc.rgbResult = COLORREF(input);
+  if (GDICOLOR(input) != colorDefault)
+    cc.Flags |= CC_RGBINIT;
+
+  COLORREF staticColor[16];
+  memset(staticColor, 0, 16 * sizeof(COLORREF));
+
+  const wchar_t *end = def.c_str() + def.length();
+  const wchar_t * pEnd = def.c_str();
+  int pix = 0;
+  while (pEnd < end && pix < 16) {
+    staticColor[pix++] = wcstol(pEnd, (wchar_t **)&pEnd, 16);
+  }
+
+  cc.lpCustColors = staticColor;
+  if (ChooseColor(&cc)) {
+    wstring co;
+    for (int ix = 0; ix < 16; ix++) {
+      wchar_t bf[16];
+      swprintf_s(bf, L"%x ", staticColor[ix]);
+      co += bf;
+    }
+    swap(def,co);
+    return cc.rgbResult;
+  }
+  return -1;
+}
+
+void gdioutput::setAnimationMode(shared_ptr<AnimationData> &data) {
+  if (animationData && animationData->takeOver(data))
+    return;
+  animationData = data;
 }

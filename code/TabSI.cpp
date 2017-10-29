@@ -948,7 +948,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         throw meosException("Löparen hittades inte");
 
       bool useNow = gdi.getExtraInt("FinishTime") == 1;
-      wstring time = useNow ? getLocalTimeOnlyW() : gdi.getText("FinishTime");
+      wstring time = useNow ? getLocalTimeOnly() : gdi.getText("FinishTime");
 
       int relTime = oe->getRelativeTime(time);
       if (relTime <= 0) {
@@ -1097,7 +1097,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "NC") {
       NC = bi.data;
-      PostMessage(gdi.getTarget(), WM_USER + 2, TSITab, 0);
+      PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TSITab, 0);
     }
   }
   else if (type == GUI_LINK) {
@@ -1473,7 +1473,7 @@ void TabSI::showReadCards(gdioutput &gdi, vector<SICard> &cards)
 
 SportIdent &TabSI::getSI(const gdioutput &gdi) {
   if (!gSI) {
-    HWND hWnd=gdi.getMain();
+    HWND hWnd=gdi.getHWNDMain();
     gSI = new SportIdent(hWnd, 0);
     gSI->setZeroTime(gEvent->getZeroTimeNum());
   }
@@ -2681,7 +2681,7 @@ void TabSI::generateSplits(const pRunner r, gdioutput &gdi)
     while(checkpPrintQueue(gdi));
   }
   else {
-    gdioutput gdiprint(2.0, gdi.getHWND(), splitPrinter, gdi.getCP());
+    gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter, gdi.getCP());
     vector<int> mp;
     r->evaluateCard(true, mp);
     r->printSplits(gdiprint);
@@ -2692,7 +2692,7 @@ void TabSI::generateSplits(const pRunner r, gdioutput &gdi)
 
 void TabSI::generateStartInfo(gdioutput &gdi, const oRunner &r) {
   if (printStartInfo) {
-    gdioutput gdiprint(2.0, gdi.getHWND(), splitPrinter, gdi.getCP());
+    gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter, gdi.getCP());
     r.printStartInfo(gdiprint);
     printProtected(gdi, gdiprint);
     //gdiprint.print(splitPrinter, oe, false, true);
@@ -3023,7 +3023,7 @@ void TabSI::EditCardData::handle(gdioutput &gdi, BaseInfo &info, GuiEventType ty
 void TabSI::printCard(gdioutput &gdi, int cardId, bool forPrinter) const {
   SICard &c = getCard(cardId);
   if (c.readOutTime[0] == 0)
-    strcpy_s(c.readOutTime, getLocalTime().c_str());
+    strcpy_s(c.readOutTime, getLocalTimeN().c_str());
 
   gdi.pushX();
   gdi.fillRight();
@@ -3066,10 +3066,10 @@ void TabSI::printCard(gdioutput &gdi, int cardId, bool forPrinter) const {
 
   int start = NOTIME;
   if (c.CheckPunch.Code != -1)
-    gdi.addString("", 0, "Check: X#" + formatTimeHMS(c.CheckPunch.Time));
+    gdi.addString("", 0, L"Check: X#" + formatTimeHMS(c.CheckPunch.Time));
 
   if (c.StartPunch.Code != -1) {
-    gdi.addString("", 0, "Start: X#" + formatTimeHMS(c.StartPunch.Time));
+    gdi.addString("", 0, L"Start: X#" + formatTimeHMS(c.StartPunch.Time));
     start = c.StartPunch.Time;
   }
   int xp = gdi.getCX();
@@ -3088,9 +3088,9 @@ void TabSI::printCard(gdioutput &gdi, int cardId, bool forPrinter) const {
     if (start != NOTIME) {
       int legTime = analyzePunch(c.Punch[k], start, accTime, days);
       if (legTime > 0)
-        gdi.addStringUT(cy, xp5-gdi.scaleLength(10), textRight, formatTimeW(legTime));
+        gdi.addStringUT(cy, xp5-gdi.scaleLength(10), textRight, formatTime(legTime));
 
-      gdi.addStringUT(cy, xp5 + gdi.scaleLength(40), textRight, formatTimeW(days*3600*24 + accTime));
+      gdi.addStringUT(cy, xp5 + gdi.scaleLength(40), textRight, formatTime(days*3600*24 + accTime));
     }
     else {
       start = c.Punch[k].Time;
@@ -3104,11 +3104,11 @@ void TabSI::printCard(gdioutput &gdi, int cardId, bool forPrinter) const {
     if (start != NOTIME) {
       int legTime = analyzePunch(c.FinishPunch, start, accTime, days);
       if (legTime > 0)
-        gdi.addStringUT(cy, xp5-gdi.scaleLength(10), textRight, formatTimeW(legTime));
+        gdi.addStringUT(cy, xp5-gdi.scaleLength(10), textRight, formatTime(legTime));
 
-      gdi.addStringUT(cy, xp5 + gdi.scaleLength(40), textRight, formatTimeW(days*3600*24 + accTime));
+      gdi.addStringUT(cy, xp5 + gdi.scaleLength(40), textRight, formatTime(days*3600*24 + accTime));
     }
-    gdi.addString("", 1, L"Time: X#" + formatTimeW(days*3600*24 + accTime));
+    gdi.addString("", 1, L"Time: X#" + formatTime(days*3600*24 + accTime));
   }
 
   if (forPrinter) {
@@ -3143,7 +3143,7 @@ int TabSI::analyzePunch(SIPunch &p, int &start, int &accTime, int &days) {
 }
 
 void TabSI::generateSplits(int cardId, gdioutput &gdi) {
-  gdioutput gdiprint(2.0, gdi.getHWND(), splitPrinter, gdi.getCP());
+  gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter, gdi.getCP());
   printCard(gdiprint, cardId, true);
   printProtected(gdi, gdiprint);
 }
@@ -3196,7 +3196,7 @@ void TabSI::createCompetitionFromCards(gdioutput &gdi) {
   if (zeroTime < 0)
     zeroTime += 3600 * 24;
   zeroTime -= zeroTime % 1800;
-  oe->setZeroTime(formatTimeW(zeroTime));
+  oe->setZeroTime(formatTime(zeroTime));
 
   int course = 0;
   for (size_t k = 0; k < cards.size(); k++) {
@@ -3570,7 +3570,7 @@ bool TabSI::checkpPrintQueue(gdioutput &gdi) {
       return false; // Wait a little longer
   }
 
-  gdioutput gdiprint(2.0, gdi.getHWND(), splitPrinter, gdi.getCP());
+  gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter, gdi.getCP());
   vector<int> mp;
   for (size_t m = 0; m < printLen && !printPunchRunnerIdQueue.empty(); m++) {
     int rid = printPunchRunnerIdQueue.front().second;

@@ -623,6 +623,11 @@ struct PrintItemInfo {
     const TextInfo *ti = dynamic_cast<const TextInfo *>(obj);
     return ti && ti->format == pageNewPage;
   }
+
+  bool isNoPrint() const {
+    const TextInfo *ti = dynamic_cast<const TextInfo *>(obj);
+    return ti && gdioutput::skipTextRender(ti->format);
+  }
 };
 
 void PageInfo::renderPages(const list<TextInfo> &tl,
@@ -645,7 +650,7 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
     const TextInfo &text = *it;
     if (text.format == 10)
       continue;
-    if (text.format != pageNewPage && text.format != pagePageInfo) {
+    if (!text.isFormatInfo()) {
       if (currentYP > text.yp) {
         needSort = true;
       }
@@ -740,6 +745,8 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
 
     if (k + 1 < indexedTL.size() && tlp->yp != indexedTL[k+1].yp) {
       size_t j = k + 1;
+      while (j + 1 < indexedTL.size() && indexedTL[j].isNoPrint() && !indexedTL[j].isNewPage())
+        j++;
 
       // Required new page
       if (indexedTL[j].isNewPage()) {
@@ -819,16 +826,16 @@ wstring PageInfo::pageInfo(const RenderedPage &page) const {
     wchar_t bf[256];
     if (nPagesTotal > 1) {
       if (!page.info.empty())
-        swprintf_s(bf, L"MeOS %s, %s, (%d/%d)", getLocalTimeW().c_str(),
-                  page.info.c_str(), page.nPage, nPagesTotal);//WCS
+        swprintf_s(bf, L"MeOS %s, %s, (%d/%d)", getLocalTime().c_str(),
+                  page.info.c_str(), page.nPage, nPagesTotal);
       else
-        swprintf_s(bf, L"MeOS %s, (%d/%d)", getLocalTimeW().c_str(), page.nPage, nPagesTotal);
+        swprintf_s(bf, L"MeOS %s, (%d/%d)", getLocalTime().c_str(), page.nPage, nPagesTotal);
     }
     else {
       if (!page.info.empty())
-        swprintf_s(bf, L"MeOS %s, %s", getLocalTimeW().c_str(), page.info.c_str());
+        swprintf_s(bf, L"MeOS %s, %s", getLocalTime().c_str(), page.info.c_str());
       else
-        swprintf_s(bf, L"MeOS %s", getLocalTimeW().c_str());
+        swprintf_s(bf, L"MeOS %s", getLocalTime().c_str());
     }
     return bf;
   }

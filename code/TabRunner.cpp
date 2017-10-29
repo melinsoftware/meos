@@ -199,7 +199,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
       gdi.setText("Team", L"");
   }
 
-  gdi.setText("TimeAdjust", getTimeMSW(r->getTimeAdjustment()));
+  gdi.setText("TimeAdjust", getTimeMS(r->getTimeAdjustment()));
   gdi.setText("PointAdjust", -r->getPointAdjustment());
 
 #ifdef _DEBUG
@@ -216,22 +216,22 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   r->getLegTimeAfterAcc(afterAcc);
   r->getLegPlacesAcc(placeAcc);
 
-  string out;
+  wstring out;
   for (size_t k = 0; k<delta.size(); k++) {
-    out += itos(place[k]);
+    out += itow(place[k]);
     if (k<placeAcc.size())
-      out += " (" + itos(placeAcc[k]) + ")";
+      out += L" (" + itow(placeAcc[k]) + L")";
 
     if (after[k]>0)
-      out+= " +" + getTimeMS(after[k]);
+      out+= L" +" + getTimeMS(after[k]);
 
     if (k<afterAcc.size() && afterAcc[k]>0)
-      out+= " (+" + getTimeMS(afterAcc[k]) + ")";
+      out+= L" (+" + getTimeMS(afterAcc[k]) + L")";
 
     if (delta[k]>0)
-      out+= " B: " + getTimeMS(delta[k]);
+      out+= L" B: " + getTimeMS(delta[k]);
 
-    out += " | ";
+    out += L" | ";
 
   }
   gdi.restore("fantom", false);
@@ -805,7 +805,23 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       for (size_t k=0; k<unknown.size(); k++) {
         if (unknown[k]->getStatus()==StatusUnknown) {
           unknown[k]->setStatus(StatusDNS, true, false);
+          unknown[k]->setFlag(oAbstractRunner::FlagAutoDNS, true);
           unknown[k]->synchronize(true);
+        }
+      }
+      //Reevaluate and synchronize all
+      oe->reEvaluateAll(set<int>(), true);
+      clearInForestData();
+      showInForestList(gdi);
+    }
+    else if (bi.id == "UndoSetDNS") {
+      vector<pRunner> runners;
+      oe->getRunners(0, 0, runners, true);
+      for (pRunner r : runners) {
+        if (r->getStatus() == StatusDNS && r->hasFlag(oAbstractRunner::FlagAutoDNS)) {
+          r->setStatus(StatusUnknown, true, false);
+          r->setFlag(oAbstractRunner::FlagAutoDNS, false);
+          r->synchronize(true);
         }
       }
       //Reevaluate and synchronize all
@@ -842,7 +858,7 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       pRunner r=oe->getRunner(runnerId, 0);
       if (!r) return 0;
 
-      gdioutput gdiprint(2.0, gdi.getHWND(), splitPrinter, gdi.getCP());
+      gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter, gdi.getCP());
       if (bi.getExtraInt() == 0)
         r->printSplits(gdiprint);
       else
@@ -918,6 +934,14 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
         }
       }
     }
+    else if (bi.id == "Economy") {
+      if (!runnerId)
+        return 0;
+      pRunner r = oe->getRunner(runnerId, 0);
+      gdioutput *settings = createExtraWindow("ecosettings", L"Economy for X#" + r->getName(), 400, 200);
+
+
+    }
     else if (bi.id=="NoStart") {
       if (!runnerId)
         return 0;
@@ -938,8 +962,8 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
           pRunner rr = r->getMultiRunner(k);
           if (rr) {
             rr->setStartTime(0, true, false);
-            rr->setStartNo(0, false);
-            rr->setStatus(StatusDNS, true, false);
+            //rr->setStartNo(0, false);
+            rr->setStatus(StatusCANCEL, true, false);
             rr->setCardNo(0, false);
           }
         }
@@ -1051,7 +1075,7 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       }
       runnerId = bi.data;
       //loadPage(gdi);
-      PostMessage(gdi.getTarget(), WM_USER + 2, TRunnerTab, 0);
+      PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TRunnerTab, 0);
     }
     else if (bi.id=="RClass") {
       gdi.selectItemByData("RCourse", 0);
@@ -1318,7 +1342,8 @@ int TabRunner::vacancyCB(gdioutput &gdi, int type, void *data)
       }
     }
 
-    r->getDI().setDate("EntryDate", getLocalDateW());
+    r->getDI().setDate("EntryDate", getLocalDate());
+    r->getDI().setInt("EntryTime", getLocalAbsTime());
     r->addClassDefaultFee(false);
     int cardFee = 0;
 
@@ -1328,8 +1353,6 @@ int TabRunner::vacancyCB(gdioutput &gdi, int type, void *data)
     }
     else
       r->getDI().setInt("CardFee", 0);
-
-
     
     if (cardFee < 0)
       cardFee = 0;
@@ -1482,7 +1505,7 @@ void TabRunner::showRunnerReport(gdioutput &gdi)
     if (t->statusOK()) {
       tInfo += L", "  + t->getRunningTimeS() +  lang.tl(".S Placering: ") + t->getPlaceS();
       if (t->getTimeAfter(-1) > 0)
-        tInfo += L", +" + formatTimeW(t->getTimeAfter(-1));
+        tInfo += L", +" + formatTime(t->getTimeAfter(-1));
     }
     else if (t->getStatus() != StatusUnknown) {
       tInfo += L" " + t->getStatusS();
@@ -1640,7 +1663,7 @@ void TabRunner::runnerReport(gdioutput &gdi, int id, bool compact) {
       GDICOLOR color = colorDefault;
       if (k < int(after.size()) ) {
         if (after[k] > 0)
-          split += L" (" + itow(place[k]) + L", +"  + getTimeMSW(after[k]) + L")";
+          split += L" (" + itow(place[k]) + L", +"  + getTimeMS(after[k]) + L")";
         else if (place[k] == 1)
           split += lang.tl(" (sträckseger)");
         else if (place[k] > 0)
@@ -1656,7 +1679,7 @@ void TabRunner::runnerReport(gdioutput &gdi, int id, bool compact) {
         wstring pl = placeAcc[k] > 0 ? itow(placeAcc[k]) : L"-";
         if (k < int(afterAcc.size()) ) {
           if (afterAcc[k] > 0)
-            split += L" (" + pl + L", +"  + getTimeMSW(afterAcc[k]) + L")";
+            split += L" (" + pl + L", +"  + getTimeMS(afterAcc[k]) + L")";
         else if (placeAcc[k] == 1)
           split += lang.tl(" (ledare)");
           else if (placeAcc[k] > 0)
@@ -1666,7 +1689,7 @@ void TabRunner::runnerReport(gdioutput &gdi, int id, bool compact) {
       }
 
       if (k < int(delta.size()) && delta[k] > 0 ) {
-        gdi.addString("", yp + 3*lh, cx, fontMedium, "Bomtid: X#" + getTimeMS(delta[k]));
+        gdi.addString("", yp + 3*lh, cx, fontMedium, L"Bomtid: X#" + getTimeMS(delta[k]));
 
         color = (delta[k] > bestTime * 0.5  && delta[k]>60 ) ?
                   colorMediumDarkRed : colorMediumRed;
@@ -1724,9 +1747,9 @@ void TabRunner::runnerReport(gdioutput &gdi, int id, bool compact) {
         int st = r->getStartTime();
         gdi.addString("", yp + lh, cx, normalText, L"Klocktid: X#" + oe->getAbsTime(t), limit);
         if (st > 0 && t > st) {
-          string split = formatTimeHMS(t-st);
+          wstring split = formatTimeHMS(t-st);
           if (lastT>0 && st != lastT && lastT < t)
-            split += " (" + getTimeMS(t-lastT) + ")";
+            split += L" (" + getTimeMS(t-lastT) + L")";
           gdi.addStringUT(yp + 2*lh, cx, normalText, split, limit);
         }
       }
@@ -1925,7 +1948,8 @@ void TabRunner::showInForestList(gdioutput &gdi)
   gdi.popX();
 
   clearInForestData();
-  oe->analyseDNS(unknown_dns, known_dns, known, unknown);
+  bool hasDNS;
+  oe->analyseDNS(unknown_dns, known_dns, known, unknown, hasDNS);
   oe->setupCardHash(false);
   if (!unknown.empty()) {
     gdi.dropLine();
@@ -1934,7 +1958,14 @@ void TabRunner::showInForestList(gdioutput &gdi)
     listRunners(gdi, unknown, true);
   }
   else {
-    gdi.disableInput("SetDNS");
+    if (hasDNS) {
+      BaseInfo &bi = gdi.getBaseInfo("SetDNS");
+      bi.id = "UndoSetDNS";
+      gdi.setTextTranslate(bi.id, L"Återställ <Ej Start> till <Status Okänd>");
+    }
+    else {
+      gdi.disableInput("SetDNS");
+    }
   }
 
   if (!known.empty()) {
@@ -2262,10 +2293,10 @@ bool TabRunner::loadPage(gdioutput &gdi)
     gdi.selectTab(tabId);
   }
   gdi.clearPage(false);
-  int basex=gdi.getCX();
+  int basex = gdi.getCX();
 
   if (currentMode == 1) {
-    Table *tbl=oe->getRunnersTB();
+    Table *tbl = oe->getRunnersTB();
     addToolbar(gdi);
     gdi.dropLine(1);
     gdi.addTable(tbl, basex, gdi.getCY());
@@ -2298,8 +2329,8 @@ bool TabRunner::loadPage(gdioutput &gdi)
   gdi.registerEvent("SearchRunnerBack", runnerSearchCB).setKeyCommand(KC_FINDBACK);
 
   gdi.addInput("SearchText", getSearchString(), 13, runnerSearchCB, L"",
-            L"Sök på namn, bricka eller startnummer.").isEdit(false)
-            .setBgColor(colorLightCyan).ignore(true);
+    L"Sök på namn, bricka eller startnummer.").isEdit(false)
+    .setBgColor(colorLightCyan).ignore(true);
   gdi.dropLine(-0.2);
   //gdi.addButton("Search", "Sök", RunnerCB, "Sök på namn, bricka eller startnummer.");
   gdi.addButton("ShowAll", "Visa alla", RunnerCB).isEdit(false);
@@ -2349,16 +2380,19 @@ bool TabRunner::loadPage(gdioutput &gdi)
   }
 
   gdi.fillRight();
-  gdi.addSelection("RClass", 150, 300, RunnerCB, L"Klass:");
+  gdi.addSelection("RClass", 130, 300, RunnerCB, L"Klass:");
   oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterNone);
   gdi.addItem("RClass", lang.tl("Ingen klass"), 0);
 
-  gdi.fillDown();
-
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy))
-    gdi.addInput("Fee", L"", 6, 0, L"Avgift:");
-  else
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
+    gdi.fillDown();
+    gdi.addInput("Fee", L"", 4, 0, L"Avgift:");
+    //gdi.addButton("Economy", "@" + itos(131), RunnerCB, "Ekonomi...");
+  }
+  else {
+    gdi.fillDown();
     gdi.dropLine(3);
+  }
 
   gdi.dropLine(0.4);
 

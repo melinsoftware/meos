@@ -147,6 +147,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
                             const wstring &pageTitleW,
                             const wstring &authorW,
                             const list<TextInfo> &tl) {
+  checkWriteAccess(file);
   string pageTitle = gdi.narrow(pageTitleW); // XXX WCS
   string author = gdi.narrow(authorW);
 

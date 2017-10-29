@@ -322,6 +322,20 @@ bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v)
 
 }
 
+const wstring &oDataContainer::formatString(const oBase *ob, const char *Name) const {
+  const oDataInfo *odi = findVariable(Name);
+  if (odi->dataDefiner) {
+    return odi->dataDefiner->formatData(ob);
+  }
+  else if (odi->Type == oDTString) {
+    return getString(ob, Name);
+  }
+  else if (odi->Type == oDTInt) {
+    return itow(getInt(ob, Name));
+  }
+  throw std::exception("oDataContainer: Formatting failed.");
+}
+
 const wstring &oDataContainer::getString(const oBase *ob, const char *Name) const {
   const oDataInfo *odi=findVariable(Name);
 
@@ -982,6 +996,7 @@ void oDataContainer::buildTableCol(Table *table)
     oDataInfo &di=ordered[kk];
 
     if (di.dataDefiner)  {
+      table->addDataDefiner(di.Name, di.dataDefiner);
       int w = strlen(di.Description)*6;
       di.tableIndex = di.dataDefiner->addTableColumn(table, di.Description, w);
     }

@@ -95,7 +95,7 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
       if ( rt > 0 ) {
         gdi.selectItemByData("Rogaining", 1);
         gdi.enableInput("TimeLimit");
-        gdi.setText("TimeLimit", formatTimeHMSW(rt));
+        gdi.setText("TimeLimit", formatTimeHMS(rt));
         gdi.enableInput("PointReduction");
         gdi.setText("PointReduction", itow(pc->getRogainingPointsPerMinute()));
         gdi.enableInput("ReductionPerMinute");
@@ -506,7 +506,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       int interval = 2*60;
       int vac = 1;
       gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, L"Första start:");
-      gdi.addInput("Interval", formatTimeW(interval), 10, 0, L"Startintervall (min):");
+      gdi.addInput("Interval", formatTime(interval), 10, 0, L"Startintervall (min):");
       gdi.addInput("Vacances", itow(vac), 10, 0, L"Antal vakanser:");
       gdi.fillDown();
       gdi.popX();

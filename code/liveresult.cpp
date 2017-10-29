@@ -313,12 +313,12 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
         if (screenSize == 1) {
           gdi.restore("LiveResult", false);
           wstring font = getFont(gdi, timerScale);
-          gdi.addString("", h/2, w/2, boldHuge|textCenter, formatTimeW(rt), 0, 0, font.c_str()).setColor(colorGreen);
+          gdi.addString("", h/2, w/2, boldHuge|textCenter, formatTime(rt), 0, 0, font.c_str()).setColor(colorGreen);
           gdi.addTimeout(5, 0).setHandler(this);
         }
         else if (screenSize == 2) {
           string id = "timer" + itos(runner2ScreenPos[rToFinish->getId()]);
-          BaseInfo *bi = gdi.setText(id, formatTimeW(rt), false);
+          BaseInfo *bi = gdi.setText(id, formatTime(rt), false);
           wstring font = getFont(gdi, timerScale * 0.6);
   
           if (bi) {
@@ -388,7 +388,7 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
       int ht = ti.textRect.bottom - ti.textRect.top;
       gdi.addStringUT(y, 30 + ht * 2 , fontLarge, r->getName(), 0, 0, font.c_str());
       //int w = gdi.getWidth();
-      gdi.addStringUT(y, w - 4 * ht, fontLarge, formatTimeW(res.time), 0, 0, font.c_str());
+      gdi.addStringUT(y, w - 4 * ht, fontLarge, formatTime(res.time), 0, 0, font.c_str());
       gdi.refreshSmartFromSnapshot(false);
       resYPos += int (ht * 1.1);
       showResultList++;

@@ -699,6 +699,8 @@ RunnerStatus DynamicResult::toStatus(int status) const {
     return StatusDNF;
   case StatusDNS:
     return StatusDNS;
+  case StatusCANCEL:
+    return StatusCANCEL;
   case StatusNotCompetiting:
     return StatusNotCompetiting;
   case StatusDQ:
@@ -798,9 +800,9 @@ void DynamicResult::save(xmlparser &xml) const {
   xml.write("Tag", gdioutput::widen(tag));
   xml.write("Description", description);
   if (origin.empty())
-    origin = gEvent->getName() + L" (" + getLocalDateW() + L")";
+    origin = gEvent->getName() + L" (" + getLocalDate() + L")";
   xml.write("Origin", origin);
-  xml.write("Date", getLocalTimeW());
+  xml.write("Date", getLocalTime());
 //  xml.write("Tag", tag);
 //  xml.write("UID", getUniqueId());
 
@@ -975,6 +977,7 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
   parser.declareSymbol("StatusMP", "Status code for a missing punch", false);
   parser.declareSymbol("StatusDNF", "Status code for not finishing", false);
   parser.declareSymbol("StatusDNS", "Status code for not starting", false);
+  parser.declareSymbol("StatusCANCEL", "Status code for cancelled entry", false);
   parser.declareSymbol("StatusMAX", "Status code for a time over the maximum", false);
   parser.declareSymbol("StatusDQ", "Status code for disqualification", false);
   parser.declareSymbol("StatusNotCompetiting", "Status code for not competing", false);
@@ -1016,6 +1019,7 @@ void DynamicResult::prepareCalculations(oEvent &oe, bool prepareForTeam, int inp
   parser.addSymbol("StatusOK", StatusOK);
   parser.addSymbol("StatusMP", StatusMP);
   parser.addSymbol("StatusDNF", StatusDNF);
+  parser.addSymbol("StatusCANCEL", StatusCANCEL);
   parser.addSymbol("StatusDNS", StatusDNS);
   parser.addSymbol("StatusMAX", StatusMAX);
   parser.addSymbol("StatusDQ", StatusDQ);

@@ -34,10 +34,11 @@ class Table;
 class oDataDefiner {
 public:
   virtual ~oDataDefiner() {}
-  virtual const wstring &formatData(oBase *obj) const = 0;
+  virtual const wstring &formatData(const oBase *obj) const = 0;
   virtual wstring setData(oBase *obj, const wstring &input) const = 0;
   /** Used to define/add the table column in the table*/
   virtual int addTableColumn(Table *table, const string &description, int minWidth) const = 0;
+  virtual void prepare(oEvent *oe) const {}
 };
 
 struct oDataInfo {
@@ -160,6 +161,7 @@ public:
 
   bool setString(oBase *ob, const char *name, const wstring &v);
   const wstring &getString(const oBase *ob, const char *name) const;
+  const wstring &formatString(const oBase *ob, const char *name) const;
 
   bool setDate(void *data, const char *Name, const wstring &V);
   const wstring &getDate(const void *data, const char *Name) const;
@@ -236,8 +238,12 @@ public:
     else return false;
   }
 
-  inline wstring getString(const char *Name) const
+  inline const wstring &getString(const char *Name) const
     {return oDC->getString(oB, Name);}
+
+  inline const wstring &formatString(const oBase *oB, const char *name) const {
+    return oDC->formatString(oB, name);
+  }
 
   inline bool setDate(const char *Name, const wstring &Value)
   {
@@ -326,6 +332,10 @@ public:
 
   inline const wstring &getString(const char *Name) const
     {return oDC->getString(oB, Name);}
+
+  inline const wstring &formatString(const oBase *oB, const char *name) const {
+    return oDC->formatString(oB, name);
+  }
 
   inline const wstring &getDate(const char *Name) const
     {return oDC->getDate(Data, Name);}

@@ -74,5 +74,6 @@ enum GDICOLOR {colorBlack = RGB(0,0,0),
               colorMediumRed = RGB(255,200,200),
               colorMediumDarkRed = RGB(240,120,120),
               colorWindowBar = -2,
-              colorDefault = -1};
+              colorDefault = -1,
+              colorTransparent = -3};
 

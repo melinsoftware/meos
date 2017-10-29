@@ -49,9 +49,11 @@
 #include "methodeditor.h"
 #include "MeOSFeatures.h"
 #include "liveresult.h"
+#include "animationdata.h"
 #include <algorithm>
 
 const static int CUSTOM_OFFSET = 10;
+const static int NUMTEXTSAMPLE = 13;
 
 TabList::TabList(oEvent *poe):TabBase(poe)
 {
@@ -90,7 +92,7 @@ int ListsEventCB(gdioutput *gdi, int type, void *data)
 
 void TabList::rebuildList(gdioutput &gdi)
 {
- if (!SelectedList.empty()) {
+  if (!SelectedList.empty()) {
     ButtonInfo bi;
     bi.id=SelectedList;
     noReEvaluate = true;
@@ -127,7 +129,7 @@ int NoStartRunnerCB(gdioutput *gdi, int type, void *data)
     TabList &tc = dynamic_cast<TabList &>(*gdi->getTabs().get(TListTab));
     pRunner p = tc.getEvent()->getRunner(id, 0);
 
-    if (p){
+    if (p) {
       p->setStatus(StatusDNS, true, false);
       p->synchronize();
       ti->callBack=0;
@@ -172,34 +174,33 @@ int TabList::baseButtons(gdioutput &gdi, int extraButtons) {
   return ypos;
 }
 
-void TabList::generateList(gdioutput &gdi)
+void TabList::generateList(gdioutput &gdi, bool forceUpdate)
 {
   if (currentList.getListCode() == EFixedLiveResult) {
     liveResult(gdi, currentList);
-    
+
     int baseY = 15;
-    if (!gdi.isFullScreen()) { 
-      gdi.addButton(gdi.getWidth()+20, baseY,  gdi.scaleLength(120),
-                  "Cancel", ownWindow ? "Stäng" : "Återgå", ListsCB, "", true, false);
+    if (!gdi.isFullScreen()) {
+      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+        "Cancel", ownWindow ? "Stäng" : "Återgå", ListsCB, "", true, false);
 
       baseY += 3 + gdi.getButtonHeight();
-      gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(120),
-                    "FullScreenLive", "Fullskärm", ListsCB, "Visa listan i fullskärm", true, false);
+      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+        "FullScreenLive", "Fullskärm", ListsCB, "Visa listan i fullskärm", true, false);
     }
-    SelectedList="GeneralList";
-
+    SelectedList = "GeneralList";
     return;
   }
-    
+
   DWORD storedWidth = 0;
   int oX = 0;
   int oY = 0;
   if (gdi.hasData("GeneralList")) {
-    if (!currentList.needRegenerate(*oe))
+    if (!forceUpdate && !currentList.needRegenerate(*oe))
       return;
     gdi.takeShownStringsSnapshot();
-    oX=gdi.GetOffsetX();
-    oY=gdi.GetOffsetY();
+    oX = gdi.GetOffsetX();
+    oY = gdi.GetOffsetY();
     gdi.getData("GeneralList", storedWidth);
     gdi.restoreNoUpdate("GeneralList");
   }
@@ -209,6 +210,17 @@ void TabList::generateList(gdioutput &gdi)
   gdi.setRestorePoint("GeneralList");
 
   currentList.setCallback(ownWindow ? 0 : openRunnerTeamCB);
+  const auto &par = currentList.getParam();
+  int bgColor = par.bgColor;
+
+  if (bgColor == -1 && par.screenMode == 1) {
+    bgColor = RGB(255, 255, 255);
+  }
+
+  gdi.setColorMode(bgColor,
+                   -1,
+                   par.fgColor,
+                   par.bgImage);
   try {
     oe->generateList(gdi, !noReEvaluate, currentList, false);
   }
@@ -216,8 +228,15 @@ void TabList::generateList(gdioutput &gdi)
     wstring err = lang.tl(ex.wwhat());
     gdi.addString("", 1, L"List Error: X#" + err).setColor(colorRed);
   }
+  bool wasAnimation = false;
+  if (par.screenMode == 1 && !par.lockUpdate) {
+    setAnimationMode(gdi);
+    wasAnimation = true;
+  }
+  else {
+    gdi.setOffset(oX, oY, false);
+  }
 
-  gdi.setOffset(oX, oY, false);
   int currentWidth = gdi.getWidth();
   gdi.setData("GeneralList", currentWidth);
 
@@ -237,13 +256,17 @@ void TabList::generateList(gdioutput &gdi)
 
       baseY += 2*(3+gdi.getButtonHeight());
     }
-    baseY += 3 + gdi.getButtonHeight();
+    /*baseY += 3 + gdi.getButtonHeight();
     gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(120),
                   "AutoScroll", "Automatisk skroll", ListsCB, "Rulla upp och ner automatiskt", true, false);
 
     baseY += 3 + gdi.getButtonHeight();
     gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(120),
                   "FullScreen", "Fullskärm", ListsCB, "Visa listan i fullskärm", true, false);
+    */
+    baseY += 3 + gdi.getButtonHeight();
+    gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+      "ListDesign", "Utseende...", ListsCB, "Justera visningsinställningar", true, false);
 
     if (!currentList.getParam().saved && !oe->isReadOnly()) {
       baseY += 3 + gdi.getButtonHeight();
@@ -260,11 +283,13 @@ void TabList::generateList(gdioutput &gdi)
   gdi.setOnClearCb(ListsCB);
   SelectedList="GeneralList";
 
-  if (abs(int(currentWidth - storedWidth)) < 5) {
-    gdi.refreshSmartFromSnapshot(true);
+  if (!wasAnimation) {
+    if (abs(int(currentWidth - storedWidth)) < 5) {
+      gdi.refreshSmartFromSnapshot(true);
+    }
+    else
+      gdi.refresh();
   }
-  else
-    gdi.refresh();
 }
 
 int TabList::listCB(gdioutput &gdi, int type, void *data)
@@ -335,22 +360,24 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         gdi.openDoc(file.c_str());
       }
     }
+    else if (bi.id == "ListDesign") {
+      gdioutput *gdi_settings = getExtraWindow("list_settings", true);
+      if (!gdi_settings) {
+        gdi_settings = createExtraWindow("list_settings", lang.tl("Inställningar"), gdi.scaleLength(600), gdi.scaleLength(400));
+      }
+      if (gdi_settings) {
+        loadSettings(*gdi_settings, gdi.getTag());
+      }
+    }
     else if (bi.id == "Window" || bi.id == "AutoScroll" ||
              bi.id == "FullScreen" || bi.id == "FullScreenLive") {
       gdioutput *gdi_new;
       TabList *tl_new = this;
       if (!ownWindow) {
-        gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - ") + currentList.getName(), gdi.getWidth() + 64 + gdi.scaleLength(120));
-        if (gdi_new) {
-          TabList &tl = dynamic_cast<TabList &>(*gdi_new->getTabs().get(TListTab));
-          tl.currentList = currentList;
-          tl.SelectedList = SelectedList;
-          tl.ownWindow = true;
-          tl.loadPage(*gdi_new);
-          tl_new = &tl;
-          SelectedList = "";
-          currentList = oListInfo();
-          loadPage(gdi);
+        auto nw = makeOwnWindow(gdi);
+        if (nw.first) {
+          tl_new = nw.second;
+          gdi_new = nw.first;
         }
       }
       else
@@ -1129,6 +1156,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
   else if (type==GUI_CLEAR) {
     offsetY=gdi.GetOffsetY();
     offsetX=gdi.GetOffsetX();
+    leavingList(gdi.getTag());
     return true;
   }
   else if (type == GUI_LINK) {
@@ -1190,6 +1218,24 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
   }
 
   return 0;
+}
+
+pair<gdioutput *, TabList *> TabList::makeOwnWindow(gdioutput &gdi) {
+  gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - ") + currentList.getName(), gdi.getWidth() + 64 + gdi.scaleLength(120));
+  TabList *tl_new = 0;
+  if (gdi_new) {
+    TabList &tl = dynamic_cast<TabList &>(*gdi_new->getTabs().get(TListTab));
+    tl.currentList = currentList;
+    tl.SelectedList = SelectedList;
+    tl.ownWindow = true;
+    tl.loadPage(*gdi_new);
+    tl_new = &tl;
+    changeListSettingsTarget(gdi, *gdi_new);
+    SelectedList = "";
+    currentList = oListInfo();
+    loadPage(gdi);
+  }
+  return make_pair(gdi_new, tl_new);
 }
 
 void TabList::enableFromTo(oEvent &oe, gdioutput &gdi, bool from, bool to) {
@@ -1374,6 +1420,272 @@ void TabList::makeFromTo(gdioutput &gdi) {
 
   gdi.popX();
   gdi.dropLine(3);
+}
+
+class ListSettings : public GuiHandler {
+  void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
+    string target;
+    if (!gdi.getData("target", target))
+      return;
+    gdioutput *dest_gdi = getExtraWindow(target, false);
+    if (!dest_gdi)
+      return;
+
+    TabBase *tb = dest_gdi->getTabs().get(TabType::TListTab);
+    if (tb) {
+      TabList *list = dynamic_cast<TabList *>(tb);
+      list->handleListSettings(gdi, info, type, *dest_gdi);
+    }
+  }
+};
+
+ListSettings settingsClass;
+
+void TabList::changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindow) {
+  gdioutput *gdi_settings = getExtraWindow("list_settings", true);
+  if (gdi_settings) {
+    string oldTag;
+    gdi_settings->getData("target", oldTag);
+    if (oldWindow.getTag() == oldTag)
+      gdi_settings->setData("target", newWindow.getTag());
+  }
+}
+
+void TabList::leavingList(const string &wnd) {
+  gdioutput *gdi_settings = getExtraWindow("list_settings", true);
+  if (gdi_settings) {
+    string oldTag;
+    gdi_settings->getData("target", oldTag);
+    if (wnd == oldTag)
+      gdi_settings->closeWindow();
+  }
+}
+
+static void addAnimationSettings(gdioutput &gdi, oListParam &dst) {
+  DWORD cx, cy;
+  gdi.getData("xmode", cx);
+  gdi.getData("ymode", cy);
+
+  gdi.setCX(cx);
+  gdi.setCY(cy);
+  gdi.pushX();
+  gdi.fillRight();
+  gdi.addInput("Time", itow(dst.timePerPage), 5, 0, L"Visningstid:");
+  gdi.addSelection("NPage", 70, 200, 0, L"Sidor per skärm:");
+  for (int i = 1; i <= 8; i++)
+    gdi.addItem("NPage", itow(i), i);
+  if (dst.nColumns == 0)
+    dst.nColumns = 1;
+  gdi.selectItemByData("NPage", dst.nColumns);
+  gdi.addInput("Margin", itow(dst.margin) + L" %", 5, 0, L"Marginal:");
+  gdi.dropLine(1);
+  gdi.addCheckbox("Animate", "Animation", 0, dst.animate);
+}
+
+static void saveAnimationSettings(gdioutput &gdi, oListParam &dst) {
+  dst.timePerPage = gdi.getTextNo("Time");
+  dst.nColumns = gdi.getSelectedItem("NPage").first;
+  dst.animate = gdi.isChecked("Animate");
+  dst.margin = gdi.getTextNo("Margin");
+}
+
+void TabList::loadSettings(gdioutput &gdi, string targetTag) {
+  gdi.clearPage(false);
+  gdi.setCX(10);
+  gdi.setCY(15);
+  gdi.setColorMode(RGB(242, 240, 250));
+  gdi.setData("target", targetTag);
+  settingsTarget = targetTag;
+  gdi.addString("", fontMediumPlus, L"Visningsinställningar för 'X'#" + currentList.getName());
+
+  gdi.dropLine(0.5);
+  gdi.addSelection("Background", 200, 100, 0, L"Bakgrund:").setHandler(&settingsClass);
+  gdi.addItem("Background", lang.tl("Standard"), 0);
+  gdi.addItem("Background", lang.tl("Färg"), 1);
+  //gdi.addItem("Background", lang.tl("Bild"), 2);
+  tmpSettingsParam = currentList.getParam();
+  int bgColor = currentList.getParam().bgColor;
+  int fgColor = currentList.getParam().fgColor;
+  bool useColor = bgColor != -1;
+  gdi.selectItemByData("Background", useColor ? 1 : 0);
+  gdi.pushX();
+  gdi.fillRight();
+  gdi.addButton("BGColor", "Bakgrundsfärg...").setHandler(&settingsClass).setExtra(bgColor);
+  gdi.setInputStatus("BGColor", useColor);
+  gdi.addButton("FGColor", "Textfärg...").setHandler(&settingsClass).setExtra(fgColor);
+ 
+  gdi.popX();
+
+  gdi.dropLine(3);
+  gdi.addSelection("Mode", 200, 100, 0, L"Visning:").setHandler(&settingsClass);
+  gdi.addItem("Mode", lang.tl("Fönster"), 0);
+  gdi.addItem("Mode", lang.tl("Fönster (rullande)"), 3);
+  gdi.addItem("Mode", lang.tl("Fullskärm (sidvis)"), 1);
+  gdi.addItem("Mode", lang.tl("Fullskärm (rullande)"), 2);
+  gdi.selectItemByData("Mode", tmpSettingsParam.screenMode);
+  gdi.popX();
+  gdi.dropLine(3);
+
+  gdi.setData("xmode", gdi.getCX());
+  gdi.setData("ymode", gdi.getCY());
+  gdi.dropLine(3);
+
+  gdi.addButton("ApplyList", "Verkställ").setHandler(&settingsClass);
+  
+  if (tmpSettingsParam.screenMode == 1)
+    addAnimationSettings(gdi, tmpSettingsParam);
+  
+  RECT rc;
+  rc.left = gdi.getWidth() + gdi.scaleLength(80);
+  rc.right = rc.left + gdi.scaleLength(150);
+  rc.top = 20;
+  
+  gdi.addString("", rc.top, rc.left, 1, "Exempel");
+  rc.top += (gdi.getLineHeight() * 3) / 2;
+  
+  rc.bottom = rc.top + gdi.scaleLength(200);
+  gdi.addRectangle(rc, bgColor != -1 ? GDICOLOR(bgColor) : GDICOLOR(colorTransparent)).id = "Background";
+  string val = "123. Abc MeOS";
+  int key = rand()%12;
+  for (int i = 0; i < NUMTEXTSAMPLE; i++) {
+    gdi.addString("Sample" + itos(i), rc.top + 3 + gdi.getLineHeight()*i, 
+                 rc.left + 3 + 5*i, i == 0 ? boldText : normalText, "#" + val).setColor(GDICOLOR(fgColor));
+    string val2 = val;
+    for (int j = 0; j < 13; j++) {
+      val2[j] = val[((j+1)*(key+1)) % 13];
+    }
+    val = val2;
+  }
+  gdi.refresh();
+}
+
+void TabList::handleListSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) {
+  if (type == GUI_BUTTON) {
+    ButtonInfo bi = static_cast<ButtonInfo&>(info);
+    if (bi.id == "BGColor") {
+      wstring c = oe->getPropertyString("Colors", L"");
+      int res = gdi.selectColor(c, bi.getExtraInt());
+      if (res > -1) {
+        info.setExtra(res);
+        oe->setProperty("Colors", c);
+        RectangleInfo &rc = gdi.getRectangle("Background");
+        rc.setColor(GDICOLOR(res));
+        gdi.refreshFast();
+      }
+    }
+    else if (bi.id == "FGColor") {
+      wstring c = oe->getPropertyString("Colors", L"");
+      int inC = bi.getExtraInt();
+      if (inC == -1)
+        inC = RGB(255,255,255);
+      int res = gdi.selectColor(c, inC);
+      if (res > -1) {
+        info.setExtra(res);
+        oe->setProperty("Colors", c);
+        for (int i = 0; i < NUMTEXTSAMPLE; i++) {
+          BaseInfo &bi = gdi.getBaseInfo(("Sample" + itos(i)).c_str());
+          dynamic_cast<TextInfo &>(bi).setColor(GDICOLOR(res));
+        }
+        gdi.refreshFast();
+      }
+    }
+    else if (bi.id == "ApplyList") {
+      oListParam &param = currentList.getParam();
+      param.lockUpdate = true;
+      int type = gdi.getSelectedItem("Background").first;
+      if (type == 1) 
+        param.bgColor = gdi.getExtraInt("BGColor");
+      else
+        param.bgColor = -1;
+
+      param.fgColor = gdi.getExtraInt("FGColor");
+      param.screenMode = gdi.getSelectedItem("Mode").first;
+      if (param.screenMode == 1) {
+        saveAnimationSettings(gdi, param);
+      }
+      TabList *dest = this;
+      gdioutput *dgdi = &dest_gdi;
+      int mode = param.screenMode;
+      if (param.screenMode == 2 || param.screenMode == 3) {
+        dgdi->alert("help:fullscreen");
+      }
+
+      if ((mode==1 || mode==2) && !dest_gdi.isFullScreen()) {
+        // Require fullscreen
+        if (!ownWindow) {
+          auto nw = makeOwnWindow(dest_gdi);
+          dest = nw.second;
+          dgdi = nw.first;
+        }
+        dgdi->setFullScreen(true);
+        dest->hideButtons = true;
+      }
+      else if ((mode == 0 || mode == 3) && dest_gdi.isFullScreen()) {
+        dest_gdi.setFullScreen(false);
+        hideButtons = false;
+      }
+
+      if (mode == 2 || mode == 3) {
+        if (!dest->ownWindow) {
+          auto nw = makeOwnWindow(dest_gdi);
+          dest = nw.second;
+          dgdi = nw.first;
+        }
+        dest->hideButtons = true;
+        int h = dgdi->setHighContrastMaxWidth();
+        dest->loadPage(*dgdi);
+        double sec = 6.0;
+        double delta = h * 20. / (1000. * sec);
+        dgdi->setAutoScroll(delta);
+      }
+      else {
+        dest->loadPage(*dgdi);
+      }
+      dest->currentList.getParam().lockUpdate = false;
+      param.lockUpdate = false;
+
+      SetForegroundWindow(dgdi->getHWNDMain());
+      SetWindowPos(dgdi->getHWNDMain(), HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+      
+      if (mode == 1) {
+        dest->setAnimationMode(*dgdi);
+        dgdi->refresh();
+        dest->generateList(*dgdi, true);
+      }
+
+      if (param.screenMode == 2 || param.screenMode == 3) {
+        gdi.closeWindow();
+      }
+    }
+  }
+  else if (type == GUI_LISTBOX) {
+    ListBoxInfo lbi = static_cast<ListBoxInfo&>(info);
+    if (lbi.id == "Background") {
+      gdi.setInputStatus("BGColor", lbi.data == 1);
+      BaseInfo &bi = gdi.getBaseInfo("BGColor");
+      if (lbi.data == 1 && bi.getExtraInt() == -1)
+        bi.setExtra(int(RGB(255,255,255)));
+
+      RectangleInfo &rc = gdi.getRectangle("Background");
+      rc.setColor(GDICOLOR(lbi.data == 1 ? bi.getExtraInt() : colorTransparent));
+      gdi.refreshFast();
+    }
+    else if (lbi.id == "Mode") {
+      if (lbi.data == 1) {
+        addAnimationSettings(gdi, tmpSettingsParam);
+      }
+      else {
+        if (gdi.hasField("Time")) 
+          saveAnimationSettings(gdi, tmpSettingsParam);
+
+        gdi.removeControl("Time");
+        gdi.removeControl("NPage");
+        gdi.removeControl("Margin");
+        gdi.removeControl("Animate");
+      }
+      gdi.refresh();
+    }
+  }
 }
 
 void TabList::settingsResultList(gdioutput &gdi)
@@ -1569,7 +1881,8 @@ bool TabList::loadPage(gdioutput &gdi)
     if (cnf.hasIndividual()) {
       gdi.addButton("StartIndividual", "Individuell", ListsCB);
       checkWidth(gdi);
-      gdi.addButton("StartClub", "Klubbstartlista", ListsCB);
+      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs))
+        gdi.addButton("StartClub", "Klubbstartlista", ListsCB);
     }
 
     for (size_t k = 0; k<cnf.raceNStart.size(); k++) {
@@ -1611,8 +1924,11 @@ bool TabList::loadPage(gdioutput &gdi)
     if (cnf.hasIndividual()) {
       gdi.addButton("ResultIndividual", "Individuell", ListsCB);
       checkWidth(gdi);
-      gdi.addButton("ResultClub", "Klubbresultat", ListsCB);
-      checkWidth(gdi);
+      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+        gdi.addButton("ResultClub", "Klubbresultat", ListsCB);
+       checkWidth(gdi);
+      }
+
       gdi.addButton("ResultIndSplit", "Sträcktider", ListsCB);
       
       checkWidth(gdi);
@@ -2097,4 +2413,10 @@ void TabList::clearCompetitionData() {
   delete methodEditor;
   listEditor = 0;
   methodEditor = 0;
+}
+
+void TabList::setAnimationMode(gdioutput &gdi) {
+  auto par = currentList.getParam();
+  gdi.setAnimationMode(make_shared<AnimationData>(gdi, par.timePerPage, par.nColumns,
+    par.margin, par.animate));
 }

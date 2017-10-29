@@ -298,7 +298,13 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     ButtonInfo &biSrc = dynamic_cast<ButtonInfo &>(data);
 
     if (bi.id == "Color") {
-      CHOOSECOLOR cc;
+      wstring c = oe->getPropertyString("Colors", L"");
+      int res = gdi.selectColor(c, bi.getExtraInt());
+      if (res >= -1) {
+        biSrc.setExtra(res);
+        oe->setProperty("Colors", c);
+      }
+      /*CHOOSECOLOR cc;
       memset(&cc, 0, sizeof(cc));
       cc.lStructSize = sizeof(cc);
       cc.hwndOwner = gdi.getHWND();
@@ -317,8 +323,6 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         staticColor[pix++] = strtol(pEnd,(char **)&pEnd,16);
       }
 
-      //vector<string> splitvector;
-      //split(c, ";", splitvector);
       cc.lpCustColors = staticColor;
       if (ChooseColor(&cc)) {
         data.setExtra((int)cc.rgbResult);
@@ -330,7 +334,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
           co += bf;
         }
         oe->setProperty("Colors", co);
-      }
+      }*/
     }
     if ( bi.id.substr(0, 8) == "EditPost" ) {
       int id = atoi(bi.id.substr(8).c_str());

@@ -35,6 +35,11 @@ namespace MeOSUtil {
   int useHourFormat = true;
 }
 
+string convertSystemTimeN(const SYSTEMTIME &st);
+string convertSystemDateN(const SYSTEMTIME &st);
+string convertSystemTimeOnlyN(const SYSTEMTIME &st);
+
+
 DWORD mainThreadId = -1;
 StringCache &StringCache::getInstance() {
   DWORD id = GetCurrentThreadId();
@@ -45,29 +50,33 @@ StringCache &StringCache::getInstance() {
   return globalStringCache;
 }
 
-string getLocalTime() {
+string getLocalTimeN() {
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  return convertSystemTimeN(st);
+}
+
+string getLocalDateN()
+{
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  return convertSystemDateN(st);
+}
+
+wstring getLocalTime() {
   SYSTEMTIME st;
   GetLocalTime(&st);
   return convertSystemTime(st);
 }
 
-string getLocalDate()
-{
+wstring getLocalDate() {
   SYSTEMTIME st;
   GetLocalTime(&st);
   return convertSystemDate(st);
 }
 
-wstring getLocalTimeW() {
-  SYSTEMTIME st;
-  GetLocalTime(&st);
-  return convertSystemTimeW(st);
-}
-
-wstring getLocalDateW() {
-  SYSTEMTIME st;
-  GetLocalTime(&st);
-  return convertSystemDateW(st);
+int getLocalAbsTime() {
+  return convertAbsoluteTimeHMS(getLocalTimeOnly(), -1);
 }
 
 int getThisYear() {
@@ -114,18 +123,18 @@ wstring getLocalTimeFileName()
   return bf;
 }
 
-string getLocalTimeOnly()
+string getLocalTimeOnlyN()
+{
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  return convertSystemTimeOnlyN(st);
+}
+
+wstring getLocalTimeOnly()
 {
   SYSTEMTIME st;
   GetLocalTime(&st);
   return convertSystemTimeOnly(st);
-}
-
-wstring getLocalTimeOnlyW()
-{
-  SYSTEMTIME st;
-  GetLocalTime(&st);
-  return convertSystemTimeOnlyW(st);
 }
 
 int getRelativeDay() {
@@ -169,7 +178,7 @@ SYSTEMTIME Int64SecondToSystemTime(__int64 time) {
   return st;
 }
 //2014-11-03 07:02:00
-string convertSystemTime(const SYSTEMTIME &st)
+string convertSystemTimeN(const SYSTEMTIME &st)
 {
   char bf[32];
   sprintf_s(bf, "%d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay,
@@ -179,7 +188,7 @@ string convertSystemTime(const SYSTEMTIME &st)
 }
 
 //2014-11-03 07:02:00
-wstring convertSystemTimeW(const SYSTEMTIME &st)
+wstring convertSystemTime(const SYSTEMTIME &st)
 {
   wchar_t bf[32];
   swprintf_s(bf, L"%d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay,
@@ -188,7 +197,7 @@ wstring convertSystemTimeW(const SYSTEMTIME &st)
   return bf;
 }
 
-string convertSystemTimeOnly(const SYSTEMTIME &st)
+string convertSystemTimeOnlyN(const SYSTEMTIME &st)
 {
   char bf[32];
   sprintf_s(bf, "%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
@@ -196,14 +205,14 @@ string convertSystemTimeOnly(const SYSTEMTIME &st)
   return bf;
 }
 
-wstring convertSystemTimeOnlyW(const SYSTEMTIME &st) {
+wstring convertSystemTimeOnly(const SYSTEMTIME &st) {
   wchar_t bf[32];
   swprintf_s(bf, L"%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
 
   return bf;
 }
 
-string convertSystemDate(const SYSTEMTIME &st)
+string convertSystemDateN(const SYSTEMTIME &st)
 {
   char bf[32];
   sprintf_s(bf, "%d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
@@ -211,7 +220,7 @@ string convertSystemDate(const SYSTEMTIME &st)
   return bf;
 }
 
-wstring convertSystemDateW(const SYSTEMTIME &st)
+wstring convertSystemDate(const SYSTEMTIME &st)
 {
   wchar_t bf[32];
   swprintf_s(bf, L"%d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
@@ -219,7 +228,7 @@ wstring convertSystemDateW(const SYSTEMTIME &st)
   return bf;
 }
 
-string formatDate(int m, bool useIsoFormat) {
+string formatDateN(int m, bool useIsoFormat) {
   char bf[24];
   if (m > 0 && m < 30000101) {
     sprintf_s(bf, 24, "%d-%02d-%02d", m/(100*100), (m/100)%100, m%100);
@@ -231,7 +240,7 @@ string formatDate(int m, bool useIsoFormat) {
   return bf;
 }
 
-wstring formatDateW(int m, bool useIsoFormat) {
+wstring formatDate(int m, bool useIsoFormat) {
   wchar_t bf[24];
   if (m > 0 && m < 30000101) {
     swprintf_s(bf, 24, L"%d-%02d-%02d", m/(100*100), (m/100)%100, m%100);
@@ -320,11 +329,6 @@ bool myIsSpace(wchar_t b) {
   return iswspace(b) != 0 || b == 0x00A0 || b == 0x2007 || b == 0x202F;
 }
 
-//Absolute time string to absolute time int
-int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime) {
-  string sm(m.begin(), m.end());
-  return convertAbsoluteTimeHMS(sm, daysZeroTime);
-}
 
 //Absolute time string to absolute time int
 int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
@@ -408,10 +412,10 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
   return t;
 }
 
-
-int convertAbsoluteTimeISO(const wstring &m) {
-  string mn(m.begin(), m.end());
-  return convertAbsoluteTimeISO(mn);
+//Absolute time string to absolute time int
+int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime) {
+  string sm(m.begin(), m.end());
+  return convertAbsoluteTimeHMS(sm, daysZeroTime);
 }
 
 //Absolute time string to absolute time int
@@ -450,6 +454,15 @@ int convertAbsoluteTimeISO(const string &m)
 
   sStr = tmp.substr(0, 2);
 
+  for (int i = 0; i < 2; i++) {
+    if (hStr[i] < '0' || hStr[i] > '9')
+      return -1;
+    if (mStr[i] < '0' || mStr[i] > '9')
+      return -1;
+    if (sStr[i] < '0' || sStr[i] > '9')
+      return -1;
+  }
+
   int hour = atoi(hStr.c_str());
   if (hour<0 || hour>23)
     return -1;
@@ -469,9 +482,9 @@ int convertAbsoluteTimeISO(const string &m)
   return t;
 }
 
-int convertAbsoluteTimeMS(const wstring &m) {
+int convertAbsoluteTimeISO(const wstring &m) {
   string mn(m.begin(), m.end());
-  return convertAbsoluteTimeMS(mn);
+  return convertAbsoluteTimeISO(mn);
 }
 
 // Parse +-MM:SS or +-HH:MM:SS
@@ -524,29 +537,25 @@ int convertAbsoluteTimeMS(const string &m)
   return sign*t;
 }
 
-//Generate +-MM:SS or +-HH:MM:SS
-const wstring &getTimeMSW(int m) {
-  wstring &res = StringCache::getInstance().wget();
-  const string tr = getTimeMS(m);
-  res.clear();
-  res.insert(res.begin(), tr.begin(), tr.end());
-  return res;
+int convertAbsoluteTimeMS(const wstring &m) {
+  string mn(m.begin(), m.end());
+  return convertAbsoluteTimeMS(mn);
 }
 
 //Generate +-MM:SS or +-HH:MM:SS
-const string &getTimeMS(int m) {
-  char bf[32];
+const wstring &getTimeMS(int m) {
+  wchar_t bf[32];
   int am = abs(m);
   if (am < 3600 || !MeOSUtil::useHourFormat)
-    sprintf_s(bf, "-%02d:%02d", am/60, am%60);
+    swprintf_s(bf, L"-%02d:%02d", am/60, am%60);
   else if (am < 3600*48)
-    sprintf_s(bf, "-%02d:%02d:%02d", am/3600, (am/60)%60, am%60);
+    swprintf_s(bf, L"-%02d:%02d:%02d", am/3600, (am/60)%60, am%60);
   else {
     m = 0;
-    bf[0] = BYTE(0x96);
+    bf[0] = 0x2013;
     bf[1] = 0;
   }
-  string &res = StringCache::getInstance().get();
+  wstring &res = StringCache::getInstance().wget();
   if (m<0)
     res = bf; // with minus
   else
@@ -555,7 +564,7 @@ const string &getTimeMS(int m) {
   return res;
 }
 
-const wstring &formatTimeW(int rt) {
+const wstring &formatTime(int rt) {
   wstring &res = StringCache::getInstance().wget();
   if (rt>0 && rt<3600*999) {
     wchar_t bf[16];
@@ -588,25 +597,15 @@ const string &formatTimeN(int rt) {
   return res;
 }
 
-const wstring &formatTimeHMSW(int m) {
+const wstring &formatTimeHMS(int rt) {
   wstring &res = StringCache::getInstance().wget();
-  const string tr = formatTimeHMS(m);
-  res.clear();
-  res.insert(res.begin(), tr.begin(), tr.end());
-  return res;
-}
-
-const string &formatTimeHMS(int rt) {
-
-  string &res = StringCache::getInstance().get();
   if (rt>=0) {
-    char bf[32];
-    sprintf_s(bf, 16, "%02d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
-
+    wchar_t bf[32];
+    swprintf_s(bf, 16, L"%02d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
     res = bf;
     return res;
   }
-  char ret[2] = {char(0x96), 0};
+  wchar_t ret[2] = {0x2013, 0};
   res = ret;
   return res;
 }
@@ -2169,4 +2168,18 @@ void string2Wide(const string &in, wstring &out) {
 void wide2String(const wstring &in, string &out) {
   out.clear();
   out.insert(out.begin(), in.begin(), in.end());// XXX Simple extend
+}
+
+void checkWriteAccess(const wstring &file) {
+  if (_waccess(file.c_str(), 4) == 0)
+    return;
+
+  auto h = CreateFile(file.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+  if (h == INVALID_HANDLE_VALUE) {
+    wchar_t absPath[260];
+    _wfullpath(absPath, file.c_str(), 260);
+
+    throw meosException(wstring(L"Du saknar behörighet att skriva till 'X'.#") + absPath);
+  }
+  CloseHandle(h);
 }

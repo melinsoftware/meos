@@ -172,7 +172,7 @@ void TestMeOS::runProtected(bool protect) const {
     gdi_main->isTestMode = false;
     subWindows.clear();
     //oe_main->setProperty("PayModes", pmOrig);
-    message = ex.what();
+    message = gdi_main->widen(ex.what());
     if (!protect)
       throw;
   }
@@ -184,7 +184,7 @@ void TestMeOS::runProtected(bool protect) const {
     gdi_main->isTestMode = false;
     subWindows.clear();
     //oe_main->setProperty("PayModes", pmOrig);
-    message = "Unknown Exception";
+    message = L"Unknown Exception";
     cleanup();
     if (!protect)
       throw;
@@ -274,7 +274,7 @@ string TestMeOS::selectString(const char *id, const char *data) const {
 
 string TestMeOS::select(const char *id, size_t data) const {
   string res = gdi_main->dbSelect(id, data);
-  mainMessageLoop(0, 50);
+  mainMessageLoop(0, 100);
   return res;
 }
 
@@ -323,6 +323,13 @@ void TestMeOS::assertEquals(const string &expected,
     throw meosAssertionFailure("Expected " + expected + " but got " + value);
 }
 
+void TestMeOS::assertEquals(const wstring &expected,
+                            const wstring &value) const {
+  if (expected != value)
+    throw meosAssertionFailure(L"Expected " + expected + L" but got " + value);
+}
+
+
 void TestMeOS::assertEquals(int expected, int value) const {
   assertEquals(itos(expected), itos(value));
 }
@@ -342,6 +349,13 @@ void TestMeOS::assertEquals(const char *message,
                             const char *expected,
                             const string &value) const {
   assertEquals(string(message), string(expected), value);
+}
+
+void TestMeOS::assertEquals(const wstring &message,
+                            const wstring &expected,
+                            const wstring &value) const {
+  if (expected != value)
+    throw meosAssertionFailure(message + L": Expected " + expected + L" but got " + value);
 }
 
 void TestMeOS::checkString(const char *str, int count) const {

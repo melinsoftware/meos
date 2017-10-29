@@ -104,6 +104,7 @@ public:
 };
 
 class gdioutput;
+class oDataDefiner;
 
 struct ColInfo
 {
@@ -244,7 +245,10 @@ protected:
   void getRowRect(int row, RECT &rc) const;
 
   bool compareRow(int indexA, int indexB) const;
+
+  map<string, const oDataDefiner *> dataDefiners;
 public:
+  void addDataDefiner(const string &key, const oDataDefiner *definer);
 
   void setTableText(gdioutput &gdi, int editRow, int editCol, const wstring &bf);
   const wstring &getTableText(gdioutput &gdi, int editRow, int editCol);

@@ -63,8 +63,7 @@
 #include "autotask.h"
 #include "meosexception.h"
 #include "parser.h"
-
-#include "restbed/restbed"
+#include "restserver.h"
 
 gdioutput *gdi_main=0;
 oEvent *gEvent=0;
@@ -162,6 +161,8 @@ void mainMessageLoop(HACCEL hAccelTable, DWORD time) {
   while ( (bRet = GetMessage(&msg, NULL, 0, 0)) != 0 ) {
     if (bRet == -1)
       return;
+    if (gEvent != 0)
+      RestServer::computeRequested(*gEvent);
 
     if (hAccelTable == 0 || !TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
       TranslateMessage(&msg);
@@ -174,19 +175,6 @@ void mainMessageLoop(HACCEL hAccelTable, DWORD time) {
   }
 }
 
-void post_method_handler(const shared_ptr< restbed::Session > session)
-{
-  using namespace restbed;
-  const auto request = session->get_request();
-
-  size_t content_length = request->get_header("Content-Length", 0);
-
-  session->fetch(content_length, [request](const shared_ptr< Session > session, const Bytes & body)
-  {
-    fprintf(stdout, "%.*s\n", (int)body.size(), body.data());
-    session->close(restbed::OK, "Hello, World!", { { "Content-Length", "13" },{ "Connection", "close" } });
-  });
-}
 
 int APIENTRY WinMain(HINSTANCE hInstance,
   HINSTANCE hPrevInstance,
@@ -195,20 +183,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 {
   atexit(dumpLeaks);	//
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-  /*{
-    using namespace restbed;
-    auto resource = make_shared< Resource >();
-    resource->set_path("/resource");
-    resource->set_method_handler("GET", post_method_handler);
-
-    Service service;
-
-    auto settings = make_shared< Settings >();
-    settings->set_port(1984);
-
-    service.publish(resource);
-    service.start(settings);
-  }*/
 
   if (strstr(lpCmdLine, "-s") != 0) {
     Setup(true, false);
@@ -226,9 +200,10 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   RunnerStatusOrderMap[StatusMP] = 2;
   RunnerStatusOrderMap[StatusDNF] = 3;
   RunnerStatusOrderMap[StatusDQ] = 4;
-  RunnerStatusOrderMap[StatusDNS] = 5;
-  RunnerStatusOrderMap[StatusUnknown] = 6;
-  RunnerStatusOrderMap[StatusNotCompetiting] = 7;
+  RunnerStatusOrderMap[StatusCANCEL] = 5;
+  RunnerStatusOrderMap[StatusDNS] = 6;
+  RunnerStatusOrderMap[StatusUnknown] = 7;
+  RunnerStatusOrderMap[StatusNotCompetiting] = 8;
 
   lang.init();
   StringCache::getInstance().init();
@@ -413,7 +388,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
   for (size_t k = 0; k<gdi_extra.size(); k++) {
     if (gdi_extra[k]) {
-      DestroyWindow(gdi_extra[k]->getHWND());
+      DestroyWindow(gdi_extra[k]->getHWNDMain());
       if (k < gdi_extra.size()) {
         delete gdi_extra[k];
         gdi_extra[k] = 0;
@@ -555,7 +530,7 @@ LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     gdi = gdi_main;
 
 
-  HWND hWnd = gdi ? gdi->getHWND() : 0;
+  HWND hWnd = gdi ? gdi->getHWNDTarget() : 0;
 
   bool ctrlPressed = (GetKeyState(VK_CONTROL) & 0x8000) == 0x8000;
   bool shiftPressed = (GetKeyState(VK_SHIFT) & 0x8000) == 0x8000;
@@ -740,7 +715,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 void destroyExtraWindows() {
   for (size_t k = 1; k<gdi_extra.size(); k++) {
     if (gdi_extra[k]) {
-      DestroyWindow(gdi_extra[k]->getHWND());
+      DestroyWindow(gdi_extra[k]->getHWNDMain());
     }
   }
 }
@@ -768,7 +743,7 @@ gdioutput *getExtraWindow(const string &tag, bool toForeGround) {
   for (size_t k = 0; k<gdi_extra.size(); k++) {
     if (gdi_extra[k] && gdi_extra[k]->hasTag(tag)) {
       if (toForeGround)
-        SetForegroundWindow(gdi_extra[k]->getHWND());
+        SetForegroundWindow(gdi_extra[k]->getHWNDMain());
       return gdi_extra[k];
     }
   }
@@ -791,7 +766,7 @@ gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x,
 
   for (size_t k = 0; k<gdi_extra.size(); k++) {
     if (gdi_extra[k]) {
-      HWND hWnd = gdi_extra[k]->getHWND();
+      HWND hWnd = gdi_extra[k]->getHWNDTarget();
       RECT rc;
       if (GetWindowRect(hWnd, &rc)) {
         xp = max<int>(rc.left + 16, xp);
@@ -828,6 +803,9 @@ gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x,
       gdi->dbPushDialogAnswer(gdi_main->cmdAnswers.front());
       gdi_main->cmdAnswers.pop_front();
     }
+  }
+  else {
+    gdi->initRecorder(&gdi_main->getRecorder());
   }
   SetWindowLong(hWnd, GWL_USERDATA, gdi_extra.size());
   currentFocusIx = gdi_extra.size();

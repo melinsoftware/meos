@@ -139,7 +139,7 @@ public:
   void prepareRemove();
 
   bool skip() const {return isRemoved();}
-  void setTeamNoStart(bool dns);
+  void setTeamNoStart(bool dns, RunnerStatus dnsStatus); // Set DNS or CANCEL
   // If apply is triggered by a runner, don't go further than that runner.
   bool apply(bool sync, pRunner source, bool setTmpOnly);
 

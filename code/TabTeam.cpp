@@ -270,7 +270,7 @@ void TabTeam::updateTeamStatus(gdioutput &gdi, pTeam t)
   gdi.setText("Start", t->getStartTimeS());
   gdi.setText("Finish",t->getFinishTimeS());
   gdi.setText("Time", t->getRunningTimeS());
-  gdi.setText("TimeAdjust", getTimeMSW(t->getTimeAdjustment()));
+  gdi.setText("TimeAdjust", getTimeMS(t->getTimeAdjustment()));
   gdi.setText("PointAdjust", -t->getPointAdjustment());
   gdi.selectItemByData("Status", t->getStatus());
 }
@@ -342,11 +342,11 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
 
     RunnerStatus sIn = (RunnerStatus)lbi.data;
     // Must be done AFTER all runners are set. But setting runner can modify status, so decide here.
-    bool setDNS = (sIn == StatusDNS) && (t->getStatus()!=StatusDNS);
+    bool setDNS = (sIn == StatusDNS || sIn == StatusCANCEL) && (t->getStatus() != sIn);
     bool checkStatus = (sIn != t->getStatus());
 
-    if (sIn == StatusUnknown && t->getStatus() == StatusDNS)
-      t->setTeamNoStart(false);
+    if (sIn == StatusUnknown && (t->getStatus() == StatusDNS || t->getStatus() == StatusCANCEL))
+      t->setTeamNoStart(false, StatusDNS);
     else if ((RunnerStatus)lbi.data != t->getStatus())
       t->setStatus((RunnerStatus)lbi.data, true, false);
 
@@ -464,7 +464,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
 
     }
     if (setDNS)
-      t->setTeamNoStart(true);
+      t->setTeamNoStart(true, sIn);
 
     if (t->checkValdParSetup()) {
       gdi.alert("Laguppställningen hade fel, som har rättats");
@@ -662,7 +662,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       selectTeam(gdi, t);
     }
     else if (bi.id == "Browse") {
-      const char *target = (const char *)bi.getExtra();
+      const wchar_t *target = bi.getExtra();
       vector< pair<wstring, wstring> > ext;
       ext.push_back(make_pair(L"Laguppställning", L"*.csv;*.txt"));
       wstring fileName = gdi.browseForOpen(ext, L"csv");

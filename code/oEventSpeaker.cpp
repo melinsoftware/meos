@@ -349,10 +349,10 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
   row.push_back(SpeakerString(normalText, r.club));
 
   if (r.status == StatusOK) {
-    row.push_back(SpeakerString(textRight, formatTimeW(r.runningTime.preliminary)));
+    row.push_back(SpeakerString(textRight, formatTime(r.runningTime.preliminary)));
 
     if (r.runningTime.time != r.runningTimeLeg.time)
-      row.push_back(SpeakerString(textRight, formatTimeW(r.runningTimeLeg.time)));
+      row.push_back(SpeakerString(textRight, formatTime(r.runningTimeLeg.time)));
     else
       row.push_back(SpeakerString());
 
@@ -1053,7 +1053,7 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
       continue;
     if (!r.Class ||r.Class->Id != classId)
       continue;
-    if (r.tStatus == StatusDNS || r.tStatus == StatusNotCompetiting)
+    if (r.tStatus == StatusDNS || r.tStatus == StatusCANCEL || r.tStatus == StatusNotCompetiting)
       continue;
 //    if (r.CardNo == 0)
 //      continue;
@@ -1377,7 +1377,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
         int timeAfter = totTime - leaderTime;
         int deltaTime = timeAfter - r.tTimeAfter;
 
-        wstring timeS = formatTimeW(time);
+        wstring timeS = formatTime(time);
         wstring msg, detail;
         getTimeAfterDetail(detail, timeAfter, deltaTime, r.tTimeAfter > 0);
         r.tTimeAfter = timeAfter;
@@ -1461,7 +1461,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       int timeAfter = time - leaderTime;
       int deltaTime = timeAfter - r.tInitialTimeAfter;
 
-      wstring timeS = formatTimeW(time);
+      wstring timeS = formatTime(time);
 
       wstring msg, detail;
       getTimeAfterDetail(detail, timeAfter, deltaTime, r.tInitialTimeAfter > 0);

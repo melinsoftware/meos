@@ -65,6 +65,7 @@ int InfoBase::convertRelativeTime(const oBase &elem, int t) {
 
 InfoCompetition::InfoCompetition(int id) : InfoBase(id) {
   forceComplete = true;
+  includeTotal = false;
 }
 
 InfoRadioControl::InfoRadioControl(int id) : InfoBase(id) {
@@ -93,7 +94,7 @@ InfoTeam::InfoTeam(int id) : InfoBaseCompetitor(id) {
 }
 
 
-bool InfoCompetition::synchronize(oEvent &oe, const set<int> &includeCls, const set<int> &ctrls) {
+bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &includeCls, const set<int> &ctrls) {
   bool changed = false;
   if (oe.getName() != name) {
     name = oe.getName();
@@ -117,6 +118,9 @@ bool InfoCompetition::synchronize(oEvent &oe, const set<int> &includeCls, const 
 
   if (changed)
     needCommit(*this);
+  
+  if (onlyCmp)
+    return changed;
 
   vector<pControl> ctrl;
   oe.getControls(ctrl, true);
@@ -422,23 +426,41 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
   return ch;
 }
 
-bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
+bool InfoCompetitor::synchronize(bool useTotalResults, oRunner &r) {
   bool ch = synchronizeBase(r);
-
   changeTotalSt = r.getEvent()->hasPrevStage() || r.getLegNumber()>0; // Always write full attributes
-  int s = r.getTotalStatusInput();
+  
+  int s = StatusOK;
+  int legInput = 0;
+  
+  pTeam t = r.getTeam();
+  if (useTotalResults) {
+    legInput = r.getTotalTimeInput() * 10;
+    s = r.getTotalStatusInput();
+  }
+  else if (t && r.getLegNumber() > 0) {
+    legInput = t->getLegRunningTime(r.getLegNumber() - 1, false);
+    s  = t->getLegStatus(r.getLegNumber() - 1, false);
+  }
+
   if (totalStatus != s) {
     totalStatus = s;
     ch = true;
     changeTotalSt = true;
   }
 
-  int legInput = r.getTotalTimeInput() * 10;
   if (legInput != inputTime) {
     inputTime = legInput;
     ch = true;
     changeTotalSt = true;
   }
+   
+  return ch;
+}
+
+bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
+  bool useTotalResults = cmp.includeTotalResults();
+  bool ch = synchronize(useTotalResults, r);
 
   vector<RadioTime> newRT;
   if (r.getClassId() > 0)  {

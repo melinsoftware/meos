@@ -488,13 +488,13 @@ int oControl::getTimeAdjust() const
 
 wstring oControl::getTimeAdjustS() const
 {
-  return getTimeMSW(getTimeAdjust());
+  return getTimeMS(getTimeAdjust());
 }
 
 wstring oControl::getMinTimeS() const
 {
   if (getMinTime()>0)
-    return getTimeMSW(getMinTime());
+    return getTimeMS(getMinTime());
   else
     return makeDash(L"-");
 }
@@ -706,8 +706,8 @@ void oEvent::setupControlStatistics() const {
       }
     }
 
-    if (!it->isVacant() && it->getStatus() != StatusDNS
-      && it->getStatus() != StatusNotCompetiting) {
+    if (!it->isVacant() && it->getStatus() != StatusDNS && it->getStatus() != StatusCANCEL
+                        && it->getStatus() != StatusNotCompetiting) {
 
       for (int i = 0; i < nc; i++) {
         pControl ctrl = pc->getControl(i);
@@ -855,9 +855,9 @@ void oControl::addTableRow(Table &table) const {
 
   int nv = getNumVisitors(true);
   table.set(row++, it, 50, itow(nv), false);
-  table.set(row++, it, 51, nv > 0 ? formatTimeW(getMissedTimeMax()) : L"-", false);
-  table.set(row++, it, 52, nv > 0 ? formatTimeW(getMissedTimeTotal()/nv) : L"-", false);
-  table.set(row++, it, 53, nv > 0 ? formatTimeW(getMissedTimeMedian()) : L"-", false);
+  table.set(row++, it, 51, nv > 0 ? formatTime(getMissedTimeMax()) : L"-", false);
+  table.set(row++, it, 52, nv > 0 ? formatTime(getMissedTimeTotal()/nv) : L"-", false);
+  table.set(row++, it, 53, nv > 0 ? formatTime(getMissedTimeMedian()) : L"-", false);
 
   oe->oControlData->fillTableCol(it, table, true);
 }

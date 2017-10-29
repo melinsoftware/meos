@@ -25,6 +25,7 @@
 
 #include <cassert>
 #include "guihandler.h"
+#include "gdifonts.h"
 
 class BaseInfo
 {
@@ -151,6 +152,8 @@ public:
   TextInfo &setColor(GDICOLOR c) {color = c; return *this;}
   TextInfo &changeFont(const wstring &fnt) {font = fnt; return *this;} //Note: size not updated
 
+  bool isFormatInfo() const { return format == pageNewPage || format == pagePageInfo; }
+
   int getHeight() {return int(textRect.bottom-textRect.top);}
   gdiFonts getGdiFont() const {return gdiFonts(format & 0xFF);}
   // Sets absolute print coordinates in [mm]
@@ -183,6 +186,8 @@ public:
 
 
   HWND getControlWindow() const {throw std::exception("Unsupported");}
+
+  friend class gdioutput;
 };
 
 class ButtonInfo : public BaseInfo
@@ -330,8 +335,12 @@ private:
 class DataStore
 {
 public:
+  DataStore() {
+    data = 0;
+  }
   string id;
   void *data;
+  string sdata;
 };
 
 class EventInfo : public BaseInfo
@@ -355,12 +364,17 @@ public:
 class TimerInfo : public BaseInfo
 {
 private:
+  static int globalTimerId;
+  int timerId;
   DWORD dataInt;
   wstring dataString;
   gdioutput *parent;
-  TimerInfo(gdioutput *gdi, GUICALLBACK cb) : parent(gdi), callBack(cb) {}
-
+  TimerInfo(gdioutput *gdi, GUICALLBACK cb) : parent(gdi), callBack(cb), setWnd(0), timerId(++globalTimerId) {}
+  HWND setWnd;
 public:
+  ~TimerInfo();
+
+  int getId() const { return timerId; }
   BaseInfo &setExtra(const wchar_t *e) {return BaseInfo::setExtra(e);}
   BaseInfo &setExtra(int e) {return BaseInfo::setExtra(e);}
 

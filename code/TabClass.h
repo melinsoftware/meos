@@ -79,6 +79,12 @@ class TabClass :
 
   void pursuitDialog(gdioutput &gdi);
 
+  bool warnDrawStartTime(gdioutput &gdi, int time);
+  bool warnDrawStartTime(gdioutput &gdi, const wstring &firstStart);
+
+  void static clearPage(gdioutput &gdi, bool autoRefresh);
+
+  bool hasWarnedStartTime;
   bool hasWarnedDirect;
   bool tableMode;
   DrawMethod lastDrawMethod;
@@ -137,6 +143,9 @@ class TabClass :
   void writeDrawInfo(gdioutput &gdi, const DrawInfo &drawInfo);
 
   static vector< pair<wstring, size_t> > getPairOptions();
+
+  void setLockForkingState(gdioutput &gdi, bool poolState, bool lockState);
+
 public:
   
   void clearCompetitionData();

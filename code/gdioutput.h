@@ -63,6 +63,7 @@ class FixedTabs;
 
 struct PageInfo;
 struct RenderedPage;
+class AnimationData;
 
 typedef int (*GUICALLBACK)(gdioutput *gdi, int type, void *data);
 
@@ -70,7 +71,7 @@ enum GDICOLOR;
 enum KeyCommandCode;
 enum gdiFonts;
 #include "gdistructures.h"
-
+#include <memory>
 
 #define START_YP 30
 #define NOTIMEOUT 0x0AAAAAAA
@@ -238,6 +239,12 @@ protected:
   bool lockRefresh;
   bool fullScreen;
   bool hideBG;
+
+  DWORD backgroundColor1;
+  DWORD backgroundColor2;
+  wstring backgroundImage;
+  DWORD foregroundColor;
+
   mutable bool commandLock;
   mutable DWORD commandUnlockTime;
 
@@ -271,6 +278,8 @@ protected:
   pair<Recorder *, bool> recorder;
   list< pair<const SubCommand *, string> > subCommands;
 
+  shared_ptr<AnimationData> animationData;
+
   int defaultCodePage;
 public:
   // Return the bounding dimension of the desktop
@@ -279,6 +288,7 @@ public:
   void getWindowsPosition(RECT &rc) const;
   void setWindowsPosition(const RECT &rc);
 
+  
   void initRecorder(Recorder *rec);
   Recorder &getRecorder();
   string dbPress(const string &id, int extra);
@@ -332,6 +342,16 @@ public:
 
   bool isFullScreen() const {return fullScreen;}
   void setFullScreen(bool useFullScreen);
+  void setColorMode(DWORD bgColor1, DWORD bgColor2 = -1, 
+                    DWORD fgColor = -1, const wstring &bgImage = L"");
+  
+  DWORD getFGColor() const;
+  DWORD getBGColor() const;
+  DWORD getBGColor2() const;
+  const wstring &getBGImage() const;
+
+  void setAnimationMode(shared_ptr<AnimationData> &mode);
+
   void setAutoScroll(double speed);
   void getAutoScroll(double &speed, double &pos) const;
   void storeAutoPos(double pos);
@@ -394,8 +414,8 @@ public:
   
   void getSelection(const string &id, set<int> &selection);
 
-  HWND getTarget() const {return hWndTarget;}
-  HWND getMain() const {return hWndAppMain;}
+  HWND getHWNDTarget() const {return hWndTarget;}
+  HWND getHWNDMain() const {return hWndAppMain;}
 
   void scrollToBottom();
   void scrollTo(int x, int y);
@@ -456,7 +476,6 @@ public:
   void drawBoxes(HDC hDC, RECT &rc);
   void drawBox(HDC hDC, InfoBox &Box, RECT &pos);
   void addInfoBox(string id, wstring text, int TimeOut=0, GUICALLBACK cb=0);
-  HWND getHWND() const {return hWndTarget;}
   void updateObjectPositions();
   void drawBackground(HDC hDC, RECT &rc);
   void renderRectangle(HDC hDC, RECT *clipRegion, const RectangleInfo &ri);
@@ -516,7 +535,13 @@ public:
   void setTabStops(const string &Name, int t1, int t2=-1);
   void setData(const string &id, DWORD data);
   void setData(const string &id, void *data);
+  void setData(const string &id, const string &data);
+
   void *getData(const string &id) const;
+  bool getData(const string &id, string &out) const;
+
+
+  DWORD selectColor(wstring &def, DWORD input);
 
   void autoRefresh(bool flag) {manualUpdate = !flag;}
 
@@ -618,7 +643,7 @@ public:
   LRESULT ProcessMsg(UINT iMessage, LPARAM lParam, WPARAM wParam);
   void setWindow(HWND hWnd){hWndTarget=hWnd;}
 
-  void scaleSize(double scale);
+  void scaleSize(double scale, bool allowSmallScale = false, bool doRefresh = true);
 
   ButtonInfo &addButton(const string &id, const wstring &text, GUICALLBACK cb = 0,
                         const wstring &tooltip = L"");
@@ -712,6 +737,8 @@ public:
   void removeTimeoutMilli(const string &id);
   TimerInfo &addTimeoutMilli(int timeOut, const string &id, GUICALLBACK cb);
   void timerProc(TimerInfo &timer, DWORD timeout);
+
+  void removeHandler(GuiHandler *h);
 
   void draw(HDC hDC, RECT &windowArea, RECT &drawArea);
 

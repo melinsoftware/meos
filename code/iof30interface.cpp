@@ -1150,7 +1150,7 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
     wstring dateStr;
     date.getObjectString("Date", dateStr);
     oe.setDate(dateStr);
-    string timeStr;
+    wstring timeStr;
     date.getObjectString("Time", timeStr);
     if (!timeStr.empty()) {
       int t = convertAbsoluteTimeISO(timeStr);
@@ -1158,7 +1158,7 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
         int zt = t - 3600;
         if (zt < 0)
           zt += 3600*24;
-        oe.setZeroTime(formatTimeHMSW(zt));
+        oe.setZeroTime(formatTimeHMS(zt));
       }
     }
     //oe.setZeroTime(...);
@@ -1347,6 +1347,14 @@ pTeam IOF30Interface::readTeamEntry(gdioutput &gdi, xmlobject &xTeam,
     wstring entryTime;
     xTeam.getObjectString("EntryTime", entryTime);
     di.setDate("EntryDate", entryTime);
+
+    size_t tpos = entryTime.find_first_of(L"T");
+    if (tpos != -1) {
+      wstring timeString = entryTime.substr(tpos+1);
+      int t = convertAbsoluteTimeISO(timeString);
+      if (t >= 0)
+        di.setInt("EntryTime", t);
+    }
   }
 
   double fee = 0, paid = 0, taxable = 0, percentage = 0;
@@ -1485,7 +1493,7 @@ void IOF30Interface::prescanEntry(xmlobject &xo, set<int> &stages) {
   if (races.empty())
     stages.insert(-1);// All
   else {
-    for (auto race : races) {
+    for (auto &race : races) {
       int r = race.getInt();
       if (r > 0)
         stages.insert(r);
@@ -1497,7 +1505,7 @@ bool IOF30Interface::matchStageFilter(const set<int> &stageFilter, const xmlList
   if (stageFilter.empty() || races.empty())
     return true;
 
-  for (auto r : races) {
+  for (auto &r : races) {
     if (stageFilter.count(r.getInt()))
       return true;
   }
@@ -1580,6 +1588,14 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   wstring entryTime;
   xo.getObjectString("EntryTime", entryTime);
   di.setDate("EntryDate", entryTime);
+  size_t tpos = entryTime.find_first_of(L"T");
+  if (tpos != -1) {
+    wstring timeString = entryTime.substr(tpos+1);
+    int t = convertAbsoluteTimeISO(timeString);
+    if (t >= 0)
+      di.setInt("EntryTime", t);
+  }
+
 
   double fee = 0, paid = 0, taxable = 0, percentage = 0;
   wstring currency;
@@ -2064,7 +2080,7 @@ void IOF30Interface::FeeInfo::add(IOF30Interface::FeeInfo &fi) {
       convertDateYMS(fi.toTime, st, false);
       __int64 sec = SystemTimeToInt64Second(st);
       sec -= 3600;
-      fi.toTime = convertSystemDateW(Int64SecondToSystemTime(sec));
+      fi.toTime = convertSystemDate(Int64SecondToSystemTime(sec));
     }
   }
   //if (fi.fromTime.empty() || (fi.fromTime < toTime && !toTime.empty()))
@@ -2270,7 +2286,7 @@ void IOF30Interface::setupRelayClass(pClass pc, const vector<LegInfo> &legs) {
 
 wstring IOF30Interface::getCurrentTime() const {
   // Don't call this method at midnight!
-  return getLocalDateW() + L"T" + getLocalTimeOnlyW();
+  return getLocalDate() + L"T" + getLocalTimeOnly();
 }
 
 int IOF30Interface::parseISO8601Time(const xmlobject &xo) {
@@ -2488,6 +2504,8 @@ wstring formatStatus(RunnerStatus st) {
       return L"OK";
     case StatusDNS:
       return L"DidNotStart";
+    case StatusCANCEL:
+      return L"Cancelled";
     case StatusMP:
       return L"MissingPunch";
     case StatusDNF:
@@ -2647,7 +2665,9 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
         writeCourse(xml, *crs);
 
       const vector<SplitData> &sp = r.getSplitTimes(unrollLoops);
-      if (r.getStatus()>0 && r.getStatus() != StatusDNS && r.getStatus() != StatusNotCompetiting) {
+      if (r.getStatus()>0 && r.getStatus() != StatusDNS && 
+                             r.getStatus() != StatusCANCEL && 
+                             r.getStatus() != StatusNotCompetiting) {
         int nc = crs->getNumControls();
         bool hasRogaining = crs->hasRogaining();
         int firstControl = crs->useFirstAsStart() ? 1 : 0;
