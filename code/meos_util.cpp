@@ -1368,7 +1368,7 @@ static void decomposeClassName(const wstring &name, vector<wstring> &dec) {
   
   for (size_t i = 0; i < name.size(); i++) {
     int bchar = toLowerStripped(name[i]);
-    if (isspace(bchar) || bchar == '-' || bchar == 160) {
+    if (myIsSpace(bchar) || bchar == '-' || bchar == 160) {
       if (!dec.back().empty())
         dec.push_back(wstring());
       continue;
@@ -1823,7 +1823,7 @@ void capitalize(wstring &str) {
 int getTimeZoneInfo(const wstring &date) {
   static wchar_t lastDate[16] = {0};
   static int lastValue = -1;
-  // Local cacheing
+  // Local caching
   if (lastValue != -1 && lastDate == date) {
     return lastValue;
   }
@@ -2161,8 +2161,14 @@ void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &
 }
 
 void string2Wide(const string &in, wstring &out) {
-  out.clear();
-  out.insert(out.begin(), in.begin(), in.end());// XXX Simple extend
+  int cp = 1252;
+  if (in.empty()) {
+    out = L"";
+    return;
+  }
+  out.reserve(in.size() + 1);
+  out.resize(in.size(), 0);
+  MultiByteToWideChar(cp, MB_PRECOMPOSED, in.c_str(), in.size(), &out[0], out.size() * sizeof(wchar_t));
 }
 
 void wide2String(const wstring &in, string &out) {

@@ -127,11 +127,12 @@ class InfoClass : public InfoBase {
 class InfoOrganization : public InfoBase {
   protected:
     wstring name;
-    bool synchronize(oClub &c);
-    void serialize(xmlbuffer &xml, bool diffOnly) const;
   public:
     InfoOrganization(int id);
     virtual ~InfoOrganization() {}
+
+    bool synchronize(oClub &c);
+    void serialize(xmlbuffer &xml, bool diffOnly) const;
 
     friend class InfoCompetition;
 };
@@ -183,9 +184,10 @@ class InfoTeam : public InfoBaseCompetitor {
   protected:
     // The outer level holds legs, the inner level holds (parallel/patrol) runners on each leg.
     vector< vector<int> > competitors;
+    public:
     bool synchronize(oTeam &t);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
-  public:
+  
     InfoTeam(int id);
     virtual ~InfoTeam() {}
     friend class InfoCompetition;

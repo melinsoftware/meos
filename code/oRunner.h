@@ -255,17 +255,28 @@ public:
 
   const pClub getClubRef() const {return Club;}
   pClub getClubRef() {return Club;}
+  virtual int classInstance() const = 0;
 
-  const pClass getClassRef() const {return Class;}
-  pClass getClassRef() {return Class;}
+  const oClass *getClassRef(bool virtualClass) const {
+    return (virtualClass && Class) ? Class->getVirtualClass(classInstance()) : Class;
+  }
+  
+  pClass getClassRef(bool virtualClass) {
+    return pClass((virtualClass && Class) ? Class->getVirtualClass(classInstance()) : Class);
+  }
 
   virtual const wstring &getClub() const {if (Club) return Club->name; else return _EmptyWString;}
   virtual int getClubId() const {if (Club) return Club->Id; else return 0;}
   virtual void setClub(const wstring &clubName);
   virtual pClub setClubId(int clubId);
 
-  virtual const wstring &getClass() const {if (Class) return Class->Name; else return _EmptyWString;}
-  virtual int getClassId() const {if (Class) return Class->Id; else return 0;}
+  const wstring &getClass(bool virtualClass) const;
+  int getClassId(bool virtualClass) const {
+    if (Class)
+      return virtualClass ? Class->getVirtualClass(classInstance())->Id : Class->Id;
+    return 0;
+  }
+      
   virtual void setClassId(int id, bool isManualUpdate);
   virtual int getStartNo() const {return StartNo;}
   virtual void setStartNo(int no, bool storeTmpOnly);
@@ -457,6 +468,8 @@ protected:
   // Running time as calculated by evalute. Used to detect changes.
   int tCachedRunningTime;
 
+  mutable pair<int, int> classInstanceRev;
+
   void clearOnChangedRunningTime();
 
   // Cached runner statistics
@@ -499,6 +512,8 @@ public:
   /** Get a runner reference (drawing) */
   pRunner getReference() const;
   
+  int classInstance() const override;
+
   /**Set a runner reference*/
   void setReference(int runnerId);
 
@@ -545,6 +560,9 @@ public:
 
   int getLegNumber() const {return tLeg;}
   int getSpeakerPriority() const;
+
+  RunnerStatus getTempStatus() const { return tempStatus; }
+  int getTempTime() const { return tempRT; }
 
   void remove();
   bool canRemove() const;
@@ -703,7 +721,7 @@ public:
   pCard getCard() const {return Card;}
   int getCardId(){if (Card) return Card->Id; else return 0;}
 
-  bool operator<(const oRunner &c);
+  bool operator<(const oRunner &c) const;
   bool static CompareSINumber(const oRunner &a, const oRunner &b){return a.CardNo<b.CardNo;}
 
   bool evaluateCard(bool applyTeam, vector<int> &missingPunches, int addpunch=0, bool synchronize=false);
@@ -716,7 +734,7 @@ public:
   int getCourseId() const {if (Course) return Course->Id; else return 0;}
   void setCourseId(int id);
 
-  int getCardNo() const {return tParentRunner ? tParentRunner->CardNo : CardNo;}
+  int getCardNo() const {return tParentRunner && CardNo == 0 ? tParentRunner->CardNo : CardNo;}
   void setCardNo(int card, bool matchCard, bool updateFromDatabase = false);
   /** Sets the card to a given card. An existing card is marked as unpaired.
       CardNo is updated. Returns id of old card (or 0).

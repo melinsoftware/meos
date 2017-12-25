@@ -1149,6 +1149,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       delete gSI;
       gSI=0;
 
+      for (size_t k = 0; k < gdi_extra.size(); k++) {
+        if (gdi_extra[k])
+          gdi_extra[k]->clearPage(false, false);
+      }
+
       if (gEvent) {
         try {
           gEvent->save();

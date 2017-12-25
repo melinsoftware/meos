@@ -117,6 +117,7 @@ protected:
   void changedObject();
 
 public:
+  static int getControlIdByName(const oEvent &oe, const string &name);
 
   // Returns true if controls is considered a radio control.
   bool isValidRadio() const;

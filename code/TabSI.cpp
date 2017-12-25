@@ -818,7 +818,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
 
       pRunner cardRunner = oe->getRunnerByCardNo(cardNo, 0, true);
       if (cardNo>0 && cardRunner!=0 && cardRunner!=r) {
-        gdi.alert(L"Bricknummret är upptaget (X).#" + cardRunner->getName() + L", " + cardRunner->getClass());
+        gdi.alert(L"Bricknummret är upptaget (X).#" + cardRunner->getName() + L", " + cardRunner->getClass(true));
         return 0;
       }
 
@@ -857,7 +857,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       }
 
       lastClubId=r->getClubId();
-      lastClassId=r->getClassId();
+      lastClassId=r->getClassId(true);
       lastFee = gdi.getText("Fee", true);
       int lastFeeNum = oe->interpretCurrency(lastFee);
 
@@ -890,10 +890,10 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       wchar_t bf[256];
       if (r->getClubId() != 0) {
         swprintf_s(bf, L"(%d), %s, %s", r->getCardNo(), r->getClub().c_str(),
-                    r->getClass().c_str());
+                    r->getClass(true).c_str());
       }
       else {
-        swprintf_s(bf, L"(%d), %s", r->getCardNo(), r->getClass().c_str());
+        swprintf_s(bf, L"(%d), %s", r->getCardNo(), r->getClass(true).c_str());
       }
 
       wstring info(bf);
@@ -1810,7 +1810,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
     autoAssignClass(r, sic);
 
     if (interactiveReadout) {
-      if (r && r->getClassId() && !readBefore && !sameCardNewRace) {
+      if (r && r->getClassId(false) && !readBefore && !sameCardNewRace) {
         //We can do a silent read-out...
         processCard(gdi, r, sic, true);
         return;
@@ -1823,7 +1823,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
     }
     else {
       if (!readBefore) {
-        if (r && r->getClassId() && !sameCardNewRace)
+        if (r && r->getClassId(false) && !sameCardNewRace)
           processCard(gdi, r, sic, true);
         else
           processUnmatched(gdi, sic, true);
@@ -1839,7 +1839,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
     // Assign a class if not already done
     autoAssignClass(r, sic);
 
-    if (r && r->getClassId() && !readBefore && !sameCardNewRace) {
+    if (r && r->getClassId(false) && !readBefore && !sameCardNewRace) {
       //We can do a silent read-out...
       processCard(gdi, r, sic, true);
       return;
@@ -1923,7 +1923,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
   // Assign a class if not already done
   autoAssignClass(r, sic);
 
-  if (r && r->getClassId() && !r->getCard()) {
+  if (r && r->getClassId(false) && !r->getCard()) {
     SICard copy = sic;
     activeSIC.clear(0);
     processCard(gdi, r, copy); //Everyting is OK
@@ -2148,11 +2148,11 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
   //Update from SQL-source
   runner->synchronize();
 
-  if (!runner->getClassId())
+  if (!runner->getClassId(false))
     runner->setClassId(gEvent->addClass(lang.tl(L"Okänd klass"))->getId(), true);
 
   // Choose course from pool
-  pClass cls=gEvent->getClass(runner->getClassId());
+  pClass cls = runner->getClassRef(false);
   if (cls && cls->hasCoursePool()) {
     unsigned leg=runner->legToRun();
 
@@ -2171,11 +2171,11 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
     }
   }
 
-  pClass pclass=gEvent->getClass(runner->getClassId());
+  pClass pclass = runner->getClassRef(true);
   if (!runner->getCourse(false) && !csic.isManualInput()) {
 
     if (pclass && !pclass->hasMultiCourse() && !pclass->hasDirectResult()) {
-      pCourse pcourse=gEvent->addCourse(runner->getClass());
+      pCourse pcourse=gEvent->addCourse(pclass->getName());
       pclass->setCourse(pcourse);
 
       for(unsigned i=0;i<csic.nPunch; i++)
@@ -2222,8 +2222,10 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
 
     cardno = itow(sic.CardNumber);
 
-    info = runner->getName() + L" (" + cardno + L"),   " + runner->getClub() 
-                    + L",   " + runner->getClass();
+    info = runner->getName() + L" (" + cardno + L"),   ";
+    if (!runner->getClub().empty())
+      info += runner->getClub() + +L",   ";
+    info += runner->getClass(true);
 
     // Write read card to log
     logCard(sic);
@@ -2260,7 +2262,7 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
   }
   else {
     //Manual input
-    info = runner->getName() + L",   " + runner->getClub() + L",   " + runner->getClass();
+    info = runner->getName() + L",   " + runner->getClub() + L",   " + runner->getClass(true);
     runner->setCard(0);
 
     if (csic.statusOK) {
@@ -2297,7 +2299,10 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
     gEvent->calculateResults(oEvent::RTClassResult);
     if (runner->getTeam())
       gEvent->calculateTeamResults(runner->getLegNumber(), false);
-    wstring placeS = runner->getTeam() ? runner->getTeam()->getLegPlaceS(runner->getLegNumber(), false) : runner->getPlaceS();
+    bool qfClass = runner->getClassId(false) != runner->getClassId(true);
+    wstring placeS = (runner->getTeam() && !qfClass) ? 
+                   runner->getTeam()->getLegPlaceS(runner->getLegNumber(), false) :
+                   runner->getPlaceS();
 
     if (!silent) {
       gdi.fillDown();
@@ -2322,7 +2327,7 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
     }
     else {
       wstring msg = L"#" + runner->getName()  + L" (" + cardno + L")\n"+
-          runner->getClub() + L". " + runner->getClass() +
+          runner->getClub() + L". " + runner->getClass(true) +
           L"\n" + lang.tl("Tid:  ") + runner->getRunningTimeS() + lang.tl(L", Plats  ") + placeS;
 
       gdi.addInfoBox("SIINFO", msg, 10000);
@@ -2359,7 +2364,7 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
     }
     else {
       wstring statusmsg = L"#" + runner->getName()  + L" (" + cardno + L")\n"+
-          runner->getClub() + L". "+ runner->getClass() +
+          runner->getClub() + L". "+ runner->getClass(true) +
           L"\n" + msg;
 
       gdi.addInfoBox("SIINFO", statusmsg, 10000);
@@ -2594,7 +2599,7 @@ void TabSI::generateEntryLine(gdioutput &gdi, pRunner r)
     if (gdi.hasField("Club")) {
       gdi.selectItemByData("Club", r->getClubId());
     }
-    gdi.selectItemByData("Class", r->getClassId());
+    gdi.selectItemByData("Class", r->getClassId(true));
 
     oDataConstInterface dci = r->getDCI();
     if (gdi.hasField("Fee"))
@@ -2729,7 +2734,7 @@ void TabSI::checkMoreCardsInQueue(gdioutput &gdi) {
 }
 
 bool TabSI::autoAssignClass(pRunner r, const SICard &sic) {
-  if (r && r->getClassId()==0) {
+  if (r && r->getClassId(false)==0) {
     vector<pClass> classes;
     int dist = oe->findBestClass(sic, classes);
 
@@ -2737,7 +2742,7 @@ bool TabSI::autoAssignClass(pRunner r, const SICard &sic) {
       r->setClassId(classes[0]->getId(), true);
   }
 
-  return r && r->getClassId() != 0;
+  return r && r->getClassId(false) != 0;
 }
 
 void TabSI::showManualInput(gdioutput &gdi) {

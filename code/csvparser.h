@@ -99,6 +99,8 @@ protected:
   map<SIConfigFields, int> siconfigmap;
   const wchar_t *getSIC(SIConfigFields sic, const vector<wstring> &sp) const;
 
+  void parseUnicode(const wstring &file, list< vector<wstring> > &data);
+
   // Check and process a punch line
   static int selectPunchIndex(const wstring &competitionDate, const vector<wstring> &sp, 
                               int &cardIndex, int &timeIndex, int &dateIndex,

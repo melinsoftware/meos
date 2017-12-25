@@ -188,7 +188,7 @@ void TabTeam::selectTeam(gdioutput &gdi, pTeam t)
     gdi.enableInput("Remove");
 
     oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterNone);
-    gdi.selectItemByData("RClass", t->getClassId());
+    gdi.selectItemByData("RClass", t->getClassId(false));
     gdi.selectItemByData("Teams", t->getId());
 
     if (gdi.hasField("StatusIn")) {
@@ -353,14 +353,14 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
     gdi.getSelectedItem("RClass", lbi);
 
     int classId = lbi.data;
-    bool newClass = t->getClassId() != classId;
+    bool newClass = t->getClassId(false) != classId;
     set<int> classes;
     bool globalDep = false;
-    if (t->getClassRef())
-      globalDep = t->getClassRef()->hasClassGlobalDependance();
+    if (t->getClassRef(false))
+      globalDep = t->getClassRef(false)->hasClassGlobalDependence();
 
     classes.insert(classId);
-    classes.insert(t->getClassId());
+    classes.insert(t->getClassId(false));
 
     bool readStatusIn = true;
     if (newClass && t->getInputStatus() != StatusNotCompetiting && t->hasInputData()) {
@@ -402,7 +402,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
     pClass pc=oe->getClass(classId);
 
     if (pc) {
-      globalDep |= pc->hasClassGlobalDependance();
+      globalDep |= pc->hasClassGlobalDependence();
 
       for (unsigned i=0;i<pc->getNumStages(); i++) {
         char bf[16];
@@ -428,7 +428,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
               // Same runner set
               if (oldId == r->getId()) {
                 if (newName) {
-                  r->updateFromDB(name, r->getClubId(), r->getClassId(),
+                  r->updateFromDB(name, r->getClubId(), r->getClassId(false),
                                   cardNo, 0);
                   r->setName(name, true);
                 }
@@ -447,12 +447,12 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                 if (!t->getClub().empty())
                   r->setClub(t->getClub());
                 r->resetPersonalData();
-                r->updateFromDB(name, r->getClubId(), r->getClassId(),
+                r->updateFromDB(name, r->getClubId(), r->getClassId(false),
                                 cardNo, 0);
               }
             }
             else
-              r=oe->addRunner(name, t->getClubId(), t->getClassId(), cardNo, 0, false);
+              r=oe->addRunner(name, t->getClubId(), t->getClassId(false), cardNo, 0, false);
 
             r->setName(name, true);
             r->setCardNo(cardNo, true);
@@ -594,7 +594,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "DirOK") {
       pTeam t = oe->getTeam(teamId);
-      if (!t || !t->getClassRef())
+      if (!t || !t->getClassRef(false))
         return 0;
 
       int leg = bi.getExtraInt();
@@ -632,7 +632,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       bool rent = gdi.isChecked("DirRent");
 
       if (r == 0) {
-        r = oe->addRunner(name, clb ? clb->getId() : t->getClubId(), t->getClassId(), card, 0, false);
+        r = oe->addRunner(name, clb ? clb->getId() : t->getClubId(), t->getClassId(false), card, 0, false);
       }
       if (rent)
         r->getDI().setInt("CardFee", oe->getDI().getInt("CardFee"));
@@ -671,10 +671,10 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "ChangeKey") {
       pTeam t = oe->getTeam(teamId);
-      if (!t || !t->getClassRef())
+      if (!t || !t->getClassRef(false))
         return 0;
 
-      pClass  pc = t->getClassRef();
+      pClass  pc = t->getClassRef(false);
       gdi.restore("ChangeKey", false);
       gdi.fillRight();
       gdi.pushX();
@@ -695,10 +695,10 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "SaveKey") {
       pTeam t = oe->getTeam(teamId);
-      if (!t || !t->getClassRef())
+      if (!t || !t->getClassRef(false))
         return 0;
       
-      pClass  pc = t->getClassRef();
+      pClass  pc = t->getClassRef(false);
       int nf = pc->getNumForks();
       ListBoxInfo lbi;
       gdi.getSelectedItem("ForkKey", lbi);
@@ -752,7 +752,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       pTeam t = oe->getTeam(teamId);
       if (t == 0)
         return 0;
-      pClass pc = t->getClassRef();
+      pClass pc = t->getClassRef(false);
       if (pc == 0)
         return 0;
 
@@ -806,7 +806,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
             continue;
           if (clubs.count(clsR[i]->getClubId()) == 0)
             continue;
-          if (clsR[i]->getClassId() != t->getClassId())
+          if (clsR[i]->getClassId(false) != t->getClassId(false))
             continue;
           if (clsR[i]->getName() == anon)
             continue;
@@ -839,7 +839,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
         if (usedR.count(clsR[i]->getId()))
           continue;
         const wstring &club = clsR[i]->getClub();
-        wstring id = clsR[i]->getName() + L", " + clsR[i]->getClass();
+        wstring id = clsR[i]->getName() + L", " + clsR[i]->getClass(false);
         if (!club.empty())
           id += L" (" + club + L")";
         
@@ -999,7 +999,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
           pc->getNumStages() == shownRunners) {
             // Keep team setup, i.e. do nothing
         }
-        else if (t && pc && (t->getClassId()==bi.data
+        else if (t && pc && (t->getClassId(false)==bi.data
                 || t->getNumRunners()==pc->getNumStages()) )
           loadTeamMembers(gdi, 0,0,t);
         else
@@ -1134,7 +1134,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
 void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
 {
   if (ClassId==0)
-    if (t) ClassId=t->getClassId();
+    if (t) ClassId=t->getClassId(false);
 
   classId=ClassId;
   gdi.restore("",false);
@@ -1696,7 +1696,7 @@ void TabTeam::doAddTeamMembers(gdioutput &gdi) {
 
   for (size_t k = 0; k < t.size(); k++) {
     pTeam mt = t[k];
-    pClass cls = mt->getClassRef(); 
+    pClass cls = mt->getClassRef(false); 
     if (cls == 0)
       continue;
     bool ch = false;
@@ -1845,7 +1845,7 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   else if (oldR) {
     t->setRunner(leg, 0, false);
     t->synchronize(true);
-    oldR->setClassId(r->getClassId(), true);
+    oldR->setClassId(r->getClassId(false), true);
     oldR->evaluateCard(true, mp, 0, true);
     oldR->synchronize(true);
   }

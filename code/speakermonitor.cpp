@@ -194,7 +194,7 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
 
     int dx = 0;
     if (showClass) {
-      pClass pc = res.r->getClassRef();
+      pClass pc = res.r->getClassRef(true);
       if (pc) {
         gdi.addStringUT(yp, xp + timeWidth, fontMediumPlus, pc->getName());
         dx = classWidth;
@@ -243,7 +243,7 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
   }
   else {
     if (showClass) {
-      pClass pc = res.r->getClassRef();
+      pClass pc = res.r->getClassRef(true);
       if (pc)
         msg += L" (" + pc->getName() + L") ";
       else
@@ -412,7 +412,7 @@ wstring getTimeDesc(int t1, int t2) {
 
 void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res, 
                                 wstring &message, deque<wstring> &details) {
-  pClass cls = res.r->getClassRef();
+  pClass cls = res.r->getClassRef(true);
   if (!cls)
     return;
 
@@ -605,10 +605,10 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
         details.push_back(share);
       }
     }
-    if (changeover && res.r->getTeam() && res.r->getTeam()->getClassRef() != 0) {
+    if (changeover && res.r->getTeam() && res.r->getTeam()->getClassRef(true) != 0) {
       wstring vxl = L"skickar ut X.#";
       pTeam t = res.r->getTeam();
-      pClass cls = t->getClassRef();
+      pClass cls = t->getClassRef(true);
       bool second = false;
       int nextLeg = cls->getNextBaseLeg(res.r->getLegNumber());
       if (nextLeg > 0) {

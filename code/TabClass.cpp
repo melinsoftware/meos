@@ -1325,6 +1325,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         return false;
 
       DWORD cid=ClassId;
+      pClass pc = oe->getClass(cid);
       DrawMethod method = DrawMethod(gdi.getSelectedItem("Method").first);
 
       int interval = 0;
@@ -1339,6 +1340,8 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (gdi.hasField("Leg")) {
         leg = gdi.getSelectedItem("Leg").first;
       }
+      else if (pc && pc->getParentClass() != 0)
+        leg = -1;
 
       wstring bib;
       bool doBibs = false;
@@ -1536,6 +1539,19 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         setMultiDayClass(gdi, gdi.isChecked(bi.id), lastDrawMethod);
 
     }
+    else if (bi.id == "QualificationFinal") {
+      save(gdi, true);
+      pClass pc = oe->getClass(ClassId);
+      if (!pc)
+        throw std::exception("Class not found");
+
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Qualfication/Final", L"*.xml"));
+      wstring fileName = gdi.browseForOpen(ext, L"xml");
+      pc->loadQualificationFinalScheme(fileName);
+      pc->updateFinalClasses(0, true);
+      loadPage(gdi);
+    }
     else if (bi.id=="Bibs") {
       save(gdi, true);
       if (!checkClassSelected(gdi))
@@ -1572,7 +1588,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.selectItemByData("BibSettings", bt);
       wstring bib = pc->getDCI().getString("Bib");
       
-      if (pc->getNumDistinctRunners() > 1) {
+      if (pc->getNumDistinctRunners() > 1 || pc->getQualificationFinal()) {
         bibTeamOptions.push_back(make_pair(lang.tl("Oberoende"), BibFree));
         bibTeamOptions.push_back(make_pair(lang.tl("Samma"), BibSame));
         bibTeamOptions.push_back(make_pair(lang.tl("Ökande"), BibAdd));
@@ -1620,16 +1636,16 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       AutoBibType bt = AutoBibType(gdi.getSelectedItem("BibSettings").first);
 
-      pair<int, bool> teamBib = gdi.getSelectedItem("TeamBib");
+      pair<int, bool> teamBib = gdi.getSelectedItem("BibTeam");
       if (teamBib.second) {
         pc->setBibMode(BibMode(teamBib.first));
       }
 
       pc->getDI().setString("Bib", getBibCode(bt, gdi.getText("Bib")));
       pc->synchronize();
-
+      int leg = pc->getParentClass() ? -1 : 0;
       if (bt == AutoBibManual) {
-        oe->addBib(cid, 0, gdi.getText("Bib"));
+        oe->addBib(cid, leg, gdi.getText("Bib"));
       }
       else {
         oe->setBibClassGap(gdi.getTextNo("BibGap"));
@@ -1644,7 +1660,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       par.selection.insert(cid);
       oListInfo info;
       par.listCode = EStdStartList;
-      par.setLegNumberCoded(0);
+      par.setLegNumberCoded(leg);
       oe->generateListInfo(par, gdi.getLineHeight(), info);
       oe->generateList(gdi, false, info, true);
 
@@ -2223,6 +2239,10 @@ void TabClass::selectClass(gdioutput &gdi, int cid)
     if (gdi.hasField("DirectResult"))
       gdi.check("DirectResult", false);
 
+    if (gdi.hasField("LockStartList")) {
+      gdi.check("LockStartList", false);
+      gdi.setInputStatus("LockStartList", false);
+    }
     gdi.check("NoTiming", false);
 
     ClassId=cid;
@@ -2274,6 +2294,11 @@ void TabClass::selectClass(gdioutput &gdi, int cid)
   if (gdi.hasField("DirectResult"))
     gdi.check("DirectResult", pc->hasDirectResult());
 
+  if (gdi.hasField("LockStartList")) {
+    bool active = pc->getParentClass() != 0;
+    gdi.setInputStatus("LockStartList", active);
+    gdi.check("LockStartList", active && pc->lockedClassAssignment());
+  }
   ClassId=cid;
 
   if (pc->hasTrueMultiCourse()) {
@@ -2344,9 +2369,10 @@ void TabClass::selectClass(gdioutput &gdi, int cid)
     pCourse pcourse = pc->getCourse();
     gdi.selectItemByData("Courses", pcourse ? pcourse->getId():-2);
   }
+  if (gdi.hasField("QualificationFinal"))
+    gdi.setInputStatus("QualificationFinal", pc->getParentClass() == 0);
 
   gdi.selectItemByData("Classes", cid);
-
   ClassId=cid;
   EditChanged=false;
 }
@@ -2672,6 +2698,12 @@ void TabClass::save(gdioutput &gdi, bool skipReload)
     pc->setDirectResult(withDirect);
   }
 
+  if (gdi.hasField("LockStartList")) {
+    bool locked = gdi.isChecked("LockStartList");
+    if (pc->getParentClass())
+      pc->lockedClassAssignment(locked);
+  }
+
   int crs = gdi.getSelectedItem("Courses").first;
 
   if (crs==0) {
@@ -2893,11 +2925,28 @@ bool TabClass::loadPage(gdioutput &gdi)
     
     gdi.addCheckbox("DirectResult", "Resultat vid målstämpling", 0, false,
                     "help:DirectResult");
-
   }
   gdi.dropLine(2);
   gdi.popX();
 
+  {
+    vector<pClass> pcls;
+    oe->getClasses(pcls, false);
+    bool hasCF = false;
+    for (pClass pc : pcls) {
+      if (pc->getQualificationFinal()) {
+        hasCF = true;
+        break;
+      }
+    }
+    if (hasCF) {
+      gdi.addCheckbox("LockStartList", "Lås startlista", 0, false,
+                      "help:LockStartList");
+
+      gdi.dropLine(2);
+      gdi.popX();
+    }
+  }
   vector<ButtonData> func;
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::DrawStartList))
     func.push_back(ButtonData("Draw", "Lotta / starttider...", false));
@@ -2959,6 +3008,9 @@ bool TabClass::loadPage(gdioutput &gdi)
   }
 
   func.push_back(ButtonData("QuickSettings", "Snabbinställningar", true));
+
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces))
+    func.push_back(ButtonData("QualificationFinal", "Kval-Final-Schema", false));
 
   RECT funRect;
   funRect.right = gdi.getCX() - 7;
@@ -3216,7 +3268,7 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
   if (method != DMSimultaneous)
     gdi.addInput("Interval", formatTime(interval), 10, 0, L"Startintervall (min):").setSynchData(&lastInterval);
 
-  if (method == DMRandom || method == DMSOFT || method == DMClumped)
+  if (method == DMRandom || method == DMSOFT || method == DMClumped && pc.getParentClass() == 0)
     gdi.addInput("Vacanses", itow(vac), 10, 0, L"Antal vakanser:").setSynchData(&lastNumVac);
 
   if ((method == DMRandom || method == DMSOFT || method == DMSeeded) && pc.getNumStages() > 1 && pc.getClassType() != oClassPatrol) {
@@ -3765,7 +3817,7 @@ void TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
       else
         gdi.setText("Bib"+ id, bib);
 
-      if (useTeam && it->getNumDistinctRunners() > 1) {
+      if (useTeam && (it->getNumDistinctRunners() > 1  || it->getQualificationFinal())) {
         gdi.addSelection(et, cyp, "BibTeam" + id, 80, 100, 0, L"", L"Ange relation mellan lagets och deltagarnas nummerlappar.");
         gdi.addItem("BibTeam" + id, bibTeamOptions);
         gdi.selectItemByData("BibTeam" + id, it->getBibMode());

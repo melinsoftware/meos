@@ -27,9 +27,9 @@
 //V2: ABCDEFGHIHJKMN
 //V31: a
 //V33: abcde
-//V35: abc
+//V35: abcde
 int getMeosBuild() {
-  string revision("$Rev: 621 $");
+  string revision("$Rev: 634 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -41,7 +41,7 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfg
 wstring getMeosDate() {
-  wstring date(L"$Date: 2017-10-21 22:43:38 +0200 (lÃ¶, 21 okt 2017) $");
+  wstring date(L"$Date: 2017-12-25 16:08:33 +0100 (mÃ¥, 25 dec 2017) $");
   return date.substr(7,10);
 }
 
@@ -109,7 +109,7 @@ void getSupporters(vector<string> &supp)
   supp.push_back("Oskarström OK");
   supp.push_back("Skogslöparna");
   supp.push_back("OK Milan");
-  supp.push_back("GoIF Tjalve");
+  supp.push_back("Tjalve IF");
   supp.push_back("OK Skärmen");
   supp.push_back("Østkredsen");
   supp.push_back("OK Roskilde");
@@ -177,4 +177,7 @@ void getSupporters(vector<string> &supp)
   supp.push_back("Åke Larsson, OK Hedströmmen");
   supp.push_back("Avesta OK");
   supp.push_back("Motionsorientering Göteborg");
+  supp.push_back("OK Måsen");
+  supp.push_back("IF Thor");
+  supp.push_back("SOS Jindrichuv Hradec");
 }

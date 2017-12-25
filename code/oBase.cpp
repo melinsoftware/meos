@@ -54,6 +54,7 @@ oBase::oBase(oEvent *poe)
   counter = 0;
   Modified.update();
   correctionNeeded = true;
+  localObject = false;
 }
 
 oBase::~oBase()
@@ -68,6 +69,8 @@ bool oBase::synchronize(bool writeOnly)
   }
   if (oe && oe->HasDBConnection && (changed || !writeOnly)) {
     correctionNeeded = false;
+    if (localObject)
+      return false;
     return oe->msSynchronize(this);
   }
   else {
@@ -77,17 +80,6 @@ bool oBase::synchronize(bool writeOnly)
     }
   }
   return true;
-}
-
-void oBase::clearCombo(HWND hWnd)
-{
-  SendMessage(hWnd, CB_RESETCONTENT, 0, 0);
-}
-
-void oBase::addToCombo(HWND hWnd, const string &str, int data)
-{
-  int index=SendMessage(hWnd, CB_ADDSTRING, 0, LPARAM(str.c_str()));
-  SendMessage(hWnd, CB_SETITEMDATA, index, data);
 }
 
 void oBase::setExtIdentifier(__int64 id)

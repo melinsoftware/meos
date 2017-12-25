@@ -428,7 +428,6 @@ void oEvent::getClubs(vector<pClub> &c, bool sort) {
   }
 }
 
-
 void oEvent::viewClubMembers(gdioutput &gdi, int clubId)
 {
   sortRunners(ClassStartTime);
@@ -440,10 +439,12 @@ void oEvent::viewClubMembers(gdioutput &gdi, int clubId)
   int nt = 0;
   // Update teams
   for (oTeamList::iterator it = Teams.begin(); it!=Teams.end(); ++it) {
+    if (it->skip())
+      continue;
     if (it->getClubId() == clubId) {
       if (nt==0)
         gdi.addString("", 1, "Lag(flera)");
-      gdi.addStringUT(0, it->getName() + L", " + it->getClass() );
+      gdi.addStringUT(0, it->getName() + L", " + it->getClass(false) );
       nt++;
     }
   }
@@ -451,10 +452,12 @@ void oEvent::viewClubMembers(gdioutput &gdi, int clubId)
   gdi.dropLine();
   // Update runners
   for (oRunnerList::iterator it = Runners.begin(); it!=Runners.end(); ++it) {
+    if (it->skip())
+      continue;
     if (it->getClubId() == clubId) {
       if (nr==0)
         gdi.addString("", 1, "Löpare:");
-      gdi.addStringUT(0, it->getName() + L", " + it->getClass() );
+      gdi.addStringUT(0, it->getName() + L", " + it->getClass(true) );
       nr++;
     }
   }
@@ -496,7 +499,7 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
   
   wstring ts;
   if (!inTeam)
-    line.addString(xs+data.clsPos, r->getClass());
+    line.addString(xs+data.clsPos, r->getClass(true));
 
   if (r->getStatus() == StatusUnknown)
     ts = L"-";
@@ -504,8 +507,8 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
     if (r->getStatus()==StatusOK) {
       ClassType type = oClassIndividual;
       cTeam t = r->getTeam();
-      if (t && r->getClassRef())
-        type = r->getClassRef()->getClassType();
+      if (t && r->getClassRef(false))
+        type = r->getClassRef(false)->getClassType();
 
       if (type == oClassIndividRelay || type == oClassRelay) {
         int leg = r->getLegNumber();
@@ -541,7 +544,7 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
   if (res != definedPayModes.end())
     payMode = ", " + res->second;
   */
-  if (r->getClassRef() && r->getClassRef()->getClassStatus() == oClass::InvalidRefund) {
+  if (r->getClassRef(false) && r->getClassRef(false)->getClassStatus() == oClass::InvalidRefund) {
     fee = 0;
     card = 0;
   }
@@ -574,7 +577,7 @@ void oClub::addTeamInvoiceLine(const pTeam t, const map<int, wstring> &definedPa
     return;
 
   line.addString(xs, t->getName());
-  line.addString(xs+data.clsPos, t->getClass());
+  line.addString(xs+data.clsPos, t->getClass(false));
   wstring ts;
 
   if (t->getStatus() == StatusUnknown)
@@ -588,7 +591,7 @@ void oClub::addTeamInvoiceLine(const pTeam t, const map<int, wstring> &definedPa
   }
 
 
-  if (t->getClassRef() && t->getClassRef()->getClassStatus() == oClass::InvalidRefund) {
+  if (t->getClassRef(false) && t->getClassRef(false)->getClassStatus() == oClass::InvalidRefund) {
     fee = 0;
   }
 

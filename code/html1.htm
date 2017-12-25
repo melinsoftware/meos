@@ -1,0 +1,300 @@
+<h1>Documentation of MeOS REST API</h1>
+
+<h2>Competition</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=competition">/meos?get=competition</a></pre>
+
+<b>Returns:</b>
+<p>MOP Competition XML</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+ *competition date="2015-09-06" organizer="Orienteringsklubben Linn&eacute;" homepage="http://www.oklinne.nu">Stafett-DM, Uppland*/competition>
+*/MOPComplete>
+</pre>
+
+<h2>Classes</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=class">/meos?get=class</a></pre>
+
+<b>Returns:</b>
+<p>MOP Classes XML</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+ *cls id="1" ord="10" radio="90,130;90,130;90,130">D21*/cls>
+ *cls id="100" ord="1000" radio="90,130">M7*/cls>
+*/MOPComplete>
+</pre>
+
+<b>Remarks:</b> The attribute <i>ord</i> should be used to sort classes. The attribute <i>radio</i> 
+lists the MeOS default radio control for each class and leg. 
+Each leg of the class is separated by ';' and each radio control within a leg with ','.
+Note that you may query for results at any control; the listed
+controls are only for convenience.
+
+<h2>Controls</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=control">/meos?get=control</a></pre>
+
+<b>Returns:</b>
+<p>MOP Controls XML</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+  *control id="31">[31]*/control>
+  *control id="32">[32]*/control>
+  *control id="50">Radio 1*/control>
+*/MOPComplete>
+</pre>
+
+<h2>Competitors</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=competitor">/meos?get=competitor</a></pre>
+<pre>/meos?get=competitor#class=*c1>,*c2>,...</pre>
+
+<b>Arguments:</b>
+<ul><li><i>class</i> A list of one or more class id:s, separated by comma. The default is all classes.
+</li></ul>
+
+<b>Returns:</b>
+<p>MOP Competitors XML</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+  *cmp id="3565">
+    *base org="570" cls="5" stat="1" st="360000" rt="20580">Elsa Winter*/base>
+    *input it="20340" tstat="1"/>
+  */cmp>
+  *cmp id="55851">
+    *base org="134" cls="7" stat="1" st="380710" rt="46910">Anna Spring*/base>
+  */cmp>
+*/MOPComplete>
+</pre>
+
+<b>Remarks:</b> 
+Please refer to the MOP documentation for a complete description of all attributes. Below is a quick reference.
+<ul>
+  <li><i>stat</i> Status code. 1 is OK, 0 is unknown. Higher codes are used for disqualifications.</li>
+  <li><i>st</i> Start time. In 1/10 seconds after 00:00:00.</li>
+  <li><i>rt</i> Running time. In 1/10 seconds.</li>
+  <li><i>input/it</i> Input running time accumulated from earlier races. In 1/10 seconds.</li>
+  <li><i>input/st</i> Input status from earlier races.</li>
+</ul>
+
+<h2>Teams</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=team">/meos?get=team</a></pre>
+<pre>/meos?get=team#class=*c1>,*c2>,...</pre>
+
+<b>Arguments:</b>
+<ul><li><i>class</i> A list of one or more class id:s, separated by comma. The default is all classes.
+</li></ul>
+
+<b>Returns:</b>
+<p>MOP Teams XML</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+  *tm id="2928771">
+    *base org="396" cls="5" stat="1" st="360000" rt="65770">IF Thor 1*/base>
+    *r>34346;48866,866,0;32609*/r>
+  */tm>
+  *tm id="2928346">
+    *base org="134" cls="5" stat="1" st="360000" rt="99660">OK Enen 1*/base>
+    *r>42020;55851;35732*/r>
+  */tm>
+*/MOPComplete>
+</pre>
+
+<b>Remarks:</b> 
+Please refer to the MOP documentation for a complete description of all attributes. Below is a quick reference.
+<ul>
+  <li><i>stat</i> Status code. 1 is OK, 0 is unknown. Higher codes are used for disqualifications.</li>
+  <li><i>st</i> Start time. In 1/10 seconds after 00:00:00.</li>
+  <li><i>rt</i> Running time (At finish, last leg). In 1/10 seconds.</li>
+  <li><i>r</i> List of runners in the team. A ';' is used to separate the legs, a ',' within a legs 
+               are used to list paralell runners. A '0' indicates a vacant leg, which may or may
+               not be valid for the team, depending on the rules.</li>
+</ul>
+
+<h2>Organizations and Clubs</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=organization">/meos?get=organization</a></pre>
+
+<b>Returns:</b>
+<p>MOP Organization XML</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+  *org id="1012">BAOC*/org>
+  *org id="598">Dalaportens OL*/org>
+  *org id="133">Enebybergs IF*/org>
+  *org id="140">Falkenbergs OK*/org>
+*/MOPComplete>
+</pre>
+
+<h2>Results</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=result">/meos?get=result</a></pre>
+<pre>/meos?get=result#class=*c1>,*c2>,...</pre>
+<pre>/meos?get=result#to=*c1></pre>
+<pre>/meos?get=result#from=*c1></pre>
+<pre>/meos?get=result#leg=*leg></pre>
+<pre>/meos?get=result#module=*module></pre>
+<pre>/meos?get=result#module=*module>#argument=*arg></pre>
+<pre><a href="/meos?get=result&limit=1">/meos?get=result#limit=*limit></a></pre>
+<pre><a href="/meos?get=result&total=true">/meos?get=result#total=*true/false></a></pre>
+<pre><a href="/meos?get=result&type=GlobalIndividual">/meos?get=result#type=*type></a></pre>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>class</i> A list of one or more class id:s, separated by comma. The default is all classes.</li>
+  <li><i>from</i> Returns the result measuring time from a specific control. If a specified class 
+                     does not visit the control, an empty result set is returned; no error is given. 
+                     The default is the start.</li>
+  <li><i>to</i> Returns the result at a specific control. If a specified class does not visit the control,
+                an empty result set is returned; no error is given. The default is the finish.</li>
+  
+  <li><i>leg</i> In a team competition, returns result for a specified leg. If the leg is parallel, 
+                 the result is for the completed parallel leg. The leg number refer to the flat view in 
+                 MeOS class settings, i.e., for a setup "1, 2a, 2b, 2c, 3", correspons to flat leg numbers,
+                 "1, 2, 3, 4, 5". The default is the last leg.</li>
+  <li><i>module</i> The result module tag to use for the result calculation. 
+                   The support of the leg and control options depends on result module. The default is no module.</li>
+  <li><i>argument</i> A numeric argument, defined and used by the result module.</li>
+
+  <li><i>limit</i> Limit the number of results per class. If there is a tie, the number of returned results
+                   may be higher than the requested. The default is no limit.</li>
+  <li><i>total</i> Set to <b>true</b> if you want to calculate total results, i.e., results including earliers stages.</li>
+  
+  <li><i>type</i> Use one of <b>ClassIndividual</b> (default for individual classes), <b>CourseIndividual</b>, <b>GlobalIndividual</b>, or 
+                    <b>LegIndividual</b> to calculate individual results. <b>CourseIndividual</b> calculates result
+                    per course, ignoring class. <b>GlobalIndividual</b> calculates results without 
+                    considering classes, <b>LegIndividual</b> calculates results considering classes and legs.
+                  Use one of <b>ClassTeam</b> (default for team classes) or <b>GlobalTeam</b> to calculate team
+                    results. <b>GlobalTeam</b> calculates team results without considering classes.</li>
+</ul>
+
+
+<b>Returns:</b>
+<p>MOP Individual or Team Result XML. The result list is sorted according to the result. Note than disqualified
+  competitors are also included; for example a competitor with status *DNS> will be returned with this status for
+  all radio controls. You may want to filter out such entries, depending on your application. 
+</p>
+
+
+<b>Examples:</b>
+
+<p>Individual results at the finish.</p>
+<pre>
+*MOPComplete>
+  *results location="Finish">
+    *person cls="100" stat="1" st="387240" rt="21880" place="1">
+      *name id="134940">Isac Ulvesson*/name>
+      *org id="2184">BOIC*/org>
+    */person>
+  
+    *person cls="100" stat="1" st="387700" rt="22720" place="2">
+      *name id="134923">Anne Brahe*/name>
+      *org id="2253">IFA*/org>
+    */person>
+  
+    *person cls="100" stat="1" st="382570" rt="23260" place="3">
+      *name id="134914">Dan Andersson*/name>
+      *org id="5938">OK Kompassen*/org>
+    */person>
+  */results>
+*/MOPComplete>
+</pre>
+
+<p>Team results, leg 2 at Radio 1, leg has three parallel runners.</p>
+<pre>
+*MOPComplete>
+  *results leg="2" location="Radio 1">
+    *team cls="6" stat="1" st="372000" rt="32030" place="1">
+      *name id="2927509">OK Linn&eacute; 1*/name>
+      *org id="84">OK Linn&eacute;*/org>
+      *person cls="6" leg="2" stat="1" st="392720" rt="11310">
+        *name id="52054">John Woods*/name>
+        *org id="84">OK Linn&eacute;*/club>
+      */person>
+  
+      *person cls="6" leg="3" stat="3" st="392720">
+        *name id="134850">Ralph Audoro*/name>
+        *org id="84">OK Linn&eacute;*/org>
+      */person>
+  
+      *person cls="6" leg="4" stat="1" st="392720" rt="12850">
+        *name id="134851">Niel Success*/name>
+        *club id="84">OK Linn&eacute;*/club>
+      */person>
+  */team>
+  */results>
+*/MOPComplete>
+</pre>
+
+<p>Roganing results, Invoke with argument module=rogaining, which is a built in module.</p>
+<pre>
+*MOPComplete>
+  *results module="rogaining" location="Finish">
+    *person cls="1" stat="1" score="26" st="324000" rt="72550" place="1">
+      *name id="4">Omar Rue*/name>
+    */person>
+    
+    *person cls="1" stat="1" score="25" st="324000" rt="72730" place="2">
+      *name id="3">Oscar Wilde*/name>
+    */person>
+  
+    *person cls="1" stat="1" score="25" st="324000" rt="72780" place="3">
+      *name id="5">Alice Alison*/name>
+    */person>
+    
+    *person cls="1" stat="5" score="26" st="324000" rt="72590">
+      *name id="6">Reimund Rossinger*/name>
+    */person>
+  */results>
+*/MOPComplete>
+</pre>
+
+<b>Remarks:</b> 
+When and only when the type is <b>CourseIndividual</b>, the attribute <i>course/i> is included.
+<pre>
+*person cls="1" stat="1" st="324000" rt="72550" place="1" course=28>
+  *name id="4">Jordan Griesmer*/name>
+*/person>
+</pre>    
+
+<h2>IOF XML Results</h2>
+
+<b>Syntax:</b>
+<pre><a href="/meos?get=iofresult">/meos?get=iofresult</a></pre>
+<pre>/meos?get=iofresult#class=*c1>,*c2>,...</pre>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>class</i> A list of one or more class id:s, separated by comma. The default is all classes.</li>
+</ul>
+
+<b>Returns:</b>
+<p>IOF XML version 3.0 result list.</p>
+
+<h2>IOF XML Startlist</h2>
+
+<b>Syntax:</b>
+<pre><a href="/meos?get=iofstart">/meos?get=iofstart</a></pre>
+<pre>/meos?get=iofstart#class=*c1>,*c2>,...</pre>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>class</i> A list of one or more class id:s, separated by comma. The default is all classes.</li>
+</ul>
+
+<b>Returns:</b>
+<p>IOF XML version 3.0 start list.</p>

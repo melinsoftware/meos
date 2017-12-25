@@ -561,7 +561,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   if (classHasTeams(ClassId)) {
     oTeamList::iterator it=Teams.begin();
     while(it!=Teams.end()){
-      if (it->getClassId()==ClassId && !it->skip()) {
+      if (it->getClassId(true)==ClassId && !it->skip()) {
         oSpeakerObject so;
         it->fillSpeakerObject(leg, ControlId, PreviousControlId, totalResults, so);
         if (so.owner)
@@ -571,15 +571,23 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
     }
   }
   else {
-    oRunnerList::iterator it=Runners.begin();
-    while(it!=Runners.end()){
-      if (it->getClassId()==ClassId && !it->skip()) {
+    pClass pc = getClass(ClassId);
+    bool qfBaseClass = pc && pc->getQualificationFinal();
+    bool qfFinalClass = pc && pc->getParentClass();
+
+    if (qfBaseClass || qfFinalClass)
+      leg = 0;
+
+    for(auto &it : Runners){
+      if (it.getClassId(true) == ClassId && !it.isRemoved()) {
+        if (qfBaseClass && it.getLegNumber() > 0)
+          continue;
+
         oSpeakerObject so;
-        it->fillSpeakerObject(leg, ControlId, PreviousControlId,  totalResults, so);
+        it.fillSpeakerObject(leg, ControlId, PreviousControlId,  totalResults, so);
         if (so.owner)
           speakerList.push_back(so);
       }
-      ++it;
     }
   }
   if (speakerList.empty()) {
@@ -1089,9 +1097,9 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
   if (false && startTimes.size() == 1) {
     oRunner &r = *started[firstNonEmpty][0];
 
-    oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, oTimeLine::PHigh, r.getClassId(), 0, 0);
+    oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, oTimeLine::PHigh, r.getClassId(true), 0, 0);
     TimeLineIterator it = timeLineEvents.insert(pair<int, oTimeLine>(r.tStartTime, tl));
-    it->second.setMessage(L"X har startat.#" + r.getClass());
+    it->second.setMessage(L"X har startat.#" + r.getClass(true));
   }
   else {
     for (size_t j = 0; j<started.size(); j++) {
@@ -1106,15 +1114,15 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
             prio = oTimeLine::PHigh;
           else if (p == 1)
             prio = oTimeLine::PMedium;
-          oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, prio, r.getClassId(), r.getId(), &r);
+          oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, prio, r.getClassId(true), r.getId(), &r);
           TimeLineIterator it = timeLineEvents.insert(pair<int, oTimeLine>(r.tStartTime + 1, tl));
           it->second.setMessage(L"har startat.");
         }
         else if (!startedClass) {
           // The entire class started
-          oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, oTimeLine::PHigh, r.getClassId(), 0, 0);
+          oTimeLine tl(r.tStartTime, oTimeLine::TLTStart, oTimeLine::PHigh, r.getClassId(true), 0, 0);
           TimeLineIterator it = timeLineEvents.insert(pair<int, oTimeLine>(r.tStartTime, tl));
-          it->second.setMessage(L"X har startat.#" + r.getClass());
+          it->second.setMessage(L"X har startat.#" + r.getClass(true));
           startedClass = true;
         }
       }
@@ -1203,7 +1211,7 @@ void oEvent::timeLinePrognose(TempResultMap &results, TimeRunner &tr, int prelT,
     else if (p>6 + prio * 5)
       mp = oTimeLine::PLow;
 
-    oTimeLine tl(tr.time, oTimeLine::TLTExpected, mp, tr.runner->getClassId(), radioId, tr.runner);
+    oTimeLine tl(tr.time, oTimeLine::TLTExpected, mp, tr.runner->getClassId(true), radioId, tr.runner);
     TimeLineIterator tlit = timeLineEvents.insert(pair<int, oTimeLine>(tl.getTime(), tl));
     tlit->second.setMessage(msg);
   }
@@ -1411,7 +1419,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
         else if (place <= 10)
           mp = oTimeLine::PMedium;
 
-        oTimeLine tl(radio[k].time, oTimeLine::TLTRadio, mp, r.getClassId(),  rc[j].first, &r);
+        oTimeLine tl(radio[k].time, oTimeLine::TLTRadio, mp, r.getClassId(true),  rc[j].first, &r);
         TimeLineIterator tlit = timeLineEvents.insert(pair<int, oTimeLine>(tl.getTime(), tl));
         tlit->second.setMessage(msg).setDetail(detail);
       }
@@ -1509,7 +1517,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       else if (place <= 20)
         mp = oTimeLine::PMedium;
 
-      oTimeLine tl(r.FinishTime, oTimeLine::TLTFinish, mp, r.getClassId(), r.getId(), &r);
+      oTimeLine tl(r.FinishTime, oTimeLine::TLTFinish, mp, r.getClassId(true), r.getId(), &r);
       TimeLineIterator tlit = timeLineEvents.insert(pair<int, oTimeLine>(tl.getTime(), tl));
       tlit->second.setMessage(msg).setDetail(detail);
     }
@@ -1535,7 +1543,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       else if (place <= 20)
         mp = oTimeLine::PMedium;
 
-      oTimeLine tl(r.FinishTime, oTimeLine::TLTFinish, mp, r.getClassId(), r.getId(), &r);
+      oTimeLine tl(r.FinishTime, oTimeLine::TLTFinish, mp, r.getClassId(true), r.getId(), &r);
       TimeLineIterator tlit = timeLineEvents.insert(pair<int, oTimeLine>(t, tl));
       wstring msg;
       if (r.getStatus() != StatusDQ)
@@ -1558,7 +1566,7 @@ void oEvent::renderTimeLineEvents(gdioutput &gdi) const
     wstring msg = t>0 ? getAbsTime(t) : makeDash(L"--:--:--");
     oAbstractRunner *r = it->second.getSource(*this);
     if (r) {
-      msg += L" (" + r->getClass() + L") ";
+      msg += L" (" + r->getClass(true) + L") ";
       msg += r->getName() + L", " + r->getClub();
     }
     msg += L", " + lang.tl(it->second.getMessage());
@@ -1676,7 +1684,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
   teamLegStatusOK.reserve(Teams.size() * 5);
   map<int, int> teamStatusPos;
   for (oTeamList::const_iterator it = Teams.begin(); it != Teams.end(); ++it) {
-    if (!classFilter.count(it->getClassId()))
+    if (!classFilter.count(it->getClassId(false)))
       continue;
 
     int base = teamLegStatusOK.size();
@@ -1699,7 +1707,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
 
   for (oRunnerList::const_iterator it = Runners.begin(); it != Runners.end(); ++it) {
     const oRunner &r = *it;
-    if (r.isRemoved() || !classFilter.count(r.getClassId()))
+    if (r.isRemoved() || !classFilter.count(r.getClassId(true)))
       continue;
     if (r.prelStatusOK() || r.getStatus() != StatusUnknown) {
       RunnerStatus stat = r.prelStatusOK() ? StatusOK : r.getStatus();
@@ -1738,7 +1746,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
       continue;
 
     pRunner r = getRunner(fp.tRunnerId, 0);
-    if (r == 0 || !classFilter.count(r->getClassId()) || r->getCard())
+    if (r == 0 || !classFilter.count(r->getClassId(true)) || r->getCard())
       continue;
 
     int courseControlId = oFreePunch::getControlIdFromHash(fp.iHashType, true);
@@ -1766,7 +1774,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     if (fp.isRemoved() || fp.tRunnerId == 0 || fp.Type == oPunch::PunchCheck || fp.Type == oPunch::PunchStart)
       continue;
     pRunner r = getRunner(fp.tRunnerId, 0);
-    if (r == 0 || !classFilter.count(r->getClassId()))
+    if (r == 0 || !classFilter.count(r->getClassId(true)))
       continue;
     int courseControlId = oFreePunch::getControlIdFromHash(fp.iHashType, true);
     int ctrl = oControl::getIdIndexFromCourseControlId(courseControlId).first;

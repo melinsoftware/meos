@@ -2,12 +2,14 @@
 #include "RestService.h"
 #include "meos_util.h"
 #include "restserver.h"
+#include "meosexception.h"
+
+#include <ShellAPI.h>
 
 int AutomaticCB(gdioutput *gdi, int type, void *data);
 
-RestService::RestService() : AutoMachine("RestService"), port(-1) {
+RestService::RestService() : AutoMachine("Informationsserver"), port(-1) {
 }
-
 
 RestService::~RestService() {
   if (server) {
@@ -17,14 +19,17 @@ RestService::~RestService() {
 }
 
 void RestService::save(oEvent &oe, gdioutput &gdi) {
-  if (!server)
+  if (!server) {
     server = RestServer::construct();
-  
-  int port = gdi.getTextNo("Port");
-  if (port > 0 && port < 65536)
-    server->startService(port);
-  else
-    throw std::exception("Invalid port number");
+
+    int xport = gdi.getTextNo("Port");
+    if (xport > 0 && xport < 65536) {
+      port = xport;
+      server->startService(port);
+    }
+    else
+      throw meosException("Invalid port number");
+  }
 }
 
 void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {  
@@ -35,7 +40,7 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
   startCancelInterval(gdi, "Save", created, IntervalNone, L"");
 
   if (!server)
-    gdi.addInput("Port", itow(port), 10, 0, L"Port:", L"Testa genom http://localhost:[PORT]/meos");
+    gdi.addInput("Port", itow(port), 10, 0, L"Port:", L"#http://localhost:[PORT]/meos");
   else 
     gdi.addString("", 0, "Server startad på X#" + itos(port));
 
@@ -46,29 +51,21 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
 void RestService::status(gdioutput &gdi) {
   gdi.pushX();
   gdi.addString("", 1, name);
-  /*if (!baseFile.empty()) {
-    gdi.fillRight();
-    gdi.pushX();
-    gdi.addString("", 0, L"Destination: X#" + baseFile);
-
-    if (interval>0) {
-      gdi.popX();
-      gdi.dropLine(1);
-      gdi.addString("", 0, "Säkerhetskopierar om: ");
-      gdi.addTimer(gdi.getCY(), gdi.getCX(), timerIgnoreSign, (GetTickCount() - timeout) / 1000);
-    }
-
-    gdi.popX();
-  }*/
 
   if (server) {
-    gdi.addString("", 0, "Server startad på port X#" + itos(port));
+    gdi.addString("", 0, "Server startad på X#" + itos(port));
 
     RestServer::Statistics rs;
     server->getStatistics(rs);
-    gdi.addString("", 0, "Antal förfrågningar: X#" + itos(rs.numRequests));
-    gdi.addString("", 0, "Genomsnittlig svarstid: X ms#" + itos(rs.averageResponseTime));
-    gdi.addString("", 0, "Längsta svarstid: X ms#" + itos(rs.maxResponseTime));
+    gdi.addString("", 0, "Antal förfrågningar: X.#" + itos(rs.numRequests));
+    gdi.addString("", 0, "Genomsnittlig svarstid: X ms.#" + itos(rs.averageResponseTime));
+    gdi.addString("", 0, "Längsta svarstid: X ms.#" + itos(rs.maxResponseTime));
+
+    gdi.dropLine(0.6);
+    gdi.addButton("Update", "Uppdatera").setHandler(this);
+    gdi.dropLine(0.6);
+    gdi.addString("", 1, "Testa servern:");
+    gdi.addString("link", 0, "#http://localhost:" + itos(port) + "/meos").setHandler(this);
   }
 
   gdi.dropLine(2);
@@ -87,6 +84,12 @@ void RestService::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 void RestService::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
   if (type == GUI_BUTTON) {
     ButtonInfo &bi = static_cast<ButtonInfo&>(info);
-
+    if (bi.id == "Update") {
+      gdi.getTabs().get(TAutoTab)->loadPage(gdi);
+    }
+  }
+  else if (type == GUI_LINK) {
+    wstring url = L"http://localhost:" + itow(port) + L"/meos";
+    ShellExecute(NULL, L"open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
   }
 }

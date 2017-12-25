@@ -112,7 +112,7 @@ void LiveResult::showTimer(gdioutput &gdi, const oListInfo &liIn) {
       pair<int, int> key = make_pair(r->getId(), pp[k]->getControlId());
       processedPunches[key] = max(processedPunches[key], pp[k]->getAdjustedTime());
       
-      if (!li.getParam().selection.empty() && !li.getParam().selection.count(r->getClassId()))
+      if (!li.getParam().selection.empty() && !li.getParam().selection.count(r->getClassId(true)))
         continue; // Filter class
 
       if (pp[k]->getTypeCode() == fromPunch) {
@@ -182,7 +182,7 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
       if (!r)
         continue;
 
-      if (!li.getParam().selection.empty() && !li.getParam().selection.count(r->getClassId()))
+      if (!li.getParam().selection.empty() && !li.getParam().selection.count(r->getClassId(true)))
         continue; // Filter class
 
       pair<int, int> key = make_pair(r->getId(), pp[k]->getControlId());

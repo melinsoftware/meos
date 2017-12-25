@@ -78,6 +78,7 @@ GeneralResult::GeneralResult(void) {
 GeneralResult::~GeneralResult(void) {
 }
 
+// Needed to generate template instances
 void GRINSTANCE() {
   vector<oRunner *> a;
   vector<oTeam *> b;
@@ -85,6 +86,7 @@ void GRINSTANCE() {
   gr.sort(a, SortByFinishTime);
   gr.sort(b, SortByFinishTime);
 }
+
 
 void GeneralResult::setContext(const oListParam *contextIn) {
   context = contextIn;
@@ -230,8 +232,10 @@ template<class T> void GeneralResult::sort(vector<T *> &rt, SortOrder so) const 
   const int maxT = 3600 * 100;
   for(size_t k = 0; k < rt.size(); k++) {
     arr[k].first = 0;
-    if (ps == ClassWise)
-      arr[k].first = rt[k]->getClassRef() ? rt[k]->getClassRef()->getSortIndex() : 0;
+    if (ps == ClassWise) {
+      pClass sclass = rt[k]->getClassRef(true);
+      arr[k].first = sclass ? sclass->getSortIndex() : 0;
+    }
     else if (ps == CourseWise) {
       oRunner *r = dynamic_cast<oRunner *>(rt[k]);
       arr[k].first = r && r->getCourse(false) ? r->getCourse(false)->getId() : 0;
@@ -266,7 +270,10 @@ template<class T> void GeneralResult::sort(vector<T *> &rt, SortOrder so) const 
   }
 }
 
-void GeneralResult::calculateIndividualResults(vector<oRunner *> &runners, oListInfo::ResultType resType, bool sortRunners, int inputNumber) const {
+void GeneralResult::calculateIndividualResults(vector<oRunner *> &runners, 
+                                               oListInfo::ResultType resType, 
+                                               bool sortRunners, 
+                                               int inputNumber) const {
 
   if (runners.empty())
     return;
@@ -286,13 +293,17 @@ void GeneralResult::calculateIndividualResults(vector<oRunner *> &runners, oList
       int ln = r->getLegNumber();
       const oTeam *pt = r->getTeam();
       if (pt) {
-        const oClass *tcls = pt->getClassRef();
+        const oClass *tcls = pt->getClassRef(false);
         if (tcls && tcls->getClassType() == oClassRelay) {
           int dummy;
           tcls->splitLegNumberParallel(r->getLegNumber(), ln, dummy);
         }
       }  
       runnerScore[k].principalSort = runnerScore[k].principalSort * 50 + ln;
+    }
+    else if (resType == oListInfo::Coursewise) {
+      pCourse crs = r->getCourse(false);
+      runnerScore[k].principalSort = crs ? crs->getId() : 0;
     }
     else
       runnerScore[k].principalSort = 0;
@@ -474,10 +485,10 @@ RunnerStatus TotalResultAtControl::deduceStatus(oRunner &runner) const {
   if (runner.getTeam() && getListParamTimeFromControl() <= 0) {
     // Only use input time when start time is used
     const pTeam t = runner.getTeam();
-    if (runner.getLegNumber()>0 && t->getClassRef()) {
+    if (runner.getLegNumber()>0 && t->getClassRef(false)) {
       // Find base leg
       int legIx = runner.getLegNumber();
-      const pClass cls = t->getClassRef();
+      const pClass cls = t->getClassRef(false);
       while (legIx > 0 && (cls->isParallel(legIx) || cls->isOptional(legIx)))
         legIx--;
       if (legIx > 0)
@@ -504,10 +515,10 @@ int TotalResultAtControl::deduceTime(oRunner &runner, int startTime) const {
   if (runner.getTeam() && getListParamTimeFromControl() <= 0) {
     // Only use input time when start time is used
     const pTeam t = runner.getTeam();
-    if (runner.getLegNumber()>0 && t->getClassRef()) {
+    if (runner.getLegNumber()>0 && t->getClassRef(false)) {
       // Find base leg
       int legIx = runner.getLegNumber();
-      const pClass cls = t->getClassRef();
+      const pClass cls = t->getClassRef(false);
       while (legIx > 0 && (cls->isParallel(legIx) || cls->isOptional(legIx)))
         legIx--;
       if (legIx > 0)
@@ -1125,11 +1136,10 @@ void DynamicResult::prepareCalculations(oTeam &team) const {
   parser.addSymbol("RunnerCourse", team.getResultCache(oTeam::RCCCourse));
   parser.addSymbol("RunnerSplitTimes", team.getResultCache(oTeam::RCCSplitTime));
 
-  pClass cls = team.getClassRef();
+  pClass cls = team.getClassRef(true);
   if (cls) {
     int nl = max<int>(1, cls->getNumStages()-1);
     parser.addSymbol("ShortestClassTime", cls->getTotalLegLeaderTime(nl, false));
-
   }
 }
 
@@ -1237,7 +1247,7 @@ void DynamicResult::prepareCalculations(oRunner &runner) const {
     parser.addSymbol("SplitTimesAccumulated", e);
   }
 
-  pClass cls = runner.getClassRef();
+  pClass cls = runner.getClassRef(true);
   if (cls) {
     int nl = runner.getLegNumber();
     parser.addSymbol("ShortestClassTime", cls->getBestLegTime(nl));
@@ -1302,4 +1312,295 @@ void DynamicResult::debugDumpVariables(gdioutput &gdi, bool includeSymbols) cons
     parser.dumpVariables(gdi, c1, c2);
     gdi.dropLine();
   }
+}
+
+void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
+                                               const pair<int, int> & controlId,
+                                               bool totalResults,
+                                               const string &resTag,
+                                               oListInfo::ResultType resType,
+                                               int inputNumber,
+                                               oEvent &oe,
+                                               vector<GeneralResultInfo> &results) {
+
+  results.reserve(runners.size());
+
+  if (resTag.empty() && resType == ClassWise) {
+    GeneralResultInfo ri;
+    if (controlId.second == oPunch::PunchFinish &&
+        controlId.first == oPunch::PunchStart) {
+      
+      if (!totalResults) {
+        oe.calculateResults(oEvent::RTClassResult, true);
+        for (pRunner r : runners) {
+          ri.status = r->getStatus();
+          if (ri.status == StatusUnknown) {
+            if (r->getFinishTime() == 0)
+              continue;
+            ri.status = StatusOK; // Preliminary status
+          }
+          if (ri.status == StatusOK)
+            ri.place = r->getPlace();
+          else
+            ri.place = 0;
+
+          ri.score = r->getRogainingPoints(false);
+          ri.time = r->getRunningTime();
+          ri.src = r;
+          results.push_back(ri);
+        }
+      }
+      else {
+        oe.calculateResults(oEvent::RTTotalResult, true);
+        for (pRunner r : runners) {
+          ri.status = r->getTotalStatus();
+          if (ri.status == StatusUnknown && r->getInputStatus() == StatusOK) {
+            if (r->getFinishTime() == 0)
+              continue;
+            ri.status = StatusOK; // Preliminary status
+          }
+          if (ri.status == StatusOK)
+            ri.place = r->getTotalPlace();
+          else
+            ri.place = 0;
+
+          ri.score = r->getRogainingPoints(true);
+          ri.time = r->getTotalRunningTime();
+          ri.src = r;
+          results.push_back(ri);
+        }
+      }
+    }
+    else {
+      oe.calculateSplitResults(controlId.first, controlId.second);
+
+      ri.score = 0; // Undefined
+      for (pRunner r : runners) {
+        ri.status = r->getTempStatus();
+        if (ri.status == StatusUnknown) {
+          continue;
+        }
+        if (ri.status == StatusMP && r->getStatus() != StatusMP)
+          continue; // Control that is not needed requested
+
+        if (ri.status == StatusOK)
+          ri.place = r->getPlace();
+        else
+          ri.place = 0;
+
+        ri.time = r->getTempTime();
+
+        if (ri.time <= 0 && ri.status == StatusOK)
+          continue;
+        ri.src = r;
+        results.push_back(ri);
+      }
+    }
+  }
+  else {
+    wstring srcDMY;
+    GeneralResult *gResult = 0;
+    shared_ptr<GeneralResult> specialInstance;
+    oListParam param;
+    param.useControlIdResultTo = controlId.second;
+    param.useControlIdResultFrom = controlId.first;
+
+    if (!resTag.empty())
+      gResult = &oe.getGeneralResult(resTag, srcDMY);
+    else {
+      if (controlId.second == oPunch::PunchFinish &&
+          controlId.first == oPunch::PunchStart  && !totalResults)
+        specialInstance = make_shared<GeneralResult>();
+      else if (!totalResults)
+        specialInstance = make_shared<ResultAtControl>();
+      else
+        specialInstance = make_shared<TotalResultAtControl>();
+
+      gResult = specialInstance.get();
+    }
+    gResult->setContext(&param);
+    gResult->calculateIndividualResults(runners, resType, true, inputNumber);
+    gResult->clearContext();
+    map<int, bool> mapHasCourse;
+    GeneralResultInfo ri;
+    for (pRunner r : runners) {
+      const auto &tmp = r->getTempResult(0);
+      ri.status = tmp.getStatus();
+      if (ri.status == StatusUnknown) {
+        if (r->getFinishTime() == 0)
+          continue;
+        ri.status = StatusOK; // Preliminary status
+      }
+      if (ri.status == StatusOK)
+        ri.place = tmp.getPlace();
+      else
+        ri.place = 0;
+
+      if ((controlId.first != oPunch::PunchStart ||
+           controlId.second != oPunch::PunchFinish) && ri.status == StatusMP && r->getStatus() != StatusMP) {
+        continue;
+      }
+
+      ri.score = tmp.getPoints();
+      ri.time = tmp.getRunningTime();
+      
+
+      if (controlId.first != oPunch::PunchStart && ri.time <= 0 && ri.status == StatusOK)
+        continue; // Wrong order, skip
+
+      ri.src = r;
+      results.push_back(ri);
+    }
+  }
+}
+
+shared_ptr<GeneralResult::BaseResultContext> 
+  GeneralResult::calculateTeamResults(vector<pTeam> &teams,
+                                      int leg,
+                                      const pair<int, int> &controlId,
+                                      bool totalResults,
+                                      const string &resTag,
+                                      oListInfo::ResultType resType,
+                                      int inputNumber,
+                                      oEvent &oe,
+                                      vector<GeneralResultInfo> &results) {
+  shared_ptr<BaseResultContext> out = make_shared<BaseResultContext>();
+  out->leg = leg;
+  out->controlId = controlId;
+  out->totalResults = totalResults;
+  results.reserve(teams.size());
+
+  if (resTag.empty()) {
+    out->useModule = false;
+    if (controlId.second == oPunch::PunchFinish) {
+      oe.calculateTeamResults(false);
+      GeneralResultInfo ri;
+      for (pTeam r : teams) {
+        ri.status = r->getStatus();
+        if (ri.status == StatusUnknown) {
+          if (r->getFinishTime() == 0)
+            continue;
+          ri.status = StatusOK; // Preliminary status
+        }
+        if (ri.status == StatusOK)
+          ri.place = r->getPlace();
+        else
+          ri.place = 0;
+
+        ri.score = r->getRogainingPoints(false);
+        ri.status = r->getStatus();
+        ri.time = r->getRunningTime();
+        ri.src = r;
+        results.push_back(ri);
+      }
+    }
+    else {
+      set<int> clsId;
+      for (pTeam t : teams)
+        clsId.insert(t->getClassId(false));
+
+      oe.calculateTeamResultAtControl(clsId, leg, controlId.second, totalResults);
+      GeneralResultInfo ri;
+      for (pTeam r : teams) {
+        const auto &tmp = r->getTempResult(0);
+        ri.status = tmp.getStatus();
+        if (ri.status == StatusUnknown || ri.status == StatusMP) 
+          continue;
+        ri.place = tmp.getPlace();
+        ri.score = tmp.getPoints();
+        ri.time = tmp.getRunningTime();
+        ri.src = r;
+        results.push_back(ri);
+      }
+    }
+  }
+  else {
+    out->useModule = true;
+    wstring srcDMY;
+    auto &gResult = oe.getGeneralResult(resTag, srcDMY);
+    gResult.calculateTeamResults(teams, resType, true, inputNumber);
+    GeneralResultInfo ri;
+    for (pTeam r : teams) {
+      const auto &tmp = r->getTempResult(0);
+      ri.status = tmp.getStatus();
+      if (ri.status == StatusUnknown) {
+        if (r->getFinishTime() == 0)
+          continue;
+        ri.status = StatusOK; // Preliminary status
+      }
+      if (ri.status == StatusOK)
+        ri.place = tmp.getPlace();
+      else
+        ri.place = 0;
+
+      ri.score = tmp.getPoints();
+      ri.time = tmp.getRunningTime();
+      ri.src = r;
+      results.push_back(ri);
+    }
+  }
+
+  return out;
+}
+
+int GeneralResult::GeneralResultInfo::getNumSubresult(const BaseResultContext &context) const {
+  int cid = src->getClassId(false);
+  if (cid == 0)
+    return 0;
+
+  if (context.resIntervalCache.count(cid)) {
+    const auto &cached = context.resIntervalCache[cid];
+    return cached.second - cached.first;
+  }
+  else {
+    const pClass cls = src->getClassRef(false);
+    int leg = context.leg == -1 ? cls->getNumStages() : context.leg;
+
+    int nb = cls->getNextBaseLeg(leg);
+    if (nb == -1)
+      nb = cls->getNumStages();
+
+    int pb = cls->getPreceedingLeg(leg)+1;
+    
+    context.resIntervalCache[cid] = make_pair(pb, nb);
+    return nb - pb;
+  }
+}
+
+bool GeneralResult::GeneralResultInfo::getSubResult(const BaseResultContext &context, 
+                                                    int ix, GeneralResultInfo &out) const {
+  
+  if (getNumSubresult(context) == 0)
+    return false; // Ensure cache is setup
+  int base = context.resIntervalCache[src->getClassId(false)].first;
+  pRunner r = pTeam(src)->getRunner(base + ix);
+  if (r == 0)
+    return false;
+  out.place = 0; // Not defined
+  out.src = r;
+
+  if (context.useModule) {
+    out.score = r->tmpResult.getPoints();
+    out.status = r->tmpResult.getStatus();
+    out.time = r->tmpResult.getRunningTime();
+  }
+  else {
+    if (context.controlId.second == oPunch::PunchFinish) {
+      out.score = r->getRogainingPoints(false);
+      out.status = r->getStatus();
+      out.time = r->getRunningTime();
+    }
+    else {
+      out.score = 0; // Undefined
+      r->getSplitTime(context.controlId.second, out.status, out.time);
+    }
+  }
+
+  if (out.status == StatusUnknown && out.time > 0)
+    out.status = StatusOK;
+
+  if (out.status == StatusUnknown)
+    return false;
+
+  return true;
 }

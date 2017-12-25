@@ -1037,7 +1037,7 @@ void oFreeImport::test(const oRunnerList &li)
     givenDB.insert(it->getGivenName().c_str());
     familyDB.insert(it->getFamilyName().c_str());
     clubDB.insert(it->getClub().c_str());
-    classDB.insert(it->getClass().c_str());
+    classDB.insert(it->getClass(true).c_str());
   }
 
 

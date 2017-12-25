@@ -4215,7 +4215,7 @@ void gdioutput::calcStringSize(TextInfo &ti, HDC hDC_in) const
   HDC hDC=hDC_in;
 
   if (!hDC) {
-    assert(hWndTarget!=0);
+//    assert(hWndTarget!=0);
     hDC=GetDC(hWndTarget);
   }
   RECT rc;

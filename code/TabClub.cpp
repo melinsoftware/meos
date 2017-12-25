@@ -528,7 +528,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
         else
           fee = di.getInt("Fee");
 
-        wstring info = filtered[k]->getClass() + L", " + filtered[k]->getCompleteIdentification();
+        wstring info = filtered[k]->getClass(false) + L", " + filtered[k]->getCompleteIdentification();
 
         gdi.addStringUT(0,  info + L" (" + oe->formatCurrency(fee) + L")");
         if (count % 5 == 0)

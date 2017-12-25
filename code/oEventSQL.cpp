@@ -251,6 +251,7 @@ bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) 
     advanceInformationPunches.clear();
 
   if (postSyncEvent) {
+    reinitializeClasses();
     reEvaluateChanged();
     resetChangeStatus();
     return true;

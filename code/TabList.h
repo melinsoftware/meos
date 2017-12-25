@@ -87,7 +87,25 @@ private:
 
   /** Set animation mode*/
   void setAnimationMode(gdioutput &gdi);
+
+  static void getStartIndividual(oListParam &par, ClassConfigInfo &cnf);
+  static void getStartClub(oListParam &par);
+  static void getResultIndividual(oListParam &par, ClassConfigInfo &cnf);
+  static void getResultClub(oListParam &par, ClassConfigInfo &cnf);
+
+  static void getStartPatrol(oListParam &par, ClassConfigInfo &cnf);
+  static void getResultPatrol(oListParam &par, ClassConfigInfo &cnf);
+
+  static void getStartTeam(oListParam &par, ClassConfigInfo &cnf);
+  static void getResultTeam(oListParam &par, ClassConfigInfo &cnf);
+
+  static void getResultRogaining(oListParam &par, ClassConfigInfo &cnf);
+
+
 public:
+  /** Returns a collection of public lists. */
+  void static getPublicLists(oEvent &oe, vector<oListParam> &lists);
+
   bool loadPage(gdioutput &gdi);
   bool loadPage(gdioutput &gdi, const string &command);
   

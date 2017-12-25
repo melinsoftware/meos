@@ -28,7 +28,26 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 //
 
 BMP_TEST                BITMAP                  "bitmap1.bmp"
+
 #endif    // Neutral resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral (Default) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUD)
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+#pragma code_page(1252)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_ECO                 BITMAP                  "bmp00001.bmp"
+
+#endif    // Neutral (Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
@@ -47,6 +66,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_MEOS                ICON                    "meos.ICO"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -159,6 +179,14 @@ BEGIN
         VALUE "Translation", 0x41d, 1200
     END
 END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// HTML
+//
+
+IDR_HTML1               HTML                    "html1.htm"
 
 #endif    // Swedish (Sweden) resources
 /////////////////////////////////////////////////////////////////////////////

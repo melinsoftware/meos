@@ -1906,7 +1906,7 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll)
       << " StartTime=" << r->startTime << ", "
       << " FinishTime=" << r->FinishTime << ", "
       << " Course=" << r->getCourseId() << ", "
-      << " Class=" << r->getClassId() << ", "
+      << " Class=" << r->getClassId(false) << ", "
       << " Club=" << r->getClubId() << ", "
       << " Card=" << r->getCardId() << ", "
       << " Status=" << r->status << ", "
@@ -2101,7 +2101,7 @@ OpFailStatus MeosSQL::syncUpdate(oTeam *t, bool forceWriteAll) {
       << " Runners=" << quote << t->getRunners() << ", "
       << " StartTime=" << t->startTime << ", "
       << " FinishTime=" << t->FinishTime << ", "
-      << " Class=" << t->getClassId() << ", "
+      << " Class=" << t->getClassId(false) << ", "
       << " Club=" << t->getClubId() << ", "
       << " StartNo=" << t->getStartNo() << ", "
       << " Status=" << t->status

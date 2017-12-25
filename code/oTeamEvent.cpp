@@ -102,7 +102,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillTeams(vector< pair<wstring, s
         tn = dashes + it->getName();
       }
       if (it->Class)
-        out.push_back(make_pair(tn + L" (" + it->getClass() + L")", it->Id));
+        out.push_back(make_pair(tn + L" (" + it->getClass(true) + L")", it->Id));
       else
         out.push_back(make_pair(tn, it->Id));
     }
@@ -612,14 +612,14 @@ void oEvent::adjustTeamMultiRunners(pClass cls)
   if (cls) {
     bool multi = cls->getNumStages() > 1;
     for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
-      if (it->skip() || it->getClassId() != cls->getId())
+      if (it->skip() || it->getClassId(false) != cls->getId())
         continue;
       if (multi && it->tInTeam == 0) {
         oe->autoAddTeam(&*it);
       }
 
       if (!multi && it->tInTeam) {
-        assert( it->tInTeam->getClassId() == cls->getId());
+        assert( it->tInTeam->getClassId(false) == cls->getId());
         removeTeam(it->tInTeam->getId());
       }
 
@@ -628,7 +628,7 @@ void oEvent::adjustTeamMultiRunners(pClass cls)
 
     vector<int> tr;
     for (oTeamList::iterator it=Teams.begin(); it != Teams.end(); ++it) {
-      if (!multi && !it->isRemoved() && it->getClassId() == cls->getId()) {
+      if (!multi && !it->isRemoved() && it->getClassId(false) == cls->getId()) {
         tr.push_back(it->getId());
       }
     }
@@ -728,9 +728,9 @@ void oTeam::checkClassesWithReferences(oEvent &oe, std::set<int> &clsWithRef) {
   map<int, pair<int, int> > pairedUnpairedPerClass;
   for (size_t k = 0; k < r.size(); k++) {
     if (r[k]->getReference())
-      ++pairedUnpairedPerClass[r[k]->getClassId()].first;
+      ++pairedUnpairedPerClass[r[k]->getClassId(false)].first;
     else
-      ++pairedUnpairedPerClass[r[k]->getClassId()].second;
+      ++pairedUnpairedPerClass[r[k]->getClassId(false)].second;
   }
 
   for (auto &it : pairedUnpairedPerClass) {
@@ -744,8 +744,8 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
   oe.getRunners(-1, -1, r, true);
 
   for(auto it : r) {
-    if (clsWithRef.count(it->getClassId())) {
-      pClass cls = it->getClassRef();
+    if (clsWithRef.count(it->getClassId(false))) {
+      pClass cls = it->getClassRef(false);
 
       if (cls->getNumStages() == 0) {
         pCourse crs = cls->getCourse();

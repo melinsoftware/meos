@@ -335,6 +335,7 @@
     <ClCompile Include="prefseditor.cpp" />
     <ClCompile Include="printer.cpp" />
     <ClCompile Include="progress.cpp" />
+    <ClCompile Include="qualification_final.cpp" />
     <ClCompile Include="random.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -420,6 +421,7 @@
     <ClInclude Include="pdfwriter.h" />
     <ClInclude Include="prefseditor.h" />
     <ClInclude Include="Printer.h" />
+    <ClInclude Include="qualification_final.h" />
     <ClInclude Include="recorder.h" />
     <ClInclude Include="restserver.h" />
     <ClInclude Include="RestService.h" />
@@ -482,6 +484,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="bitmap1.bmp" />
+    <None Include="html1.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="meos.ico" />
     <None Include="small.ico" />
   </ItemGroup>

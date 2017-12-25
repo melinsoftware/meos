@@ -998,3 +998,21 @@ void oControl::getClasses(vector<pClass> &cls) const {
       cls.push_back(pClass(&*it));
   }
 }
+
+int oControl::getControlIdByName(const oEvent &oe, const string &name) {
+  if (_stricmp(name.c_str(), "finish") == 0)
+    return oPunch::PunchFinish;
+  if (_stricmp(name.c_str(), "start") == 0)
+    return oPunch::PunchStart;
+
+  vector<pControl> ac;
+  oe.getControls(ac, true);
+  wstring wname = oe.gdiBase().recodeToWide(name);
+  for (pControl c : ac) {
+    if (_wcsicmp(c->getName().c_str(), wname.c_str()) == 0)
+      return c->getId();
+  }
+
+  return 0;
+}
+

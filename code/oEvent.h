@@ -447,7 +447,7 @@ protected:
   void exportIOFResults(xmlparser &xml, bool selfContained, const set<int> &classes, int leg, bool oldStylePatrol);
   void exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldStylePatrol);
 
-  /** Set up transient data in cassss */
+  /** Set up transient data in classes */
   void reinitializeClasses();
 
   /** Analyze the result status of each class*/
@@ -779,7 +779,7 @@ public:
     short partialCount;
     short legNumber;
 
-    inline int classId() const {return r->getClassId();}
+    inline int classId() const {return r->getClassId(true);}
     inline int leg() const {return legNumber;}
   };
 
@@ -917,8 +917,7 @@ public:
   bool empty() const;
 
   void generateMinuteStartlist(gdioutput &gdi);
-  void generateMinuteStartlist(const string &file);
-
+  
   bool classHasTeams(int Id) const;
   bool classHasResults(int Id) const;
   bool isCourseUsed(int Id) const;
@@ -982,12 +981,14 @@ public:
   bool saveRunnerDatabase(const wchar_t *file, bool onlyLocal);
 
   enum ResultType {RTClassResult, RTTotalResult, RTCourseResult, RTClassCourseResult};
-  void calculateResults(ResultType result);
+  void calculateResults(ResultType result, bool includePreliminary = false);
   void calculateRogainingResults();
 
   void calculateResults(list<oSpeakerObject> &rl);
   void calculateTeamResults(bool totalMultiday);
   bool calculateTeamResults(int leg, bool totalMultiday);
+  // Set results for specified classes to tempResult
+  void calculateTeamResultAtControl(const set<int> &classId, int leg, int controlId, bool totalResults);
 
   bool sortRunners(SortOrder so);
   /** If linear leg is true, leg is interpreted as actual leg numer, otherwise w.r.t to parallel legs. */

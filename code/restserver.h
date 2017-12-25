@@ -75,6 +75,11 @@ private:
  
   RestServer(const RestServer &);
   RestServer & operator=(const RestServer &) const;
+
+
+  void computeInternal(oEvent &ref, shared_ptr<RestServer::EventRequest> &rq);
+
+  map<int, pair<oListParam, shared_ptr<oListInfo> > > listCache;
 public:
 
   ~RestServer();

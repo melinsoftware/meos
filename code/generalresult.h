@@ -42,8 +42,6 @@ protected:
 
   enum PrincipalSort {None, ClassWise, CourseWise};
 
-  virtual PrincipalSort getPrincipalSort() const {return ClassWise;}
-
   virtual int score(oTeam &team, RunnerStatus st, int time, int points) const;
   virtual RunnerStatus deduceStatus(oTeam &team) const;
   virtual int deduceTime(oTeam &team) const;
@@ -63,6 +61,82 @@ protected:
   int getListParamTimeFromControl() const;
 
 public:
+
+  struct BaseResultContext {
+  private:
+    int leg;
+    bool useModule;
+    pair<int,int> controlId; // Start - finish
+    bool totalResults;
+    mutable map<int, pair<int, int> > resIntervalCache;
+
+    friend class GeneralResult;
+  };
+
+  struct GeneralResultInfo {
+    oAbstractRunner *src;
+    int time;
+    RunnerStatus status;
+    int score;
+    int place;
+
+    int getNumSubresult(const BaseResultContext &context) const;
+    bool getSubResult(const BaseResultContext &context, int ix, GeneralResultInfo &out) const;
+
+    inline bool compareResult(const GeneralResultInfo &o) const {
+      if (status != o.status)
+        return RunnerStatusOrderMap[status] < RunnerStatusOrderMap[o.status];
+
+      if (place != o.place)
+        return place < o.place;
+
+      const wstring &name = src->getName();
+      const wstring &oname = o.src->getName();
+
+      return CompareString(LOCALE_USER_DEFAULT, 0,
+        name.c_str(), name.length(),
+        oname.c_str(), oname.length()) == CSTR_LESS_THAN;
+    }
+
+    bool operator<(const GeneralResultInfo &o) const {
+      pClass cls = src->getClassRef(true);
+      pClass ocls = o.src->getClassRef(true);
+
+      if (cls != ocls) {
+        int so = cls ? cls->getSortIndex() : 0;
+        int oso = ocls ? ocls->getSortIndex() : 0;
+        if (so != oso)
+          return so < oso;
+      
+        // Use id as fallback
+        so = cls ? cls->getId() : 0;
+        oso = ocls ? ocls->getId() : 0;
+        if (so != oso)
+          return so < oso;
+      }
+      return compareResult(o);
+    }
+  };
+
+
+  static void calculateIndividualResults(vector<pRunner> &runners,
+                                         const pair<int, int> &controlId,
+                                         bool totalResults,
+                                         const string &resTag,
+                                         oListInfo::ResultType resType,
+                                         int inputNumber,
+                                         oEvent &oe,
+                                         vector<GeneralResultInfo> &results);
+
+  static shared_ptr<BaseResultContext> calculateTeamResults(vector<pTeam> &teams,
+                                                            int leg,
+                                                            const pair<int, int> &controlId,
+                                                            bool totalResults,
+                                                            const string &resTag,
+                                                            oListInfo::ResultType resType,
+                                                            int inputNumber,
+                                                            oEvent &oe,
+                                                            vector<GeneralResultInfo> &results);
 
   void setContext(const oListParam *context);
   void clearContext();

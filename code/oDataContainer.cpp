@@ -289,8 +289,7 @@ __int64 oDataContainer::getInt64(const void *data, const char *Name) const
   }
 }
 
-bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v)
-{
+bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v) {
   oDataInfo *odi=findVariable(name);
 
   if (!odi)

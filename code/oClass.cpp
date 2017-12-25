@@ -43,6 +43,8 @@
 #include "gdistructures.h"
 #include "meosexception.h"
 #include "random.h"
+#include "qualification_final.h"
+#include "generalresult.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -64,6 +66,7 @@ oClass::oClass(oEvent *poe): oBase(poe)
   tCoursesChanged = false;
   tStatusRevision = 0;
   tShowMultiDialog = false;
+  parentClass = 0;
 }
 
 oClass::oClass(oEvent *poe, int id): oBase(poe)
@@ -73,7 +76,7 @@ oClass::oClass(oEvent *poe, int id): oBase(poe)
   if (id == 0)
     id = oe->getFreeClassId();
   Id=id;
-  oe->qFreeClassId = max(id, oe->qFreeClassId);
+  oe->qFreeClassId = max(id % MaxClassId, oe->qFreeClassId);
   tLeaderTime.resize(1);
   tNoTiming = -1;
   tIgnoreStartPunch = -1;
@@ -85,6 +88,8 @@ oClass::oClass(oEvent *poe, int id): oBase(poe)
   tCoursesChanged = false;
   tStatusRevision = 0;
   tShowMultiDialog = false;
+
+  parentClass = 0;
 }
 
 oClass::~oClass()
@@ -359,7 +364,7 @@ int oClass::getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNo
   oRunnerList::iterator it;
 
   for (it=oe->Runners.begin(); it != oe->Runners.end(); ++it) {
-    if (it->getClassId()==Id) {
+    if (it->getClassId(true)==Id) {
       if (it->skip())
         continue;
       if (checkFirstLeg && it->tLeg > 0)
@@ -412,7 +417,7 @@ void oClass::setName(const wstring &name)
 oDataContainer &oClass::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const {
   data = (pvoid)oData;
   olddata = (pvoid)oDataOld;
-  strData = 0;
+  strData = const_cast< vector <vector<wstring> >* >(&oDataStr);
   return *oe->oClassData;
 }
 
@@ -1067,13 +1072,14 @@ const vector< pair<wstring, size_t> > &oEvent::fillClasses(vector< pair<wstring,
       if (rit->isRemoved())
         continue;
 
-      if (rit->Class) {
-        if (rit->Class->getNumStages() > 0 && rit->Class->getStartType(rit->tLeg) != STDrawn)
+      pClass pc = rit->getClassRef(true);
+      if (pc) {
+        if (pc->getNumStages() > 0 && pc->getStartType(rit->tLeg) != STDrawn)
           needTime = false;
       }
       if (rit->tStartTime==0 && needTime)
-        undrawn.insert(rit->getClassId());
-      hasRunner.insert(rit->getClassId());
+        undrawn.insert(rit->getClassId(true));
+      hasRunner.insert(rit->getClassId(true));
     }
   }
   else if (extended == extraNumMaps)
@@ -1137,9 +1143,9 @@ void oEvent::getNotDrawnClasses(set<int> &classes, bool someMissing)
   synchronizeList(oLRunnerId);
   for (rit=Runners.begin(); rit != Runners.end(); ++rit) {
     if (rit->tStartTime>0)
-      drawn.insert(rit->getClassId());
+      drawn.insert(rit->getClassId(true));
     else if (someMissing)
-      classes.insert(rit->getClassId());
+      classes.insert(rit->getClassId(true));
   }
 
   // Return all classe where some runner has no start time
@@ -1229,28 +1235,6 @@ bool oClass::isCourseUsed(int Id) const
   }
 
   return false;
-}
-
-string oClass::getClassResultStatus() const
-{
-  list<oRunner>::iterator it;
-
-  int nrunner=0;
-  int nrunner_finish=0;
-
-  for (it=oe->Runners.begin(); it!=oe->Runners.end();++it) {
-    if (it->getClassId()==Id){
-      nrunner++;
-
-      if (it->getStatus())
-        nrunner_finish++;
-    }
-  }
-
-  char bf[128];
-  sprintf_s(bf, "%d/%d", nrunner_finish, nrunner);
-
-  return bf;
 }
 
 bool oClass::hasTrueMultiCourse() const {
@@ -1516,7 +1500,7 @@ void oEvent::getNumClassRunners(int id, int leg, int &total, int &finished, int 
     int maxleg = pc->getLastStageIndex();
 
     for (it=Runners.begin(); it != Runners.end(); ++it){
-      if (!it->skip() && it->getClassId()==id && it->getStatus() != StatusNotCompetiting) {
+      if (!it->skip() && it->getClassId(true)==id && it->getStatus() != StatusNotCompetiting) {
         if (leg==0) {
           total++;
 
@@ -1543,7 +1527,7 @@ void oEvent::getNumClassRunners(int id, int leg, int &total, int &finished, int 
     oTeamList::const_iterator it;
 
     for (it=Teams.begin(); it != Teams.end(); ++it) {
-      if (it->getClassId()==id) {
+      if (it->getClassId(true)==id) {
         total++;
 
         if (it->tStatus!=StatusUnknown ||
@@ -2695,7 +2679,7 @@ void oClass::getStatistics(const set<int> &feeLock, int &entries, int &started) 
     if (it->getStatus() == StatusNotCompetiting)
       continue;
 
-    if (it->getClassId()==Id) {
+    if (it->getClassId(false)==Id) {
       if (feeLock.empty() || feeLock.count(it->getDCI().getInt("Fee"))) {
         entries++;
         if (it->getStatus()!= StatusUnknown && it->getStatus()!= StatusDNS && it->tStatus != StatusCANCEL)
@@ -2787,6 +2771,22 @@ void oClass::reinitialize()
   tMaxTime = getDI().getInt("MaxTime");
   if (tMaxTime == 0 && oe) {
     tMaxTime = oe->getMaximalTime();
+  }
+
+  wstring wInfo = getDI().getString("Qualification");
+  if (!wInfo.empty()) {
+    if (!qualificatonFinal)
+      qualificatonFinal = make_shared<QualificationFinal>(MaxClassId, Id);
+
+    qualificatonFinal->init(wInfo);
+    virtualClasses.resize(getNumQualificationFinalClasses());
+
+    int nc = qualificatonFinal->getNumClasses();
+    for (int i = 1; i <= nc; i++)
+      getVirtualClass(i);
+  }
+  else {
+    qualificatonFinal.reset();
   }
 
   tNoTiming = -1;
@@ -3787,7 +3787,7 @@ void oClass::extractBibPatterns(oEvent &oe, map<int, pair<wstring, int> > &patte
   patterns.clear();
   wchar_t pattern[32];
   for (size_t k = t.size(); k > 0; k--) {
-    int cls = t[k-1]->getClassId();
+    int cls = t[k-1]->getClassId(true);
     if (cls == 0)
       continue;
     const wstring &bib = t[k-1]->getBib();
@@ -3806,7 +3806,7 @@ void oClass::extractBibPatterns(oEvent &oe, map<int, pair<wstring, int> > &patte
   for (size_t k = r.size(); k > 0; k--) {
     if (r[k-1]->getTeam() != 0)
       continue;
-    int cls = r[k-1]->getClassId();
+    int cls = r[k-1]->getClassId(true);
     if (cls == 0)
       continue;
     const wstring &bib = r[k-1]->getBib();
@@ -4061,7 +4061,7 @@ void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart,
   }
 }
 
-bool oClass::hasClassGlobalDependance() const {
+bool oClass::hasClassGlobalDependence() const {
   for (size_t k = 0; k < legInfo.size(); k++) { 
     if (legInfo[k].startMethod == STHunting)
       return true;
@@ -4139,6 +4139,8 @@ int oClass::getNextBaseLeg(int leg) const {
 }
 
 int oClass::getPreceedingLeg(int leg) const {
+  if (size_t(leg) >= legInfo.size())
+    leg = legInfo.size() - 1;
   for (int k = leg; k > 0; k--) {
     if (!(legInfo[k].isParallel() || legInfo[k].isOptional()))
       return k-1;
@@ -4147,9 +4149,242 @@ int oClass::getPreceedingLeg(int leg) const {
 }
 
 bool oClass::lockedForking() const {
-  return getDCI().getInt("Locked") != 0;
+  return (getDCI().getInt("Locked") & 1) == 1;
 }
 
 void oClass::lockedForking(bool locked) {
-  getDI().setInt("Locked", locked);
+  int current = getDCI().getInt("Locked");
+  getDI().setInt("Locked", locked ? (current | 1) : (current & ~1));
+}
+
+bool oClass::lockedClassAssignment() const {
+  return (getDCI().getInt("Locked") & 2) == 2;
+}
+
+void oClass::lockedClassAssignment(bool locked) {
+  int current = getDCI().getInt("Locked");
+  getDI().setInt("Locked", locked ? (current | 2) : (current & ~2));
+}
+
+oClass *oClass::getVirtualClass(int instance, bool allowCreation) {
+  if (instance == 0)
+    return this;
+  if (parentClass)
+    return parentClass->getVirtualClass(instance, allowCreation);
+
+  if (size_t(instance) < virtualClasses.size() && virtualClasses[instance])
+    return virtualClasses[instance];
+
+  if (instance >= getNumQualificationFinalClasses())
+    return this; // Invalid
+  virtualClasses.resize(getNumQualificationFinalClasses());
+  int virtId = Id + instance * MaxClassId;
+  virtualClasses[instance] = oe->getClass(virtId);
+  if (virtualClasses[instance]) {
+    virtualClasses[instance]->parentClass = pClass(this);
+    return virtualClasses[instance];
+  }
+  configureInstance(instance, allowCreation);
+  if (virtualClasses[instance])
+    return virtualClasses[instance];
+  return this; // Fallback
+}
+
+const oClass *oClass::getVirtualClass(int instance) const {
+  if (instance == 0)
+    return this;
+  if (parentClass)
+    return parentClass->getVirtualClass(instance);
+
+  if (size_t(instance) < virtualClasses.size() && virtualClasses[instance])
+    return virtualClasses[instance];
+
+  if (instance >= getNumQualificationFinalClasses())
+    return this; // Invalid
+  virtualClasses.resize(getNumQualificationFinalClasses());
+
+  int virtId = Id + instance * MaxClassId;
+  virtualClasses[instance] = oe->getClass(virtId);
+  if (virtualClasses[instance]) {
+    virtualClasses[instance]->parentClass = pClass(this);
+    return virtualClasses[instance];
+  }
+  configureInstance(instance, false);
+  if (virtualClasses[instance])
+    return virtualClasses[instance];
+  return this; // Fallback
+}
+
+void oClass::configureInstance(int instance, bool allowCreation) const {
+  int virtId = Id + instance * MaxClassId;
+  virtualClasses[instance] = oe->getClass(virtId);
+  if (virtualClasses[instance]) {
+    virtualClasses[instance]->parentClass = pClass(this);
+    return;
+  }
+  if (!allowCreation)
+    return;
+
+  oClass copy(*this);
+  copy.Id = Id + instance * MaxClassId;
+  copy.setExtIdentifier(copy.Id);
+  copy.Name += makeDash(L"-") + qualificatonFinal->getInstanceName(instance);
+  copy.setLocalObject();
+  copy.parentClass = pClass(this);
+  copy.tSortIndex += instance;
+  copy.getDI().setInt("SortIndex", copy.tSortIndex);
+  copy.legInfo.clear();
+  copy.MultiCourse.clear();
+  copy.getDI().setString("Qualification", L"");
+  virtualClasses[instance] = oe->addClass(copy);
+}
+
+int oClass::getNumQualificationFinalClasses() const {
+  if (qualificatonFinal)
+    return qualificatonFinal->getNumClasses()+1;
+  return 0;
+}
+
+void oClass::loadQualificationFinalScheme(const wstring &fileName) {
+  auto qf = make_shared<QualificationFinal>(MaxClassId, Id);
+  qf->import(fileName);
+  wstring enc;
+  qf->encode(enc);
+  int ns = qf->getNumStages();
+  setNumStages(ns);
+  for (int i = 1; i < ns; i++) {
+    setStartType(i, StartTypes::STDrawn, true);
+    setLegType(i, LegTypes::LTNormal);
+    setLegRunner(i, 0);
+  }
+  qualificatonFinal = qf;
+  getDI().setString("Qualification", enc);
+  for (int i = 0; i < qualificatonFinal->getNumClasses(); i++) {
+    pClass inst = getVirtualClass(i+1, true);
+    inst->synchronize();
+  }
+  synchronize();
+}
+
+void oClass::updateFinalClasses(oRunner *causingResult, bool updateStartNumbers) {
+  if (!qualificatonFinal)
+    return;
+  assert(!causingResult || causingResult->Class == this);
+  int instance = causingResult ? causingResult->classInstance() : 0;
+  pClass currentInst = getVirtualClass(instance, false);
+  if (instance == virtualClasses.size())
+    return; // Final class
+  int maxDepth = getNumStages();
+  bool needIter = true;
+  int limit = virtualClasses.size() - 1;
+
+  while (needIter && --maxDepth > 0) {
+    needIter = false;
+    if (size_t(instance) >= virtualClasses.size())
+      break; // Final class
+
+    vector< vector<pRunner> > classSplit(virtualClasses.size());
+    
+    for (oRunner &r : oe->Runners) {
+      if (r.isRemoved() || !r.Class)
+        continue;
+
+      if (r.Class != this && (r.Class->getId() % MaxClassId) != getId())
+        continue;
+
+      int inst = r.Class == this ? r.classInstance() : (r.Class->getId() - getId()) & MaxClassId;
+
+      if (inst == 0 && r.tLeg > 0)
+        continue; // Only allow base class for leg 0.
+
+      if (inst < instance || inst >= limit)
+        continue;
+
+      classSplit[inst].push_back(&r);
+    }
+
+    GeneralResult gr;
+
+    for (int i = instance; i < limit; i++) {
+      if (classSplit[i].empty())
+        continue;
+
+      if (i == 0 && qualificatonFinal->noQualification(i)) {
+        set<int> allowed;
+        qualificatonFinal->getBaseClassInstances(allowed);
+        // Place all in this group
+        for (pRunner r : classSplit[i]) {
+          auto di = r->getDI();
+          int oldHeat = di.getInt("Heat");
+          if (allowed.count(oldHeat) || classSplit.size() < 2)
+            continue;
+          // Take the smallest gruop. User can set heat explicitly of other distribution is wanted.
+          int heat = 1;
+          for (int i : allowed) {
+            if (size_t(i) < classSplit.size() &&
+                                    classSplit[heat].size() > classSplit[i].size())
+              heat = i;
+          }
+          if (heat != oldHeat) {
+            bool lockedStartList = getVirtualClass(heat)->lockedClassAssignment() ||
+                                   getVirtualClass(oldHeat)->lockedClassAssignment();
+
+            if (!lockedStartList) {
+              pClass oldClass = r->getClassRef(true);
+              oldClass->markSQLChanged(-1, 0);
+              di.setInt("Heat", heat);
+              r->classInstanceRev.first = -1;
+              r->synchronize();
+            }
+          }
+        }
+      }
+
+      gr.calculateIndividualResults(classSplit[i], oListInfo::Classwise, true, 0);
+      int lastPlace = 0, orderPlace = 1;
+      int numEqual = 0;
+      for (size_t k = 0; k < classSplit[i].size(); k++) {
+        auto &res = classSplit[i][k]->getTempResult();
+        int heat = 0;
+        if (res.getStatus() == StatusOK) {
+          int place = res.getPlace();
+          if (lastPlace == place)
+            numEqual++;
+          else
+            numEqual = 0;
+
+          auto nextFinal = qualificatonFinal->getNextFinal(i, orderPlace, numEqual);
+          heat = nextFinal.first;
+          lastPlace = place;
+        }
+        orderPlace++;
+        oRunner &thisRunner = *classSplit[i][k];
+        pRunner runnerToChange = thisRunner.getMultiRunner(thisRunner.getRaceNo() + 1);
+
+        if (runnerToChange) {
+          auto di = runnerToChange->getDI();
+          int oldHeat = di.getInt("Heat");
+          
+          if (heat != oldHeat) {
+            bool lockedStartList = getVirtualClass(heat)->lockedClassAssignment() ||
+                                   getVirtualClass(oldHeat)->lockedClassAssignment();
+
+            if (!lockedStartList) {
+              pClass oldClass = runnerToChange->getClassRef(true);
+              oldClass->markSQLChanged(-1, 0);
+              di.setInt("Heat", heat);
+              runnerToChange->classInstanceRev.first = -1;
+              runnerToChange->synchronize();
+              if (runnerToChange->getFinishTime() > 0)
+                needIter = true;
+            }
+          }
+        }
+      }
+      if (needIter) {
+        instance = i+1; // Need not process last class again
+        break;
+      }
+    }
+  }
 }

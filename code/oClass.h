@@ -40,6 +40,8 @@ class oClass;
 typedef oClass* pClass;
 class oDataInterface;
 
+const int MaxClassId = 1000000;
+
 enum PersonSex;
 
 enum StartTypes {
@@ -132,6 +134,7 @@ struct ClassResultInfo {
   int lastStartTime;
 };
 
+class QualificationFinal;
 
 enum ClassType {oClassIndividual=1, oClassPatrol=2,
                 oClassRelay=3, oClassIndividRelay=4};
@@ -206,7 +209,7 @@ protected:
 
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
-
+  vector< vector<wstring> > oDataStr;
   //Multicourse data
   string codeMultiCourse() const;
   //Fill courseId with id:s of used courses.
@@ -258,13 +261,33 @@ protected:
 
   static long long setupForkKey(const vector<int> indices, const vector< vector< vector<int> > > &courseKeys, vector<int> &ws);
 
+  mutable vector<pClass> virtualClasses;
+  pClass parentClass;
+
+  shared_ptr<QualificationFinal> qualificatonFinal;
+
+  void configureInstance(int instance, bool allowCreation) const;
 public:
+
+  /** The master class in a qualification/final scheme. */
+  const pClass getParentClass() const { return parentClass; }
+
+  const QualificationFinal *getQualificationFinal() const { return qualificatonFinal.get(); }
+
+  /** Returns the number of possible final classes.*/
+  int getNumQualificationFinalClasses() const;
+  void loadQualificationFinalScheme(const wstring &fileName);
+
+  void updateFinalClasses(oRunner *causingResult, bool updateStartNumbers);
 
   static void initClassId(oEvent &oe);
 
   // Return true if forking in the class is locked
   bool lockedForking() const;
   void lockedForking(bool locked);
+
+  bool lockedClassAssignment() const;
+  void lockedClassAssignment(bool locked);
 
   // Draw data
   int getDrawFirstStart() const;
@@ -286,7 +309,7 @@ public:
   void drawSeeded(ClassSeedMethod seed, int leg, int firstStart, int interval, const vector<int> &groups,
                   bool noClubNb, bool reverse, int pairSize);
   /** Returns true if the class is setup so that changeing one runner can effect all others. (Pursuit)*/
-  bool hasClassGlobalDependance() const;
+  bool hasClassGlobalDependence() const;
   // Autoassign new bibs
   static void extractBibPatterns(oEvent &oe, map<int, pair<wstring, int> > &patterns);
   pair<int, wstring> getNextBib(map<int, pair<wstring, int> > &patterns); // Version that calculates next free bib from cached data (fast, no gap usage)
@@ -314,6 +337,9 @@ public:
     else
       return false;
   }
+
+  oClass *getVirtualClass(int instance, bool allowCreation);
+  const oClass *getVirtualClass(int instance) const;
 
   ClassStatus getClassStatus() const;
 
@@ -441,9 +467,6 @@ public:
   void setDirectResult(bool directResult);
   bool hasDirectResult() const;
 
-
-  string getClassResultStatus() const;
-
   bool isCourseUsed(int Id) const;
   wstring getLength(int leg) const;
 
@@ -472,7 +495,7 @@ public:
 
   void setNumStages(int no);
 
-  bool operator<(const oClass &b){return tSortIndex<b.tSortIndex;}
+  bool operator<(const oClass &b) {return tSortIndex<b.tSortIndex || (tSortIndex == b.tSortIndex && Id < b.Id);}
 
   // Get total number of runners running this class.
   // Use checkFirstLeg to only check the number of runners running leg 1.

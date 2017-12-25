@@ -105,6 +105,10 @@ public:
 
   int getRanking() const;
 
+  int classInstance() const override {
+    return 0; // Not supported
+  }
+
   void resetResultCalcCache() const;
   vector< vector<int> > &getResultCache(ResultCalcCacheSymbol symb) const;
   void setResultCache(ResultCalcCacheSymbol symb, int leg, vector<int> &data) const;

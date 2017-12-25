@@ -45,11 +45,27 @@ class oSpeakerObject
 {
 public:
   struct RunningTime {
+    void reset() { time = 0; preliminary = 0; }
     int time;
     int preliminary;
     RunningTime() : time(0), preliminary(0) {}
   };
 
+  void reset() {
+    owner = 0;
+    bib.clear();
+    names.clear();
+    outgoingnames.clear();
+    resultRemark.clear();
+    club.clear();
+    startTimeS.clear();
+    status = StatusUnknown;
+    finishStatus = StatusUnknown;
+    useSinceLast = 0;
+    runningTime.reset();
+    runningTimeLeg.reset();
+    runningTimeSinceLast.reset();
+  }
   oRunner *owner;
   wstring bib;
   vector<wstring> names;

@@ -75,7 +75,7 @@ private:
   void resetChangeStatus() {changed &= reChanged;}
   bool reChanged;
   bool changed;
-
+  bool localObject;
   const static unsigned long long BaseGenStringFlag = 1ull << 63;
   const static unsigned long long Base36StringFlag = 1ull << 62;
   const static unsigned long long ExtStringMask = ~(BaseGenStringFlag|Base36StringFlag);
@@ -106,15 +106,17 @@ protected:
   /** Change the id of the object */
   virtual void changeId(int newId);
 
-  //Used for handeling GUI combo boxes;
-  static void clearCombo(HWND hWnd);
-  static void addToCombo(HWND hWnd, const string &str, int data);
-
   /** Get internal data buffers for DI */
   virtual oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const = 0;
   virtual int getDISize() const = 0;
 
+  void setLocalObject() { localObject = true; }
+
 public:
+
+  // Returns true if the object is local, not stored in DB/On disc
+  bool isLocalObject() { return localObject; }
+
   /// Returns textual information on the object
   virtual wstring getInfo() const = 0;
 

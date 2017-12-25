@@ -44,6 +44,7 @@
 #include "socket.h"
 #include "MeOSFeatures.h"
 #include "oListInfo.h"
+#include "qualification_final.h"
 
 oRunner::RaceIdFormatter oRunner::raceIdFormatter;
 
@@ -420,8 +421,27 @@ void oAbstractRunner::setClassId(int id, bool isManualUpdate) {
 // Update all classes (for multirunner)
 void oRunner::setClassId(int id, bool isManualUpdate)
 {
-  if (tParentRunner)
-    tParentRunner->setClassId(id, isManualUpdate);
+  if (Class && Class->getQualificationFinal() && isManualUpdate) {
+    int heat = Class->getQualificationFinal()->getHeatFromClass(id, Class->getId());
+    if (heat >= 0) {
+      int oldHeat = getDI().getInt("Heat");
+
+      if (heat != oldHeat) {
+        pClass oldHeatClass = getClassRef(true);
+        getDI().setInt("Heat", heat);
+        pClass newHeatClass = getClassRef(true);
+        oldHeatClass->clearCache(true);
+        newHeatClass->clearCache(true);
+        tSplitRevision = 0;
+      }
+    }
+    return;
+  }
+
+  if (tParentRunner) { 
+    assert(!isManualUpdate); // Do not support! This may be destroyed if calling tParentRunner->setClass
+    return;
+  }
   else {
     pClass pc = Class;
     pClass nPc = id>0 ? oe->getClass(id):0;
@@ -451,7 +471,7 @@ void oRunner::setClassId(int id, bool isManualUpdate)
     if (Class != 0 && Class != pc && tInTeam==0 &&
                       Class->isSingleRunnerMultiStage()) {
       if (!isTemporaryObject) {
-        pTeam t = oe->addTeam(getName(), getClubId(), getClassId());
+        pTeam t = oe->addTeam(getName(), getClubId(), getClassId(false));
         t->setStartNo(StartNo, false);
         t->setRunner(0, this, true);
       }
@@ -765,91 +785,89 @@ pCourse oRunner::getCourse(bool useAdaptedCourse) const {
   if (Course)
     tCrs = Course;
   else if (Class) {
-    if (Class->hasMultiCourse()) {
+    const oClass *cls = getClassRef(true);
+
+    if (cls->hasMultiCourse()) {
       if (tInTeam) {
         if (size_t(tLeg) >= tInTeam->Runners.size() || tInTeam->Runners[tLeg] != this) {
           tInTeam->quickApply();
         }
       }
+      
+      if (Class == cls) {
+        if (tInTeam && Class->hasUnorderedLegs()) {
+          vector< pair<int, pCourse> > group;
+          Class->getParallelCourseGroup(tLeg, StartNo, group);
 
-      if (tInTeam && Class->hasUnorderedLegs()) {
-        vector< pair<int, pCourse> > group;
-        Class->getParallelCourseGroup(tLeg, StartNo, group);
-        
-        if (group.size() == 1) {
-          tCrs = group[0].second;
+          if (group.size() == 1) {
+            tCrs = group[0].second;
+          }
+          else {
+            // Remove used courses
+            int myStart = 0;
+
+            for (size_t k = 0; k < group.size(); k++) {
+              if (group[k].first == tLeg)
+                myStart = k;
+
+              pRunner tr = tInTeam->getRunner(group[k].first);
+              if (tr && tr->Course) {
+                // The course is assigned. Remove from group
+                for (size_t j = 0; j < group.size(); j++) {
+                  if (group[j].second == tr->Course) {
+                    group[j].second = 0;
+                    break;
+                  }
+                }
+              }
+            }
+
+            // Clear out already preliminary assigned courses 
+            for (int k = 0; k < myStart; k++) {
+              pRunner r = tInTeam->getRunner(group[k].first);
+              if (r && !r->Course) {
+                size_t j = k;
+                while (j < group.size()) {
+                  if (group[j].second) {
+                    group[j].second = 0;
+                    break;
+                  }
+                  else j++;
+                }
+              }
+            }
+
+            for (size_t j = 0; j < group.size(); j++) {
+              int ix = (j + myStart) % group.size();
+              pCourse gcrs = group[ix].second;
+              if (gcrs) {
+                tCrs = gcrs;
+                break;
+              }
+            }
+          }
+        }
+        else if (tInTeam) {
+          unsigned leg = legToRun();
+          tCrs = Class->getCourse(leg, StartNo);
         }
         else {
-          // Remove used courses
-          int myStart = 0;
-
-          for (size_t k = 0; k < group.size(); k++) {
-            if (group[k].first == tLeg)
-              myStart = k;
-
-            pRunner tr = tInTeam->getRunner(group[k].first);
-            if (tr && tr->Course) {
-              // The course is assigned. Remove from group
-              for (size_t j = 0; j < group.size(); j++) {
-                if (group[j].second == tr->Course) {
-                  group[j].second = 0;
-                  break;
-                }
-              }
-            }
-          }
-
-          // Clear out already preliminary assigned courses 
-          for (int k = 0; k < myStart; k++) {
-            pRunner r = tInTeam->getRunner(group[k].first);
-            if (r && !r->Course) {
-              size_t j = k;
-              while (j < group.size()) { 
-                if (group[j].second) {
-                  group[j].second = 0;
-                  break;
-                }
-                else j++;
-              }
-            }
-          }
-
-          for (size_t j = 0; j < group.size(); j++) {
-            int ix = (j + myStart) % group.size();
-            pCourse gcrs = group[ix].second;
-            if (gcrs) {
-              tCrs = gcrs;
-              break;
+          if (unsigned(tDuplicateLeg) < Class->MultiCourse.size()) {
+            vector<pCourse> &courses = Class->MultiCourse[tDuplicateLeg];
+            if (courses.size() > 0) {
+              int index = StartNo % courses.size();
+              tCrs = courses[index];
             }
           }
         }
-      }
-      else if (tInTeam) {
-        unsigned leg=legToRun();
-        tCrs = Class->getCourse(leg, StartNo);
-        /*if (leg<Class->MultiCourse.size()) {
-          vector<pCourse> &courses=Class->MultiCourse[leg];
-          if (courses.size()>0) {
-            int index=StartNo;
-            if (index>0)
-              index = (index-1) % courses.size();
-
-            tCrs = courses[index];
-          }
-        }*/
       }
       else {
-        if (unsigned(tDuplicateLeg)<Class->MultiCourse.size()) {
-          vector<pCourse> &courses=Class->MultiCourse[tDuplicateLeg];
-          if (courses.size()>0) {
-            int index=StartNo % courses.size();
-            tCrs = courses[index];
-          }
-        }
+        // Final / qualification classes
+        tCrs = cls->getCourse(0, StartNo);
       }
     }
     else
-      tCrs = Class->Course;
+      tCrs = cls->Course;
   }
 
   if (tCrs && useAdaptedCourse) {
@@ -1329,6 +1347,19 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
   doAdjustTimes(course);
 
   tRogainingPointsGross = tRogainingPoints;
+  
+  if (oldStatus!=*refStatus || oldFT!=FinishTime) {
+    clearSplitAnalysis = true;
+  }
+
+  if ((inTeam || !tUseStartPunch) && doApply)
+    apply(sync, 0, false); //Post apply. Update start times.
+
+  if (tCachedRunningTime != FinishTime - *refStartTime) {
+    tCachedRunningTime = FinishTime - *refStartTime;
+    clearSplitAnalysis = true;
+  }
+
   if (time_limit > 0) {
     int rt = getRunningTime();
     if (rt > 0) {
@@ -1342,17 +1373,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
     }
   }
 
-  if (oldStatus!=*refStatus || oldFT!=FinishTime) {
-    clearSplitAnalysis = true;
-  }
 
-  if ((inTeam || !tUseStartPunch) && doApply)
-    apply(sync, 0, false); //Post apply. Update start times.
-
-  if (tCachedRunningTime != FinishTime - *refStartTime) {
-    tCachedRunningTime = FinishTime - *refStartTime;
-    clearSplitAnalysis = true;
-  }
 
   // Clear split analysis data if necessary
   bool clear = splitTimes.size() != oldTimes.size() || clearSplitAnalysis;
@@ -1650,8 +1671,8 @@ int oRunner::getRaceRunningTime(int leg) const
 
 bool oRunner::sortSplit(const oRunner &a, const oRunner &b)
 {
-  int acid=a.getClassId();
-  int bcid=b.getClassId();
+  int acid=a.getClassId(true);
+  int bcid=b.getClassId(true);
   if (acid!=bcid)
     return acid<bcid;
   else if (a.tempStatus != b.tempStatus)
@@ -1661,21 +1682,29 @@ bool oRunner::sortSplit(const oRunner &a, const oRunner &b)
       if (a.tempRT!=b.tempRT)
         return a.tempRT<b.tempRT;
     }
-    return a.tRealName<b.tRealName;
+    return CompareString(LOCALE_USER_DEFAULT, 0,
+                        a.tRealName.c_str(), a.tRealName.length(),
+                        b.tRealName.c_str(), b.tRealName.length()) == CSTR_LESS_THAN;
   }
 }
 
-bool oRunner::operator <(const oRunner &c) {
-  if (!Class || !c.Class)
-    return size_t(Class)<size_t(c.Class);
-  else if (Class == c.Class && Class->getClassStatus() != oClass::Normal)
+bool oRunner::operator<(const oRunner &c) const {
+  const oClass * myClass = getClassRef(true);
+  const oClass * cClass = c.getClassRef(true);
+  if (!myClass || !cClass)
+    return size_t(myClass)<size_t(cClass);
+  else if (Class == cClass && Class->getClassStatus() != oClass::Normal)
     return CompareString(LOCALE_USER_DEFAULT, 0,
                          tRealName.c_str(), tRealName.length(),
                          c.tRealName.c_str(), c.tRealName.length()) == CSTR_LESS_THAN;
 
   if (oe->CurrentSortOrder==ClassStartTime) {
-    if (Class->Id != c.Class->Id)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass->Id != cClass->Id) {
+      if (myClass->tSortIndex != cClass->tSortIndex)
+        return myClass->tSortIndex < cClass->tSortIndex;
+      else
+        return myClass->Id < cClass->Id;
+    }
     else if (tStartTime != c.tStartTime) {
       if (tStartTime <= 0 && c.tStartTime > 0)
         return false;
@@ -1697,8 +1726,8 @@ bool oRunner::operator <(const oRunner &c) {
     RunnerStatus stat = tStatus == StatusUnknown ? StatusOK : tStatus;
     RunnerStatus cstat = c.tStatus == StatusUnknown ? StatusOK : c.tStatus;
     
-    if (Class != c.Class)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass != cClass) 
+      return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     else if (tLegEquClass != c.tLegEquClass) 
       return tLegEquClass < c.tLegEquClass;
     else if (tDuplicateLeg != c.tDuplicateLeg)
@@ -1730,8 +1759,8 @@ bool oRunner::operator <(const oRunner &c) {
     }
   }
   else if (oe->CurrentSortOrder == ClassCourseResult) {
-    if (Class != c.Class)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass != cClass)
+      return myClass->tSortIndex < cClass->tSortIndex;
 
     const pCourse crs1 = getCourse(false);
     const pCourse crs2 = c.getCourse(false);
@@ -1805,8 +1834,8 @@ bool oRunner::operator <(const oRunner &c) {
       return ft > cft;
   }
   else if (oe->CurrentSortOrder == ClassFinishTime){
-    if (Class != c.Class)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass != cClass)
+      return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     if (tStatus != c.tStatus)
       return RunnerStatusOrderMap[tStatus] < RunnerStatusOrderMap[c.tStatus];
     else{
@@ -1834,8 +1863,8 @@ bool oRunner::operator <(const oRunner &c) {
       return et > cet;
   }
   else if (oe->CurrentSortOrder == ClassPoints) {
-    if (Class != c.Class)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass != cClass)
+      return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     else if (tDuplicateLeg != c.tDuplicateLeg)
       return tDuplicateLeg < c.tDuplicateLeg;
     else if (tStatus != c.tStatus)
@@ -1852,8 +1881,8 @@ bool oRunner::operator <(const oRunner &c) {
     }
   }
   else if (oe->CurrentSortOrder==ClassTotalResult) {
-    if (Class != c.Class)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass != cClass)
+      return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     else if (tDuplicateLeg != c.tDuplicateLeg)
       return tDuplicateLeg < c.tDuplicateLeg;
     else {
@@ -1902,8 +1931,8 @@ bool oRunner::operator <(const oRunner &c) {
     }
   }
   else if (oe->CurrentSortOrder==ClassStartTimeClub) {
-    if (Class != c.Class)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass != cClass)
+      return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     else if (tStartTime != c.tStartTime) {
       if (tStartTime <= 0 && c.tStartTime > 0)
         return false;
@@ -1916,8 +1945,8 @@ bool oRunner::operator <(const oRunner &c) {
     }
   }
   else if (oe->CurrentSortOrder==ClassTeamLeg) {
-    if (Class->Id != c.Class->Id)
-      return Class->tSortIndex < c.Class->tSortIndex;
+    if (myClass->Id != cClass->Id)
+      return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     else if (tInTeam != c.tInTeam) {
       if (tInTeam == 0)
         return true;  
@@ -1959,7 +1988,7 @@ void oAbstractRunner::setClub(const wstring &clubName)
     updateChanged();
     if (Class) {
       // Vacant clubs have special logic
-      Class->tResultInfo.clear();
+      getClassRef(true)->tResultInfo.clear();
     }
     if (Club && Club->isVacant()) { // Clear entry date/time for vacant
       getDI().setInt("EntryDate", 0);
@@ -2326,7 +2355,7 @@ void oEvent::getRunners(int classId, int courseId, vector<pRunner> &r, bool sort
         continue;
     }
 
-    if (classId <= 0 || it->getClassId() == classId)
+    if (classId <= 0 || it->getClassId(true) == classId)
       r.push_back(&*it);
   }
 }
@@ -2364,7 +2393,7 @@ pRunner oRunner::nextNeedReadout() const {
     // For a runner in a team, first the team for the card
     for (size_t k = 0; k < tInTeam->Runners.size(); k++) {
       pRunner tr = tInTeam->Runners[k];
-      if (tr && tr->CardNo == CardNo && !tr->Card && !tr->statusOK())
+      if (tr && tr->getCardNo() == CardNo && !tr->Card && !tr->statusOK())
         return tr;
     }
   }
@@ -2432,9 +2461,11 @@ pRunner oEvent::getRunnerByCardNo(int cardNo, int time, bool onlyWithNoCard, boo
   }
   else {
     if (time <= 0) { //No time specified. Card readout search
+
+      pRunner secondTry = 0;
       //First try runners with no card read or a different card read.
       for (it=Runners.begin(); it != Runners.end(); ++it) {
-        if (it->skip())
+        if (it->isRemoved())
           continue;
         if (ignoreRunnersWithNoStart && (it->getStatus() == StatusDNS || it->getStatus() == StatusCANCEL))
           continue;
@@ -2442,9 +2473,15 @@ pRunner oEvent::getRunnerByCardNo(int cardNo, int time, bool onlyWithNoCard, boo
           continue;
 
         pRunner ret;
-        if (it->CardNo==cardNo && (ret = it->nextNeedReadout()) != 0)
-          return ret;
+        if (it->CardNo == cardNo && (ret = it->nextNeedReadout()) != 0) {
+          if (!it->skip())
+            return ret;
+          else if (secondTry == 0 || secondTry->tLeg > ret->tLeg)
+            secondTry = ret;
+        }
       }
+      if (secondTry)
+        return secondTry;
     }
     else {
       for (it=Runners.begin(); it != Runners.end(); ++it) {
@@ -2745,11 +2782,11 @@ const vector< pair<wstring, size_t> > &oEvent::fillRunners(vector< pair<wstring,
         if (compact) {
           swprintf_s(bf, L"%s, %s (%s)", it->getNameAndRace(true).c_str(),
                                          it->getClub().c_str(),
-                                         it->getClass().c_str());
+                                         it->getClass(true).c_str());
 
         } else {
           swprintf_s(bf, L"%s\t%s\t%s", it->getNameAndRace(true).c_str(),
-                                        it->getClass().c_str(),
+                                        it->getClass(true).c_str(),
                                         it->getClub().c_str());
         }
         out.push_back(make_pair(bf, it->Id));
@@ -2769,7 +2806,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillRunners(vector< pair<wstring,
         if ( it->getClubId() != lVacId || lVacId == 0)
           out.push_back(make_pair(it->getUIName(), it->Id));
         else {
-          swprintf_s(bf, L"%s (%s)", it->getUIName().c_str(), it->getClass().c_str());
+          swprintf_s(bf, L"%s (%s)", it->getUIName().c_str(), it->getClass(true).c_str());
           out.push_back(make_pair(bf, it->Id));
         }
       }
@@ -2879,7 +2916,7 @@ void oRunner::createMultiRunner(bool createMaster, bool sync)
     if (!multiRunner[k-1]) {
       update = true;
       multiRunner[k-1]=oe->addRunner(sName, getClubId(),
-                                     getClassId(), 0, 0, false);
+                                     getClassId(false), 0, 0, false);
       multiRunner[k-1]->tDuplicateLeg=k;
       multiRunner[k-1]->tParentRunner=this;
 
@@ -2909,6 +2946,12 @@ pRunner oRunner::getPredecessor() const
 
 bool oRunner::apply(bool sync, pRunner src, bool setTmpOnly) {
   createMultiRunner(false, sync);
+  if (sync) {
+    for (size_t k = 0; k < multiRunner.size(); k++) {
+      if (multiRunner[k])
+        multiRunner[k]->synchronize(true);
+    }
+  }
   tLeg = -1;
   tLegEquClass = 0;
   tUseStartPunch=true;
@@ -3045,7 +3088,7 @@ void oEvent::generateRunnerTableData(Table &table, oRunner *addRunner)
   oRunnerList::iterator it;
   table.reserve(Runners.size());
   for (it=Runners.begin(); it != Runners.end(); ++it){
-    if (!it->skip()){
+    if (!it->isRemoved()){
       it->addTableRow(table);
     }
   }
@@ -3088,11 +3131,13 @@ void oRunner::addTableRow(Table &table) const
   table.set(row++, it, TID_ID, itow(getId()), false);
   table.set(row++, it, TID_MODIFIED, getTimeStamp(), false);
 
-  table.set(row++, it, TID_RUNNER, getUIName(), true);
-  
-  table.set(row++, it, TID_CLASSNAME, getClass(), true, cellSelection);
+  if (tParentRunner == 0)
+    table.set(row++, it, TID_RUNNER, getUIName(), true);
+  else
+    table.set(row++, it, TID_RUNNER, getUIName() + L" (" + itow(tDuplicateLeg+1) + L")", false);
+  table.set(row++, it, TID_CLASSNAME, getClass(true), true, cellSelection);
   table.set(row++, it, TID_COURSE, getCourseName(), true, cellSelection);
-  table.set(row++, it, TID_CLUB, getClub(), true, cellCombo);
+  table.set(row++, it, TID_CLUB, getClub(), tParentRunner == 0, cellCombo);
 
   table.set(row++, it, TID_TEAM, tInTeam ? tInTeam->getName() : L"", false);
   table.set(row++, it, TID_LEG, tInTeam ? itow(tLeg+1) : L"" , false);
@@ -3138,7 +3183,7 @@ bool oRunner::inputData(int id, const wstring &input,
         throw std::exception("Tomt namn inte tillåtet.");
 
       if (sName != input && tRealName != input) {
-        updateFromDB(input, getClubId(), getClassId(), getCardNo(), getBirthYear());
+        updateFromDB(input, getClubId(), getClassId(false), getCardNo(), getBirthYear());
         setName(input, true);
         synchronizeAll();
       }
@@ -3184,7 +3229,7 @@ bool oRunner::inputData(int id, const wstring &input,
         else
           pc = oe->getClubCreate(0, input);
 
-        updateFromDB(getName(), pc ? pc->getId():0, getClassId(), getCardNo(), getBirthYear());
+        updateFromDB(getName(), pc ? pc->getId():0, getClassId(false), getCardNo(), getBirthYear());
 
         setClub(pc ? pc->getName() : L"");
         synchronize(true);
@@ -3195,7 +3240,7 @@ bool oRunner::inputData(int id, const wstring &input,
     case TID_CLASSNAME:
       setClassId(inputId, true);
       synchronize(true);
-      output = getClass();
+      output = getClass(true);
       break;
 
     case TID_STATUS: {
@@ -3258,7 +3303,7 @@ void oRunner::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &se
   else if (id==TID_CLASSNAME) {
     oe->fillClasses(out, oEvent::extraNone, oEvent::filterNone);
     out.push_back(make_pair(lang.tl(L"Ingen klass"), 0));
-    selected = getClassId();
+    selected = getClassId(true);
   }
   else if (id==TID_CLUB) {
     oe->fillClubs(out);
@@ -3378,7 +3423,7 @@ void oRunner::getSplitTime(int courseControlId, RunnerStatus &stat, int &rt) con
 {
   rt = 0;
   stat = StatusUnknown;
-  int cardno = tParentRunner ? tParentRunner->CardNo : CardNo;
+  int cardno = getCardNo();
 
   if (courseControlId==oPunch::PunchFinish &&
       FinishTime>0 && tStatus!=StatusUnknown) {
@@ -3643,7 +3688,9 @@ const wstring &oAbstractRunner::getBib() const
 }
 
 void oRunner::setBib(const wstring &bib, int bibNumerical, bool updateStartNo, bool tmpOnly) {
-  if (tParentRunner)
+  const bool freeBib = !Class || Class->getBibMode() == BibMode::BibFree;
+
+  if (tParentRunner && !freeBib)
     tParentRunner->setBib(bib, bibNumerical, updateStartNo, tmpOnly);
   else {
     if (updateStartNo)
@@ -3657,10 +3704,11 @@ void oRunner::setBib(const wstring &bib, int bibNumerical, bool updateStartNo, b
       if (oe)
         oe->bibStartNoToRunnerTeam.clear();
     }
-
-    for (size_t k=0;k<multiRunner.size();k++) {
-      if (multiRunner[k]) {
-        multiRunner[k]->getDI().setString("Bib", bib);
+    if (!freeBib) {
+      for (size_t k = 0; k < multiRunner.size(); k++) {
+        if (multiRunner[k]) {
+          multiRunner[k]->getDI().setString("Bib", bib);
+        }
       }
     }
   }
@@ -3848,7 +3896,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
   gdi.dropLine(0.5);
   pCourse pc = getCourse(true);
 
-  gdi.addStringUT(bnormal, getName() + L", " + getClass());
+  gdi.addStringUT(bnormal, getName() + L", " + getClass(true));
   gdi.addStringUT(normal, getClub());
   gdi.dropLine(0.5);
   gdi.addStringUT(normal, lang.tl("Start: ") + getStartTimeS() + lang.tl(", Mål: ") + getFinishTimeS());
@@ -4175,7 +4223,7 @@ void oRunner::printStartInfo(gdioutput &gdi) const {
   if (!bib.empty())
     bib = bib + L": ";
 
-  gdi.addStringUT(boldSmall, bib + getName() + L", " + getClass());
+  gdi.addStringUT(boldSmall, bib + getName() + L", " + getClass(true));
   gdi.addStringUT(fontSmall, getClub());
   gdi.dropLine(0.5);
   
@@ -4274,7 +4322,7 @@ void oEvent::updateRunnersFromDB()
 
   for (it=Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isVacant() && !it->isRemoved())
-      it->updateFromDB(it->sName, it->getClubId(), it->getClassId(), it->getCardNo(), it->getBirthYear());
+      it->updateFromDB(it->sName, it->getClubId(), it->getClassId(false), it->getCardNo(), it->getBirthYear());
   }
 }
 
@@ -5258,6 +5306,10 @@ void oRunner::markClassChanged(int controlId) {
   assert(controlId < 4096);
   if (Class) {
     Class->markSQLChanged(tLeg, controlId);
+    pClass cls2 = getClassRef(true);
+    if (cls2 != Class)
+      cls2->markSQLChanged(-1, controlId);
+
     if (tInTeam && tInTeam->Class != Class && tInTeam->Class) {
       tInTeam->Class->markSQLChanged(tLeg, controlId);
     }
@@ -5535,9 +5587,12 @@ int oRunner::getRanking() const {
 }
 
 void oAbstractRunner::hasManuallyUpdatedTimeStatus() {
-  if (Class && Class->hasClassGlobalDependance()) {
+  if (Class && Class->hasClassGlobalDependence()) {
     set<int> cls;
     oe->reEvaluateAll(cls, false);
+  }
+  if (Class) {
+    Class->updateFinalClasses(dynamic_cast<oRunner *>(this), false);
   }
 }
 
@@ -5555,7 +5610,7 @@ bool oRunner::canShareCard(const pRunner other, int newCardNo) const {
   if (!getTeam() || other->getTeam() != getTeam())
     return false;
 
-  pClass tCls = getTeam()->getClassRef();
+  const oClass * tCls = getTeam()->getClassRef(false);
   if (!tCls || tCls != Class)
     return false;
 
@@ -5597,4 +5652,25 @@ bool oAbstractRunner::hasLateEntryFee() const {
   bool late = date > oentry && oentry >= L"2010-01-01";
 
   return late;
+}
+
+int oRunner::classInstance() const {
+  if (classInstanceRev.first == oe->dataRevision)
+    return classInstanceRev.second;
+  classInstanceRev.second = getDCI().getInt("Heat");
+  if (Class)
+    classInstanceRev.second = min(classInstanceRev.second, Class->getNumQualificationFinalClasses());
+  classInstanceRev.first = oe->dataRevision;
+  return classInstanceRev.second;
+}
+
+const wstring &oAbstractRunner::getClass(bool virtualClass) const {
+  if (Class) {
+    if (virtualClass)
+      return Class->getVirtualClass(classInstance())->Name;
+    else
+      return Class->Name;
+  }
+  
+  else return _EmptyWString; 
 }

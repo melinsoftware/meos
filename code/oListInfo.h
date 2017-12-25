@@ -294,6 +294,24 @@ class MetaListContainer;
 
 struct oListParam {
   oListParam();
+
+  bool operator==(const oListParam& a) const {
+    return a.listCode == listCode &&
+      a.selection == selection &&
+      a.useControlIdResultFrom == useControlIdResultFrom &&
+      a.useControlIdResultTo == useControlIdResultTo &&
+      a.filterMaxPer == filterMaxPer &&
+      a.pageBreak == pageBreak &&
+      a.showInterTimes == showInterTimes &&
+      a.showSplitTimes == showSplitTimes &&
+      a.inputNumber == inputNumber &&
+      a.nextList == nextList &&
+      a.previousList == previousList &&
+      a.bgColor == bgColor &&
+      a.bgColor2 == bgColor2 &&
+      a.bgImage == bgImage &&
+      a.legNumber == legNumber;
+  }
   EStdListType listCode;
   GUICALLBACK cb;
   set<int> selection;
@@ -389,6 +407,7 @@ public:
     Global,
     Classwise,
     Legwise,
+    Coursewise
   };
 
   static bool addRunners(EBaseType t) {return t == EBaseTypeRunner || t == EBaseTypeClub;}

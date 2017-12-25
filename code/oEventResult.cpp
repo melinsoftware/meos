@@ -47,7 +47,7 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo)
 
   for (it=Runners.begin(); it!=Runners.end(); ++it) {
     int st = 0;
-    if (controlIdFrom > 0) {
+    if (controlIdFrom > 0 && controlIdFrom != oPunch::PunchStart) {
       RunnerStatus stat;
       it->getSplitTime(controlIdFrom, stat, st);
       if (stat != StatusOK) {
@@ -56,7 +56,7 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo)
         continue;
       }
     }
-    if (controlIdTo == 0) {
+    if (controlIdTo == 0 || controlIdTo == oPunch::PunchFinish) {
       it->tempRT = max(0, it->FinishTime - (st + it->tStartTime) );
       if (it->tempRT > 0)
         it->tempRT += it->getTimeAdjustment();
@@ -79,8 +79,8 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo)
   int cTime=0;
 
   for (it=Runners.begin(); it != Runners.end(); ++it){
-    if (it->getClassId()!=cClassId){
-      cClassId=it->getClassId();
+    if (it->getClassId(true)!=cClassId){
+      cClassId=it->getClassId(true);
       cPlace=0;
       vPlace=0;
       cTime=0;
@@ -105,7 +105,7 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo)
   }
 }
 
-void oEvent::calculateResults(ResultType resultType) {
+void oEvent::calculateResults(ResultType resultType, bool includePreliminary) {
   const bool totalResults = resultType == RTTotalResult;
   const bool courseResults = resultType == RTCourseResult;
   const bool classCourseResults = resultType == RTClassCourseResult;
@@ -135,7 +135,7 @@ void oEvent::calculateResults(ResultType resultType) {
     // Start new "class"
     if (classCourseResults) {
       const pCourse crs = it->getCourse(false);
-      int crsId = it->getClassId() * 997 + (crs ? crs->getId() : 0);
+      int crsId = it->getClassId(true) * 997 + (crs ? crs->getId() : 0);
       if (crsId != cClassId) {
         cClassId = crsId;
         cPlace=0;
@@ -156,8 +156,8 @@ void oEvent::calculateResults(ResultType resultType) {
         cTime=0;
       }
     }
-    else if (it->getClassId() != cClassId || it->tDuplicateLeg!=cDuplicateLeg || it->tLegEquClass != cLegEquClass) {
-      cClassId=it->getClassId();
+    else if (it->getClassId(true) != cClassId || it->tDuplicateLeg!=cDuplicateLeg || it->tLegEquClass != cLegEquClass) {
+      cClassId=it->getClassId(true);
       useResults = it->Class ? !it->Class->getNoTiming() : false;
       cPlace=0;
       vPlace=0;
@@ -176,7 +176,7 @@ void oEvent::calculateResults(ResultType resultType) {
     else if (!totalResults) {
       int tPlace = 0;
 
-      if (it->tStatus==StatusOK){
+      if (it->tStatus==StatusOK || (includePreliminary && it->tStatus == StatusUnknown && it->FinishTime > 0)){
         cPlace++;
 
         int rt = it->getRunningTime() + it->getNumShortening() * 3600 * 24* 8;
@@ -200,7 +200,8 @@ void oEvent::calculateResults(ResultType resultType) {
     else {
       int tt = it->getTotalRunningTime(it->FinishTime, true);
 
-      if (it->getTotalStatus() == StatusOK && tt>0) {
+      RunnerStatus totStat = it->getTotalStatus();
+      if (totStat == StatusOK || (includePreliminary && totStat == StatusUnknown) && tt>0) {
         cPlace++;
 
         if (tt > cTime)
@@ -236,8 +237,8 @@ void oEvent::calculateRogainingResults() {
     if (it->isRemoved())
       continue;
 
-    if (it->getClassId()!=cClassId || it->tDuplicateLeg!=cDuplicateLeg) {
-      cClassId = it->getClassId();
+    if (it->getClassId(true)!=cClassId || it->tDuplicateLeg!=cDuplicateLeg) {
+      cClassId = it->getClassId(true);
       useResults = it->Class ? !it->Class->getNoTiming() : false;
       cPlace = 0;
       vPlace = 0;
@@ -513,5 +514,83 @@ void oEvent::getGeneralResults(bool onlyEditable, vector< pair<int, pair<string,
           tagNameList.back().second.second += L" [" + date + L"]";
       }
     }
+  }
+}
+
+struct TeamResultContainer {
+  pTeam team;
+  int runningTime;
+  RunnerStatus status;
+  
+  bool operator<(const TeamResultContainer &o) const {
+
+    pClass cls = team->getClassRef(false);
+    pClass ocls = o.team->getClassRef(false);
+
+    if (cls != ocls) {
+      int so = cls ? cls->getSortIndex() : 0;
+      int oso = ocls ? ocls->getSortIndex() : 0;
+      if (so != oso)
+        return so < oso;
+    }
+
+    if (status != o.status)
+      return status < o.status;
+
+    if (runningTime != o.runningTime)
+      return runningTime < o.runningTime;
+
+    return false;
+  }
+};
+
+void oEvent::calculateTeamResultAtControl(const set<int> &classId, int leg, int courseControlId, bool totalResults) {
+  vector<TeamResultContainer> objs;
+  objs.reserve(Teams.size());
+  oSpeakerObject temp;
+  for (auto &t : Teams) {
+    if (t.isRemoved())
+      continue;
+
+    if (!classId.empty() && !classId.count(t.getClassId(false)))
+      continue;
+    temp.reset();
+    t.fillSpeakerObject(leg, courseControlId, -1, totalResults, temp);
+    if (!temp.owner)
+      continue;
+    TeamResultContainer trc;
+    trc.runningTime = temp.runningTime.time;
+    trc.status = temp.status;
+    trc.team = &t;
+    objs.push_back(trc);
+  }
+  
+  sort(objs.begin(), objs.end());
+
+  int cClass = -1;
+  int cPlace = -1;
+  int placeCounter = -1;
+  int cTime = 0;
+  for (size_t i = 0; i < objs.size(); i++) {
+    pTeam team = objs[i].team;
+    int c = team->getClassId(false);
+    if (c != cClass) {
+      cClass = c;
+      placeCounter = 1;
+      cTime = -1;
+    }
+    else {
+      placeCounter++;
+    }
+
+    if (cTime != objs[i].runningTime) {
+      cPlace = placeCounter;
+    }
+
+    team->tmpResult.startTime = team->getStartTime();
+    team->tmpResult.status = objs[i].status;
+    team->tmpResult.runningTime = objs[i].runningTime;
+    team->tmpResult.place = objs[i].status == StatusOK ? cPlace : 0;
+    team->tmpResult.points = 0; // Not supported
   }
 }

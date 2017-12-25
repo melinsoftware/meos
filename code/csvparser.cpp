@@ -352,7 +352,7 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
 
         if (pc) {
           pc->synchronize();
-          if (pr->getClassId() == 0 || !pr->hasFlag(oAbstractRunner::FlagUpdateClass))
+          if (pr->getClassId(false) == 0 || !pr->hasFlag(oAbstractRunner::FlagUpdateClass))
             pr->setClassId(pc->getId(), false);
         }
       }
@@ -397,8 +397,8 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
                 course->synchronize();
             }
             if (course) {
-              if (pr->getClassId() != 0)
-                event.getClass(pr->getClassId())->setCourse(course);
+              if (pr->getClassId(false) != 0)
+                event.getClass(pr->getClassId(false))->setCourse(course);
               else
                 pr->setCourseId(course->getId());
             }
@@ -1253,23 +1253,71 @@ void csvparser::parse(const wstring &file, list< vector<string> > &data) {
   fin.close();
 }*/
 
+
+void csvparser::parseUnicode(const wstring &file, list< vector<wstring> > &data) {
+  fin.open(file, ifstream::in | ifstream::binary);
+  fin.seekg(0, ios_base::end);
+  size_t len = int(fin.tellg())-2;
+  if (len == 0)
+    return;
+  fin.seekg(2); // BOM
+  assert(len % 2 == 0);
+  vector<wchar_t> bf(len / 2 + 1);
+  fin.read((char *)&bf[0], len);
+  vector<wstring> rows;
+  int spp = 0;
+  for (size_t k = 0; k < len / 2; k++) {
+    if (bf[spp] == '\r')
+      spp++;
+    if (bf[k] == '\n') {
+      bf[k] = 0;
+      if (k > 0 && bf[k - 1] == '\r')
+        bf[k - 1] = 0;
+      wstring r = &bf[spp];
+      spp = k + 1;
+      rows.push_back(r);
+    }
+  }
+  if (size_t(spp + 1) < len / 2) {
+    wstring r = &bf[spp];
+    rows.push_back(r);
+  }
+  vector<wchar_t *> sp;
+
+  for (size_t k = 0; k < rows.size(); k++) {
+    split(const_cast<wchar_t*>(rows[k].c_str()), sp);
+  
+    if (!sp.empty()) {
+      data.push_back(vector<wstring>());
+      data.back().resize(sp.size());
+      for (size_t k = 0; k < sp.size(); k++) {
+        data.back()[k] = sp[k];
+      }
+    }
+  }
+}
+
 void csvparser::parse(const wstring &file, list< vector<wstring> > &data) {
   data.clear();
 
   fin.open(file);
- // const size_t bf_size = 8192;
+  
+  fin.seekg(0, ios_base::end);
+  auto len = fin.tellg();
+  fin.seekg(0);
+  
   string rbf;
 
   if (!fin.good())
     throw meosException("Failed to read file");
 
   bool isUTF8 = false;
-  bool isUnicode = false;
   bool firstLine = true;
   vector<wchar_t *> sp;
-  wchar_t wbf[buff_pre_alloc];
+  vector<wchar_t> wbf_a;
+  wbf_a.resize(size_t(len));
+  wchar_t *wbf = &wbf_a[0];
   wstring w;
-  
   while(std::getline(fin, rbf)) {
     const char *bf = rbf.c_str();
     if (firstLine) {
@@ -1278,27 +1326,23 @@ void csvparser::parse(const wstring &file, list< vector<wstring> > &data) {
         bf += 3;
       }
       else if (bf[0] == -1 && bf[1] == -2) {
-        isUnicode = true;
-        bf += 2;        
+        fin.close();
+        vector<wchar_t>().swap(wbf_a);
+        parseUnicode(file, data);
+        return;
       }
     }
-
-    if (isUnicode) {
-      int len = 0;
-      if (bf[len] == 0 && bf[len+1] != 0)
-        len++;
-      split((wchar_t*)&bf[len], sp);
-    }
-    else if (isUTF8) {
+   
+    if (isUTF8) {
       int len = strlen(bf);
       int wlen = MultiByteToWideChar(CP_UTF8, 0, bf, len, wbf, buff_pre_alloc);
       wbf[wlen] = 0;
-      split(wbf, sp);
+      split(&wbf[0], sp);
     }
     else {
       w = gdi_main->recodeToWide(bf);
-      wchar_t *wbf = const_cast<wchar_t *>(w.c_str());
-      split(wbf, sp);
+      wchar_t *wbfL = const_cast<wchar_t *>(w.c_str());
+      split(wbfL, sp);
     }
     firstLine = false;
     

@@ -203,7 +203,7 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   vector<pTeam> t;
   oe.getTeams(0, t, false);
   for (size_t k = 0; k < t.size(); k++) {
-    if (!includeCls.count(t[k]->getClassId()))
+    if (!includeCls.count(t[k]->getClassId(true)))
       continue;
     int wid = t[k]->getId();
     knownId.insert(wid);
@@ -228,7 +228,7 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   vector<pRunner> r;
   oe.getRunners(0, 0, r, false);
   for (size_t k = 0; k < r.size(); k++) {
-    if (!includeCls.count(r[k]->getClassId()))
+    if (!includeCls.count(r[k]->getClassId(true)))
       continue;
     int wid = r[k]->getId();
     knownId.insert(wid);
@@ -397,7 +397,7 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     ch = true;
   }
 
-  int cls = bc.getClassId();
+  int cls = bc.getClassId(true);
   if (cls != classId) {
     classId = cls;
     ch = true;
@@ -463,8 +463,8 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
   bool ch = synchronize(useTotalResults, r);
 
   vector<RadioTime> newRT;
-  if (r.getClassId() > 0)  {
-    const vector<int> &radios = cmp.getControls(r.getClassId(), r.getLegNumber());
+  if (r.getClassId(false) > 0)  {
+    const vector<int> &radios = cmp.getControls(r.getClassId(false), r.getLegNumber());
     for (size_t k = 0; k < radios.size(); k++) {
       RadioTime radioTime;
       RunnerStatus s_split;
@@ -520,7 +520,7 @@ void InfoCompetitor::serialize(xmlbuffer &xml, bool diffOnly) const {
 bool InfoTeam::synchronize(oTeam &t) {
   bool ch = synchronizeBase(t);
 
-  const pClass cls = t.getClassRef();
+  const pClass cls = t.getClassRef(true);
   if (cls) {
     vector< vector<int> > r;
 

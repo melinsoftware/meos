@@ -91,6 +91,21 @@ private:
 
   static void autoGrowCourse(gdioutput &gdi);
 
+  void loadEconomy(gdioutput &gdi, oRunner &r);
+
+  class EconomyHandler : public GuiHandler {
+    int runnerId;
+    oEvent *oe;
+    oRunner &getRunner() const;
+  public:
+    void init(oRunner &r);
+    void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
+    void save(gdioutput &gdi);
+  };
+
+  shared_ptr<EconomyHandler> ecoHandler;
+  EconomyHandler *getEconomyHandler(oRunner &r);
+
 protected:
   void clearCompetitionData();
 
@@ -103,6 +118,8 @@ public:
 
   bool loadPage(gdioutput &gdi);
   bool loadPage(gdioutput &gdi, int runnerId);
+
+
 
   TabRunner(oEvent *oe);
   ~TabRunner(void);

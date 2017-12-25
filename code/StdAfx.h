@@ -23,13 +23,12 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
-#include <memory.h>
+#include <memory>
 #include <tchar.h>
 
 #include <string>
 #include <fstream>
 #include <list>
-#include <crtdbg.h>
 
 using namespace std;
 bool getUserFile(wchar_t *fileNamePath, const wchar_t *fileName);

@@ -601,7 +601,6 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       lastSplitState = par.showSplitTimes;
       lastLargeSize = par.useLargeSize;
 
-
       oe->generateListInfo(par, gdi.getLineHeight(), currentList);
 
       generateList(gdi);
@@ -635,10 +634,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
+      getResultIndividual(par, cnf);
       cnf.getIndividual(par.selection);
-      par.listCode = EStdResultList;
-      par.showInterTimes = true;
-      par.setLegNumberCoded(-1);
       par.pageBreak = gdi.isChecked("PageBreak");
       par.splitAnalysis = gdi.isChecked("SplitAnalysis");
 
@@ -667,12 +664,10 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="StartIndividual") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.listCode = EStdStartList;
-      par.setLegNumberCoded(-1);
-      par.pageBreak = gdi.isChecked("PageBreak");
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getIndividual(par.selection);
+      getStartIndividual(par, cnf);
+      par.pageBreak = gdi.isChecked("PageBreak");
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -681,33 +676,22 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="StartClub") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.listCode = EStdClubStartList;
+      getStartClub(par);
       par.pageBreak = gdi.isChecked("PageBreak");
-      par.setLegNumberCoded(-1);
-      ClassConfigInfo cnf;
-      oe->getClassConfigurationInfo(cnf);
-      //cnf.getIndividual(par.selection);
-      //cnf.getPatrol(par.selection);
-
-     // oListInfo foo = currentList;
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
-      //currentList.addList(foo);
       generateList(gdi);
       gdi.refresh();
     }
     else if (bi.id=="ResultClub") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.listCode = EStdClubResultList;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.setLegNumberCoded(-1);
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getIndividual(par.selection);
-      cnf.getPatrol(par.selection);
+      getResultClub(par, cnf);
 
+      par.pageBreak = gdi.isChecked("PageBreak");
+      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -735,12 +719,10 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="TeamStartList") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.listCode = EStdTeamStartList;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getRelay(par.selection);
+      getStartTeam(par, cnf);
       par.pageBreak = gdi.isChecked("PageBreak");
-      par.setLegNumberCoded(0);
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -779,11 +761,10 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="PatrolStartList") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.listCode = EStdPatrolStartList;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getPatrol(par.selection);
+      getStartPatrol(par, cnf);
+      par.pageBreak = gdi.isChecked("PageBreak");
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -792,15 +773,12 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="TeamResults") {
       oe->sanityCheck(gdi, true);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.listCode = EStdTeamResultListAll;
-
-      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
-
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getRelay(par.selection);
+      getResultTeam(par, cnf);
+      par.pageBreak = gdi.isChecked("PageBreak");
+      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       generateList(gdi);
       gdi.refresh();
@@ -823,7 +801,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oListParam par;
       par.pageBreak = gdi.isChecked("PageBreak");
       par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      int race = int(bi.getExtra());
+      int race = bi.getExtraInt();
       par.setLegNumberCoded(race);
       par.listCode = EStdIndMultiResultListLeg;
       ClassConfigInfo cnf;
@@ -854,13 +832,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="PatrolResultList") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.listCode = EStdPatrolResultList;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getPatrol(par.selection);
-
+      getResultPatrol(par, cnf);
+      par.pageBreak = gdi.isChecked("PageBreak");
+      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
       par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
 
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
@@ -871,13 +847,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="RogainingResultList") {
       oe->sanityCheck(gdi, true);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.listCode = ERogainingInd;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
-      cnf.getRogaining(par.selection);
-
+      getResultRogaining(par, cnf);
+      par.pageBreak = gdi.isChecked("PageBreak");
+      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
       par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
 
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
@@ -2419,4 +2393,128 @@ void TabList::setAnimationMode(gdioutput &gdi) {
   auto par = currentList.getParam();
   gdi.setAnimationMode(make_shared<AnimationData>(gdi, par.timePerPage, par.nColumns,
     par.margin, par.animate));
+}
+
+void TabList::getStartIndividual(oListParam &par, ClassConfigInfo &cnf){
+  par.listCode = EStdStartList;
+  par.setLegNumberCoded(-1);
+  cnf.getIndividual(par.selection);
+}
+
+void TabList::getStartClub(oListParam &par) {
+  par.listCode = EStdClubStartList;
+  par.setLegNumberCoded(-1);
+}
+
+void TabList::getResultIndividual(oListParam &par, ClassConfigInfo &cnf) {
+  cnf.getIndividual(par.selection);
+  par.listCode = EStdResultList;
+  par.showInterTimes = true;
+  par.setLegNumberCoded(-1);
+}
+
+void TabList::getResultClub(oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = EStdClubResultList;
+  par.setLegNumberCoded(-1);
+  cnf.getIndividual(par.selection);
+  cnf.getPatrol(par.selection);
+}
+
+void TabList::getStartPatrol(oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = EStdPatrolStartList;
+  cnf.getPatrol(par.selection);
+}
+
+void TabList::getResultPatrol(oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = EStdPatrolResultList;
+  cnf.getPatrol(par.selection);
+}
+
+void TabList::getStartTeam(oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = EStdTeamStartList;
+  cnf.getRelay(par.selection);
+  par.setLegNumberCoded(0);
+}
+
+void TabList::getResultTeam(oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = EStdTeamResultListAll;
+  cnf.getRelay(par.selection);
+}
+
+void TabList::getResultRogaining(oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = ERogainingInd;
+  cnf.getRogaining(par.selection);
+}
+
+void TabList::getPublicLists(oEvent &oe, vector<oListParam> &lists) {
+  lists.clear();
+
+  ClassConfigInfo cnf;
+  oe.getClassConfigurationInfo(cnf);
+  if (!cnf.empty()) {
+    if (cnf.hasIndividual()) {
+      lists.push_back(oListParam());
+      getStartIndividual(lists.back(), cnf);
+
+      if (oe.getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+        lists.push_back(oListParam());
+        getStartClub(lists.back());
+      }
+    }
+
+    if (cnf.hasRelay()) {
+      lists.push_back(oListParam());
+      getStartTeam(lists.back(), cnf);
+    }
+    if (cnf.hasPatrol()) {
+      lists.push_back(oListParam());
+      getStartPatrol(lists.back(), cnf);
+    }
+
+    if (cnf.isMultiStageEvent()) {
+      //gdi.addButton("StartL:inputresult", "Input Results", ListsCB);
+    }
+
+    if (cnf.hasIndividual()) {
+      lists.push_back(oListParam());
+      getResultIndividual(lists.back(), cnf);
+      if (oe.getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+        lists.push_back(oListParam());
+        getResultClub(lists.back(), cnf);
+      }
+
+      //gdi.addButton("ResultIndSplit", "Sträcktider", ListsCB);
+
+      if (cnf.isMultiStageEvent()) {
+        //gdi.addButton("Result:stageresult", "Etappresultat", ListsCB);
+
+        //gdi.addButton("Result:finalresult", "Slutresultat", ListsCB);
+      }
+    }
+    if (cnf.hasRelay()) {
+      lists.push_back(oListParam());
+      getResultTeam(lists.back(), cnf);
+    }
+    if (cnf.hasPatrol()) {
+      lists.push_back(oListParam());
+      getResultPatrol(lists.back(), cnf);
+    }
+
+    if (cnf.hasRogaining()) {
+      //gdi.addButton("Result:rogainingind", "Rogaining", ListsCB).setExtra(2);
+    }
+  }
+
+  MetaListContainer &lc = oe.getListContainer();
+
+  vector< pair<wstring, size_t> > savedParams;
+  lc.getListParam(savedParams);
+  for (auto &p : savedParams) {
+    oListParam &par = lc.getParam(p.second);
+    lists.push_back(par);
+  }
+
+  if (cnf.hasIndividual()) {
+    //gdi.addButton("PriceList", "Prisutdelningslista", ListsCB);
+  }
 }

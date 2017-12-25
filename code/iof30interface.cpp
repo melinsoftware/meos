@@ -335,7 +335,7 @@ void IOF30Interface::personCourseAssignment(gdioutput &gdi, xmlList &xAssignment
         xPAssignment.getObjectString("ClassName", cls);
         multimap<wstring, pRunner>::const_iterator res = name2Runner.find(person);
         while (res != name2Runner.end() && person == res->first) {
-          if (cls.empty() || res->second->getClass() == cls) {
+          if (cls.empty() || res->second->getClass(false) == cls) {
             r = res->second;
             break;
           }
@@ -386,7 +386,7 @@ void IOF30Interface::teamCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
     if (!bib.empty())
       bib2Team[bib] = allT[k];
 
-    nameClass2Team[make_pair(allT[k]->getName(), allT[k]->getClass())] = allT[k];
+    nameClass2Team[make_pair(allT[k]->getName(), allT[k]->getClass(false))] = allT[k];
   }
 
   for (size_t k = 0; k < xAssignment.size(); k++) {
@@ -426,7 +426,7 @@ void IOF30Interface::teamCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
 void IOF30Interface::assignTeamCourse(gdioutput &gdi, oTeam &team, xmlList &xAssignment,
                                       const map<wstring, pCourse> &courses) {
 
-  if (!team.getClassRef())
+  if (!team.getClassRef(false))
     return;
   for (size_t k = 0; k <xAssignment.size(); k++) {
 
@@ -443,11 +443,11 @@ void IOF30Interface::assignTeamCourse(gdioutput &gdi, oTeam &team, xmlList &xAss
       if (xLegOrder)
         legorder = xLegOrder.getInt() - 1;
 
-      int legId = team.getClassRef()->getLegNumberLinear(leg, legorder);
+      int legId = team.getClassRef(false)->getLegNumberLinear(leg, legorder);
       if (legId>=0) {
         pRunner r = team.getRunner(legId);
         if (r == 0) {
-          r = oe.addRunner(lang.tl(L"N.N."), team.getClubId(), team.getClassId(), 0, 0, false);
+          r = oe.addRunner(lang.tl(L"N.N."), team.getClubId(), team.getClassId(false), 0, 0, false);
           if (r) {
             r->setEntrySource(entrySourceId);
             r->flagEntryTouched(true);
@@ -460,7 +460,7 @@ void IOF30Interface::assignTeamCourse(gdioutput &gdi, oTeam &team, xmlList &xAss
         }
       }
       else
-        gdi.addString("", 0, L"Bantilldelning för 'X' hänvisar till en sträcka som inte finns#" + team.getClass()).setColor(colorRed);
+        gdi.addString("", 0, L"Bantilldelning för 'X' hänvisar till en sträcka som inte finns#" + team.getClass(false)).setColor(colorRed);
     }
     else {
       wstring name;
@@ -543,8 +543,8 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
           for (bibIterT it = range.first; it != range.second; ++it) {
             int ln = it->second->getLegNumber();
             int rLegNumber = 0, rLegOrder = 0;
-            if (it->second->getClassRef())
-              it->second->getClassRef()->splitLegNumberParallel(ln, rLegNumber, rLegOrder);
+            if (it->second->getClassRef(false))
+              it->second->getClassRef(false)->splitLegNumberParallel(ln, rLegNumber, rLegOrder);
             bool match = true;
             if (leg != 0 && leg != rLegNumber+1)
               match = false;
@@ -569,14 +569,14 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
             vector<pTeam> t;
             oe.getTeams(0, t);
             for (size_t i = 0; i < t.size(); i++)
-              clsName2Team[make_pair(t[i]->getClass(), t[i]->getName())] = t[i];
+              clsName2Team[make_pair(t[i]->getClass(false), t[i]->getName())] = t[i];
             c2TeamInit = true;
           }
 
           teamIterT res = clsName2Team.find(make_pair(className, teamName));
 
           if (res != clsName2Team.end()) {
-            pClass cls = res->second->getClassRef();
+            pClass cls = res->second->getClassRef(false);
             if (cls) {
               int ln = cls->getLegNumberLinear(leg, legOrder);
               pRunner r = res->second->getRunner(ln);
@@ -863,7 +863,7 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
             key[j] = it->second[j].second;
 
           sort(key.begin(), key.end());
-          classLegEqClasses[t->getClassId()].insert(key);
+          classLegEqClasses[t->getClassId(false)].insert(key);
         }
       }
     }
@@ -1326,7 +1326,7 @@ pTeam IOF30Interface::readTeamEntry(gdioutput &gdi, xmlobject &xTeam,
   map<int, vector<LegInfo> > localTeamClassConfig;
   pClass pc = readClass(xTeam.getObject("Class"), localTeamClassConfig);
 
-  if (pc && (t->getClassId() == 0 || !t->hasFlag(oAbstractRunner::FlagUpdateClass)) ) { 
+  if (pc && (t->getClassId(false) == 0 || !t->hasFlag(oAbstractRunner::FlagUpdateClass)) ) { 
     t->setClassId(pc->getId(), false);
   }
   wstring bib;
@@ -1392,7 +1392,7 @@ pTeam IOF30Interface::readTeamStart(gdioutput &gdi, pClass pc, xmlobject &xTeam,
     return 0;
 
   // Class
-  if (pc && (t->getClassId() == 0 || !t->hasFlag(oAbstractRunner::FlagUpdateClass)) )
+  if (pc && (t->getClassId(false) == 0 || !t->hasFlag(oAbstractRunner::FlagUpdateClass)) )
     t->setClassId(pc->getId(), false);
 
   wstring bib;
@@ -1534,7 +1534,7 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
 
   if (cardNo > 0 && r == 0 && team) {
     // We got no person, but a card number. Add the runner anonymously.
-    r = oe.addRunner(lang.tl(L"N.N."), team->getClubId(), team->getClassId(), cardNo, 0, false);
+    r = oe.addRunner(lang.tl(L"N.N."), team->getClubId(), team->getClassId(false), cardNo, 0, false);
     r->flagEntryTouched(true);
     r->setEntrySource(entrySourceId);
     r->synchronize();
@@ -1555,21 +1555,21 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   map<int, vector<LegInfo> > localTeamClassConfig;
   pClass pc = readClass(xo.getObject("Class"), localTeamClassConfig);
 
-  if (pc && (r->getClassId() == 0 || !r->hasFlag(oAbstractRunner::FlagUpdateClass)) )
+  if (pc && (r->getClassId(false) == 0 || !r->hasFlag(oAbstractRunner::FlagUpdateClass)) )
     r->setClassId(pc->getId(), false);
 
   if (team) {
     int leg = xo.getObjectInt("Leg");
     int legorder = xo.getObjectInt("LegOrder");
     int legindex = max(0, leg - 1);
-    map<int, vector<LegInfo> >::const_iterator res = teamClassConfig.find(team->getClassId());
+    map<int, vector<LegInfo> >::const_iterator res = teamClassConfig.find(team->getClassId(false));
     if (res != teamClassConfig.end()) {
       legindex = getIndexFromLegPos(leg, legorder, res->second);
     }
 
     if (personId2TeamLeg.find(r->getId()) == personId2TeamLeg.end()) {
-      if (team->getClassRef())
-        legindex = team->getClassRef()->getLegRunner(legindex);
+      if (team->getClassRef(false))
+        legindex = team->getClassRef(false)->getLegRunner(legindex);
 
       // Ensure unique
       team->setRunner(legindex, r, false);
@@ -1676,7 +1676,7 @@ pRunner IOF30Interface::readPersonStart(gdioutput &gdi, pClass pc, xmlobject &xo
         int leg = starts[k].getObjectInt("Leg");
         int legorder = starts[k].getObjectInt("LegOrder");
         int legindex = max(0, leg - 1);
-        map<int, vector<LegInfo> >::const_iterator res = teamClassConfig.find(team->getClassId());
+        map<int, vector<LegInfo> >::const_iterator res = teamClassConfig.find(team->getClassId(false));
         if (res != teamClassConfig.end()) {
           legindex = getIndexFromLegPos(leg, legorder, res->second);
         }
@@ -1698,7 +1698,7 @@ pRunner IOF30Interface::readPersonStart(gdioutput &gdi, pClass pc, xmlobject &xo
     }
   }
 
-  if (pc && (r->getClassId() == 0 || !r->hasFlag(oAbstractRunner::FlagUpdateClass)) )
+  if (pc && (r->getClassId(false) == 0 || !r->hasFlag(oAbstractRunner::FlagUpdateClass)) )
     r->setClassId(pc->getId(), true);
 
   r->synchronize();
@@ -1961,7 +1961,7 @@ void IOF30Interface::writeAssignedFee(xmlparser &xml, const oAbstractRunner &tr,
   if (paid >= paidForCard) {
     paid -= paidForCard; // Included in card service fee
   }
-  const pClass pc = tr.getClassRef();
+  const oClass *pc = tr.getClassRef(false);
   if (!splitLateFee || !pc || !tr.hasLateEntryFee()) {
     xml.startTag("AssignedFee");
      string type = tr.hasLateEntryFee() ? "Late" : "Normal";
@@ -2476,7 +2476,6 @@ void IOF30Interface::writeClass(xmlparser &xml, const oClass &c) {
   else if (stat == oClass::InvalidRefund)
     xml.write("Status", L"InvalidatedNoFee");
 
-
   xml.endTag();
 }
 
@@ -2537,7 +2536,7 @@ void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
   if (teamMember) {
     oRunner const *resultHolder = &r;
     cTeam t = r.getTeam();
-    pClass cls = r.getClassRef();
+    const oClass *cls = r.getClassRef(false);
 
     if (t && cls) {
       int leg = r.getLegNumber();
@@ -2614,9 +2613,9 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
       xml.write("TimeBehind", after);
   }
 
-  if (r.getClassRef()) {
+  if (r.getClassRef(false)) {
 
-    if (r.statusOK() && r.getClassRef()->getNoTiming() == false) {
+    if (r.statusOK() && r.getClassRef(false)->getNoTiming() == false) {
       if (!teamMember && r.getPlace() > 0 && r.getPlace() < 50000) {
         xml.write("Position", r.getPlace());
       }
@@ -2634,19 +2633,19 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
 
     xml.write("Status", formatStatus(r.getStatus()));
 
-    if ( (r.getTeam() && r.getClassRef()->getClassType() != oClassPatrol && !teamsAsIndividual) || hasInputTime) {
+    if ( (r.getTeam() && r.getClassRef(false)->getClassType() != oClassPatrol && !teamsAsIndividual) || hasInputTime) {
       xml.startTag("OverallResult");
       int rt = r.getTotalRunningTime();
       if (rt > 0)
         xml.write("Time", rt);
 
-      bool hasTiming = r.getClassRef()->getNoTiming() == false;
+      bool hasTiming = r.getClassRef(false)->getNoTiming() == false;
       RunnerStatus stat = r.getTotalStatus();
 
       int tleg = r.getLegNumber() >= 0 ? r.getLegNumber() : 0;
 
       if (stat == StatusOK && hasTiming) {
-        int after = r.getTotalRunningTime() - r.getClassRef()->getTotalLegLeaderTime(tleg, true);
+        int after = r.getTotalRunningTime() - r.getClassRef(true)->getTotalLegLeaderTime(tleg, true);
         if (after >= 0)
           xml.write("TimeBehind", after);
       }
@@ -3100,7 +3099,7 @@ void IOF30Interface::writeStart(xmlparser &xml, const oRunner &r,
 void IOF30Interface::writeLegOrder(xmlparser &xml, const oRunner &r) const {
   // Team member race result
   int legNumber, legOrder;
-  const pClass pc = r.getClassRef();
+  const oClass *pc = r.getClassRef(false);
   if (pc) {
     bool par = pc->splitLegNumberParallel(r.getLegNumber(), legNumber, legOrder);
     xml.write("Leg", legNumber + 1);

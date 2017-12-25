@@ -565,13 +565,13 @@ void oEvent::optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, D
     int relPos = relSt / di.baseInterval;
 
     if (st>0 && relSt>=0 && relPos<3000 && (relSt%di.baseInterval) == 0) {
-      if (otherClasses.count(it->getClassId())==0)
+      if (otherClasses.count(it->getClassId(false))==0)
         continue;
 
       if (!di.startName.empty() && it->Class && it->Class->getStart()!=di.startName)
         continue;
 
-      ClassInfo &ci = otherClasses[it->getClassId()];
+      ClassInfo &ci = otherClasses[it->getClassId(false)];
       int k = 0;
       while(true) {
         if (k==StartField.size()) {
@@ -688,14 +688,18 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     if (spec[k].vacances>0 && pc->getClassType()==oClassRelay)
       throw std::exception("Vakanser stöds ej i stafett.");
 
-    if (spec[k].vacances>0 && spec[k].leg>0)
+    if (spec[k].vacances>0 && (spec[k].leg>0 || pc->getParentClass()))
       throw std::exception("Det går endast att sätta in vakanser på sträcka 1.");
 
     if (size_t(spec[k].leg) < pc->legInfo.size()) {
       pc->legInfo[spec[k].leg].startMethod = STDrawn; //Automatically change start method
     }
+    else if (spec[k].leg == -1) {
+      for (size_t j = 0; j < pc->legInfo.size(); j++)
+        pc->legInfo[j].startMethod = STDrawn; //Automatically change start method
+    }
     clsId2Ix[spec[k].classID] = k;
-    if (!multiDay && spec[k].leg == 0)
+    if (!multiDay && spec[k].leg == 0 && pc->getParentClass() == 0)
       clsIdClearVac.insert(spec[k].classID);
   }
 
@@ -709,7 +713,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
       vector<int> toRemove;
       //Remove old vacances
       for (it=Runners.begin(); it != Runners.end(); ++it) {
-        if (clsIdClearVac.count(it->getClassId())) {
+        if (clsIdClearVac.count(it->getClassId(true))) {
           if (it->isRemoved())
             continue;
           if (it->tInTeam)
@@ -734,11 +738,12 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     }
 
     for (it=Runners.begin(); it != Runners.end(); ++it) {
-      if (!it->isRemoved() && clsId2Ix.count(it->getClassId())) {
+      int cid = it->getClassId(true);
+      if (!it->isRemoved() && clsId2Ix.count(cid)) {
         if (it->getStatus() == StatusNotCompetiting)
           continue;
-        int ix = clsId2Ix[it->getClassId()];
-        if (it->legToRun() == spec[ix].leg ) {
+        int ix = clsId2Ix[cid];
+        if (it->legToRun() == spec[ix].leg || spec[ix].leg == -1) {
           runners.push_back(&*it);
           spec[ix].ntimes++;
         }
@@ -753,12 +758,12 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     int baseInterval = 10*60;
 
     for (it=Runners.begin(); it != Runners.end(); ++it) {
-      if (!it->isRemoved() && clsId2Ix.count(it->getClassId())) {
+      if (!it->isRemoved() && clsId2Ix.count(it->getClassId(true))) {
         if (it->getStatus() == StatusNotCompetiting)
           continue;
 
         int st = it->getStartTime();
-        int ix = clsId2Ix[it->getClassId()];
+        int ix = clsId2Ix[it->getClassId(false)];
           
         if (st>0) {
           first[ix] = min(first[ix], st);
@@ -838,7 +843,6 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
   nextFreeStartNo = max<int>(nextFreeStartNo, minStartNo + stimes.size());
 }
-
 
 void getLargestClub(map<int, vector<pRunner> > &clubRunner, vector<pRunner> &largest)
 {
@@ -1176,7 +1180,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
       continue;
     if (it->tLeg != leg)
       continue;
-    if (it->isVacant() && notDrawn.count(it->getClassId())==1)
+    if (it->isVacant() && notDrawn.count(it->getClassId(false))==1)
       continue;
     pClass pc = it->Class;
 

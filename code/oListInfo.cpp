@@ -396,9 +396,9 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       continue;
 
     // Case when runner/team has different class
-    bool teamOK = it->getTeam() && clsSel.count(it->getTeam()->getClassId());
+    bool teamOK = it->getTeam() && clsSel.count(it->getTeam()->getClassId(false));
 
-    if (!clsSel.empty() && (!teamOK && clsSel.count(it->getClassId()) == 0))
+    if (!clsSel.empty() && (!teamOK && clsSel.count(it->getClassId(true)) == 0))
         continue;
 
     totWord.clear();
@@ -417,7 +417,7 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       }
       rout.clear();
       while (numIter-- > 0) {
-        const wstring &out = oe->formatListString(pp, par, it->tInTeam, pRunner(&*it), it->Club, it->Class, c);
+        const wstring &out = oe->formatListString(pp, par, it->tInTeam, pRunner(&*it), it->Club, pClass(it->getClassRef(true)), c);
         //row[k] = max(row[k], int(out.length()));
         if (out.length() > rout.length())
           rout = out;
@@ -474,7 +474,7 @@ const wstring & oEvent::formatListString(EPostType type, const pRunner r) const
   oListParam par;
   par.setLegNumberCoded(r->tLeg);
   pp.type = type;
-  return formatListString(pp, par, r->tInTeam, r, r->Club, r->Class, ctr);
+  return formatListString(pp, par, r->tInTeam, r, r->Club, r->getClassRef(true), ctr);
 }
 
 const wstring & oEvent::formatListString(EPostType type, const pRunner r, 
@@ -485,7 +485,7 @@ const wstring & oEvent::formatListString(EPostType type, const pRunner r,
   par.setLegNumberCoded(r->tLeg);
   pp.type = type;
   pp.text = format;
-  return formatListString(pp, par, r->tInTeam, r, r->Club, r->Class, ctr);
+  return formatListString(pp, par, r->tInTeam, r, r->Club, r->getClassRef(true), ctr);
 }
 
 
@@ -572,16 +572,16 @@ const wstring &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListP
     break;
 
     case lRunnerLegNumberAlpha:
-      if (t && t->getClassRef() && legIndex >= 0) {
-        wstring legStr = t->getClassRef()->getLegNumber(legIndex);
+      if (t && t->getClassRef(false) && legIndex >= 0) {
+        wstring legStr = t->getClassRef(false)->getLegNumber(legIndex);
         wcscpy_s(bfw, legStr.c_str());
       }
       break;
 
     case lRunnerLegNumber:
-      if (t && t->getClassRef() && legIndex >= 0) {
+      if (t && t->getClassRef(false) && legIndex >= 0) {
          int legNumber, legOrder;
-         t->getClassRef()->splitLegNumberParallel(legIndex, legNumber, legOrder);
+         t->getClassRef(false)->splitLegNumberParallel(legIndex, legNumber, legOrder);
          wsptr = &itow(legNumber+1);
       }
       break;
@@ -727,7 +727,7 @@ const wstring &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListP
       try {
         const wstring &res = formatListStringAux(pp, par, t, t ? t->getRunner(legIndex) : 0, 
                                                                  t ? t->getClubRef() : 0,
-                                                                 t ? t->getClassRef() : 0, counter);
+                                                                 t ? t->getClassRef(false) : 0, counter);
         reentrantLock = false;
         return res;
       }
@@ -928,7 +928,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (t) {
         pRunner r1 = t->getRunner(0);
         pRunner r2 = t->getRunner(1);
-        if (r1 && r2) {
+        if (r1 && r2 && r2->tParentRunner != r1) {
           swprintf_s(wbf, L"%s / %s", r1->getName().c_str(),r2->getName().c_str());
         }
         else if (r1) {
@@ -1375,7 +1375,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       break;
 
     case lRunnerCard:
-      if (r && r->CardNo > 0)
+      if (r && r->getCardNo() > 0)
         swprintf_s(wbf, L"%d", r->getCardNo());
       break;
     case lRunnerRank:
@@ -2212,7 +2212,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     if (it->isRemoved() || it->tStatus == StatusNotCompetiting)
       continue;
 
-    if (!li.lp.selection.empty() && li.lp.selection.count(it->getClassId())==0)
+    if (!li.lp.selection.empty() && li.lp.selection.count(it->getClassId(false))==0)
       continue;
     it->apply(false, 0, true);
   }
@@ -2263,11 +2263,10 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
       if (it->isRemoved() || it->tStatus == StatusNotCompetiting)
         continue;
 
-      if (!li.lp.selection.empty() && li.lp.selection.count(it->getClassId())==0)
+      if (!li.lp.selection.empty() && li.lp.selection.count(it->getClassId(true))==0)
         continue;
 
-      //if (it->legToRun() != li.lp.legNumber && li.lp.legNumber!=-1)
-      if (!li.lp.matchLegNumber(it->getClassRef(), it->legToRun()))
+      if (!li.lp.matchLegNumber(it->getClassRef(false), it->legToRun()))
         continue;
 
       if (li.filter(EFilterExcludeDNS))
@@ -2348,29 +2347,29 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
       wstring newKey;
       printPostInfo.par.relayLegIndex = -1;
-      calculatePrintPostKey(li.subHead, gdi, li.lp, it->tInTeam, &*it, it->Club, it->Class, printPostInfo.counter, newKey);
+      calculatePrintPostKey(li.subHead, gdi, li.lp, it->tInTeam, &*it, it->Club, it->getClassRef(true), printPostInfo.counter, newKey);
 
       if (newKey != oldKey) {
         if (li.lp.pageBreak) {
           if (!oldKey.empty())
             gdi.addStringUT(gdi.getCY()-1, 0, pageNewPage, "");
         }
-        gdi.addStringUT(pagePageInfo, it->getClass());
+        gdi.addStringUT(pagePageInfo, it->getClass(true));
 
         oldKey.swap(newKey);
         printPostInfo.counter.level2=0;
         printPostInfo.counter.level3=0;
         printPostInfo.reset();
         printPostInfo.par.relayLegIndex = -1;
-        formatPrintPost(li.subHead, printPostInfo, it->tInTeam, &*it, it->Club, it->Class, 0, 0, -1);
+        formatPrintPost(li.subHead, printPostInfo, it->tInTeam, &*it, it->Club, it->getClassRef(true), 0, 0, -1);
       }
       if (li.lp.filterMaxPer==0 || printPostInfo.counter.level2<li.lp.filterMaxPer) {
         printPostInfo.reset();
         printPostInfo.par.relayLegIndex = it->tLeg;
-        formatPrintPost(li.listPost, printPostInfo, it->tInTeam, &*it, it->Club, it->Class, 0, 0, -1);
+        formatPrintPost(li.listPost, printPostInfo, it->tInTeam, &*it, it->Club, it->getClassRef(true), 0, 0, -1);
 
         if (li.listSubType==li.EBaseTypePunches) {
-          listGeneratePunches(li.subListPost, gdi, li.lp, it->tInTeam, &*it, it->Club, it->Class);
+          listGeneratePunches(li.subListPost, gdi, li.lp, it->tInTeam, &*it, it->Club, it->getClassRef(true));
         }
       }
       ++printPostInfo.counter;
@@ -2397,7 +2396,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
       if (it->isRemoved() || it->tStatus == StatusNotCompetiting)
         continue;
 
-      if (!li.lp.selection.empty() && li.lp.selection.count(it->getClassId())==0)
+      if (!li.lp.selection.empty() && li.lp.selection.count(it->getClassId(true))==0)
         continue;
       tlist.push_back(&*it);
     }
@@ -2416,7 +2415,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
     for (size_t k = 0; k < tlist.size(); k++) {
       pTeam it = tlist[k];
-      int linearLegSpec = li.lp.getLegNumber(it->getClassRef());
+      int linearLegSpec = li.lp.getLegNumber(it->getClassRef(false));
 
       if (gResult && it->getTempResult(0).getStatus() == StatusNotCompetiting)
          continue;
@@ -2475,12 +2474,12 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
             gdi.addStringUT(gdi.getCY()-1, 0, pageNewPage, "");
         }
         wstring legInfo;
-        if (linearLegSpec >= 0 && it->getClassRef()) {
+        if (linearLegSpec >= 0 && it->getClassRef(false)) {
           // Specified leg
           legInfo = lang.tl(L", Str. X#" + li.lp.getLegName());
         }
 
-        gdi.addStringUT(pagePageInfo, it->getClass() + legInfo); // Teamlist
+        gdi.addStringUT(pagePageInfo, it->getClass(true) + legInfo); // Teamlist
 
         oldKey.swap(newKey);
         printPostInfo.counter.level2=0;
@@ -2561,7 +2560,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
               printPostInfo.keepToghether = suitableBreak;
               printPostInfo.par.relayLegIndex = tr[k] ? tr[k]->tLeg : -1;
               formatPrintPost(li.subListPost, printPostInfo, &*it, tr[k],
-                              it->Club, tr[k]->Class, 0, 0, -1);
+                              it->Club, tr[k]->getClassRef(true), 0, 0, -1);
               printPostInfo.counter.level3++;
             }
           }
@@ -2579,7 +2578,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
               }
               else {
                 formatPrintPost(li.subListPost, printPostInfo, &*it, tr[usedIx[k]],
-                              it->Club, tr[usedIx[k]]->Class, 0, 0, -1);
+                              it->Club, tr[usedIx[k]]->getClassRef(true), 0, 0, -1);
               }
               printPostInfo.counter.level3++;
             }
@@ -2632,16 +2631,15 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
       }
 
       bool startClub = false;
-      pRunner pLeader = 0;
 
       for (rit = Runners.begin(); rit != Runners.end(); ++rit) {
         if (rit->isRemoved() || rit->tStatus == StatusNotCompetiting)
           continue;
 
-        if (!li.lp.selection.empty() && li.lp.selection.count(rit->getClassId())==0)
+        if (!li.lp.selection.empty() && li.lp.selection.count(rit->getClassId(true))==0)
           continue;
 
-        if (!li.lp.matchLegNumber(rit->getClassRef(), rit->legToRun()))
+        if (!li.lp.matchLegNumber(rit->getClassRef(false), rit->legToRun()))
           continue;
 
         if (li.filter(EFilterExcludeDNS))
@@ -2657,8 +2655,6 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
             continue;
         }
 
-        if (!pLeader || pLeader->Class != rit->Class)
-          pLeader = &*rit;
         if (rit->Club == &*it) {
           if (!startClub) {
             if (li.lp.pageBreak) {
@@ -2680,7 +2676,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
             printPostInfo.counter.level3=0;
             printPostInfo.reset();
             printPostInfo.par.relayLegIndex = rit->tLeg;
-            formatPrintPost(li.listPost, printPostInfo, 0, &*rit, &*it, rit->Class, 0, 0, -1);
+            formatPrintPost(li.listPost, printPostInfo, 0, &*rit, &*it, rit->getClassRef(true), 0, 0, -1);
             if (li.subListPost.empty())
               continue;
           }

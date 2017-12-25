@@ -717,6 +717,10 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
 
   vector<oClass::TrueLegInfo> stages;
   pc->getTrueStages(stages);
+  if (pc->getQualificationFinal()) {
+    while (stages.size() > 1)
+      stages.pop_back(); //Ignore for qualification race
+  }
   int leg = selectedControl[pc->getId()].getLeg();
   const bool multiDay = oe->hasPrevStage();
 
@@ -1017,6 +1021,8 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
     }
   }
 
+  gdi.setRestorePoint("classes");
+
   if (classId == -1) {
     string btn = "Events";
     if (gdi.hasField(btn))
@@ -1028,8 +1034,6 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
       gdi.sendCtrlMessage(btn);
   }
 
-
-  gdi.setRestorePoint("classes");
   gdi.refresh();
   return true;
 }

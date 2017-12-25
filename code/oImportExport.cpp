@@ -218,9 +218,9 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
       row[OEclubcity] = gdibase.recodeToNarrow(it->getClub());
     }
     row[OEnat] = gdibase.recodeToNarrow(di.getString("Nationality"));
-    row[OEclassno] = conv_is(it->getClassId());
-    row[OEclassshortname] = gdibase.recodeToNarrow(it->getClass());
-    row[OEclassname] = gdibase.recodeToNarrow(it->getClass());
+    row[OEclassno] = conv_is(it->getClassId(true));
+    row[OEclassshortname] = gdibase.recodeToNarrow(it->getClass(true));
+    row[OEclassname] = gdibase.recodeToNarrow(it->getClass(true));
 
     row[OErent] = conv_is(di.getInt("CardFee"));
     row[OEfee] = conv_is(di.getInt("Fee"));
@@ -300,7 +300,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
   vector< pair<int, int> > runnersInTeam;
   for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isRemoved() && it->tInTeam) {
-      runnersInTeam.push_back(make_pair(it->getId(), it->getClassId()) );
+      runnersInTeam.push_back(make_pair(it->getId(), it->getClassId(false)) );
     }
   }
 
@@ -597,7 +597,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
     int id = runnersInTeam[k].first;
     int classId = runnersInTeam[k].second;
     pRunner r = getRunner(id, 0);
-    if (r && !r->tInTeam && r->getClassId() == classId) {
+    if (r && !r->tInTeam && r->getClassId(false) == classId) {
       toRemove.push_back(r->getId());
     }
   }
@@ -2048,7 +2048,7 @@ void oClass::exportIOFStart(xmlparser &xml) {
 
   if (getClassType() == oClassIndividual || getClassType() == oClassIndividRelay) {
     for (oRunnerList::iterator it = oe->Runners.begin(); it!=oe->Runners.end(); ++it) {
-      if (it->getClassId() != getId() || it->isRemoved())
+      if (it->getClassId(true) != getId() || it->isRemoved())
         continue;
 
       xml.startTag("PersonStart");
@@ -2096,7 +2096,7 @@ void oClass::exportIOFStart(xmlparser &xml) {
     bool writeTeamName = !useEventor || getClassType() != oClassPatrol;
 
     for (oTeamList::iterator it = oe->Teams.begin(); it!=oe->Teams.end(); ++it) {
-      if (it->getClassId() != getId() || it->isRemoved())
+      if (it->getClassId(true) != getId() || it->isRemoved())
         continue;
 
       xml.startTag("TeamStart");
@@ -2218,7 +2218,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
       if (it->isRemoved())
         continue;
       if (it->Runners.size()>=2 && it->Runners[0] && it->Runners[1]) {
-        if (it->getClassId()!=Id) {
+        if (it->getClassId(true)!=Id) {
           if (ClassStarted) xml.endTag();
 
           if (!it->Class || it->Class->getClassType()!=oClassPatrol) {
@@ -2227,7 +2227,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             continue;
           }
 
-          if ((!classes.empty() && classes.count(it->getClassId()) == 0) || leg != -1) {
+          if ((!classes.empty() && classes.count(it->getClassId(true)) == 0) || leg != -1) {
             skipClass=true;
             ClassStarted=false;
             continue;
@@ -2236,9 +2236,9 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
           skipClass=false;
           xml.startTag("ClassResult");
           ClassStarted=true;
-          Id=it->getClassId();
+          Id=it->getClassId(true);
 
-          xml.write("ClassShortName", it->getClass());
+          xml.write("ClassShortName", it->getClass(true));
         }
 
         if (skipClass)
@@ -2315,7 +2315,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
     if (it->isRemoved() || (leg != -1 && it->tLeg != leg) || it->isVacant())
       continue;
 
-    if (it->getClassId()!=Id) {
+    if (it->getClassId(true)!=Id) {
       if (ClassStarted) xml.endTag();
 
       if (!it->Class) {
@@ -2332,7 +2332,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
         continue;
       }
 
-      if ( (!classes.empty() && classes.count(it->getClassId()) == 0) ) {
+      if ( (!classes.empty() && classes.count(it->getClassId(true)) == 0) ) {
         skipClass=true;
         ClassStarted=false;
         continue;
@@ -2341,9 +2341,9 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
       xml.startTag("ClassResult");
       ClassStarted=true;
       skipClass=false;
-      Id=it->getClassId();
+      Id=it->getClassId(true);
 
-      xml.write("ClassShortName", it->getClass());
+      xml.write("ClassShortName", it->getClass(true));
     }
 
     if (skipClass)
@@ -2419,7 +2419,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
   for(oTeamList::iterator it=Teams.begin(); it != Teams.end(); ++it) {
     if (it->isRemoved())
       continue;
-    if (it->getClassId()!=Id) {
+    if (it->getClassId(true)!=Id) {
       if (ClassStarted) {
         xml.endTag();
         ClassStarted = false;
@@ -2442,7 +2442,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
         continue;
       }
 
-      if (!classes.empty() && classes.count(it->getClassId()) == 0) {
+      if (!classes.empty() && classes.count(it->getClassId(true)) == 0) {
         skipClass=true;
         continue;
       }
@@ -2450,9 +2450,9 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
       skipClass=false;
       xml.startTag("ClassResult");
       ClassStarted=true;
-      Id=it->getClassId();
+      Id=it->getClassId(true);
 
-      xml.write("ClassShortName", it->getClass());
+      xml.write("ClassShortName", it->getClass(true));
     }
 
     if (skipClass)

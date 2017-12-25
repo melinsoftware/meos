@@ -110,22 +110,23 @@ bool TabCompetition::save(gdioutput &gdi, bool write)
   bool oldLT = oe->useLongTimes();
   wstring oldDate = oe->getDate();
   
-  if ((newZT != oldZT || 
-      longTimes != oldLT || 
-      (longTimes && date != oldDate)) && oe->classHasResults(0)) {
+  if ((newZT != oldZT ||
+    longTimes != oldLT ||
+    (longTimes && date != oldDate)) && oe->classHasResults(0)) {
     if (!gdi.ask(L"warn:changedtimezero")) {
       gdi.setText("ZeroTime", oe->getZeroTime());
       gdi.check("LongTimes", oe->useLongTimes());
       gdi.setText("Date", oe->getDate());
       return 0;
     }
-    bool updateTimes = newZT != oldZT && oe->getNumRunners() > 0 && gdi.ask(L"ask:updatetimes");
+}
+  bool updateTimes = newZT != oldZT && oe->getNumRunners() > 0 && gdi.ask(L"ask:updatetimes");
 
-    if (updateTimes) {
-      int delta = oldZT - newZT;
-      oe->updateStartTimes(delta);
-    }
+  if (updateTimes) {
+    int delta = oldZT - newZT;
+    oe->updateStartTimes(delta);
   }
+  
   oe->setDate(date);
   oe->useLongTimes(longTimes);
   oe->setName(gdi.getText("Name"));
@@ -3228,7 +3229,7 @@ void TabCompetition::welcomeToMeOS(gdioutput &gdi) {
 
 void TabCompetition::displayRunners(gdioutput &gdi, const vector<pRunner> &changedClass) const {
   for (size_t k = 0; k<changedClass.size(); k++) {
-    gdi.addStringUT(0, changedClass[k]->getName() + L" (" + changedClass[k]->getClass() + L", " +
+    gdi.addStringUT(0, changedClass[k]->getName() + L" (" + changedClass[k]->getClass(true) + L", " +
                        changedClass[k]->getStartTimeS() + L")");
   }
 }
@@ -3991,7 +3992,7 @@ void TabCompetition::checkReadyForResultExport(gdioutput &gdi, const set<int> &c
   int numVacant = 0;
 
   for (pRunner r : runners) {
-    if (!classFilter.empty() && !classFilter.count(r->getClassId()))
+    if (!classFilter.empty() && !classFilter.count(r->getClassId(false)))
       continue;
 
     if (r->isVacant())

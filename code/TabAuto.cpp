@@ -671,8 +671,11 @@ void AutoMachine::startCancelInterval(gdioutput &gdi, char *startCommand, bool c
   else if (type == IntervalSecond)
     gdi.addInput("Interval", intervalIn, 7, 0, L"Tidsintervall (sekunder):");
   gdi.dropLine(1);
-  gdi.addButton(startCommand, "Starta automaten", AutomaticCB).setExtra(getId());
-  gdi.addButton(created ? "Stop":"Cancel", "Avbryt", AutomaticCB).setExtra(getId());
+  gdi.addButton(startCommand, created ? "Starta automaten" : "OK", AutomaticCB).setExtra(getId());
+  if (!created)
+    gdi.addButton("Cancel", "Avbryt", AutomaticCB).setExtra(getId());
+
+  gdi.addButton("Stop", created ? "Avbryt" : "Stoppa automaten", AutomaticCB).setExtra(getId());
 
   gdi.popX();
   gdi.fillDown();

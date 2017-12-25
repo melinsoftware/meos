@@ -475,14 +475,14 @@ pFreePunch oEvent::addFreePunch(int time, int type, int card, bool updateStartFi
     if (tr && tr->getStatus() == StatusUnknown && time > 0) {
       tr->synchronize();
       if (type == oPunch::PunchStart) {
-        if (tr->getClassRef() && !tr->getClassRef()->ignoreStartPunch())
+        if (tr->getClassRef(false) && !tr->getClassRef(true)->ignoreStartPunch())
           tr->setStartTime(time, true, false);
       }
       else
         tr->setFinishTime(time);
 
       // Direct result
-      if (type == oPunch::PunchFinish && tr->getClassRef() && tr->getClassRef()->hasDirectResult()) {
+      if (type == oPunch::PunchFinish && tr->getClassRef(false) && tr->getClassRef(true)->hasDirectResult()) {
         if (tr->getCourse(false) == 0 && tr->getCard() == 0) {
           tr->setStatus(StatusOK, true, false, true);
         }

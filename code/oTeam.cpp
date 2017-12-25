@@ -315,7 +315,7 @@ void oTeam::setRunnerInternal(int k, pRunner r)
     Runners[k]->tInTeam = this;
     Runners[k]->tLeg = k;
     if (Class && Class->getLegType(k) != LTGroup)
-      Runners[k]->setClassId(getClassId(), false);
+      Runners[k]->setClassId(getClassId(false), false);
   }
   updateChanged();
 }
@@ -698,7 +698,7 @@ bool oTeam::compareResult(const oTeam &a, const oTeam &b)
 {
   if (a.Class != b.Class) {
     if (a.Class) {
-      if (b.Class) return a.Class->tSortIndex < b.Class->tSortIndex;
+      if (b.Class) return a.Class->tSortIndex < b.Class->tSortIndex || (a.Class->tSortIndex == b.Class->tSortIndex && a.Class->Id < b.Class->Id);
       else return true;
     }
     else return false;
@@ -728,7 +728,8 @@ bool oTeam::compareStartTime(const oTeam &a, const oTeam &b)
 {
   if (a.Class != b.Class) {
     if (a.Class) {
-      if (b.Class) return a.Class->tSortIndex<b.Class->tSortIndex;
+      if (b.Class)
+        return a.Class->tSortIndex<b.Class->tSortIndex || (a.Class->tSortIndex == b.Class->tSortIndex && a.Class->Id < b.Class->Id);
       else return true;
     }
   }
@@ -760,7 +761,8 @@ bool oTeam::compareSNO(const oTeam &a, const oTeam &b) {
   }
   else if (a.Class != b.Class) {
     if (a.Class) {
-      if (b.Class) return a.Class->tSortIndex<b.Class->tSortIndex;
+      if (b.Class) 
+        return a.Class->tSortIndex < b.Class->tSortIndex || (a.Class->tSortIndex == b.Class->tSortIndex && a.Class->Id < b.Class->Id);
       else return true;
     }
   }
@@ -928,6 +930,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
     }
 
     if (Runners[i]) {
+      pClass actualClass = Runners[i]->getClassRef(true);
       if (Runners[i]->tInTeam && Runners[i]->tInTeam!=this) {
         Runners[i]->tInTeam->correctRemove(Runners[i]);
       }
@@ -942,7 +945,8 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
         Runners[i]->tLegEquClass = i;
       }
 
-      Runners[i]->setStartNo(StartNo, setTmpOnly);
+      if (actualClass == Class)
+        Runners[i]->setStartNo(StartNo, setTmpOnly);
       if (!bib.empty() && Runners[i]->isChanged()) {
         if (bibMode == -1 && Class)
           bibMode = Class->getBibMode();
@@ -980,7 +984,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
         else
           lastStatus = Runners[i]->getStatus();
 
-        StartTypes st = pc->getStartType(i);
+        StartTypes st = actualClass == pc ? pc->getStartType(i) : actualClass->getStartType(0);
         LegTypes lt = legType;
 
         if ((lt==LTParallel || lt==LTParallelOptional) && i==0) {
@@ -1016,9 +1020,12 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                 }
               }
               if (!prs) {
-                if (lt==LTNormal || lt==LTSum || lt == LTGroup)
-                  lastStartTime=pc->getStartData(i);
-
+                if (lt == LTNormal || lt == LTSum || lt == LTGroup) {
+                  if (actualClass == pc)
+                    lastStartTime = pc->getStartData(i);
+                  else
+                    lastStartTime = actualClass->getStartData(0); // Qualification/final classes
+                }
                 Runners[i]->setStartTime(lastStartTime, false, setTmpOnly);
                 Runners[i]->tUseStartPunch=false;
               }
@@ -1740,7 +1747,7 @@ void oEvent::getTeams(int classId, vector<pTeam> &t, bool sort) {
     if (it->isRemoved())
       continue;
 
-    if (classId == 0 || it->getClassId() == classId)
+    if (classId == 0 || it->getClassId(false) == classId)
       t.push_back(&*it);
   }
 }
@@ -1855,7 +1862,7 @@ void oTeam::addTableRow(Table &table) const {
   table.set(row++, it, TID_MODIFIED, getTimeStamp(), false);
 
   table.set(row++, it, TID_NAME, getName(), true);
-  table.set(row++, it, TID_CLASSNAME, getClass(), true, cellSelection);
+  table.set(row++, it, TID_CLASSNAME, getClass(true), true, cellSelection);
   table.set(row++, it, TID_CLUB, getClub(), true, cellCombo);
 
   table.set(row++, it, TID_START, getStartTimeS(), true);
@@ -1920,7 +1927,7 @@ bool oTeam::inputData(int id, const wstring &input,
       }
       else {
         if (isName && !input.empty() && Class) {
-          pRunner r = oe->addRunner(input, getClubId(), getClassId(), 0, 0, false);
+          pRunner r = oe->addRunner(input, getClubId(), getClassId(false), 0, 0, false);
           setRunner(ix, r, true);
           output = r->getName();
         }
@@ -1968,7 +1975,7 @@ bool oTeam::inputData(int id, const wstring &input,
     case TID_CLASSNAME:
       setClassId(inputId, true);
       synchronize(true);
-      output = getClass();
+      output = getClass(true);
       break;
 
     case TID_STATUS: {
@@ -2033,7 +2040,7 @@ void oTeam::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &sele
   else if (id==TID_CLASSNAME) {
     oe->fillClasses(out, oEvent::extraNone, oEvent::filterOnlyMulti);
     out.push_back(make_pair(lang.tl(L"Ingen klass"), 0));
-    selected = getClassId();
+    selected = getClassId(true);
   }
   else if (id==TID_CLUB) {
     oe->fillClubs(out);

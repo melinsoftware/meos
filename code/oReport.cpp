@@ -405,7 +405,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
         no_club.push_back(&*r_it);
     }
 
-    if (r_it->getClassId()==0)
+    if (r_it->getClassId(false)==0)
       no_class.push_back(&*r_it);
     else if (needCourse && r_it->getCourse(false)==0)
       no_course.push_back(&*r_it);
@@ -481,7 +481,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   while(!no_course.empty() && ++i<20){
     pRunner r=no_course.front();
     no_course.pop_front();
-    wstring name = r->getClass() + L": " + r->getName();
+    wstring name = r->getClass(true) + L": " + r->getName();
     if (!r->getClub().empty())
       name += L" ("+ r->getClub()+ L")";
     gdi.addStringUT(0, name);
@@ -497,7 +497,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     while(!no_club.empty() && ++i<20){
       pRunner r=no_club.front();
       no_club.pop_front();
-      gdi.addStringUT(0, r->getClass() + L": " + r->getName());
+      gdi.addStringUT(0, r->getClass(true) + L": " + r->getName());
     }
     if (!no_club.empty()) gdi.addStringUT(1, Ellipsis);
   }
@@ -510,7 +510,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   while(!no_start.empty() && ++i<20){
     pRunner r=no_start.front();
     no_start.pop_front();
-    wstring name = r->getClass() + L": " + r->getName();
+    wstring name = r->getClass(true) + L": " + r->getName();
     if (!r->getClub().empty())
       name += L" (" + r->getClub() + L")";
     
@@ -526,7 +526,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   while(!no_card.empty() && ++i<20){
     pRunner r=no_card.front();
     no_card.pop_front();
-    wstring name = r->getClass() + L": " + r->getName();
+    wstring name = r->getClass(true) + L": " + r->getName();
     if (!r->getClub().empty())
       name += L" (" + r->getClub() + L")";
     
@@ -543,7 +543,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   while(!si_duplicate.empty() && ++i<50){
     pRunner r=si_duplicate.front();
     si_duplicate.pop_front();
-    wstring name = r->getClass() + L" / " + r->getName();
+    wstring name = r->getClass(true) + L" / " + r->getName();
     if (!r->getClub().empty())
       name += L" (" + r->getClub() + L")";
     name += L": " + itow(r->getCardNo());
@@ -566,7 +566,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
           header = true;
         }
         
-        wstring name = r->getClass() + L" / " + r->getName();
+        wstring name = r->getClass(true) + L" / " + r->getName();
         if (!r->getClub().empty())
           name += L" (" + r->getClub() + L")";
         name += L": " + itow(r->getCardNo());
@@ -589,7 +589,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     for (t_it=Teams.begin(); t_it != Teams.end(); ++t_it) {
       if (t_it->isRemoved())
         continue;
-      pClass pc=getClass(t_it->getClassId());
+      pClass pc=getClass(t_it->getClassId(true));
 
       if (pc){
         for(unsigned i=0;i<pc->getNumStages();i++){
@@ -604,7 +604,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     bool any = false;
     for (r_it=Runners.begin(); r_it != Runners.end(); ++r_it){
       if (r_it->_objectmarker>1) {
-        wstring name = r_it->getClass() + L": " + r_it->getName();
+        wstring name = r_it->getClass(true) + L": " + r_it->getName();
         if (!r_it->getClub().empty())
           name += L" (" + r_it->getClub() + L")";
     
@@ -626,7 +626,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     if (r_it->isRemoved())
       continue;
     if (r_it->_objectmarker==0){ //Only consider runners not in a team.
-      gdi.addStringUT(y, x+tab[0], 0, r_it->getClass(), tab[1]-tab[0]);
+      gdi.addStringUT(y, x+tab[0], 0, r_it->getClass(true), tab[1]-tab[0]);
       wstring name = r_it->getName();
       if (!r_it->getClub().empty())
         name += L" (" + r_it->getClub() + L")";
@@ -650,9 +650,9 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   gdi.addString("", 1, "Lag(flera)");
 
   for (t_it=Teams.begin(); t_it != Teams.end(); ++t_it){
-    pClass pc=getClass(t_it->getClassId());
+    pClass pc=getClass(t_it->getClassId(false));
 
-    gdi.addStringUT(0, t_it->getClass() + L": " + t_it->getName() + L"  " + t_it->getStartTimeS());
+    gdi.addStringUT(0, t_it->getClass(false) + L": " + t_it->getName() + L"  " + t_it->getStartTimeS());
 
     if (pc){
       for(unsigned i=0;i<pc->getNumStages();i++){
