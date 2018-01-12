@@ -289,7 +289,8 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.setInputStatus("BrowseFile", stat);
     gdi.setInputStatus("BrowseScript", stat);
     gdi.setInputStatus("HTMLRefresh", stat);
-    gdi.setInputStatus("StructuredExport", stat);
+	gdi.setInputStatus("HTMLAutoScroll", stat);
+	gdi.setInputStatus("StructuredExport", stat);
   }
   else if (bu.id == "DoPrint") {
     bool stat = gdi.isChecked(bu.id);
@@ -340,7 +341,8 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
         prm->exportFile = gdi.getText("ExportFile");
         prm->exportScript = gdi.getText("ExportScript");
         prm->structuredExport = gdi.isChecked("StructuredExport");
-        prm->htmlRefresh = gdi.isChecked("HTMLRefresh") ? t : 0;
+		    prm->htmlAutoScroll = gdi.isChecked("HTMLAutoScroll") ? t : 0;
+		    prm->htmlRefresh = gdi.isChecked("HTMLRefresh") ? t : 0;
         if (!prm->readOnly) {
           gdi.getSelection("Classes", prm->classesToPrint);
 
@@ -718,6 +720,7 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.dropLine(2.3);
   gdi.addCheckbox("StructuredExport", "Strukturerat exportformat", 0, structuredExport);
   gdi.addCheckbox("HTMLRefresh", "HTML med AutoRefresh", 0, htmlRefresh != 0);
+  gdi.addCheckbox("HTMLAutoScroll", "AutoScroll", 0, htmlAutoScroll != 0);
   gdi.dropLine(1.2);
   gdi.setCX(cx);
   gdi.addInput("ExportScript", exportScript, 32, 0, L"Skript att köra efter export:");
@@ -732,6 +735,7 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.setInputStatus("BrowseScript", doExport);
   gdi.setInputStatus("StructuredExport", doExport);
   gdi.setInputStatus("HTMLRefresh", doExport);
+  gdi.setInputStatus("HTMLAutoScroll", doExport);
   gdi.setInputStatus("PrinterSetup", doPrint);
 
   if (!readOnly) {
@@ -815,9 +819,9 @@ void PrintResultMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       if (doExport) {
         if (!exportFile.empty()) {
           if (structuredExport)
-            gdiPrint.writeTableHTML(exportFile, oe->getName(), htmlRefresh);
+            gdiPrint.writeTableHTML(exportFile, oe->getName(), htmlRefresh, htmlAutoScroll);
           else
-            gdiPrint.writeHTML(exportFile, oe->getName(), htmlRefresh);
+            gdiPrint.writeHTML(exportFile, oe->getName(), htmlRefresh,htmlAutoScroll);
 
           if (!exportScript.empty()) {
             ShellExecute(NULL, NULL, exportScript.c_str(), exportFile.c_str(), NULL, SW_HIDE);

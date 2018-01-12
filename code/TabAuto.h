@@ -99,6 +99,7 @@ protected:
   oListInfo listInfo;
   bool readOnly;
   int htmlRefresh;
+  int htmlAutoScroll;
   bool lock; // true while printing
   bool errorLock; // true while showing error dialog
 public:
@@ -124,6 +125,7 @@ public:
     doExport = false;
     doPrint = true;
     structuredExport = true;
+    htmlAutoScroll = false;
     htmlRefresh = v;
   }
   PrintResultMachine(int v, const oListInfo &li):AutoMachine("Utskrift / export"), listInfo(li) {
@@ -138,6 +140,7 @@ public:
     doExport = false;
     doPrint = true;
     structuredExport = false;
+    htmlAutoScroll = false;
     htmlRefresh = v;
   }
   friend class TabAuto;

@@ -871,7 +871,7 @@ void oEvent::printInvoices(gdioutput &gdi, InvoicePrintType type,
           pdf.generatePDF(gdi, path + filename, lang.tl("Faktura"), L"", gdi.getTL());
         }
         else
-          gdi.writeHTML(path + filename, lang.tl(L"Faktura"), 0);
+          gdi.writeHTML(path + filename, lang.tl(L"Faktura"), 0,0);
 
         clubId.insert(it->getId());
         fees.push_back(pay);
