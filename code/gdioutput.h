@@ -395,12 +395,12 @@ public:
 
   void pasteText(const char *id);
 
-  bool writeHTML(const wstring &file, const wstring &title, int refreshTimeOut) const;
-  bool writeTableHTML(const wstring &file, const wstring &title, int refreshTimeOut) const;
+  bool writeHTML(const wstring &file, const wstring &title, int refreshTimeOut, int autoScroll) const;
+  bool writeTableHTML(const wstring &file, const wstring &title, int refreshTimeOut, int autoScroll) const;
   bool writeTableHTML(ostream &fout, 
                       const wstring &title,
                       bool simpleFormat,
-                      int refreshTimeOut) const;
+                      int refreshTimeOut, int autoScroll) const;
 
   void print(pEvent oe, Table *t=0, bool printMeOSHeader=true, bool noMargin=false);
   void print(PrinterObject &po, pEvent oe, bool printMeOSHeader=true, bool noMargin=false);

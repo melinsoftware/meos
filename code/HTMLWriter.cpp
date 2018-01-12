@@ -187,7 +187,7 @@ static void getStyle(const map< pair<gdiFonts, string>, pair<string, string> > &
   }
 }
 
-bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refreshTimeOut) const
+bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refreshTimeOut, int autoscroll) const
 {
   checkWriteAccess(file);
   ofstream fout(file.c_str());
@@ -271,6 +271,25 @@ bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refresh
   fout << toUTF8(lang.tl("Skapad av ")) + "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: " << bf1 << " "<< bf2 << "\n";
   fout << "</p>\n";
 
+  if (autoscroll) {
+    fout << "<script>\n";
+    fout << "	 var dir = 1\n";
+    fout << "	 var extremity_wait_sec = 2\n";
+    fout << "	 var scroll_sec = .05\n";
+    fout << "	 var scroll_amount = 2\n";
+    fout << "	 function scrollMore() {\n";
+    fout << "    var current = window.pageYOffset\n";
+    fout << "    window.scrollBy(0, scroll_amount * dir)\n";
+    fout << "    if (dir != 0 && Math.abs(current - window.pageYOffset) < scroll_amount / 2.0) {\n";
+    fout << "      var nextDir = dir * -1\n";
+    fout << "      dir = 0\n";
+    fout << "      setTimeout(function() { dir = nextDir }, 1000 * extremity_wait_sec)\n";
+    fout << "    }\n";
+    fout << "  }\n";
+    fout << "  setInterval(scrollMore, 1000 * scroll_sec)\n";
+    fout << "</script>\n";
+  }
+
   fout << "</body>\n";
   fout << "</html>\n";
 
@@ -293,7 +312,7 @@ bool sortTL_X(const TextInfo *a, const TextInfo *b)
 
 
 bool gdioutput::writeTableHTML(const wstring &file, 
-                               const wstring &title, int refreshTimeOut) const
+                               const wstring &title, int refreshTimeOut, int autoScroll) const
 {
   checkWriteAccess(file);
   ofstream fout(file.c_str());
@@ -301,13 +320,14 @@ bool gdioutput::writeTableHTML(const wstring &file,
   if (fout.bad())
     return false;
 
-  return writeTableHTML(fout, title, false, refreshTimeOut);
+  return writeTableHTML(fout, title, false, refreshTimeOut,autoScroll);
 }
 
 bool gdioutput::writeTableHTML(ostream &fout, 
                                const wstring &title,
                                bool simpleFormat,
-                               int refreshTimeOut) const {
+                               int refreshTimeOut,
+	                           int autoscroll) const {
 
   fout << "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\"\n" <<
           "          \"http://www.w3.org/TR/html4/loose.dtd\">\n\n";
@@ -516,6 +536,25 @@ bool gdioutput::writeTableHTML(ostream &fout,
          << toUTF8(meos) << "</i></a>: " << bf1 << " "<< bf2 << "\n";
     fout << "</p><br>\n";
   }
+  if (autoscroll) {
+	  fout << "<script>\n";
+	  fout << "	 var dir = 1\n";
+	  fout << "	 var extremity_wait_sec = 2\n";
+	  fout << "	 var scroll_sec = .05\n";
+	  fout << "	 var scroll_amount = 2\n";
+	  fout << "	 function scrollMore() {\n";
+	  fout << "    var current = window.pageYOffset\n";
+	  fout << "    window.scrollBy(0, scroll_amount * dir)\n";
+	  fout << "    if (dir != 0 && Math.abs(current - window.pageYOffset) < scroll_amount / 2.0) {\n";
+	  fout << "      var nextDir = dir * -1\n";
+	  fout << "      dir = 0\n";
+	  fout << "      setTimeout(function() { dir = nextDir }, 1000 * extremity_wait_sec)\n";
+	  fout << "    }\n";
+	  fout << "  }\n";
+	  fout << "  setInterval(scrollMore, 1000 * scroll_sec)\n";
+	  fout << "</script>\n";
+  }
+
   fout << "</body>\n";
   fout << "</html>\n";
 

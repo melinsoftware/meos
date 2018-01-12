@@ -1766,7 +1766,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oe->generateListInfo(par,  gdi.getLineHeight(), li);
         gdioutput tGdi("temp", gdi.getScale(), gdi.getCP());
         oe->generateList(tGdi, true, li, false);
-        tGdi.writeTableHTML(save, oe->getName(), 0);
+        tGdi.writeTableHTML(save, oe->getName(), 0,0);
         tGdi.openDoc(save.c_str());
       }
       loadPage(gdi);
@@ -1851,7 +1851,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oe->generateListInfo(par,  gdi.getLineHeight(), li);
         gdioutput tGdi("temp", gdi.getScale(), gdi.getCP());
         oe->generateList(tGdi, true, li, false);
-        tGdi.writeTableHTML(save, oe->getName(), 0);
+        tGdi.writeTableHTML(save, oe->getName(), 0,0);
         tGdi.openDoc(save.c_str());
       }
 

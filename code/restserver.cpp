@@ -263,7 +263,7 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
       }
       ref.generateList(gdiPrint, true, *res->second.second, false);
       wstring exportFile = getTempFile();
-      gdiPrint.writeHTML(exportFile, ref.getName(), 30);
+      gdiPrint.writeHTML(exportFile, ref.getName(), 30,0);
       ifstream fin(exportFile.c_str());
       string rbf;
       while (std::getline(fin, rbf)) {

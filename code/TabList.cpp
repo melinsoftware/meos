@@ -333,17 +333,17 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
 
       if (!file.empty()) {
         if (index == 1)
-          gdi.writeTableHTML(file, oe->getName(), 0);
+          gdi.writeTableHTML(file, oe->getName(), 0,0);
         else {
           assert(index == 2);
-          gdi.writeHTML(file, oe->getName(), 0);
+          gdi.writeHTML(file, oe->getName(), 0,0);
         }
         gdi.openDoc(file.c_str());
       }
     }
     else if (bi.id=="Copy") {
       ostringstream fout;
-      gdi.writeTableHTML(fout, L"MeOS", true, 0);
+      gdi.writeTableHTML(fout, L"MeOS", true, 0,0);
       string res = fout.str();
       gdi.copyToClipboard(res, L"");
     }
