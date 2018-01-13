@@ -187,31 +187,6 @@ static void getStyle(const map< pair<gdiFonts, string>, pair<string, string> > &
   }
 }
 
-string InsertScrollScript()
-{
-  string s;
-  s = "<script>\n";
-  s+= "	 var dir = sessionStorage.getItem('direction') || 1\n";
-  s+= "	 var extremity_wait_sec = 2\n";
-  s+= "	 var scroll_sec = .05\n";
-  s+= "	 var scroll_amount = 2\n";
-  s+= "	 function scrollMore() {\n";
-  s+= "    window.scrollBy(0, scroll_amount * dir);\n";
-  s+= "    var current = window.pageYOffset + window.innerHeight;\n";
-  s+= "    var body = document.body, html = document.documentElement;\n";
-  s+= "    var height = Math.max( body.scrollHeight, body.offsetHeight,html.clientHeight, html.scrollHeight, html.offsetHeight);\n";
-  s+= "    if ((dir > 0 && current >= height) || (dir < 0 && current <= window.innerHeight)) {\n";
-  s+= "      var nextDir = dir * -1\n";
-  s+= "      dir = 0\n";
-  s+= "      setTimeout(function() { dir = nextDir; sessionStorage.setItem('direction', dir)}, 1000 * extremity_wait_sec);\n";
-  s+= "    }\n";
-  s+= "  }\n";
-  s+= "  setInterval(scrollMore, 1000 * scroll_sec);\n";
-  s+= "</script>\n";
-
-  return s;
-}
-
 bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refreshTimeOut, int autoscroll) const
 {
   checkWriteAccess(file);
@@ -296,9 +271,23 @@ bool gdioutput::writeHTML(const wstring &file, const wstring &title, int refresh
   fout << toUTF8(lang.tl("Skapad av ")) + "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: " << bf1 << " "<< bf2 << "\n";
   fout << "</p>\n";
 
-  if (autoscroll)
-  {
-    fout << InsertScrollScript();
+  if (autoscroll) {
+    fout << "<script>\n";
+    fout << "	 var dir = 1\n";
+    fout << "	 var extremity_wait_sec = 2\n";
+    fout << "	 var scroll_sec = .05\n";
+    fout << "	 var scroll_amount = 2\n";
+    fout << "	 function scrollMore() {\n";
+    fout << "    var current = window.pageYOffset\n";
+    fout << "    window.scrollBy(0, scroll_amount * dir)\n";
+    fout << "    if (dir != 0 && Math.abs(current - window.pageYOffset) < scroll_amount / 2.0) {\n";
+    fout << "      var nextDir = dir * -1\n";
+    fout << "      dir = 0\n";
+    fout << "      setTimeout(function() { dir = nextDir }, 1000 * extremity_wait_sec)\n";
+    fout << "    }\n";
+    fout << "  }\n";
+    fout << "  setInterval(scrollMore, 1000 * scroll_sec)\n";
+    fout << "</script>\n";
   }
 
   fout << "</body>\n";
@@ -547,9 +536,23 @@ bool gdioutput::writeTableHTML(ostream &fout,
          << toUTF8(meos) << "</i></a>: " << bf1 << " "<< bf2 << "\n";
     fout << "</p><br>\n";
   }
-  if (autoscroll)
-  {
-    fout << InsertScrollScript();
+  if (autoscroll) {
+	  fout << "<script>\n";
+	  fout << "	 var dir = 1\n";
+	  fout << "	 var extremity_wait_sec = 2\n";
+	  fout << "	 var scroll_sec = .05\n";
+	  fout << "	 var scroll_amount = 2\n";
+	  fout << "	 function scrollMore() {\n";
+	  fout << "    var current = window.pageYOffset\n";
+	  fout << "    window.scrollBy(0, scroll_amount * dir)\n";
+	  fout << "    if (dir != 0 && Math.abs(current - window.pageYOffset) < scroll_amount / 2.0) {\n";
+	  fout << "      var nextDir = dir * -1\n";
+	  fout << "      dir = 0\n";
+	  fout << "      setTimeout(function() { dir = nextDir }, 1000 * extremity_wait_sec)\n";
+	  fout << "    }\n";
+	  fout << "  }\n";
+	  fout << "  setInterval(scrollMore, 1000 * scroll_sec)\n";
+	  fout << "</script>\n";
   }
 
   fout << "</body>\n";
