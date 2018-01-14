@@ -192,11 +192,13 @@ string InsertScrollScript()
   string s;
   s = "<script>\n";
   s+= "	 var dir = sessionStorage.getItem('direction') || 1\n";
+  s+= "	 window.scrollBy(0, sessionStorage.getItem('scroll_position'))\n";
   s+= "	 var extremity_wait_sec = 2\n";
   s+= "	 var scroll_sec = .05\n";
   s+= "	 var scroll_amount = 2\n";
   s+= "	 function scrollMore() {\n";
   s+= "    window.scrollBy(0, scroll_amount * dir);\n";
+  s+= "    sessionStorage.setItem('scroll_position', window.pageYOffset);\n";
   s+= "    var current = window.pageYOffset + window.innerHeight;\n";
   s+= "    var body = document.body, html = document.documentElement;\n";
   s+= "    var height = Math.max( body.scrollHeight, body.offsetHeight,html.clientHeight, html.scrollHeight, html.offsetHeight);\n";
