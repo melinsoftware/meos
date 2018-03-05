@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -134,6 +134,9 @@ class IOF30Interface {
 
   bool matchStageFilter(const set<int> &stageFilter, const xmlList &races);
 
+  set<string> idProviders;
+  string preferredIdProvider;
+
   void readEvent(gdioutput &gdi, const xmlobject &xo,
                  map<int, vector<LegInfo> > &teamClassConfig);
   pRunner readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam team,
@@ -261,9 +264,14 @@ class IOF30Interface {
   void writeFullCourse(xmlparser &xml, const oCourse &c,
                          const map<int, wstring> &ctrlId2ExportId);
 
+  void readId(const xmlobject &person, int &pid, __int64 &extId) const;
+
 public:
   IOF30Interface(oEvent *oe, bool forceSplitFee);
   virtual ~IOF30Interface() {}
+
+  void getIdTypes(vector<string> &types);
+  void setPreferredIdType(const string &type);
 
   void readEventList(gdioutput &gdi, xmlobject &xo);
 

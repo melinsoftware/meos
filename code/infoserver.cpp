@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,8 @@ void base64_encode(const vector<BYTE> &input, string &output);
 extern gdioutput *gdi_main;
 
 // Encode a vector vector int {{1}, {1,2,3}, {}, {4,5}} as "1;1,2,3;;4,5"
-static void packIntInt(vector< vector<int> > v, wstring &def) {
+static void packIntInt(const vector< vector<int> > &v, wstring &def) {
+  def = L"";
   for (size_t j = 0; j < v.size(); j++) {
     if (j>0)
       def += L";";
@@ -44,6 +45,16 @@ static void packIntInt(vector< vector<int> > v, wstring &def) {
         def += L",";
       def += itow(v[j][k]);
     }
+  }
+}
+
+// Encode a vector vector int {1,2,3} as "1,2,3"
+static void packInt(const vector<int> &v, wstring &def) {
+  def = L"";
+  for (size_t j = 0; j < v.size(); j++) {
+    if (j>0)
+      def += L",";
+    def += itow(v[j]);
   }
 }
 
@@ -88,6 +99,7 @@ InfoBaseCompetitor::InfoBaseCompetitor(int id) : InfoBase(id) {
 InfoCompetitor::InfoCompetitor(int id) : InfoBaseCompetitor(id) {
   totalStatus = 0;
   inputTime = 0;
+  course = 0;
 }
 
 InfoTeam::InfoTeam(int id) : InfoBaseCompetitor(id) {
@@ -162,7 +174,7 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
     map<int, InfoClass>::iterator res = classes.find(wid);
     if (res == classes.end())
       res = classes.insert(make_pair(wid, InfoClass(wid))).first;
-    if (res->second.synchronize(*cls[k], ctrls))
+    if (res->second.synchronize(withCourse, *cls[k], ctrls))
       needCommit(res->second);
   }
 
@@ -276,12 +288,29 @@ void InfoRadioControl::serialize(xmlbuffer &xml, bool diffOnly) const {
   xml.write("ctrl", prop, name);
 }
 
-bool InfoClass::synchronize(oClass &c, const set<int> &ctrls) {
+bool InfoClass::synchronize(bool includeCourses, oClass &c, const set<int> &ctrls) {
   const wstring &n = c.getName();
   int no = c.getSortIndex();
   bool mod = false;
+  
   vector< vector<int> > rc;
   size_t s = c.getNumStages();
+  
+  if (includeCourses) {
+    set<int> crsSet;
+    for (size_t i = 0; i <= s; i++) {
+      vector<pCourse> crs;
+      c.getCourses(i, crs);
+      for (pCourse pc : crs)
+        crsSet.insert(pc->getId());
+    }
+    vector<int> newCrs(crsSet.begin(), crsSet.end());
+
+    if (newCrs != courses) {
+      courses = newCrs;
+      mod = true;
+    }
+  }
 
   if (s > 0) {
     linearLegNumberToActual.clear();
@@ -345,6 +374,10 @@ void InfoClass::serialize(xmlbuffer &xml, bool diffOnly) const {
   wstring def;
   packIntInt(radioControls, def);
   prop.push_back(make_pair("radio", def));
+  if (courses.size() > 0) {
+    packInt(courses, def);
+    prop.push_back(make_pair("crs", def));
+  }
   xml.write("cls", prop, name);
 }
 
@@ -373,13 +406,16 @@ void InfoCompetition::serialize(xmlbuffer &xml, bool diffOnly) const {
   xml.write("competition", prop, name);
 }
 
-void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly) const {
+void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) const {
   vector< pair<string, wstring> > prop;
   prop.push_back(make_pair("org", itow(organizationId)));
   prop.push_back(make_pair("cls", itow(classId)));
   prop.push_back(make_pair("stat", itow(status)));
   prop.push_back(make_pair("st", itow(startTime)));
   prop.push_back(make_pair("rt", itow(runningTime)));
+  if (course != 0)
+    prop.push_back(make_pair("crs", itow(course)));
+
   xml.write("base", prop, name);
 }
 
@@ -426,20 +462,32 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
   return ch;
 }
 
-bool InfoCompetitor::synchronize(bool useTotalResults, oRunner &r) {
+bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &r) {
   bool ch = synchronizeBase(r);
   changeTotalSt = r.getEvent()->hasPrevStage() || r.getLegNumber()>0; // Always write full attributes
   
   int s = StatusOK;
   int legInput = 0;
   
+  int oldCourse = course;
+  if (useCourse) {
+    auto crs = r.getCourse(false);
+    course = crs ? crs->getId() : 0;
+  }
+  else {
+    course = 0;
+  }
+
+  if (oldCourse != course)
+    ch = true;
+
   pTeam t = r.getTeam();
   if (useTotalResults) {
     legInput = r.getTotalTimeInput() * 10;
     s = r.getTotalStatusInput();
   }
   else if (t && r.getLegNumber() > 0) {
-    legInput = t->getLegRunningTime(r.getLegNumber() - 1, false);
+    legInput = t->getLegRunningTime(r.getLegNumber() - 1, false) * 10;
     s  = t->getLegStatus(r.getLegNumber() - 1, false);
   }
 
@@ -460,7 +508,9 @@ bool InfoCompetitor::synchronize(bool useTotalResults, oRunner &r) {
 
 bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
   bool useTotalResults = cmp.includeTotalResults();
-  bool ch = synchronize(useTotalResults, r);
+  bool inludeCourse = cmp.includeCourse();
+
+  bool ch = synchronize(useTotalResults, inludeCourse, r);
 
   vector<RadioTime> newRT;
   if (r.getClassId(false) > 0)  {
@@ -493,7 +543,8 @@ void InfoCompetitor::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector< pair<string, wstring> > sprop;
   sprop.push_back(make_pair("id", itow(getId())));
   xmlbuffer &subTag = xml.startTag("cmp", sprop);
-  InfoBaseCompetitor::serialize(subTag, diffOnly);
+  InfoBaseCompetitor::serialize(subTag, diffOnly, course);
+
   if (radioTimes.size() > 0 && (!diffOnly || changeRadio)) {
     string radio;
     radio.reserve(radioTimes.size() * 12);
@@ -553,7 +604,7 @@ void InfoTeam::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector< pair<string, wstring> > prop;
   prop.push_back(make_pair("id", itow(getId())));
   xmlbuffer &sub = xml.startTag("tm", prop);
-  InfoBaseCompetitor::serialize(sub, diffOnly);
+  InfoBaseCompetitor::serialize(sub, diffOnly, 0);
   wstring def;
   packIntInt(competitors, def);
   prop.clear();

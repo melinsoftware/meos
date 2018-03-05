@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ wstring getMeosFullVersion();
 wstring getMajorVersion();
 wstring getMeosCompectVersion();
 
-void getSupporters(vector<string> &supp);
+void getSupporters(vector<wstring> &supp);
 
 int countWords(const wchar_t *p);
 
@@ -191,9 +191,10 @@ int toLowerStripped(wchar_t c);
 const wchar_t *canonizeName(const wchar_t *name);
 
 /** String distance between 0 and 1. 0 is equal*/
-//double stringDistance(const char *a, const char *b);
 double stringDistance(const wchar_t *a, const wchar_t *b);
 
+/** Return how close sample is to target. 1.0 means equal*/
+double stringDistanceAssymetric(const wstring &target, const wstring &sample);
 
 /** Get a number suffix, Start 1 -> 1. Zero for none*/
 int getNumberSuffix(const string &str);

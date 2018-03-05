@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -189,6 +189,7 @@ private:
   string resultModule;
   bool supportFromControl;
   bool supportToControl;
+  bool hideLegSelection;
 
   enum ListIndex {MLHead = 0, MLSubHead = 1, MLList = 2, MLSubList=3};
   MetaListPost &add(ListIndex ix, const MetaListPost &post);
@@ -250,6 +251,9 @@ public:
 
   void getResultModule(const oEvent &oe, vector< pair<wstring, size_t> > &modules, int &currentModule) const;
   const string &getResultModule() const {return resultModule;}
+
+  MetaList &setSupportLegSelection(bool state);
+  bool supportLegSelection() const;
 
   MetaList &setSupportFromTo(bool from, bool to);
   bool supportFrom() const {return supportFromControl;}

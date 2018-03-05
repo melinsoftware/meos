@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,10 +59,20 @@ static int OnlineCB(gdioutput *gdi, int type, void *data) {
         if (gdi->hasField("IncludeTotal")) {
           gdi->setInputStatus("IncludeTotal", lbi.data == 1);
         }
+        if (gdi->hasField("IncludeCourse")) {
+          gdi->setInputStatus("IncludeCourse", lbi.data == 1);
+        }
       }
     }
   }
   return 0;
+}
+
+OnlineResults::OnlineResults() : AutoMachine("Onlineresultat"), infoServer(nullptr), dataType(1),
+ zipFile(true), includeCourse(false),
+ includeTotal(false), sendToURL(false), sendToFile(false),
+ cmpId(0), exportCounter(1), bytesExported(0), lastSync(0) {
+
 }
 
 OnlineResults::~OnlineResults() {
@@ -125,9 +135,11 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.addItem("Format", L"IOF XML 3.0", 3);
   gdi.selectItemByData("Format", dataType);
 
+  gdi.addCheckbox("IncludeCourse", "Inkludera bana", 0, includeCourse);
+
   gdi.addCheckbox("Zip", "Packa stora filer (zip)", 0, zipFile);
   if (oe.hasPrevStage()) {
-    gdi.addCheckbox("IncludeTotal", "Inkludera resultat från tidigare etapper", 0, zipFile);
+    gdi.addCheckbox("IncludeTotal", "Inkludera resultat från tidigare etapper", 0, includeTotal);
     InfoCompetition &ic = getInfoServer();
     gdi.check("IncludeTotal", ic.includeTotalResults());
     gdi.setInputStatus("IncludeTotal", dataType == 1);
@@ -251,14 +263,16 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
   prefix = gdi.getText("Prefix");
   exportScript = gdi.getText("ExportScript");
   zipFile = gdi.isChecked("Zip");
-  bool includeTotal = gdi.hasField("IncludeTotal") && gdi.isChecked("IncludeTotal");
+  includeTotal = gdi.hasField("IncludeTotal") && gdi.isChecked("IncludeTotal");
+  includeCourse = gdi.hasField("IncludeCourse") && gdi.isChecked("IncludeCourse");
 
   ListBoxInfo lbi;
   gdi.getSelectedItem("Format", lbi);
   dataType = lbi.data;
-  if (dataType == 1)
+  if (dataType == 1) {
     getInfoServer().includeTotalResults(includeTotal);
-
+    getInfoServer().includeCourse(includeCourse);
+  }
   gdi.getSelection("Classes", classes);
   if (sendToFile) {
     if (folder.empty()) {
@@ -533,7 +547,7 @@ void OnlineResults::formatError(gdioutput &gdi) {
 InfoCompetition &OnlineResults::getInfoServer() const {
   if (!infoServer)
     infoServer = new InfoCompetition(1);
-
+  
   return *infoServer;
 }
 

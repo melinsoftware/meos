@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ oPunch::oPunch(oEvent *poe): oBase(poe)
   hasBeenPlayed=false;
   tMatchControlId = -1;
   tRogainingIndex = 0;
+  anyRogainingMatchControlId = -1;
   tIndex = -1;
 }
 
@@ -115,6 +116,11 @@ wstring oPunch::getTime() const
     return oe->getAbsTime(Time+tTimeAdjust);
   else return makeDash(L"-");
 }
+
+int oPunch::getTimeInt() const {
+  return Time;
+}
+
 
 int oPunch::getAdjustedTime() const
 {

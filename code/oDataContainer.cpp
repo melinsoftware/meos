@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -484,16 +484,16 @@ void oDataContainer::set(oBase *ob, const xmlobject &xo) {
   allDataStored(ob);
 }
 
-void oDataContainer::buildDataFields(gdioutput &gdi) const
+void oDataContainer::buildDataFields(gdioutput &gdi, int maxFieldSize) const
 {
   vector<string> fields;
   for (size_t k = 0; k < ordered.size(); k++)
     fields.push_back(ordered[k].Name);
 
-  buildDataFields(gdi, fields);
+  buildDataFields(gdi, fields, maxFieldSize);
 }
 
-void oDataContainer::buildDataFields(gdioutput &gdi, const vector<string> &fields) const
+void oDataContainer::buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const
 {
   for (size_t k=0;k<fields.size();k++) {
     //map<string, oDataInfo>::const_iterator it=index.find(fields[k]);
@@ -513,10 +513,10 @@ void oDataContainer::buildDataFields(gdioutput &gdi, const vector<string> &field
         gdi.addInput(Id, L"", 6, 0, gdi.widen(di.Description) + L":");
     }
     else if (di.Type==oDTString){
-      gdi.addInput(Id, L"", min(di.Size+2, 30), 0, gdi.widen(di.Description) + L":");
+      gdi.addInput(Id, L"", min(di.Size+2, maxFieldSize), 0, gdi.widen(di.Description) + L":");
     }
     else if (di.Type==oDTStringDynamic){
-      gdi.addInput(Id, L"", 30, 0, gdi.widen(di.Description) + L":");
+      gdi.addInput(Id, L"", maxFieldSize, 0, gdi.widen(di.Description) + L":");
     }
   }
 }

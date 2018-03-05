@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -201,6 +201,7 @@ MetaList::MetaList() {
   sortOrder = SortByName;
   supportFromControl = false;
   supportToControl = false;
+  hideLegSelection = false;
 }
 
 MetaListPost::MetaListPost(EPostType type_, EPostType align_, int leg_) : type(type_),
@@ -264,6 +265,7 @@ void MetaList::initUniqueIndex() const {
   yx = yx * 31 + checksum(DynamicResult::undecorateTag(resultModule));
   yx = yx * 31 + supportFromControl;
   yx = yx * 31 + supportToControl;
+  yx = yx * 37 + hideLegSelection;
 
   for (set<EFilterList>::const_iterator it = filter.begin(); it != filter.end(); ++it)
     yx = yx * 31 + *it;
@@ -530,7 +532,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       sampleClass = cls[0];
   }
   pair<int, bool> parLegNumber = par.getLegInfo(sampleClass);
-
+  bool capitalizeTitle = lang.capitalizeWords();
   resultToIndex.clear();
   /*if (large == false && par.pageBreak == false) {*/
   {
@@ -545,6 +547,9 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
         string label = "P" + itos(0*1000 + j*100 + k);
         wstring text = makeDash(encode(cline[k].text));
+        if (capitalizeTitle)
+          capitalizeWords(text);
+
         gdiFonts font = normalText;
         if (j == 0)
           font = boldLarge;
@@ -603,7 +608,11 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       if (mp.font != formatIgnore)
         font = mp.font;
 
-      oPrintPost &added = li.addSubHead(oPrintPost(mp.type, encode(mp.text), font|mp.textAdjust,
+      wstring text = encode(mp.text);
+      if (capitalizeTitle)
+        capitalizeWords(text);
+
+      oPrintPost &added = li.addSubHead(oPrintPost(mp.type, text, font|mp.textAdjust,
                                         pos.get(label, s_factor), dy + subhead_dy, cline[k].leg == -1 ? parLegNumber : make_pair(cline[k].leg, true))).
                                         setFontFace(fontFaces[MLSubHead].font,
                                                     fontFaces[MLSubHead].scale);
@@ -1052,6 +1061,8 @@ void MetaList::save(xmlparser &xml, const oEvent *oe) const {
     xml.write("SupportFrom", supportFromControl);
   if (supportToControl)
     xml.write("SupportTo", supportToControl);
+  if (hideLegSelection)
+    xml.write("HideLegSelection", hideLegSelection);
 
   for (set<EFilterList>::const_iterator it = filter.begin(); it != filter.end(); ++it)
     xml.write("Filter", "name", filterToSymbol[*it]);
@@ -1107,6 +1118,7 @@ void MetaList::load(const xmlobject &xDef) {
   }
   supportFromControl = xDef.getObjectBool("SupportFrom");
   supportToControl = xDef.getObjectBool("SupportTo");
+  hideLegSelection =xDef.getObjectBool("HideLegSelection");
 
   string tmp;
   xDef.getObjectString("SortOrder", tmp);
@@ -1782,6 +1794,7 @@ void MetaList::initSymbols() {
     orderToSymbol[ClassTotalResult] = "ClassTotalResult";
     orderToSymbol[ClassTeamLegResult] = "ClassTeamLegResult";
     orderToSymbol[CourseResult] = "CourseResult";
+    orderToSymbol[CourseStartTime] = "CourseStartTime";
     orderToSymbol[ClassTeamLeg] = "ClassTeamLeg";
     orderToSymbol[Custom] = "CustomSort";
 
@@ -1801,6 +1814,7 @@ void MetaList::initSymbols() {
     filterToSymbol[EFilterRentCard] = "FilterRentCard";
     filterToSymbol[EFilterHasCard] = "FilterHasCard";
     filterToSymbol[EFilterExcludeDNS] = "FilterStarted";
+    filterToSymbol[EFilterExcludeCANCEL] = "FilterNoCancel";
     filterToSymbol[EFilterVacant] = "FilterNotVacant";
     filterToSymbol[EFilterOnlyVacant] = "FilterOnlyVacant";
     filterToSymbol[EFilterHasNoCard] = "FilterNoCard";
@@ -2129,7 +2143,7 @@ void MetaListContainer::setupListInfo(int firstIndex,
       li.Name = lang.tl(ml.getListName());
       li.listType = ml.getListType();
       li.supportClasses = ml.supportClasses();
-      li.supportLegs = ml.getListType() == oListInfo::EBaseTypeTeam;
+      li.supportLegs = (ml.getListType() == oListInfo::EBaseTypeTeam) && ml.supportLegSelection();
       li.supportParameter = !ml.getResultModule().empty();
       li.supportLarge = true;
       li.supportFrom = ml.supportFrom();
@@ -2381,6 +2395,15 @@ MetaList &MetaList::setResultModule(const oEvent &oe, int moduleIx) {
     }
   }
   throw meosException("Unknown result module");
+}
+
+MetaList &MetaList::setSupportLegSelection(bool state) {
+  hideLegSelection = !state;
+  return *this;
+}
+
+bool MetaList::supportLegSelection() const {
+  return !hideLegSelection;
 }
 
 MetaList &MetaList::setSupportFromTo(bool from, bool to) {

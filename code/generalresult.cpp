@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -221,7 +221,7 @@ void GeneralResult::sortTeamMembers(vector<oRunner *> &runners) const {
 template<class T> void GeneralResult::sort(vector<T *> &rt, SortOrder so) const {
   PrincipalSort ps = ClassWise;
 
-  if (so == CourseResult)
+  if (so == CourseResult || so == CourseStartTime)
     ps = CourseWise;
 
   else if (so == SortByName || so == SortByFinishTimeReverse ||
@@ -952,6 +952,7 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
     parser.declareSymbol("CardControls", "Runner's card, matched control ids (-1 for unmatched punches)", true);
 
     parser.declareSymbol("Course", "Runner's course", true);
+    parser.declareSymbol("CourseId", "Runner's course id", false);
     parser.declareSymbol("CourseLength", "Length of course", false);
     
     parser.declareSymbol("SplitTimes", "Runner's split times", true);
@@ -979,6 +980,10 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
 
     parser.declareSymbol("RunnerOutputTimes", "Runner's method output times", true, true);
     parser.declareSymbol("RunnerOutputNumbers", "Runner's method output numbers", true, true);
+
+    parser.declareSymbol("PatrolRogainingScore", "Patrol score, rogaining", false);
+    parser.declareSymbol("PatrolRogainingReduction", "Patrol score reduction", false);
+    parser.declareSymbol("PatrolRogainingOvertime", "Patrol overtime", false);
   }
 
   parser.declareSymbol("MaxTime", "Maximum allowed running time", false);
@@ -1111,6 +1116,7 @@ void DynamicResult::prepareCalculations(oTeam &team) const {
   parser.removeSymbol("CardTimes");
   parser.removeSymbol("Course");
   parser.removeSymbol("CourseLength");
+  parser.removeSymbol("CourseId");
   parser.removeSymbol("LegPlace");
   parser.removeSymbol("LegTimeAfter");
   parser.removeSymbol("LegTimeDeviation");
@@ -1128,6 +1134,10 @@ void DynamicResult::prepareCalculations(oTeam &team) const {
   parser.addSymbol("RunnerStart", start);
   parser.addSymbol("RunnerFinish", finish);
   parser.addSymbol("RunnerPoints", points);
+
+  parser.addSymbol("PatrolRogainingScore", team.getRogainingPatrolPoints(false));
+  parser.addSymbol("PatrolRogainingReduction", team.getRogainingPatrolReduction());
+  parser.addSymbol("PatrolRogainingOvertime", team.getRogainingPatrolOvertime());
 
   parser.addSymbol("RunnerCardPunches", team.getResultCache(oTeam::RCCCardPunches));
   parser.addSymbol("RunnerCardTimes", team.getResultCache(oTeam::RCCCardTimes));
@@ -1229,6 +1239,7 @@ void DynamicResult::prepareCalculations(oRunner &runner) const {
     }
     
     parser.addSymbol("CourseLength", crs->getLength());
+    parser.addSymbol("CourseId", crs->getId());
     parser.addSymbol("Course", eCrs);
     parser.addSymbol("SplitTimes", eSplitTime);
     parser.addSymbol("SplitTimesAccumulated", eAccTime);
@@ -1242,6 +1253,7 @@ void DynamicResult::prepareCalculations(oRunner &runner) const {
   else {
     vector<int> e;
     parser.addSymbol("CourseLength", -1);
+    parser.addSymbol("CourseId", 0);
     parser.addSymbol("Course", e);
     parser.addSymbol("SplitTimes", e);
     parser.addSymbol("SplitTimesAccumulated", e);

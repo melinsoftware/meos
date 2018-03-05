@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,9 +56,16 @@ class TableCell
   bool canEdit;
   CellType type;
 
+
   friend class TableRow;
   friend class Table;
   friend int tblSelectionCB(gdioutput *gdi, int type, void *data);
+
+public:
+  void update(CellType t, const wstring &str) {
+    contents = str;
+    type = t;
+  }
 };
 
 class TableRow
@@ -82,6 +89,9 @@ public:
   void setObject(oBase &obj);
   bool operator<(const TableRow &r){return *SortString<*r.SortString;}
   static bool cmpint(const TableRow &r1, const TableRow &r2) {return r1.sInt<r2.sInt;}
+
+  CellType getCellType(int index) const { return cells[index].type; }
+  void updateCell(int index, CellType type, const wstring &str) { return cells[index].update(type, str); }
 
   TableRow(int elem, oBase *object): sInt(0)
   {
@@ -346,7 +356,7 @@ public:
   //Reload a row from data
   void reloadRow(int rowId);
 
-  bool UpDown(gdioutput &gdi, int direction);
+  bool upDown(gdioutput &gdi, int direction);
   bool tabFocus(gdioutput &gdi, int direction);
   bool enter(gdioutput &gdi);
   void escape(gdioutput &gdi);

@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -114,8 +114,9 @@ class InfoClass : public InfoBase {
     int sortOrder;
     vector< vector<int> > radioControls;
     vector<int> linearLegNumberToActual;
+    vector<int> courses;
   public:
-    bool synchronize(oClass &c, const set<int> &ctrls);
+    bool synchronize(bool includeCourses, oClass &c, const set<int> &ctrls);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
 
     InfoClass(int id);
@@ -155,7 +156,7 @@ class InfoBaseCompetitor : public InfoBase {
     int status;
     int startTime;
     int runningTime;
-    void serialize(xmlbuffer &xml, bool diffOnly) const;
+    void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
     bool synchronizeBase(oAbstractRunner &bc);
   public:
     InfoBaseCompetitor(int id);
@@ -167,11 +168,12 @@ class InfoCompetitor : public InfoBaseCompetitor {
     vector<RadioTime> radioTimes;
     int inputTime;
     int totalStatus;
+    int course;
     bool synchronize(const InfoCompetition &cmp, oRunner &c);
     bool changeTotalSt;
     bool changeRadio;
   public:
-    bool synchronize(bool useTotalResults, oRunner &c);
+    bool synchronize(bool useTotalResults, bool useCourse, oRunner &c);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
 
     InfoCompetitor(int id);
@@ -203,6 +205,7 @@ protected:
     bool forceComplete;
 
     bool includeTotal;
+    bool withCourse;
 
     list<InfoBase *> toCommit;
 
@@ -217,9 +220,11 @@ protected:
   public:
     void serialize(xmlbuffer &xml, bool diffOnly) const;
 
-
     bool includeTotalResults() const {return includeTotal;}
     void includeTotalResults(bool inc) {includeTotal = inc;}
+
+    bool includeCourse() const { return withCourse; }
+    void includeCourse(bool inc) { withCourse = inc; }
 
     const vector<int> &getControls(int classId, int legNumber) const;
     bool synchronize(oEvent &oe, bool onlyCmp, const set<int> &classes, const set<int> &ctrls);
@@ -233,6 +238,5 @@ protected:
     void commitComplete();
 
     InfoCompetition(int id);
-    //InfoCompetition(const InfoCompetition &in);
     virtual ~InfoCompetition() {}
 };

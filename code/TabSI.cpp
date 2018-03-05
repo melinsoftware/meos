@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,9 +46,12 @@
 #include "MeOSFeatures.h"
 #include "RunnerDB.h"
 #include "recorder.h"
+#include "autocomplete.h"
 
 TabSI::TabSI(oEvent *poe):TabBase(poe) {
   editCardData.tabSI = this;
+  directEntryGUI.tabSI = this;
+
   interactiveReadout=poe->getPropertyInt("Interactive", 1)!=0;
   useDatabase=poe->useRunnerDb() && poe->getPropertyInt("Database", 1)!=0;
   printSplits = false;
@@ -97,12 +100,12 @@ void TabSI::logCard(const SICard &card)
     getDesktopFile(file, readlog.c_str(), sf);
     logger->openOutput(file);
     vector<string> head = SICard::logHeader();
-    logger->OutputRow(head);
+    logger->outputRow(head);
     logcounter = 0;
   }
 
   vector<string> log = card.codeLogData(++logcounter);
-  logger->OutputRow(log);
+  logger->outputRow(log);
 }
 
 extern SportIdent *gSI;
@@ -111,8 +114,7 @@ extern pEvent gEvent;
 void LoadRunnerPage(gdioutput &gdi);
 
 
-int SportIdentCB(gdioutput *gdi, int type, void *data)
-{
+int SportIdentCB(gdioutput *gdi, int type, void *data) {
   TabSI &tsi = dynamic_cast<TabSI &>(*gdi->getTabs().get(TSITab));
 
   return tsi.siCB(*gdi, type, data);
@@ -139,11 +141,11 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         csvparser saver;
         saver.openOutput(file.c_str());
         vector<string> head = SICard::logHeader();
-        saver.OutputRow(head);
+        saver.outputRow(head);
         int count = 0;
         for (list< pair<int, SICard> >::const_iterator it = savedCards.begin(); it != savedCards.end(); ++it) {
           vector<string> log = it->second.codeLogData(++count);
-          saver.OutputRow(log);
+          saver.outputRow(log);
         }
       }
     }
@@ -880,9 +882,14 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       r->setStartTimeS(gdi.getText("StartTime"));
 
       wstring bib;
-      if (r->autoAssignBib())
+      switch (r->autoAssignBib()) {
+      case oRunner::BibAssignResult::Assigned:
         bib = L", " + lang.tl(L"Nummerlapp: ") + r->getBib();
-
+        break;
+      case oRunner::BibAssignResult::Failed:
+        bib = L", " + lang.tl(L"Ingen nummerlapp");
+        break;
+      }
       r->synchronize();
 
       gdi.restore("EntryLine");
@@ -2434,12 +2441,14 @@ void TabSI::entryCard(gdioutput &gdi, const SICard &sic)
 
   wstring name;
   wstring club;
+  int age = 0;
   if (useDatabase) {
     pRunner db_r=oe->dbLookUpByCard(sic.CardNumber);
 
     if (db_r) {
       name=db_r->getNameRaw();
       club=db_r->getClub();
+      age = db_r->getBirthAge();
     }
   }
 
@@ -2451,12 +2460,18 @@ void TabSI::entryCard(gdioutput &gdi, const SICard &sic)
   if (gdi.hasField("Club"))
     gdi.setText("Club", club);
 
-  if (name.empty())
-    gdi.setInputFocus("Name");
-  else if (club.empty() && gdi.hasField("Club"))
+  if (club.empty() && gdi.hasField("Club"))
     gdi.setInputFocus("Club");
+  else if (name.empty())
+    gdi.setInputFocus("Name");
   else
     gdi.setInputFocus("Class");
+
+  int clsId = gdi.getSelectedItem("Class").first;
+  pClass cls = oe->getClass(clsId);
+  if (cls && age > 0) {
+    directEntryGUI.updateFees(gdi, cls, age);
+  }
 }
 
 void TabSI::assignCard(gdioutput &gdi, const SICard &sic)
@@ -2536,10 +2551,10 @@ void TabSI::generateEntryLine(gdioutput &gdi, pRunner r)
   storedInfo.checkAge();
   gdi.addInput("CardNo", storedInfo.storedCardNo, 8, SportIdentCB, L"Bricka:");
 
-  gdi.addInput("Name", storedInfo.storedName, 16, 0, L"Namn:");
-
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
-    gdi.addCombo("Club", 180, 200, 0, L"Klubb:", L"Skriv första bokstaven i klubbens namn och tryck pil-ner för att leta efter klubben");
+    gdi.addCombo("Club", 180, 200, 0, L"Klubb:", 
+      L"Skriv första bokstaven i klubbens namn och tryck pil-ner för att leta efter klubben")
+      .setHandler(&directEntryGUI);
     oe->fillClubs(gdi, "Club");
     if (storedInfo.storedClub.empty())
       gdi.selectItemByData("Club", lastClubId);
@@ -2547,7 +2562,9 @@ void TabSI::generateEntryLine(gdioutput &gdi, pRunner r)
       gdi.setText("Club", storedInfo.storedClub);
   }
 
-  gdi.addSelection("Class", 150, 200, 0, L"Klass:");
+  gdi.addInput("Name", storedInfo.storedName, 16, 0, L"Namn:").setHandler(&directEntryGUI);
+
+  gdi.addSelection("Class", 150, 200, 0, L"Klass:").setHandler(&directEntryGUI);
   oe->fillClasses(gdi, "Class", oEvent::extraNumMaps, oEvent::filterOnlyDirect);
   if (storedInfo.storedClassId > 0 && gdi.selectItemByData("Class", storedInfo.storedClassId)) {
   }
@@ -3023,7 +3040,6 @@ void TabSI::EditCardData::handle(gdioutput &gdi, BaseInfo &info, GuiEventType ty
     }
   }
 }
-
 
 void TabSI::printCard(gdioutput &gdi, int cardId, bool forPrinter) const {
   SICard &c = getCard(cardId);
@@ -3599,4 +3615,189 @@ void TabSI::printSIInfo(gdioutput &gdi, const wstring &port) const {
   gSI->getInfoString(port, info);
   for (size_t j = 0; j < info.size(); j++)
     gdi.addStringUT(0, info[j]);      
+}
+
+oClub *TabSI::extractClub(gdioutput &gdi) const {
+  auto &db = oe->getRunnerDatabase();
+  oClub *dbClub = nullptr;
+  if (gdi.hasField("Club")) {
+    int clubId = gdi.getExtraInt("Club");
+    if (clubId >= 0) {
+      dbClub = db.getClub(clubId);
+      if (dbClub && !stringMatch(dbClub->getName(), gdi.getText("Club")))
+        dbClub = nullptr;
+    }
+    if (dbClub == nullptr) {
+      dbClub = db.getClub(gdi.getText("Club"));
+    }
+  }
+  return dbClub;
+}
+
+RunnerWDBEntry *TabSI::extractRunner(gdioutput &gdi) const {
+  auto &db = oe->getRunnerDatabase();
+
+  int rId = gdi.getExtraInt("Name");
+  wstring name = gdi.getText("Name");
+  RunnerWDBEntry *dbR = nullptr;
+  if (rId >= 0) {
+    dbR = db.getRunnerByIndex(rId);
+    if (dbR) {
+      wstring fname = dbR->getFamilyName();
+      wstring gname = dbR->getGivenName();
+
+      if (wcsstr(name.c_str(), fname.c_str()) == nullptr || wcsstr(name.c_str(), gname.c_str()) == nullptr)
+        dbR = nullptr;
+    }
+  }
+  if (dbR == nullptr) {
+    oClub * dbClub = extractClub(gdi);
+    dbR = db.getRunnerByName(name, dbClub ? dbClub->getId() : 0, 0);
+  }
+  return dbR;
+}
+
+void TabSI::DirectEntryGUI::updateFees(gdioutput &gdi, const pClass cls, int age) {
+  int fee = cls->getEntryFee(getLocalDate(), age);
+  auto fees = cls->getAllFees();
+  gdi.addItem("Fee", fees);
+  if (fee > 0) {
+    gdi.selectItemByData("Fee", fee);
+    gdi.setText("Fee", tabSI->oe->formatCurrency(fee));
+  }
+  else if (!fees.empty())
+    gdi.selectFirstItem("Fee");
+
+  tabSI->updateEntryInfo(gdi);
+}
+
+void TabSI::DirectEntryGUI::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
+  if (type == GUI_FOCUS) {
+    InputInfo &ii = dynamic_cast<InputInfo &>(info);
+    /*if (ii.getExtraInt()) {
+      ii.setExtra(0);
+      gdi.setInputFocus(ii.id, true);
+    }*/
+  }
+  else if (type == GUI_LISTBOX) {
+    ListBoxInfo &lbi = dynamic_cast<ListBoxInfo &>(info);
+    if (lbi.id == "Class") {
+      int clsId = lbi.data;
+      pClass cls = tabSI->oe->getClass(clsId);
+      if (cls) {
+        int age = 0;
+        auto r = tabSI->extractRunner(gdi);
+        if (r) {
+          int year = r->getBirthYear();
+          if (year > 0)
+            age = getThisYear() - year;
+        }
+        updateFees(gdi, cls, age);
+      }
+    }
+  }
+  else if (type == GUI_COMBOCHANGE) {
+    ListBoxInfo &combo = dynamic_cast<ListBoxInfo &>(info);
+    bool show = false;
+    if (tabSI->useDatabase && combo.id == "Club" && combo.text.length() > 1) {
+      auto clubs = tabSI->oe->getRunnerDatabase().getClubSuggestions(combo.text, 20);
+      if (!clubs.empty()) {
+        auto &ac = gdi.addAutoComplete(combo.id);
+        ac.setAutoCompleteHandler(this->tabSI);
+        vector<AutoCompleteRecord> items;
+        for (auto club : clubs)
+          items.emplace_back(club->getDisplayName(), club->getName(), club->getId());
+
+        ac.setData(items);
+        ac.show();
+        show = true;
+      }
+    }
+    if (!show) {
+      gdi.clearAutoComplete(combo.id);
+    }
+  }
+  else if (type == GUI_INPUTCHANGE) {
+    InputInfo &ii = dynamic_cast<InputInfo &>(info);
+    bool show = false;
+    if (tabSI->useDatabase && ii.id == "Name") {
+      auto &db = tabSI->oe->getRunnerDatabase();
+      if (ii.text.length() > 1) {
+        auto dbClub = tabSI->extractClub(gdi);
+        auto rw = db.getRunnerSuggestions(ii.text, dbClub ? dbClub->getId() : 0, 10);
+        if (!rw.empty()) {
+          auto &ac = gdi.addAutoComplete(ii.id);
+          ac.setAutoCompleteHandler(this->tabSI);
+ 
+          ac.setData(getRunnerAutoCompelete(db, rw, dbClub));
+          ac.show();
+          show = true;
+        }
+      }
+      if (!show) {
+        gdi.clearAutoComplete(ii.id);
+      }
+    }
+  }
+}
+
+vector<AutoCompleteRecord> TabSI::getRunnerAutoCompelete(RunnerDB &db, const vector< pair<RunnerWDBEntry *, int>> &rw, pClub dbClub) {
+  vector<AutoCompleteRecord> items;
+  set<wstring> used;
+  wstring ns;
+  map<wstring, int> strCount;
+  for (int i = 0; i < 2; i++) {
+    bool needRerun = false;
+    for (auto r : rw) {
+      if (dbClub) {
+        ns = r.first->getNameCstr();
+      }
+      else {
+        ns = r.first->getNameCstr();
+        int clubId = r.first->dbe().clubNo;
+        auto club = db.getClub(clubId);
+        if (club) {
+          ns += L", " + club->getDisplayName();
+        }
+      }
+      if (i == 0)
+        ++strCount[ns];
+
+      if (strCount[ns] > 1) {
+        needRerun = true;
+        int y = r.first->getBirthYear();
+        if (y > 0)
+          ns += L" (" + itow(getThisYear() - y) + L")";
+      }
+
+      items.emplace_back(ns, r.first->getNameCstr(), r.second);
+    }
+    if (!needRerun)
+      break;
+    else if (i == 0) {
+      items.clear();
+    }
+  }
+  return items;
+}
+
+void TabSI::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
+  auto bi = gdi.setText(info.getTarget(), info.getCurrent().c_str());
+  if (bi) {
+    int ix = info.getCurrentInt();
+    bi->setExtra(ix);
+    if (bi->id == "Name") {
+      auto r = oe->getRunnerDatabase().getRunnerByIndex(ix);
+      int year = r ? r->getBirthYear() : 0;
+      if (year > 0) {
+        int clsId = gdi.getSelectedItem("Class").first;
+        pClass cls = oe->getClass(clsId);
+        if (cls) {
+          directEntryGUI.updateFees(gdi, cls, getThisYear() - year);
+        }
+      }
+    }
+  }
+  gdi.clearAutoComplete("");
+  gdi.TabFocus(1);
 }

@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,22 @@
 
 extern pEvent gEvent;
 const char *visualDrawWindow = "visualdraw";
+
+
+struct DrawSettingsCSV {
+  int classId;
+  wstring cls;
+  int nCmp;
+  wstring crs;
+  int ctrl;
+  
+  int firstStart;
+  int interval;
+  int vacant;
+
+  static void write(gdioutput &gdi, const oEvent &oe, const wstring &fn, vector<DrawSettingsCSV> &arg);
+  static vector<DrawSettingsCSV> read(gdioutput &gdi, const oEvent &oe, const wstring &fn);
+};
 
 TabClass::TabClass(oEvent *poe):TabBase(poe)
 {
@@ -133,12 +149,31 @@ int DrawClassesCB(gdioutput *gdi, int type, void *data)
     InputInfo &ii = *(InputInfo *)data;
     if (ii.id.length() > 1) {
       int id = atoi(ii.id.substr(1).c_str());
-      if (id > 0 && ii.changed()) {
+      if (id > 0 ) {
+        bool changed = false;
         string key = "C" + itos(id);
         TextInfo &ti = dynamic_cast<TextInfo&>(gdi->getBaseInfo(key.c_str()));
-        ti.setColor(colorRed);
-        gdi->enableInput("DrawAdjust");
-        gdi->refreshFast();
+        if (ii.changed()) {
+          changed = changed || ti.getColor() != colorRed;
+          ti.setColor(colorRed);
+          if (ii.getBgColor() != colorLightCyan) {
+            ii.setBgColor(colorLightCyan).refresh();
+          }
+          gdi->enableInput("DrawAdjust");
+        }
+        else {
+          GDICOLOR def = GDICOLOR(ti.getExtraInt());
+          if (def != ti.getColor()) {
+            ti.setColor(def); // Restore
+            changed = true;
+          }
+          GDICOLOR nColor = ii.getExtraInt() != 0 ? GDICOLOR(ii.getExtraInt()) : colorDefault;
+          if (nColor != ii.getBgColor()) {
+            ii.setBgColor(nColor).refresh();
+          }
+        }
+        if (changed)
+          gdi->refreshFast();
       }
     }
   }
@@ -652,18 +687,171 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id=="SaveDrawSettings") {
       readClassSettings(gdi);
-      for(size_t k=0; k<cInfo.size(); k++) {
-        const ClassInfo &ci = cInfo[k];
-        if (ci.pc) {
+      saveDrawSettings();
+    }
+    else if (bi.id == "ExportDrawSettings") {
+      int fi;
+      wstring fn = gdi.browseForSave({ make_pair(lang.tl("Kalkylblad/csv"), L"*.csv") }, L"csv", fi);
+
+      if (fn.empty())
+        return false;
+
+      vector<DrawSettingsCSV> res;
+
+      if (bi.getExtraInt() == 1) {
+        vector<pClass> cls;
+        oe->getClasses(cls, true);
+        for (pClass pc : cls) {
+          if (pc->hasFreeStart())
+            continue;
+          DrawSettingsCSV ds;
+          ds.classId = pc->getId();
+          ds.cls = pc->getName();
+          ds.nCmp = pc->getNumRunners(1, false, false);
+          pCourse crs = pc->getCourse();
+          pControl ctrl = nullptr;
+          if (crs) {
+            ds.crs = crs->getName();
+            ctrl = crs->getControl(0);
+          }
+          if (ctrl) {
+            ds.ctrl = ctrl->getId();
+          }
+          else ds.ctrl = 0;
+
           // Save settings with class
-          ci.pc->synchronize(false);
-          ci.pc->setDrawFirstStart(drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart);
-          ci.pc->setDrawInterval(ci.interval * drawInfo.baseInterval);
-          ci.pc->setDrawVacant(ci.nVacant);
-          ci.pc->setDrawNumReserved(ci.nExtra);
-          ci.pc->synchronize(true);
+          ds.firstStart = 3600;
+          ds.interval = 120;
+          ds.vacant = 1;
+
+          res.push_back(ds);
         }
       }
+      else {
+        readClassSettings(gdi);
+        for (size_t k = 0; k < cInfo.size(); k++) {
+          const ClassInfo &ci = cInfo[k];
+          if (ci.pc) {
+            DrawSettingsCSV ds;
+            ds.classId = ci.pc->getId();
+            ds.cls = ci.pc->getName();
+            ds.nCmp = ci.pc->getNumRunners(1, false, false);
+            pCourse crs = ci.pc->getCourse();
+            pControl ctrl = nullptr;
+            if (crs) {
+              ds.crs = crs->getName();
+              ctrl = crs->getControl(0);
+            }
+
+            if (ctrl) {
+              ds.ctrl = ctrl->getId();
+            }
+            else ds.ctrl = 0;
+
+            // Save settings with class
+            ds.firstStart = drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart;
+            ds.interval = ci.interval * drawInfo.baseInterval;
+            ds.vacant = ci.nVacant;
+
+            res.push_back(ds);
+          }
+        }
+      }
+
+      DrawSettingsCSV::write(gdi, *oe, fn, res);
+
+      /*csvparser writer;
+      writer.openOutput(fn.c_str());
+      vector<string> header;
+      
+      writer.outputRow(header);
+      header.emplace_back("ClassId");
+      header.emplace_back("Class");
+      header.emplace_back("Competitors");
+      header.emplace_back("Course");
+      header.emplace_back("First Control");
+
+      header.emplace_back("First Start");
+      header.emplace_back("Interval");
+      header.emplace_back("Vacant");
+      
+      writer.outputRow(header);
+      vector<string> line;
+
+      for (size_t k = 0; k<cInfo.size(); k++) {
+        const ClassInfo &ci = cInfo[k];
+        if (ci.pc) {
+          line.clear();
+          line.push_back(itos(ci.pc->getId()));
+          line.push_back(gdi.toUTF8(ci.pc->getName()));
+          line.push_back(itos(ci.pc->getNumRunners(1, false, false)));
+          pCourse crs = ci.pc->getCourse();
+          pControl ctrl = nullptr;
+          if (crs) {
+            line.push_back(gdi.toUTF8(crs->getName()));
+            ctrl = crs->getControl(0);
+          }
+          else line.emplace_back("");
+
+          if (ctrl) {
+            line.push_back(itos(ctrl->getId()));
+          }
+          else line.emplace_back("");
+
+          // Save settings with class
+          
+          line.push_back(gdi.narrow(oe->getAbsTime(drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart)));
+          line.push_back(gdi.narrow(formatTime(ci.interval * drawInfo.baseInterval)));
+          line.push_back(itos(ci.nVacant));
+          writer.outputRow(line);
+        }
+      }*/
+    }
+    else if (bi.id == "ImportDrawSettings") {
+      
+      wstring fn = gdi.browseForOpen({ make_pair(lang.tl("Kalkylblad/csv"), L"*.csv") }, L"csv");
+
+      if (fn.empty())
+        return false;
+
+      wstring firstStart = gdi.getText("FirstStart");
+      wstring minInterval = gdi.getText("MinInterval");
+      wstring vacances = gdi.getText("Vacances");
+
+      clearPage(gdi, false);
+      gdi.addString("", boldLarge, "Lotta flera klasser");
+      gdi.dropLine(0.5);
+
+      gdi.addString("", 0, "Importerar lottningsinställningar...");
+      set<int> classes;
+      for (auto &ds : DrawSettingsCSV::read(gdi, *oe, fn)) {
+        pClass pc = oe->getClass(ds.classId);
+        if (pc) {
+          classes.insert(ds.classId);
+          pc->setDrawFirstStart(ds.firstStart);
+          pc->setDrawInterval(ds.interval);
+          pc->setDrawVacant(ds.vacant);
+          pc->setDrawNumReserved(0);
+          pc->setDrawSpecification({ oClass::DrawSpecified::FixedTime, oClass::DrawSpecified::Vacant});
+        }
+      }
+      
+      if (classes.empty()) {
+        throw meosException("Ingen klass vald.");
+      }
+
+      int by = 0;
+      int bx = gdi.getCX();
+
+      loadBasicDrawSetup(gdi, bx, by, firstStart, 1, minInterval, vacances, classes);
+      loadReadyToDistribute(gdi, bx, by);
+
+      oe->loadDrawSettings(classes, drawInfo, cInfo);
+
+      writeDrawInfo(gdi, drawInfo);
+      gdi.enableEditControls(false);
+
+      showClassSettings(gdi);
     }
     else if (bi.id=="DoDrawAll") {
       readClassSettings(gdi);
@@ -675,19 +863,10 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       int maxST = 0;
       map<int, vector<ClassDrawSpecification> > specs;
+      saveDrawSettings();
       for(size_t k=0; k<cInfo.size(); k++) {
         const ClassInfo &ci=cInfo[k];
-        if (ci.pc) {
-          // Save settings with class
-          ci.pc->synchronize(false);
-          int stloc = drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart;
-          maxST = max(maxST, stloc);
-          ci.pc->setDrawFirstStart(stloc);
-          ci.pc->setDrawInterval(ci.interval * drawInfo.baseInterval);
-          ci.pc->setDrawVacant(ci.nVacant);
-          ci.pc->setDrawNumReserved(ci.nExtra);
-          ci.pc->synchronize(true);
-        }
+        
         ClassDrawSpecification cds(ci.classId, 0, drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart,
                                    drawInfo.baseInterval * ci.interval, ci.nVacant);
         if (drawCoursebased) {
@@ -791,7 +970,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       gdi.popX();
       gdi.fillRight();
-      gdi.addButton("AutomaticDraw", "Automatisk lottning", ClassesCB).setDefault();
+      gdi.addButton("AutomaticDraw", "Automatisk lottning", ClassesCB);
       gdi.addButton("DrawAll", "Manuell lottning", ClassesCB).setExtra(1);
       gdi.addButton("Simultaneous", "Gemensam start", ClassesCB);
 
@@ -802,7 +981,24 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       gdi.addButton("Cancel", "Återgå", ClassesCB).setCancel();
 
+
       gdi.dropLine(3);
+      gdi.popX();
+      int xs = gdi.getCX();
+      int ys = gdi.getCY();
+      gdi.dropLine();
+      gdi.setCX(xs + gdi.getLineHeight());
+
+      gdi.fillDown();
+      gdi.addString("", 10, "help:exportdraw");
+      gdi.dropLine(0.5);
+      gdi.fillRight();
+      gdi.addButton("ExportDrawSettings", "Exportera", ClassesCB).setExtra(1);
+      gdi.addButton("ImportDrawSettings", "Importera", ClassesCB);
+
+      gdi.dropLine(2.5);
+      RECT rc = {xs, ys, gdi.getWidth(), gdi.getCY()};
+      gdi.addRectangle(rc, colorLightCyan);
 
       gdi.newColumn();
 
@@ -996,11 +1192,6 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           }
         }
 
-        clearPage(gdi, false);
-        gdi.addString("", boldLarge, "Lotta flera klasser");
-        gdi.dropLine(0.5);
-
-        showClassSelection(gdi, bx, by, DrawClassesCB);
         vector<pClass> cls;
         oe->getClasses(cls, false);
         set<int> clsId;
@@ -1012,64 +1203,11 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           clsId.insert(cls[k]->getId());
         }
 
-        gdi.setSelection("Classes", clsId);
+        clearPage(gdi, false);
+        gdi.addString("", boldLarge, "Lotta flera klasser");
+        gdi.dropLine(0.5);
 
-        gdi.addString("", 1, "Grundinställningar");
-
-        gdi.pushX();
-        gdi.fillRight();
-
-        gdi.addInput("FirstStart", firstStart, 10, 0, L"Första start:");
-        gdi.addInput("nFields", L"10", 10, 0, L"Max parallellt startande:");
-        gdi.popX();
-        gdi.dropLine(3);
-
-        gdi.addSelection("MaxCommonControl", 150, 100, 0,
-          L"Max antal gemensamma kontroller:");
-
-        vector< pair<wstring, size_t> > items;
-        items.push_back(make_pair(lang.tl("Inga"), 1));
-        items.push_back(make_pair(lang.tl("Första kontrollen"), 2));
-        for (int k = 2; k<10; k++)
-          items.push_back(make_pair(lang.tl("X kontroller#" + itos(k)), k+1));
-        items.push_back(make_pair(lang.tl("Hela banan"), 1000));
-        gdi.addItem("MaxCommonControl", items);
-        gdi.selectItemByData("MaxCommonControl", maxNumControl);
-
-        gdi.popX();
-        gdi.dropLine(4);
-        gdi.addCheckbox("AllowNeighbours", "Tillåt samma bana inom basintervall", 0, true);
-        gdi.addCheckbox("CoursesTogether", "Lotta klasser med samma bana gemensamt", 0, false);
-        
-        gdi.popX();
-        gdi.dropLine(2);
-        gdi.addString("", 1, "Startintervall");
-        gdi.dropLine(1.4);
-        gdi.popX();
-        gdi.fillRight();
-        gdi.addInput("BaseInterval", L"1:00", 10, 0, L"Basintervall (min):");
-        gdi.addInput("MinInterval", minInterval, 10, 0, L"Minsta intervall i klass:");
-        gdi.addInput("MaxInterval", minInterval, 10, 0, L"Största intervall i klass:");
-
-        gdi.popX();
-        gdi.dropLine(4);
-        gdi.addString("", 1, "Vakanser och efteranmälda");
-        gdi.dropLine(1.4);
-        gdi.popX();
-        gdi.addInput("Vacances", vacances, 10, 0, L"Andel vakanser:");
-        gdi.addInput("VacancesMin", L"1", 10, 0, L"Min. vakanser (per klass):");
-        gdi.addInput("VacancesMax", L"10", 10, 0, L"Max. vakanser (per klass):");
-
-        gdi.popX();
-        gdi.dropLine(3);
-
-        gdi.addInput("Extra", L"0%", 10, 0, L"Förväntad andel efteranmälda:");
-
-        gdi.dropLine(4);
-        gdi.fillDown();
-        gdi.popX();
-        gdi.setRestorePoint("Setup");
-
+        loadBasicDrawSetup(gdi, bx, by, firstStart, maxNumControl, minInterval, vacances, clsId);
       }
       else {
         gdi.restore("Setup");
@@ -1077,51 +1215,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         gdi.enableEditControls(true);
       }
 
-      gdi.fillRight();
-      gdi.pushX();
-      RECT rcPrepare;
-      rcPrepare.left = gdi.getCX();
-      rcPrepare.top = gdi.getCY();
-      gdi.setCX(gdi.getCX() + gdi.getLineHeight());
-      gdi.dropLine();
-      gdi.addString("", fontMediumPlus, "Förbered lottning");
-      gdi.dropLine(2.5);
-      gdi.popX();
-      gdi.setCX(gdi.getCX() + gdi.getLineHeight());
-      gdi.addButton("PrepareDrawAll", "Fördela starttider...", ClassesCB).isEdit(true).setDefault();
-      gdi.addButton("EraseStartAll", "Radera starttider...", ClassesCB).isEdit(true).setExtra(0);
-      gdi.addButton("LoadSettings", "Hämta inställningar från föregående lottning", ClassesCB).isEdit(true);
-      enableLoadSettings(gdi);
-
-      gdi.dropLine(3);
-      rcPrepare.bottom = gdi.getCY();
-      rcPrepare.right = gdi.getWidth();
-      gdi.addRectangle(rcPrepare, colorLightGreen);
-      gdi.dropLine();
-      gdi.popX();
-      
-      gdi.addString("", 1, "Efteranmälningar");
-      gdi.dropLine(1.5);
-      gdi.popX();
-      gdi.addButton("DrawAllBefore", "Efteranmälda (före ordinarie)", ClassesCB).isEdit(true);
-      gdi.addButton("DrawAllAfter", "Efteranmälda (efter ordinarie)", ClassesCB).isEdit(true);
-
-      gdi.dropLine(4);
-      gdi.popX();
-
-      gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
-      gdi.addButton("HelpDraw", "Hjälp...", ClassesCB, "");
-      gdi.dropLine(3);
-
-      by = max(by, gdi.getCY());
-
-      gdi.setCX(bx);
-      gdi.setCY(by);
-      gdi.fillDown();
-      gdi.dropLine();
-
-      gdi.setRestorePoint("ReadyToDistribute");
-      gdi.refresh();
+      loadReadyToDistribute(gdi, bx, by);
     }
     else if (bi.id == "HelpDraw") {
 
@@ -1145,6 +1239,12 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         throw meosException("Ingen klass vald.");
       }
       gdi.restore("ReadyToDistribute");
+      /*
+      gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
+      gdi.addButton("HelpDraw", "Hjälp...", ClassesCB, "");
+      gdi.dropLine(3);
+*/
+
       drawInfo.classes.clear();
 
       for (set<int>::iterator it = classes.begin(); it!=classes.end();++it) {
@@ -1194,62 +1294,6 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.restore("ReadyToDistribute");
       oe->loadDrawSettings(classes, drawInfo, cInfo);
 
-      /*
-      drawInfo.firstStart = 3600 * 22;
-      drawInfo.minClassInterval = 3600;
-      drawInfo.maxClassInterval = 1;
-      drawInfo.minVacancy = 10;
-
-      set<int> reducedStart;
-      for (set<int>::iterator it = classes.begin(); it != classes.end(); ++it) {
-        pClass pc = oe->getClass(*it);
-        if (pc) {
-          int fs = pc->getDrawFirstStart();
-          int iv = pc->getDrawInterval();
-          if (iv > 0 && fs > 0) {
-            drawInfo.firstStart = min(drawInfo.firstStart, fs);
-            drawInfo.minClassInterval = min(drawInfo.minClassInterval, iv);
-            drawInfo.maxClassInterval = max(drawInfo.maxClassInterval, iv);
-            drawInfo.minVacancy = min(drawInfo.minVacancy, pc->getDrawVacant());
-            drawInfo.maxVacancy = max(drawInfo.maxVacancy, pc->getDrawVacant());
-            reducedStart.insert(fs%iv);
-          }
-        }
-      }
-
-      drawInfo.baseInterval = drawInfo.minClassInterval;
-      int lastStart = -1;
-      for (set<int>::iterator it = reducedStart.begin(); it != reducedStart.end(); ++it) {
-        if (lastStart == -1)
-          lastStart = *it;
-        else {
-          drawInfo.baseInterval = min(drawInfo.baseInterval, *it-lastStart);
-          lastStart = *it;
-        }
-      }
-
-      cInfo.clear();
-      cInfo.resize(classes.size());
-      int i = 0;
-      for (set<int>::iterator it = classes.begin(); it != classes.end(); ++it) {
-        pClass pc = oe->getClass(*it);
-        if (pc) {
-          int fs = pc->getDrawFirstStart();
-          int iv = pc->getDrawInterval();
-          cInfo[i].pc = pc;
-          cInfo[i].classId = *it;
-          cInfo[i].courseId = pc->getCourseId();
-          cInfo[i].firstStart = fs;
-          cInfo[i].unique = pc->getCourseId();
-          if (cInfo[i].unique == 0)
-            cInfo[i].unique = pc->getId() * 10000;
-          cInfo[i].firstStart = (fs - drawInfo.firstStart) / drawInfo.baseInterval;
-          cInfo[i].interval = iv / drawInfo.baseInterval;
-          cInfo[i].nVacant = pc->getDrawVacant();
-          i++;
-        }
-      }
-      */
       writeDrawInfo(gdi, drawInfo);
       gdi.enableEditControls(false);
 
@@ -1272,6 +1316,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi_new->addButton("CloseWindow", "Stäng", ClassesCB);
       gdi_new->registerEvent("CloseWindow", 0).setHandler(&handleCloseWindow);
       gdi_new->refresh();
+      gdi.refreshFast();
     }
     else if (bi.id == "EraseStartAll") {
       set<int> classes;
@@ -1872,7 +1917,6 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         }
       }
 
-
       save(gdi, true);
       pClass pc = oe->addClass(oe->getAutoClassName(), 0);
       if (pc) {
@@ -2136,13 +2180,29 @@ void TabClass::showClassSettings(gdioutput &gdi)
     gdi.fillRight();
     
     int id = ci.classId;
-    gdi.addString("C" + itos(id), 0, L"X platser. Startar Y#" + wstring(bf1) + L"#" + bf2);
-    y = gdi.getCY();
-    gdi.addInput(xp+300, y, "S"+itos(id), first, 7, DrawClassesCB);
-    gdi.addInput(xp+300+width, y, "I"+itos(id), formatTime(ci.interval*drawInfo.baseInterval), 7, DrawClassesCB);
-    gdi.addInput(xp+300+width*2, y, "V"+itos(id), itow(ci.nVacant), 7, DrawClassesCB);
-    gdi.addInput(xp+300+width*3, y, "R"+itos(id), itow(ci.nExtra), 7, DrawClassesCB);
+    GDICOLOR clr = ci.hasFixedTime || ci.nExtraSpecified || ci.nVacantSpecified ? colorDarkGreen : colorBlack;
 
+    gdi.addString("C" + itos(id), 0, L"X platser. Startar Y#" + wstring(bf1) + L"#" + bf2).setColor(clr).setExtra(clr);
+    
+    y = gdi.getCY();
+    InputInfo *ii;
+    GDICOLOR fixedColor = colorLightGreen;
+    ii = &gdi.addInput(xp+300, y, "S"+itos(id), first, 7, DrawClassesCB);
+    if (ci.hasFixedTime) {
+      ii->setBgColor(fixedColor).setExtra(fixedColor);
+    }
+    ii = &gdi.addInput(xp+300+width, y, "I"+itos(id), formatTime(ci.interval*drawInfo.baseInterval), 7, DrawClassesCB);
+    if (ci.hasFixedTime) {
+      ii->setBgColor(fixedColor).setExtra(fixedColor);
+    }
+    ii = &gdi.addInput(xp+300+width*2, y, "V"+itos(id), itow(ci.nVacant), 7, DrawClassesCB);
+    if (ci.nVacantSpecified) {
+      ii->setBgColor(fixedColor).setExtra(fixedColor);
+    }
+    ii = &gdi.addInput(xp+300+width*3, y, "R"+itos(id), itow(ci.nExtra), 7, DrawClassesCB);
+    if (ci.nExtraSpecified) {
+      ii->setBgColor(fixedColor).setExtra(fixedColor);
+    }
     if (k%5 == 4)
       gdi.dropLine(1);
 
@@ -2161,6 +2221,10 @@ void TabClass::showClassSettings(gdioutput &gdi)
   gdi.addButton("SaveDrawSettings", "Spara starttider", ClassesCB, 
     "Spara inmatade tider i tävlingen utan att tilldela starttider.");
 
+  gdi.addButton("ExportDrawSettings", "Exportera...", ClassesCB,
+    "Exportera ett kalkylblad med lottningsinställningar som du kan redigera och sedan läsa in igen.");
+
+
   gdi.addButton("DrawAllAdjust", "Ändra inställningar", ClassesCB,
         "Ändra grundläggande inställningar och gör en ny fördelning").setExtra(13);
  
@@ -2169,6 +2233,7 @@ void TabClass::showClassSettings(gdioutput &gdi)
       "Uppdatera fördelningen av starttider med hänsyn till manuella ändringar ovan");
        gdi.disableInput("DrawAdjust");
   }
+
   gdi.popX();
   gdi.dropLine(3);
 
@@ -3454,7 +3519,7 @@ void TabClass::showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK 
   gdi.pushY();
   int cx = gdi.getCX();
   int width = gdi.scaleLength(230);
-  gdi.addListBox("Classes", 200, 400, classesCB, L"Klasser:", L"", true);
+  gdi.addListBox("Classes", 200, 480, classesCB, L"Klasser:", L"", true);
   gdi.setTabStops("Classes", 185);
   gdi.fillRight();
   gdi.pushX();
@@ -4051,13 +4116,28 @@ vector< pair<wstring, size_t> > TabClass::getPairOptions() {
 void TabClass::readDrawInfo(gdioutput &gdi, DrawInfo &drawInfoOut) {
   drawInfoOut.maxCommonControl = gdi.getSelectedItem("MaxCommonControl").first;
 
-  drawInfoOut.maxVacancy=gdi.getTextNo("VacancesMax");
-  drawInfoOut.minVacancy=gdi.getTextNo("VacancesMin");
-  drawInfoOut.vacancyFactor = 0.01*_wtof(gdi.getText("Vacances").c_str());
-  drawInfoOut.extraFactor = 0.01*_wtof(gdi.getText("Extra").c_str());
+  int maxVacancy = gdi.getTextNo("VacancesMax");
+  int minVacancy = gdi.getTextNo("VacancesMin");
+  double vacancyFactor = 0.01*_wtof(gdi.getText("Vacances").c_str());
+  double extraFactor = 0.01*_wtof(gdi.getText("Extra").c_str());
+
+
+  drawInfoOut.changedVacancyInfo = drawInfoOut.maxVacancy != maxVacancy || 
+                                   drawInfoOut.minVacancy != minVacancy || 
+                                   drawInfoOut.vacancyFactor != vacancyFactor;
+
+  drawInfoOut.maxVacancy = maxVacancy;
+  drawInfoOut.minVacancy = minVacancy;
+  drawInfoOut.vacancyFactor = vacancyFactor;
+
+  drawInfoOut.changedExtraInfo = drawInfoOut.extraFactor != extraFactor;
+  drawInfoOut.extraFactor = extraFactor;
+
 
   drawInfoOut.baseInterval=convertAbsoluteTimeMS(gdi.getText("BaseInterval"));
   drawInfoOut.allowNeighbourSameCourse = gdi.isChecked("AllowNeighbours");
+  oe->setProperty("DrawInterlace", drawInfoOut.allowNeighbourSameCourse ? 1 : 0);
+  
   drawInfoOut.coursesTogether = gdi.isChecked("CoursesTogether");
   drawInfoOut.minClassInterval = convertAbsoluteTimeMS(gdi.getText("MinInterval"));
   drawInfoOut.maxClassInterval = convertAbsoluteTimeMS(gdi.getText("MaxInterval"));
@@ -4114,4 +4194,247 @@ bool TabClass::warnDrawStartTime(gdioutput &gdi, int time) {
 void TabClass::clearPage(gdioutput &gdi, bool autoRefresh) {
   gdi.clearPage(autoRefresh);
   gdi.setData("ClassPageLoaded", 1);
+}
+
+void TabClass::saveDrawSettings() const {
+  for (size_t k = 0; k<cInfo.size(); k++) {
+    const ClassInfo &ci = cInfo[k];
+    if (ci.pc) {
+      // Save settings with class
+      ci.pc->synchronize(false);
+      ci.pc->setDrawFirstStart(drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart);
+      ci.pc->setDrawInterval(ci.interval * drawInfo.baseInterval);
+      ci.pc->setDrawVacant(ci.nVacant);
+      ci.pc->setDrawNumReserved(ci.nExtra);
+      vector<oClass::DrawSpecified> ds;
+      if (ci.nExtraSpecified)
+        ds.push_back(oClass::DrawSpecified::Extra);
+      if (ci.hasFixedTime)
+        ds.push_back(oClass::DrawSpecified::FixedTime);
+      if (ci.nVacantSpecified)
+        ds.push_back(oClass::DrawSpecified::Vacant);
+      ci.pc->setDrawSpecification(ds);
+
+      ci.pc->synchronize(true);
+    }
+  }
+}
+
+void DrawSettingsCSV::write(gdioutput &gdi, const oEvent &oe, const wstring &fn, vector<DrawSettingsCSV> &cInfo) {
+  csvparser writer;
+  writer.openOutput(fn.c_str(), true);
+  vector<string> header, line;
+
+  header.emplace_back("ClassId");
+  header.emplace_back("Class");
+  header.emplace_back("Competitors");
+  header.emplace_back("Course");
+  header.emplace_back("First Control");
+  header.emplace_back("First Start");
+  header.emplace_back("Interval");
+  header.emplace_back("Vacant");
+
+  // Save settings with class
+  writer.outputRow(header);
+  for (size_t k = 0; k<cInfo.size(); k++) {
+    auto &ci = cInfo[k];
+    line.clear();
+    line.push_back(itos(ci.classId));
+    line.push_back(gdi.toUTF8(ci.cls));
+    line.push_back(itos(ci.nCmp));
+    if (!ci.crs.empty()) {
+      line.push_back(gdi.toUTF8(ci.crs));
+    }
+    else line.emplace_back("");
+
+    if (ci.ctrl) {
+      line.push_back(itos(ci.ctrl));
+    }
+    else line.emplace_back("");
+
+    line.push_back(gdi.narrow(oe.getAbsTime(ci.firstStart)));
+    line.push_back(gdi.narrow(formatTime(ci.interval)));
+    line.push_back(itos(ci.vacant));
+    writer.outputRow(line);
+  }
+}
+
+vector<DrawSettingsCSV> DrawSettingsCSV::read(gdioutput &gdi, const oEvent &oe, const wstring &fn) {
+  csvparser reader;
+  list<vector<wstring>> data;
+  reader.parse(fn.c_str(), data);
+  vector<DrawSettingsCSV> output;
+  set<int> usedId;
+  // Save settings with class
+  int lineNo = 0;
+  for (auto &row  : data) {
+    lineNo++;
+    if (row.empty())
+      continue;
+
+    int cid = _wtoi(row[0].c_str());
+    if (!(cid > 0))
+      continue;
+
+    DrawSettingsCSV dl;
+    try {
+
+      if (row.size() <= 7)
+        throw wstring(L"Rad X är ogiltig#" + itow(lineNo) + L": " + row[0] + L"...");
+
+      pClass pc = oe.getClass(cid);
+      if (!pc || (!row[1].empty() && !compareClassName(pc->getName(), row[1]))) {
+        pClass pcName = oe.getClass(row[1]);
+        if (pcName)
+          pc = pcName;
+      }
+
+      if (!pc)
+        throw wstring(L"Hittar inte klass X#" + row[0] + L"/" + row[1]);
+      else if (usedId.count(pc->getId()))
+        throw wstring(L"Klassen X är listad flera gånger#" + row[0] + L"/" + row[1]);
+
+      usedId.insert(pc->getId());
+      dl.classId = pc->getId();
+
+      dl.firstStart = oe.getRelativeTime(row[5]);
+      if (dl.firstStart <= 0)
+        throw wstring(L"Ogiltig starttid X#" + row[5]);
+
+      dl.interval = convertAbsoluteTimeMS(row[6]);
+      if (dl.interval <= 0)
+        throw wstring(L"Ogiltigt startintervall X#" + row[6]);
+
+      dl.vacant = _wtoi(row[7].c_str());
+
+      output.push_back(dl);
+    }
+    catch (const wstring &exmsg) {
+      gdi.addString("", 0, exmsg).setColor(colorRed);
+    }
+  }
+
+  return output;
+}
+
+void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstring &firstStart, 
+                                  int maxNumControl, const wstring &minInterval, const wstring &vacances,
+                                  const set<int> &clsId) {
+
+  showClassSelection(gdi, bx, by, DrawClassesCB);
+  
+  gdi.setSelection("Classes", clsId);
+
+  gdi.addString("", 1, "Grundinställningar");
+
+  gdi.pushX();
+  gdi.fillRight();
+
+  gdi.addInput("FirstStart", firstStart, 10, 0, L"Första start:");
+  gdi.addInput("nFields", L"10", 10, 0, L"Max parallellt startande:");
+  gdi.popX();
+  gdi.dropLine(3);
+
+  gdi.addSelection("MaxCommonControl", 150, 100, 0,
+    L"Max antal gemensamma kontroller:");
+
+  vector< pair<wstring, size_t> > items;
+  items.push_back(make_pair(lang.tl("Inga"), 1));
+  items.push_back(make_pair(lang.tl("Första kontrollen"), 2));
+  for (int k = 2; k<10; k++)
+    items.push_back(make_pair(lang.tl("X kontroller#" + itos(k)), k + 1));
+  items.push_back(make_pair(lang.tl("Hela banan"), 1000));
+  gdi.addItem("MaxCommonControl", items);
+  gdi.selectItemByData("MaxCommonControl", maxNumControl);
+
+  gdi.popX();
+  gdi.dropLine(4);
+  gdi.fillDown();
+  gdi.addCheckbox("AllowNeighbours", "Tillåt samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) == 0);
+  gdi.addCheckbox("CoursesTogether", "Lotta klasser med samma bana gemensamt", 0, false);
+
+  gdi.dropLine(0.5);
+  gdi.addString("", 1, "Startintervall");
+  gdi.dropLine(0.4);
+  gdi.fillRight();
+  gdi.addInput("BaseInterval", L"1:00", 10, 0, L"Basintervall (min):");
+  gdi.addInput("MinInterval", minInterval, 10, 0, L"Minsta intervall i klass:");
+  gdi.addInput("MaxInterval", minInterval, 10, 0, L"Största intervall i klass:");
+
+  gdi.popX();
+  gdi.dropLine(4);
+  gdi.fillDown();
+  gdi.addString("", 1, "Vakanser och efteranmälda");
+  gdi.dropLine(0.4);
+  gdi.fillRight();
+  gdi.popX();
+  gdi.addInput("Vacances", vacances, 6, 0, L"Andel vakanser:");
+  gdi.addInput("VacancesMin", L"1", 6, 0, L"Min. vakanser (per klass):");
+  gdi.addInput("VacancesMax", L"10", 6, 0, L"Max. vakanser (per klass):");
+  gdi.addInput("Extra", L"0%", 6, 0, L"Förväntad andel efteranmälda:");
+
+  gdi.dropLine(4);
+  gdi.fillDown();
+  gdi.popX();
+  gdi.setRestorePoint("Setup");
+}
+
+void TabClass::loadReadyToDistribute(gdioutput &gdi, int &bx, int &by) {
+
+  gdi.fillRight();
+  gdi.pushX();
+  RECT rcPrepare;
+  rcPrepare.left = gdi.getCX();
+  rcPrepare.top = gdi.getCY();
+  gdi.setCX(gdi.getCX() + gdi.getLineHeight());
+  gdi.dropLine();
+  gdi.addString("", fontMediumPlus, "Förbered lottning");
+  gdi.dropLine(2.2);
+  gdi.popX();
+  gdi.setCX(gdi.getCX() + gdi.getLineHeight());
+  gdi.addButton("PrepareDrawAll", "Fördela starttider...", ClassesCB).isEdit(true);
+  gdi.addButton("EraseStartAll", "Radera starttider...", ClassesCB).isEdit(true).setExtra(0);
+  gdi.addButton("LoadSettings", "Hämta inställningar från föregående lottning", ClassesCB).isEdit(true);
+  enableLoadSettings(gdi);
+
+  gdi.dropLine(3);
+  rcPrepare.bottom = gdi.getCY();
+  rcPrepare.right = gdi.getWidth();
+  gdi.addRectangle(rcPrepare, colorLightGreen);
+  gdi.dropLine();
+  gdi.popX();
+
+  rcPrepare.left = gdi.getCX();
+  rcPrepare.top = gdi.getCY();
+  gdi.setCX(gdi.getCX() + gdi.getLineHeight());
+  gdi.dropLine();
+
+  gdi.addString("", fontMediumPlus, "Efteranmälningar");
+  gdi.dropLine(2.2);
+  gdi.popX();
+  gdi.setCX(gdi.getCX() + gdi.getLineHeight());
+  gdi.addButton("DrawAllBefore", "Efteranmälda (före ordinarie)", ClassesCB).isEdit(true);
+  gdi.addButton("DrawAllAfter", "Efteranmälda (efter ordinarie)", ClassesCB).isEdit(true);
+
+  gdi.dropLine(3);
+  rcPrepare.bottom = gdi.getCY();
+  rcPrepare.right = gdi.getWidth();
+  gdi.addRectangle(rcPrepare, colorLightBlue);
+  gdi.dropLine();
+  gdi.popX();
+  
+  gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
+  gdi.addButton("HelpDraw", "Hjälp...", ClassesCB, "");
+  gdi.dropLine(3);
+
+  by = max(by, gdi.getCY());
+
+  gdi.setCX(bx);
+  gdi.setCY(by);
+  gdi.fillDown();
+  gdi.dropLine();
+
+  gdi.setRestorePoint("ReadyToDistribute");
+
+  gdi.refresh();
 }

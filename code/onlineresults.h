@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,8 @@ protected:
   set<int> controls;
   int dataType;
   bool zipFile;
+  bool includeTotal;
+  bool includeCourse;
   bool sendToURL;
   bool sendToFile;
   mutable InfoCompetition *infoServer;
@@ -63,8 +65,7 @@ public:
   OnlineResults *clone() const {return new OnlineResults(*this);}
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  OnlineResults() : AutoMachine("Onlineresultat") , infoServer(0), dataType(1), zipFile(true), sendToURL(false), sendToFile(false),
-                    cmpId(0), exportCounter(1), bytesExported(0), lastSync(0) {}
+  OnlineResults();
   ~OnlineResults();
   friend class TabAuto;
 };

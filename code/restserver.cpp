@@ -1,6 +1,6 @@
 /************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2017 Melin Software HB
+Copyright (C) 2009-2018 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -388,7 +388,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     }
     for (auto c : cls) {
       InfoClass iCls(c->getId());
-      iCls.synchronize(*c, ctrlW);
+      iCls.synchronize(false, *c, ctrlW);
       iCls.serialize(out, false);
     }
     okRequest = true;
@@ -426,7 +426,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
 
     for (auto c : r) {
       InfoCompetitor iR(c->getId());
-      iR.synchronize(false, *c);
+      iR.synchronize(false, false, *c);
       iR.serialize(out, false);
     }
     okRequest = true;

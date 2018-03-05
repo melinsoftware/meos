@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -429,7 +429,7 @@ protected:
   void removeFromPunchHash(int card, int code, int time);
   bool isInPunchHash(int card, int code, int time);
 
-  void generateStatisticsPart(gdioutput &gdi, const vector<oEvent::ClassMetaType> &type,
+  void generateStatisticsPart(gdioutput &gdi, const vector<ClassMetaType> &type,
                               const set<int> &feeLimit, int actualFee, bool useReducedFee,
                               int baseFee, int &entries_sum, int &started_sum, int &fee_sum) const;
   void getRunnersPerDistrict(vector<int> &runners) const;
@@ -982,7 +982,7 @@ public:
 
   enum ResultType {RTClassResult, RTTotalResult, RTCourseResult, RTClassCourseResult};
   void calculateResults(ResultType result, bool includePreliminary = false);
-  void calculateRogainingResults();
+  void calculateRogainingResults(const set<int> &classSelection);
 
   void calculateResults(list<oSpeakerObject> &rl);
   void calculateTeamResults(bool totalMultiday);
@@ -1194,7 +1194,7 @@ public:
   /** Import entry data */
   void importXML_EntryData(gdioutput &gdi, const wstring &file, 
                            bool updateClass, bool removeNonexisting,
-                           const set<int> &filter);
+                           const set<int> &filter, const string &preferredIdType);
 
 protected:
   pClass getXMLClass(const xmlobject &xentry);

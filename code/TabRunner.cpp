@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@
 #include "intkeymapimpl.hpp"
 #include "meosexception.h"
 #include "MeOSFeatures.h"
+#include "autocomplete.h"
+#include "RunnerDB.h"
 
 int SportIdentCB(gdioutput *gdi, int type, void *data);
 
@@ -183,8 +185,10 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
     gdi.setInputStatus("Bib", controlBib);
   }
 
-  gdi.setText("Club", r->getClub());
-
+  auto *ci = gdi.setText("Club", r->getClub());
+  if (ci) {
+    ci->setExtra(r->getClubId());
+  }
   oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterNone);
   gdi.addItem("RClass", lang.tl("Ingen klass"), 0);
   gdi.selectItemByData("RClass", r->getClassId(true));
@@ -1042,6 +1046,29 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="Check") {
     }
   }
+  else if (type == GUI_INPUTCHANGE) {
+    InputInfo &ii = *(InputInfo *)data;
+
+    if (oe->useRunnerDb() && ii.id == "Name") {
+      auto &db = oe->getRunnerDatabase();
+      bool show = false;
+      if (ii.text.length() > 1) {
+        auto dbClub = extractClub(gdi);
+        auto rw = db.getRunnerSuggestions(ii.text, dbClub ? dbClub->getId() : 0, 10);
+        if (!rw.empty()) {
+          auto &ac = gdi.addAutoComplete(ii.id);
+          ac.setAutoCompleteHandler(this);
+
+          ac.setData(TabSI::getRunnerAutoCompelete(db, rw, dbClub));
+          ac.show();
+          show = true;
+        }
+      }
+      if (!show) {
+        gdi.clearAutoComplete(ii.id);
+      }
+    }
+  }
   else if (type==GUI_INPUT) {
     InputInfo ii=*(InputInfo *)data;
 
@@ -1215,6 +1242,27 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
   }
+  else if (type == GUI_COMBOCHANGE) {
+    ListBoxInfo &combo = *(ListBoxInfo *)(data);
+    bool show = false;
+    if (oe->useRunnerDb() && combo.id == "Club" && combo.text.length() > 1) {
+      auto clubs = oe->getRunnerDatabase().getClubSuggestions(combo.text, 20);
+      if (!clubs.empty()) {
+        auto &ac = gdi.addAutoComplete(combo.id);
+        ac.setAutoCompleteHandler(this);
+        vector<AutoCompleteRecord> items;
+        for (auto club : clubs)
+          items.emplace_back(club->getDisplayName(), club->getName(), club->getId());
+
+        ac.setData(items);
+        ac.show();
+        show = true;
+      }
+    }
+    if (!show) {
+      gdi.clearAutoComplete(combo.id);
+    }
+  }
   else if (type==GUI_CLEAR) {
     gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
     if (gdi_settings) 
@@ -1327,7 +1375,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, int type, void *data)
     int id = static_cast<TextInfo*>(data)->getExtraInt();
     oRunner *r = oe->getRunner(id, 0);
 
-    if (r==0)
+    if (r == 0)
       return -1;
 
     r->synchronize();
@@ -1341,19 +1389,24 @@ int TabRunner::vacancyCB(gdioutput &gdi, int type, void *data)
 
     int cardNo = gdi.getTextNo("CardNo");
 
-    if (cardNo!=r->getCardNo() && oe->checkCardUsed(gdi, *r, cardNo))
+    if (cardNo != r->getCardNo() && oe->checkCardUsed(gdi, *r, cardNo))
       return 0;
 
-    wstring club = gdi.getText("Club");
+    int clubId = 0;
+    wstring club;
     int birthYear = 0;
-    pClub pc = oe->getClubCreate(0, club);
 
-    r->updateFromDB(name, pc->getId(), r->getClassId(false), cardNo, birthYear);
-
+    if (gdi.hasField("Club")) {
+      club = gdi.getText("Club");
+      pClub pc = oe->getClubCreate(0, club);
+      if (pc)
+        clubId = pc->getId();
+    }
+    r->updateFromDB(name, clubId, r->getClassId(false), cardNo, birthYear);
     r->setName(name, true);
     r->setCardNo(cardNo, true);
-
     r->setClub(club);
+
     int fee = 0;
     if (gdi.hasField("Fee")) {
       ListBoxInfo lbi;
@@ -1870,17 +1923,19 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     gdi.addCheckbox("RentCard", "Hyrd", 0, tsi.storedInfo.rentState);
     gdi.dropLine(-1.2);
 
-    gdi.addInput("Name", tsi.storedInfo.storedName, 16, 0, L"Namn:");
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+      gdi.addCombo("Club", 220, 300, RunnerCB, L"Klubb:");
+      oe->fillClubs(gdi, "Club");
+      gdi.setText("Club", tsi.storedInfo.storedClub);
+    }
 
-    gdi.addCombo("Club", 220, 300, 0, L"Klubb:");
-    oe->fillClubs(gdi, "Club");
-    gdi.setText("Club", tsi.storedInfo.storedClub);
+    gdi.addInput("Name", tsi.storedInfo.storedName, 16, RunnerCB, L"Namn:");
 
     if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
       if (!tsi.storedInfo.storedFee.empty())
         lastFee = tsi.storedInfo.storedFee;
 
-      gdi.addCombo("Fee", 60, 150, SportIdentCB, L"Avgift:");
+      gdi.addCombo("Fee", 60, 150, 0, L"Avgift:");
       oe->fillFees(gdi, "Fee", true);
       gdi.autoGrow("Fee");
 
@@ -1892,7 +1947,6 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
       }
       gdi.dropLine(1.2);
 
-      //gdi.addCheckbox("Paid", "Kontant betalning", 0, tsi.storedInfo.hasPaid);
       tsi.generatePayModeWidget(gdi);
       gdi.dropLine(-0.2);
     }
@@ -2384,7 +2438,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
   gdi.dropLine(1);
   gdi.fillRight();
   gdi.pushX();
-  gdi.addInput("Name", L"", 16, 0, L"Namn:");
+  gdi.addInput("Name", L"", 16, RunnerCB, L"Namn:");
 
   if (oe->hasBib(true, false)) {
     gdi.addInput("Bib", L"", 4, 0, L"Nr", L"Nummerlapp");
@@ -2394,7 +2448,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
     gdi.fillDown();
-    gdi.addCombo("Club", 220, 300, 0, L"Klubb:");
+    gdi.addCombo("Club", 220, 300, RunnerCB, L"Klubb:");
     oe->fillClubs(gdi, "Club");
     gdi.pushX();
   }
@@ -2945,4 +2999,44 @@ void TabRunner::loadEconomy(gdioutput &gdi, oRunner &r) {
   gdi.addButton("Close", "Stäng").setHandler(h);
   gdi.addButton("Save", "Spara").setHandler(h);
   gdi.refresh();
+}
+
+void TabRunner::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
+  auto bi = gdi.setText(info.getTarget(), info.getCurrent().c_str());
+  if (bi) {
+    int ix = info.getCurrentInt();
+    bi->setExtra(ix);
+    if (info.getTarget() == "Name") {
+      auto &db = oe->getRunnerDatabase();
+      auto runner = db.getRunnerByIndex(ix);
+
+      if (runner && gdi.hasField("Club") && gdi.getText("Club").empty()) {
+        pClub club = db.getClub(runner->dbe().clubNo);
+        if (club)
+          gdi.setText("Club", club->getName());
+      }
+      if (runner && runner->dbe().cardNo > 0 && gdi.hasField("CardNo") && gdi.getText("CardNo").empty()) {
+        gdi.setText("CardNo", runner->dbe().cardNo);
+      }
+    }
+  }
+  gdi.clearAutoComplete("");
+  gdi.TabFocus(1);
+}
+
+pClub TabRunner::extractClub(gdioutput &gdi) {
+  oClub *dbClub = nullptr;
+  if (gdi.hasField("Club")) {
+    auto &db = oe->getRunnerDatabase();
+    int clubId = gdi.getExtraInt("Club");
+    if (clubId >= 0) {
+      dbClub = db.getClub(clubId);
+      if (dbClub && !stringMatch(dbClub->getName(), gdi.getText("Club")))
+        dbClub = nullptr;
+    }
+    if (dbClub == nullptr) {
+      dbClub = db.getClub(gdi.getText("Club"));
+    }
+  }
+  return dbClub;
 }

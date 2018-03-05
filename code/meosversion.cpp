@@ -1,6 +1,6 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 #include "stdafx.h"
@@ -29,7 +29,7 @@
 //V33: abcde
 //V35: abcde
 int getMeosBuild() {
-  string revision("$Rev: 634 $");
+  string revision("$Rev: 652 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -41,12 +41,12 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfg
 wstring getMeosDate() {
-  wstring date(L"$Date: 2017-12-25 16:08:33 +0100 (mÃ¥, 25 dec 2017) $");
+  wstring date(L"$Date: 2018-03-04 09:44:43 +0100 (sÃ¶, 04 mar 2018) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Snapshot"; // No parantheses (...)
+  return L"RC1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -70,114 +70,119 @@ wstring getMeosCompectVersion() {
     return getMajorVersion() + L"." + itow(getMeosBuild()) + L" (" + getBuildType() + L")";
 }
 
-void getSupporters(vector<string> &supp)
+void getSupporters(vector<wstring> &supp)
 {
-  supp.push_back("Centrum OK");
-  supp.push_back("Ove Persson, Piteå IF");
-  supp.push_back("OK Rodhen");
-  supp.push_back("Täby Extreme Challenge");
-  supp.push_back("Thomas Engberg, VK Uvarna");
-  supp.push_back("Eilert Edin, Sidensjö IK");
-  supp.push_back("Göran Nordh, Trollhättans SK");
-  supp.push_back("Roger Gustavsson, OK Tisaren");
-  supp.push_back("Sundsvalls OK");
-  supp.push_back("OK Gipens OL-skytte");
-  supp.push_back("Helsingborgs SOK");
-  supp.push_back("OK Gipens OL-skytte");
-  supp.push_back("Rune Thurén, Vallentuna-Össeby OL");
-  supp.push_back("Roland Persson, Kalmar OK");
-  supp.push_back("Robert Jessen, Främmestads IK");
-  supp.push_back("Anders Platt, Järla Orientering");
-  supp.push_back("Almby IK, Örebro");
-  supp.push_back("Peter Rydesäter, Rehns BK");
-  supp.push_back("IK Hakarpspojkarna");
-  supp.push_back("Rydboholms SK");
-  supp.push_back("IFK Kiruna");
-  supp.push_back("Peter Andersson, Söders SOL");
-  supp.push_back("Björkfors GoIF");
-  supp.push_back("OK Ziemelkurzeme");
-  supp.push_back("Big Foot Orienteers");
-  supp.push_back("FIF Hillerød");
-  supp.push_back("Anne Udd");
-  supp.push_back("OK Orinto");
-  supp.push_back("SOK Träff");
-  supp.push_back("Gamleby OK");
-  supp.push_back("Vänersborgs SK");
-  supp.push_back("Henrik Ortman, Västerås SOK");
-  supp.push_back("Leif Olofsson, Sjuntorp");
-  supp.push_back("Vallentuna/Össeby OL");
-  supp.push_back("Oskarström OK");
-  supp.push_back("Skogslöparna");
-  supp.push_back("OK Milan");
-  supp.push_back("Tjalve IF");
-  supp.push_back("OK Skärmen");
-  supp.push_back("Østkredsen");
-  supp.push_back("OK Roskilde");
-  supp.push_back("Holbæk Orienteringsklub");
-  supp.push_back("Bodens BK");
-  supp.push_back("OK Tyr, Karlstad");
-  supp.push_back("Göteborg-Majorna OK");
-  supp.push_back("OK Järnbärarna, Kopparberg");
-  supp.push_back("FK Åsen");
-  supp.push_back("Ballerup OK");
-  supp.push_back("Olivier Benevello, Valbonne SAO");
-  supp.push_back("Tommy Wåhlin, OK Enen");
-  supp.push_back("Hjobygdens OK");
-  supp.push_back("Tisvilde Hegn OK");
-  supp.push_back("Lindebygdens OK");
-  supp.push_back("OK Flundrehof");
-  supp.push_back("Vittjärvs IK");
-  supp.push_back("Annebergs GIF");
-  supp.push_back("Lars-Eric Gahlin, Östersunds OK");
-  supp.push_back("Sundsvalls OK:s Veteraner");
-  supp.push_back("OK Skogshjortarna");
-  supp.push_back("Kinnaströms SK");
-  supp.push_back("OK Pan Århus");
-  supp.push_back("Jan Ernberg, Täby OK");
-  supp.push_back("Stjärnorps SK");
-  supp.push_back("Mölndal Outdoor IF");
-  supp.push_back("Roland Elg, Fjärås AIK");
-  supp.push_back("Tenhults SOK");
-  supp.push_back("Järfälla OK");
-  supp.push_back("Lars Jonasson");
-  supp.push_back("Anders Larsson, OK Nackhe");
-  supp.push_back("Hans Wilhelmsson");
-  supp.push_back("Patrice Lavallee, Noyon Course d'Orientation");
-  supp.push_back("IFK Linköpings OS");
-  supp.push_back("Lars Ove Karlsson, Västerås SOK");
-  supp.push_back("OK Djerf");
-  supp.push_back("OK Vivill");
-  supp.push_back("IFK Mora OK");
-  supp.push_back("Sonny Andersson, Huskvarna");
-  supp.push_back("Hässleholms OK Skolorientering");
-  supp.push_back("IBM-klubben Orientering");
-  supp.push_back("OK Øst, Birkerød");
-  supp.push_back("OK Klemmingen");
-  supp.push_back("Hans Johansson");
-  supp.push_back("KOB Kysak");  
-  supp.push_back("Per Ivarsson, Trollhättans SOK");
-  supp.push_back("Sergio Yañez, ABC TRAIL");
-  supp.push_back("Western Race Services");
-  supp.push_back("IK Gandvik, Skara");
-  supp.push_back("IK Stern");
-  supp.push_back("OK Roslagen");
-  supp.push_back("TSV Malente");
-  supp.push_back("Emmaboda Verda OK");
-  supp.push_back("KOB ATU Košice");
-  supp.push_back("Gävle OK");
-  supp.push_back("Kenneth Gattmalm, Jönköpings OK");
-  supp.push_back("Søllerød OK");
-  supp.push_back("O-travel");
-  supp.push_back("Bengt Bengtsson");
-  supp.push_back("OK Landehof");
-  supp.push_back("OK Orinto");
-  supp.push_back("Bredaryds SOK");
-  supp.push_back("Thore Nilsson, Uddevalla OK");
-  supp.push_back("Timrå SOK");
-  supp.push_back("Åke Larsson, OK Hedströmmen");
-  supp.push_back("Avesta OK");
-  supp.push_back("Motionsorientering Göteborg");
-  supp.push_back("OK Måsen");
-  supp.push_back("IF Thor");
-  supp.push_back("SOS Jindrichuv Hradec");
+  supp.push_back(L"Centrum OK");
+  supp.push_back(L"Ove Persson, PiteÃ¥ IF");
+  supp.push_back(L"OK Rodhen");
+  supp.push_back(L"TÃ¤by Extreme Challenge");
+  supp.push_back(L"Thomas Engberg, VK Uvarna");
+  supp.push_back(L"Eilert Edin, SidensjÃ¶ IK");
+  supp.push_back(L"GÃ¶ran Nordh, TrollhÃ¤ttans SK");
+  supp.push_back(L"Roger Gustavsson, OK Tisaren");
+  supp.push_back(L"Sundsvalls OK");
+  supp.push_back(L"OK Gipens OL-skytte");
+  supp.push_back(L"Helsingborgs SOK");
+  supp.push_back(L"OK Gipens OL-skytte");
+  supp.push_back(L"Rune ThurÃ©n, Vallentuna-Ã–sseby OL");
+  supp.push_back(L"Roland Persson, Kalmar OK");
+  supp.push_back(L"Robert Jessen, FrÃ¤mmestads IK");
+  supp.push_back(L"Anders Platt, JÃ¤rla Orientering");
+  supp.push_back(L"Almby IK, Ã–rebro");
+  supp.push_back(L"Peter RydesÃ¤ter, Rehns BK");
+  supp.push_back(L"IK Hakarpspojkarna");
+  supp.push_back(L"Rydboholms SK");
+  supp.push_back(L"IFK Kiruna");
+  supp.push_back(L"Peter Andersson, SÃ¶ders SOL");
+  supp.push_back(L"BjÃ¶rkfors GoIF");
+  supp.push_back(L"OK Ziemelkurzeme");
+  supp.push_back(L"Big Foot Orienteers");
+  supp.push_back(L"FIF HillerÃ¸d");
+  supp.push_back(L"Anne Udd");
+  supp.push_back(L"OK Orinto");
+  supp.push_back(L"SOK TrÃ¤ff");
+  supp.push_back(L"Gamleby OK");
+  supp.push_back(L"VÃ¤nersborgs SK");
+  supp.push_back(L"Henrik Ortman, VÃ¤sterÃ¥s SOK");
+  supp.push_back(L"Leif Olofsson, Sjuntorp");
+  supp.push_back(L"Vallentuna/Ã–sseby OL");
+  supp.push_back(L"OskarstrÃ¶m OK");
+  supp.push_back(L"SkogslÃ¶parna");
+  supp.push_back(L"OK Milan");
+  supp.push_back(L"Tjalve IF");
+  supp.push_back(L"OK SkÃ¤rmen");
+  supp.push_back(L"Ã˜stkredsen");
+  supp.push_back(L"OK Roskilde");
+  supp.push_back(L"HolbÃ¦k Orienteringsklub");
+  supp.push_back(L"Bodens BK");
+  supp.push_back(L"OK Tyr, Karlstad");
+  supp.push_back(L"GÃ¶teborg-Majorna OK");
+  supp.push_back(L"OK JÃ¤rnbÃ¤rarna, Kopparberg");
+  supp.push_back(L"FK Ã…sen");
+  supp.push_back(L"Ballerup OK");
+  supp.push_back(L"Olivier Benevello, Valbonne SAO");
+  supp.push_back(L"Tommy WÃ¥hlin, OK Enen");
+  supp.push_back(L"Hjobygdens OK");
+  supp.push_back(L"Tisvilde Hegn OK");
+  supp.push_back(L"Lindebygdens OK");
+  supp.push_back(L"OK Flundrehof");
+  supp.push_back(L"VittjÃ¤rvs IK");
+  supp.push_back(L"Annebergs GIF");
+  supp.push_back(L"Lars-Eric Gahlin, Ã–stersunds OK");
+  supp.push_back(L"Sundsvalls OK:s Veteraner");
+  supp.push_back(L"OK Skogshjortarna");
+  supp.push_back(L"KinnastrÃ¶ms SK");
+  supp.push_back(L"OK Pan Ã…rhus");
+  supp.push_back(L"Jan Ernberg, TÃ¤by OK");
+  supp.push_back(L"StjÃ¤rnorps SK");
+  supp.push_back(L"MÃ¶lndal Outdoor IF");
+  supp.push_back(L"Roland Elg, FjÃ¤rÃ¥s AIK");
+  supp.push_back(L"Tenhults SOK");
+  supp.push_back(L"JÃ¤rfÃ¤lla OK");
+  supp.push_back(L"Lars Jonasson");
+  supp.push_back(L"Anders Larsson, OK Nackhe");
+  supp.push_back(L"Hans Wilhelmsson");
+  supp.push_back(L"Patrice Lavallee, Noyon Course d'Orientation");
+  supp.push_back(L"IFK LinkÃ¶pings OS");
+  supp.push_back(L"Lars Ove Karlsson, VÃ¤sterÃ¥s SOK");
+  supp.push_back(L"OK Djerf");
+  supp.push_back(L"OK Vivill");
+  supp.push_back(L"IFK Mora OK");
+  supp.push_back(L"Sonny Andersson, Huskvarna");
+  supp.push_back(L"HÃ¤ssleholms OK Skolorientering");
+  supp.push_back(L"IBM-klubben Orientering");
+  supp.push_back(L"OK Ã˜st, BirkerÃ¸d");
+  supp.push_back(L"OK Klemmingen");
+  supp.push_back(L"Hans Johansson");
+  supp.push_back(L"KOB Kysak");  
+  supp.push_back(L"Per Ivarsson, TrollhÃ¤ttans SOK");
+  supp.push_back(L"Sergio YaÃ±ez, ABC TRAIL");
+  supp.push_back(L"Western Race Services");
+  supp.push_back(L"IK Gandvik, Skara");
+  supp.push_back(L"IK Stern");
+  supp.push_back(L"OK Roslagen");
+  supp.push_back(L"TSV Malente");
+  supp.push_back(L"Emmaboda Verda OK");
+  supp.push_back(L"KOB ATU KoÅ¡ice");
+  supp.push_back(L"GÃ¤vle OK");
+  supp.push_back(L"Kenneth Gattmalm, JÃ¶nkÃ¶pings OK");
+  supp.push_back(L"SÃ¸llerÃ¸d OK");
+  supp.push_back(L"O-travel");
+  supp.push_back(L"Bengt Bengtsson");
+  supp.push_back(L"OK Landehof");
+  supp.push_back(L"OK Orinto");
+  supp.push_back(L"Bredaryds SOK");
+  supp.push_back(L"Thore Nilsson, Uddevalla OK");
+  supp.push_back(L"TimrÃ¥ SOK");
+  supp.push_back(L"Ã…ke Larsson, OK HedstrÃ¶mmen");
+  supp.push_back(L"Avesta OK");
+  supp.push_back(L"Motionsorientering GÃ¶teborg");
+  supp.push_back(L"OK MÃ¥sen");
+  supp.push_back(L"IF Thor");
+  supp.push_back(L"SOS JindÅ™ichÅ¯v Hradec");
+  supp.push_back(L"Mats Holmberg, OK GrÃ¤nsen");
+  supp.push_back(L"Christoffer Ohlsson, Uddevalla OK");
+  supp.push_back(L"O-Ringen AB");
+  supp.push_back(L"Hans Carlstedt, SÃ¤vedalens AIK");
+  supp.push_back(L"Attunda OK");
 }

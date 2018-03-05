@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -172,8 +172,8 @@ public:
   // Get a measure of how much data is stored in this record.
   int getDataAmountMeasure(const void *data) const;
 
-  void buildDataFields(gdioutput &gdi) const;
-  void buildDataFields(gdioutput &gdi, const vector<string> &fields) const;
+  void buildDataFields(gdioutput &gdi, int maxFieldSize) const;
+  void buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const;
 
   void fillDataFields(const oBase *ob, gdioutput &gdi) const;
   bool saveDataFields(oBase *ob, gdioutput &gdi);
@@ -257,11 +257,11 @@ public:
   inline const wstring &getDate(const char *Name) const
     {return oDC->getDate(Data, Name);}
 
-  inline void buildDataFields(gdioutput &gdi) const
-    {oDC->buildDataFields(gdi);}
+  inline void buildDataFields(gdioutput &gdi, int maxFieldSize) const
+    {oDC->buildDataFields(gdi, maxFieldSize);}
 
-  inline void buildDataFields(gdioutput &gdi, const vector<string> &fields) const
-    {oDC->buildDataFields(gdi, fields);}
+  inline void buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const
+    {oDC->buildDataFields(gdi, fields, maxFieldSize);}
 
   inline void fillDataFields(gdioutput &gdi) const
     {oDC->fillDataFields(oB, gdi);}
@@ -352,10 +352,10 @@ public:
   inline const wstring &getDate(const string &name) const
     {return oDC->getDate(Data, name.c_str());}
 
-  inline void buildDataFields(gdioutput &gdi) const
-    {oDC->buildDataFields(gdi);}
+  inline void buildDataFields(gdioutput &gdi, int maxFieldSize) const
+    {oDC->buildDataFields(gdi, maxFieldSize);}
 
-  inline void fillDataFields(gdioutput &gdi) const
+  inline void fillDataFields(gdioutput &gdi, int maxFieldSize) const
     {oDC->fillDataFields(oB, gdi);}
 
   inline string generateSQLDefinition() const

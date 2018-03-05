@@ -12,7 +12,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,9 @@ protected:
 
   // Index into course (-1 if unused)
   int tRogainingIndex;
+
+  // Index into course (-1 if unused) for a rogaining control, even if it did not give any points
+  int anyRogainingMatchControlId;
   // Number of rogaining points given
   int tRogainingPoints;
 
@@ -83,6 +86,7 @@ public:
   wstring getSimpleString() const;
 
   wstring getTime() const;
+  int getTimeInt() const;
   int getAdjustedTime() const;
   void setTime(const wstring &t);
   virtual void setTimeInt(int newTime, bool databaseUpdate);

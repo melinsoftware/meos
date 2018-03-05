@@ -2,18 +2,16 @@
 
 #include <vector>
 #include <map>
+#include <set>
 #include "inthashmap.h"
 #include "oclub.h"
 
-#ifdef OLD
-#include <hash_set>
-#else
 #include <unordered_set>
-#endif
+#include <unordered_map>
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,8 +31,8 @@
 
 ************************************************************************/
 
-const int baseNameLength=40;
-const int baseNameLengthUTF=56;
+const int baseNameLength = 64;
+const int baseNameLengthUTF = 96;
 
 //Has 0-clearing constructor. Must not contain any
 //dynamic data etc.
@@ -65,18 +63,29 @@ struct RunnerDBEntryV2 {
   short int reserved;
   /** End of V1*/
   __int64 extId;
-
-  bool isRemoved() const {return (reserved & 1) == 1;}
-  void remove() {reserved |= 1;}
-
-  bool isUTF() const {return (reserved & 2) == 2;}
-  void setUTF() {reserved |= 2;}
 };
 
+
+struct RunnerDBEntryV3 {
+  // Init from old struct
+  RunnerDBEntryV3();
+  
+  char name[56];
+  int cardNo;
+  int clubNo;
+  char national[3];
+  char sex;
+  short int birthYear;
+  short int reserved;
+  /** End of V1*/
+  __int64 extId;
+};
 
 struct RunnerDBEntry {
   // Init from old struct
   void init(const RunnerDBEntryV2 &dbe);
+  void init(const RunnerDBEntryV3 &dbe);
+
   RunnerDBEntry();
 
   // 8 it versions
@@ -93,11 +102,11 @@ struct RunnerDBEntry {
   /** End of V1*/
   __int64 extId;
 
-  bool isRemoved() const {return (reserved & 1) == 1;}
-  void remove() {reserved |= 1;}
+  bool isRemoved() const { return (reserved & 1) == 1; }
+  void remove() { reserved |= 1; }
 
-  bool isUTF() const {return (reserved & 2) == 2;}
-  void setUTF() {reserved |= 2;}
+  bool isUTF() const { return (reserved & 2) == 2; }
+  void setUTF() { reserved |= 2; }
 };
 
 class RunnerDB;
@@ -125,6 +134,9 @@ public:
   void setName(const wchar_t *name);
   void setNameUTF(const char *name);
 
+
+  const wchar_t *RunnerWDBEntry::getNameCstr() const;
+
   wstring getGivenName() const;
   wstring getFamilyName() const;
 
@@ -151,6 +163,8 @@ private:
 
   Table *runnerTable;
   Table *clubTable;
+
+  static int cellEntryIndex;
 
   bool check(const RunnerDBEntry &rde) const;
 
@@ -197,7 +211,73 @@ private:
 
   void fillClubs(vector< pair<wstring, size_t> > &out) const;
 
+  class ClubNodeHash {
+    //map<wchar_t, ClubNodeHash> hash;
+    vector<int> index;
+
+  public:
+    void setupHash(const wstring &key, int keyOffset, int ix);
+    void match(RunnerDB &db, set< pair<int, int> > &ix, const vector<wstring> &key, const wstring &skey) const;
+  };
+
+  class RunnerClubNodeHash {
+  protected:
+    vector<int> index;
+  public:
+    void setupHash(const wchar_t *key, int keyOffset, int ix);
+    void match(RunnerDB &db, set< pair<int, int> > &ix, const vector<wstring> &key) const;
+  };
+
+  class RunnerNodeHash : public RunnerClubNodeHash {
+    map<wchar_t, RunnerNodeHash> hash;
+  public: // Note: Non virtual. No reference by parent type
+    void setupHash(const wchar_t *key, int keyOffset, int ix);
+    void match(RunnerDB &db, set< pair<int, int> > &ix, const vector<wstring> &key) const;
+  };
+
+  unordered_map<int, ClubNodeHash> clubHash;
+  unordered_map<int, RunnerNodeHash> runnerHash;
+  unordered_map<int, RunnerClubNodeHash> runnerHashByClub;
+
+  enum class AutoHashMode {
+    Clubs, Runners, RunnerClub
+  };
+
+  void setupAutoCompleteHash(AutoHashMode mode);
+
+  static int keyFromString(const wstring &n, size_t offset) {
+    pair<wchar_t, wchar_t> key;
+    //static_assert(sizeof(key) == sizeof int);
+
+    if (n.length() == 1 + offset) {
+      key.first = n[offset];
+      key.second = 0;
+    }
+    else if (n.length() > 1 + offset) {
+      key.first = n[offset];
+      key.second = n[offset+1];
+    }
+    int *ikey = static_cast<int *>((void *)&key);
+
+    return *ikey;
+  }
+
+  static int keyFromString(const wchar_t *n) {
+    pair<wchar_t, wchar_t> key;
+    if (n[0] == 0)
+      return 0;
+    else {
+      key.first = n[0];
+      key.second = n[1];
+    }
+    int *ikey = static_cast<int *>((void *)&key);
+    return *ikey;
+  }
+
 public:
+
+  vector<pClub> getClubSuggestions(const wstring &key, int limit);
+  vector<pair<RunnerWDBEntry *, int>> getRunnerSuggestions(const wstring &name, int clubId, int limit);
 
   void generateRunnerTableData(Table &table, oDBRunnerEntry *addEntry);
   void generateClubTableData(Table &table, oClub *addEntry);
@@ -306,7 +386,21 @@ class oDBClubEntry : public oClub {
 private:
   int index;
   RunnerDB *db;
+  wstring canonizedName;
+  wstring canonizedNameExact;
 public:
+
+  void setCanonizedName(wstring &&n, wstring &&nExact) {
+    canonizedName = n;
+    canonizedNameExact = nExact;
+  }
+
+  const wstring &getCanonizedName() {
+    return canonizedName;
+  }
+  const wstring &getCanonizedNameExact() {
+    return canonizedNameExact;
+  }
   oDBClubEntry(oEvent *oe, int id, int index, RunnerDB *db);
   oDBClubEntry(const oClub &c, int index, RunnerDB *db);
 

@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -220,7 +220,8 @@ void oEvent::calculateResults(ResultType resultType, bool includePreliminary) {
   }
 }
 
-void oEvent::calculateRogainingResults() {
+void oEvent::calculateRogainingResults(const set<int> &classSelection) {
+  const bool all = classSelection.empty();
   sortRunners(ClassPoints);
   oRunnerList::iterator it;
 
@@ -235,6 +236,9 @@ void oEvent::calculateRogainingResults() {
 
   for (it=Runners.begin(); it != Runners.end(); ++it) {
     if (it->isRemoved())
+      continue;
+
+    if (!all && !classSelection.count(it->getClassId(false)))
       continue;
 
     if (it->getClassId(true)!=cClassId || it->tDuplicateLeg!=cDuplicateLeg) {

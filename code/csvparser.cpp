@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -414,22 +414,28 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
   return true;
 }
 
-bool csvparser::openOutput(const wstring &filename)
+bool csvparser::openOutput(const wstring &filename, bool writeUTF)
 {
   checkWriteAccess(filename);
   fout.open(filename);
 
   if (fout.bad())
     return false;
+
+  if (writeUTF) {
+    fout.put(-17);
+    fout.put(-69);
+    fout.put(-65);
+  }
   return true;
 }
 
-bool csvparser::OutputRow(const string &row)
+bool csvparser::outputRow(const string &row)
 {
   fout << row << endl;
   return true;
 }
-bool csvparser::OutputRow(vector<string> &out)
+bool csvparser::outputRow(const vector<string> &out)
 {
   int size=out.size();
 
