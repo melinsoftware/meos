@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1499,6 +1499,27 @@ void IOF30Interface::prescanEntry(xmlobject &xo, set<int> &stages) {
         stages.insert(r);
     }
   }
+
+  xmlobject person = xo.getObject("Person");
+  if (!person) {
+    xmlobject teamPerson = xo.getObject("TeamEntryPerson");
+    if (teamPerson)
+      person = teamPerson.getObject("Person");
+  }
+  
+  xmlList ids;
+  if (person) {
+    person.getObjects("Id", ids);
+    string type;
+    if (ids.size() > 1) {
+      for (auto &id : ids) {
+        id.getObjectString("type", type);
+        if (!type.empty()) {
+          idProviders.insert(type);
+        }
+      }
+    }
+  }
 }
 
 bool IOF30Interface::matchStageFilter(const set<int> &stageFilter, const xmlList &races) {
@@ -1705,7 +1726,33 @@ pRunner IOF30Interface::readPersonStart(gdioutput &gdi, pClass pc, xmlobject &xo
   return r;
 }
 
-
+void IOF30Interface::readId(const xmlobject &person, int &pid, __int64 &extId) const {
+  wstring sid;
+  pid = 0;
+  extId = 0;
+  if (preferredIdProvider.empty()) {
+    person.getObjectString("Id", sid);
+  }
+  else {
+    xmlList sids;
+    wstring bsid;
+    person.getObjects("Id", sids);
+    for (auto &x : sids) {
+      auto type = x.getAttrib("type");
+      if (type && type.get() == preferredIdProvider) {
+        sid = x.getw();
+      }
+      else if (bsid.empty())
+        bsid = x.getw();
+    }
+    if (sid.empty())
+      pid = oBase::idFromExtId(oBase::converExtIdentifierString(bsid));
+  }
+  if (!sid.empty()) {
+    extId = oBase::converExtIdentifierString(sid);
+    pid = oBase::idFromExtId(extId);
+  }
+}
 
 pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
 
@@ -1721,11 +1768,35 @@ pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
   else {
     name = lang.tl("N.N.");
   }
-
+  int pid = 0;
+  __int64 extId = 0;
+  readId(person, pid, extId);
+  /*
   wstring sid;
-  person.getObjectString("Id", sid);
-  __int64 extId = oBase::converExtIdentifierString(sid);
-  int pid = oBase::idFromExtId(extId);
+  int pid = 0;
+  __int64 extId = 0;
+  if (preferredIdProvider.empty()) {
+    person.getObjectString("Id", sid);
+  }
+  else {
+    xmlList sids;
+    wstring bsid;
+    person.getObjects("Id", sids);
+    for (auto &x : sids) {
+      auto type = x.getAttrib("type");
+      if (type && type.get() == preferredIdProvider) {
+        sid = x.getw();
+      }
+      else if (bsid.empty())
+        bsid = x.getw();
+    }
+    if (sid.empty())
+      pid = oBase::idFromExtId(oBase::converExtIdentifierString(bsid));
+  }
+  if (!sid.empty()) {
+    extId = oBase::converExtIdentifierString(sid);
+    pid = oBase::idFromExtId(extId);
+  }*/
   pRunner r = 0;
 
   if (pid) {
@@ -2620,7 +2691,6 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
         xml.write("Position", r.getPlace());
       }
       else if (teamMember) {
-        //int pos = r.getTeam()->getLegPlace(r.getLegNumber(), false);
         int pos = r.getPlace();
         if (pos > 0 && pos < 50000)
           xml.write("Position", "type", L"Leg", itow(pos));
@@ -2633,6 +2703,11 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
 
     xml.write("Status", formatStatus(r.getStatus()));
 
+    int rg = r.getRogainingPoints(false);
+    if (rg > 0) {
+      xml.write("Score", "type", L"Score", itow(rg));
+      xml.write("Score", "type", L"Penalty", itow(r.getRogainingReduction()));
+    }
     if ( (r.getTeam() && r.getClassRef(false)->getClassType() != oClassPatrol && !teamsAsIndividual) || hasInputTime) {
       xml.startTag("OverallResult");
       int rt = r.getTotalRunningTime();
@@ -3612,3 +3687,11 @@ void IOF30Interface::writeClubDB(const RunnerDB &db, xmlparser &xml) const {
   xml.endTag();
 }
 
+void IOF30Interface::getIdTypes(vector<string> &types) {
+  types.clear();
+  types.insert(types.begin(), idProviders.begin(), idProviders.end());
+}
+
+void IOF30Interface::setPreferredIdType(const string &type) {
+  preferredIdProvider = type;
+}

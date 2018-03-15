@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,8 @@
 int ClassInfo::sSortOrder=0;
 
 DrawInfo::DrawInfo() {
+  changedVacancyInfo = true;
+  changedExtraInfo = true;
   vacancyFactor = 0.05;
   extraFactor = 0.1;
   minVacancy = 1;
@@ -339,6 +341,8 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
   drawInfo.maxClassInterval = 1;
   drawInfo.minVacancy = 10;
   drawInfo.maxVacancy = 1;
+  drawInfo.changedExtraInfo = false;
+  drawInfo.changedVacancyInfo = false;
   set<int> reducedStart;
   for (set<int>::const_iterator it = classes.begin(); it != classes.end(); ++it) {
     pClass pc = oe->getClass(*it);
@@ -394,7 +398,11 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
       cInfo[i].interval = iv / drawInfo.baseInterval;
       cInfo[i].nVacant = pc->getDrawVacant();
       cInfo[i].nExtra = pc->getDrawNumReserved();
-      
+      auto spec = pc->getDrawSpecification();
+      cInfo[i].hasFixedTime = spec.count(oClass::DrawSpecified::FixedTime) != 0;
+      cInfo[i].nExtraSpecified = spec.count(oClass::DrawSpecified::Extra) != 0;
+      cInfo[i].nVacantSpecified = spec.count(oClass::DrawSpecified::Vacant) != 0;
+
       cInfo[i].nRunners = pc->getNumRunners(true, true, true) + cInfo[i].nVacant;
 
       if (cInfo[i].nRunners>0) {
@@ -458,7 +466,7 @@ void oEvent::optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, D
       continue;
 
     int nr = c_it->getNumRunners(true, true, true);
-    if (ci.nVacant == -1 || !ci.nVacantSpecified) {
+    if (ci.nVacant == -1 || !ci.nVacantSpecified || di.changedVacancyInfo) {
       // Auto initialize
       int nVacancies = int(nr * di.vacancyFactor + 0.5);
       nVacancies = max(nVacancies, di.minVacancy);
@@ -469,14 +477,16 @@ void oEvent::optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, D
         nVacancies = 0;
 
       ci.nVacant = nVacancies;
+      ci.nVacantSpecified = false;
     }
 
-    if (!ci.nExtraSpecified) {
+    if (!ci.nExtraSpecified || di.changedExtraInfo) {
       // Auto initialize
       ci.nExtra = max(int(nr * di.extraFactor + 0.5), 1);
 
       if (di.extraFactor == 0)
         ci.nExtra = 0;
+      ci.nExtraSpecified = false;
     }
 
     ci.nRunners = nr + ci.nVacant;

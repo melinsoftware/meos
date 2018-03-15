@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -598,7 +598,7 @@ bool xmlparser::processTag(char *start, char *end) {
   if (endTag)
     tag++;
 
-  while (start<=end && /**start!=' ' && *start!='\t'*/ !isBlankSpace(*start))
+  while (start<=end && !isBlankSpace(*start))
     start++;
 
   *start = 0;
@@ -737,7 +737,7 @@ xmlattrib xmlobject::getAttrib(const char *pname) const
       end-=2;
     else {
       if (size_t(index + 1) < parser->xmlinfo.size())
-        end = parser->xmlinfo[index+1].tag;
+        end = parser->xmlinfo[index+1].tag - 1;
       else
         end = &parser->xbf.back();
     }

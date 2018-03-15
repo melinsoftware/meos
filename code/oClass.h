@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -299,6 +299,13 @@ public:
   int getDrawNumReserved() const;
   void setDrawNumReserved(int st);
 
+  enum class DrawSpecified {
+    FixedTime = 1, Vacant = 2, Extra = 4
+  };
+  
+  void setDrawSpecification(const vector<DrawSpecified> &ds);
+  set<DrawSpecified> getDrawSpecification() const;
+
   /** Return an actual linear index for this class. */
   int getLinearIndex(int index, bool isLinear) const;
 
@@ -561,6 +568,9 @@ public:
   // Get entry fee depending on date and age
   int getEntryFee(const wstring &date, int age) const;
 
+  /// Get all class fees
+  vector<pair<wstring, size_t>> oClass::getAllFees() const;
+
   // Clear cached data
   void clearCache(bool recalculate);
 
@@ -594,5 +604,9 @@ public:
   friend class MeosSQL;
   friend class TabSpeaker;
 };
+
+static const oClass::DrawSpecified DrawKeys[4] = { oClass::DrawSpecified::FixedTime,
+                                                   oClass::DrawSpecified::Vacant, 
+                                                   oClass::DrawSpecified::Extra };
 
 #endif // !defined(AFX_OCLASS_H__63E948E3_3C06_4404_8E72_2185582FF30F__INCLUDED_)

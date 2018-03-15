@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -2164,4 +2164,95 @@ int oTeam::getRanking() const {
     }
   }
   return MaxRankingConstant;
+}
+
+int oTeam::getRogainingPatrolPoints(bool multidayTotal) const {
+  int madj = multidayTotal ? getInputPoints() : 0;
+
+  if (tTeamPatrolRogainingAndVersion.first == oe->dataRevision)
+    return tTeamPatrolRogainingAndVersion.second.points + madj;
+
+  tTeamPatrolRogainingAndVersion.first = oe->dataRevision;
+  tTeamPatrolRogainingAndVersion.second.reset();
+
+  int reduction = 0;
+  int overtime = 0;
+  map<int, vector<pair<int, int>>> control2PunchTimeRunner;
+  std::set<int> runnerToCheck;
+  vector<pPunch> punches;
+  for (pRunner r : Runners) {
+    if (r) {
+      pCourse pc = r->getCourse(false);
+      if (r->getCard() && pc) {
+        reduction = max(reduction, r->getRogainingReduction());
+        overtime = max(overtime, r->getRogainingOvertime());
+        int rid = r->getId();
+        r->getCard()->getPunches(punches);
+        for (auto p : punches) {
+          if (p->anyRogainingMatchControlId > 0) {
+            pControl ctrl = oe->getControl(p->anyRogainingMatchControlId);
+            if (ctrl) {
+              auto &cl = control2PunchTimeRunner[ctrl->getId()];
+              cl.push_back(make_pair(p->getTimeInt(), rid));
+            }
+          }
+        }
+      }
+      else if (r->getStatus() == StatusDNS || r->getStatus() == StatusCANCEL)
+        continue; // Accept missing punches
+
+      runnerToCheck.insert(r->getId());
+    }
+  }
+  int timeLimit = oe->getDCI().getInt("DiffTime");
+  if (timeLimit == 0)
+    timeLimit = 10000000;
+
+  vector<pControl> acceptedControls;
+  for (auto &ctrl : control2PunchTimeRunner) {
+    int ctrlId = ctrl.first;
+    auto &punchList = ctrl.second;
+    sort(punchList.begin(), punchList.end()); // Sort times in order. Zero time means unknown time
+    bool ok = false;
+    for (size_t k = 0; !ok && k < punchList.size(); k++) {
+      std::set<int> checked;
+      for (size_t z = 0; z < punchList.size() && punchList[z].first <= 0; z++) {
+        checked.insert(punchList[z].second); // Missing time. Accept any
+        k = max(k, z);
+      }
+
+      if (k < punchList.size()) {
+        int startTime = punchList[k].first;
+        for (size_t j = k; j < punchList.size() && (punchList[j].first - startTime) < timeLimit; j++) {
+          checked.insert(punchList[j].second); // Accept competitor if in time interval
+        }
+      }
+
+      ok = checked.size() >= runnerToCheck.size();
+    }
+
+    if (ok) {
+      acceptedControls.push_back(oe->getControl(ctrlId));
+    }
+  }
+  int points = 0;
+  for (pControl ctrl : acceptedControls) {
+    points += ctrl->getRogainingPoints();
+  }
+  points = max(0, points + getPointAdjustment() - reduction);
+  tTeamPatrolRogainingAndVersion.second.points = points;
+  tTeamPatrolRogainingAndVersion.second.reduction = reduction;
+  tTeamPatrolRogainingAndVersion.second.overtime = overtime;
+
+  return tTeamPatrolRogainingAndVersion.second.points + madj;
+}
+
+int oTeam::getRogainingPatrolReduction() const {
+  getRogainingPatrolPoints(false);
+  return tTeamPatrolRogainingAndVersion.second.reduction;
+}
+
+int oTeam::getRogainingPatrolOvertime() const {
+  getRogainingPatrolPoints(false);
+  return tTeamPatrolRogainingAndVersion.second.overtime;
 }

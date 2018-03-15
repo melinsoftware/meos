@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -515,7 +515,9 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         list.setExtraSpace(k, f);
       }
 
+
       list.setSupportFromTo(gdi.isChecked("SupportFrom"), gdi.isChecked("SupportTo"));
+      list.setSupportLegSelection(gdi.isChecked("SupportLegSelection"));
 
       makeDirty(gdi, MakeDirty, MakeDirty);
 
@@ -1045,6 +1047,8 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.fillRight();
   gdi.addCheckbox("SupportFrom", "Support time from control", 0, list.supportFrom());
   gdi.addCheckbox("SupportTo", "Support time to control", 0,  list.supportTo());
+  gdi.addCheckbox("SupportLegSelection", "Support intermediate legs", 0, list.supportLegSelection());
+
   gdi.dropLine(2);
   gdi.popX();
 

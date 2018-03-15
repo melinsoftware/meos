@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,6 +80,21 @@ protected:
   RunnerStatus _cachedStatus;
 
   mutable vector< vector< vector<int> > > resultCalculationCache;
+  
+  struct RogainingResult {
+    RogainingResult() { reset(); }
+
+    int points;
+    int reduction;
+    int overtime;
+    
+    void reset() {
+      points = 0;
+      reduction = 0;
+      overtime = 0;
+    }
+  };
+  mutable pair<int, RogainingResult> tTeamPatrolRogainingAndVersion;
 
   string getRunners() const;
   bool matchTeam(int number, const wchar_t *s_lc) const;
@@ -157,7 +172,11 @@ public:
   int getRogainingReduction() const;
   int getRogainingOvertime() const;
   int getRogainingPointsGross() const;
-  
+
+  int getRogainingPatrolPoints(bool multidayTotal) const;
+  int getRogainingPatrolReduction() const;
+  int getRogainingPatrolOvertime() const;
+
   void fillSpeakerObject(int leg, int courseControlId, int previousControlCourseId,
                           bool totalResult, oSpeakerObject &spk) const;
 

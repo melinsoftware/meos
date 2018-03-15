@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -128,7 +128,8 @@ class TabCompetition :
   void entryForm(gdioutput &gdi, bool isGuide);
   FlowOperation saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide);
   
-  FlowOperation checkStageFilter(gdioutput &gdi, const wstring &fname, set<int> &filter);
+  FlowOperation checkStageFilter(gdioutput &gdi, const wstring &fname, set<int> &filter, string &preferredIdProvider);
+  
   void setExportOptionsStatus(gdioutput &gdi, int format) const;
 
   void selectStartlistOptions(gdioutput &gdi);

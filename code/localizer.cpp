@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -500,4 +500,13 @@ const wstring &Localizer::tl(const string &str) const {
     key[k] = 0xFF&key[k];
   }
   return linternal->tl(key);
+}
+
+
+const wstring Localizer::tl(const wstring &str, bool cap) const {
+  wstring w = linternal->tl(str);
+  if (capitalizeWords())
+    ::capitalizeWords(w);
+
+  return w;
 }

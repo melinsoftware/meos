@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,6 +90,8 @@ struct FontInfo {
   HFONT bold;
   HFONT italic;
 };
+
+class AutoCompleteInfo;
 
 class Recorder;
 
@@ -280,8 +282,13 @@ protected:
 
   shared_ptr<AnimationData> animationData;
 
+  shared_ptr<AutoCompleteInfo> autoCompleteInfo;
   int defaultCodePage;
 public:
+
+  AutoCompleteInfo &addAutoComplete(const string &key);
+  void clearAutoComplete(const string &key);
+  bool hasAutoComplete() const { return autoCompleteInfo != nullptr; }
   // Return the bounding dimension of the desktop
   void getVirtualScreenSize(RECT &rc);
 
@@ -635,9 +642,9 @@ public:
   void clearPage(bool autoRefresh, bool keepToolbar = false);
 
   void TabFocus(int direction=1);
-  void Enter();
-  void Escape();
-  bool UpDown(int direction);
+  void enter();
+  void escape();
+  bool upDown(int direction);
   void keyCommand(KeyCommandCode code);
 
   LRESULT ProcessMsg(UINT iMessage, LPARAM lParam, WPARAM wParam);

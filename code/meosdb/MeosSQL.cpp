@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -336,7 +336,7 @@ bool MeosSQL::createRunnerDB(oEvent *oe, Query &query)
   query.reset();
 
   query << C_START_noid("dbRunner")
-  << C_STRING("Name", 40) << C_INT("CardNo")
+  << C_STRING("Name", 64) << C_INT("CardNo")
   << C_INT("Club") << C_STRING("Nation", 3)
   << C_STRING("Sex", 1) << C_INT("BirthYear")
   << C_INT64("ExtId") << C_END_noindex();

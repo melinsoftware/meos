@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -316,14 +316,14 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       fields.push_back("Street");
       fields.push_back("Address");
       fields.push_back("EMail");
-      oe->getDI().buildDataFields(gdi, fields);
+      oe->getDI().buildDataFields(gdi, fields, 32);
 
       gdi.dropLine();
       gdi.addString("", boldText, "Betalningsinformation");
       fields.clear();
       fields.push_back("Account");
       fields.push_back("PaymentDue");
-      oe->getDI().buildDataFields(gdi, fields);
+      oe->getDI().buildDataFields(gdi, fields, 10);
 
       gdi.pushX();
       gdi.fillRight();

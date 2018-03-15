@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -263,6 +263,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableInt("ExtId", oDataContainer::oIS64, "Externt Id");
 
   oEventData->addVariableInt("MaxTime", oDataContainer::oISTime, "Gräns för maxtid");
+  oEventData->addVariableInt("DiffTime", oDataContainer::oISTime, "Stämplingsintervall, rogaining-patrull");
 
   oEventData->addVariableString("PreEvent", 64, "");
   oEventData->addVariableString("PostEvent", 64, "");
@@ -557,7 +558,7 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   b.insert("pagebreak");
   b.insert("FirstTime");
   b.insert("ExportCSVSplits");
-
+  b.insert("DrawInterlace");
   // Integers
   i.insert("YouthFee");
   i.insert("YouthAge");
@@ -577,6 +578,7 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   i.insert("addressypos");
   i.insert("addressxpos");
   i.insert("AutoSaveTimeOut");
+  i.insert("ServicePort");
 
   propNames.clear();
   for(map<string, wstring>::const_iterator it = eventProperties.begin(); 
@@ -1518,7 +1520,7 @@ void oEvent::updateRunnerDatabase()
     map<int, int> clubIdMap;
     for (it=Runners.begin(); it != Runners.end(); ++it){
       if (it->Card && it->Card->cardNo == it->CardNo &&
-        it->getDI().getInt("CardFee")==0 && it->Card->getNumPunches()>7)
+        it->getDI().getInt("CardFee")==0 && it->Card->getNumPunches()>5)
         updateRunnerDatabase(&*it, clubIdMap);
     }
     runnerDB->refreshTables();
@@ -3052,7 +3054,7 @@ void oEvent::generateMinuteStartlist(gdioutput &gdi) {
     if (k>0)
       gdi.addStringUT(gdi.getCY()-1, 0, pageNewPage, "");
 
-    gdi.addStringUT(boldLarge, lang.tl(L"Minutstartlista") +  makeDash(L" - ") + getName());
+    gdi.addStringUT(boldLarge|Capitalize, lang.tl(L"Minutstartlista", true) +  makeDash(L" - ") + getName());
     if (!starts[k].empty()) {
       swprintf_s(bf, lang.tl("%s, block: %d").c_str(), starts[k].c_str(), blocks[k]);
       gdi.addStringUT(fontMedium, bf);

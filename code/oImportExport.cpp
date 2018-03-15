@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,37 +126,37 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
   switch (languageTypeIndex)
   {
   case 1: // English
-    csv.OutputRow("Stno;Chip;Database Id;Surname;First name;YB;S;Block;nc;Start;Finish;Time;Classifier;Club no.;Cl.name;City;Nat;Cl. no.;Short;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. name;Street;Line2;Zip;City;Phone;Fax;EMail;Id/Club;Rented;Start fee;Paid;Course no.;Course;km;m;Course controls;Pl;Start punch;Finish punch;Control1;Punch1;Control2;Punch2;Control3;Punch3;Control4;Punch4;Control5;Punch5;Control6;Punch6;Control7;Punch7;Control8;Punch8;Control9;Punch9;Control10;Punch10;(may be more) ...");
+    csv.outputRow("Stno;Chip;Database Id;Surname;First name;YB;S;Block;nc;Start;Finish;Time;Classifier;Club no.;Cl.name;City;Nat;Cl. no.;Short;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. name;Street;Line2;Zip;City;Phone;Fax;EMail;Id/Club;Rented;Start fee;Paid;Course no.;Course;km;m;Course controls;Pl;Start punch;Finish punch;Control1;Punch1;Control2;Punch2;Control3;Punch3;Control4;Punch4;Control5;Punch5;Control6;Punch6;Control7;Punch7;Control8;Punch8;Control9;Punch9;Control10;Punch10;(may be more) ...");
     maleString = "M";
     femaleString = "F";
     break;
   case 2: // Svenska
-    csv.OutputRow("Startnr;Bricka;Databas nr.;Efternamn;Förnamn;År;K;Block;ut;Start;Mål;Tid;Status;Klubb nr.;Namn;Ort;Land;Klass nr.;Kort;Lång;Num1;Num2;Num3;Text1;Text2;Text3;Adr. namn;Gata;Rad 2;Post nr.;Ort;Tel;Fax;E-post;Id/Club;Hyrd;Startavgift;Betalt;Bana nr.;Bana;km;Hm;Bana kontroller;Pl;Startstämpling;Målstämpling;Kontroll1;Stämplar1;Kontroll2;Stämplar2;Kontroll3;Stämplar3;Kontroll4;Stämplar4;Kontroll5;Stämplar5;Kontroll6;Stämplar6;Kontroll7;Stämplar7;Kontroll8;Stämplar8;Kontroll9;Stämplar9;Kontroll10;Stämplar10;(kan fortsätta)..");
+    csv.outputRow("Startnr;Bricka;Databas nr.;Efternamn;Förnamn;År;K;Block;ut;Start;Mål;Tid;Status;Klubb nr.;Namn;Ort;Land;Klass nr.;Kort;Lång;Num1;Num2;Num3;Text1;Text2;Text3;Adr. namn;Gata;Rad 2;Post nr.;Ort;Tel;Fax;E-post;Id/Club;Hyrd;Startavgift;Betalt;Bana nr.;Bana;km;Hm;Bana kontroller;Pl;Startstämpling;Målstämpling;Kontroll1;Stämplar1;Kontroll2;Stämplar2;Kontroll3;Stämplar3;Kontroll4;Stämplar4;Kontroll5;Stämplar5;Kontroll6;Stämplar6;Kontroll7;Stämplar7;Kontroll8;Stämplar8;Kontroll9;Stämplar9;Kontroll10;Stämplar10;(kan fortsätta)..");
     maleString = "M"; 
     femaleString = "K"; 
     break;
   case 3: // Deutsch
-    csv.OutputRow("Stnr;Chip;Datenbank Id;Nachname;Vorname;Jg;G;Block;AK;Start;Ziel;Zeit;Wertung;Club-Nr.;Abk;Ort;Nat;Katnr;Kurz;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. Name;Straße;Zeile2;PLZ;Ort;Tel;Fax;EMail;Id/Verein;Gemietet;Startgeld;Bezahlt;Bahnnummer;Bahn;km;Hm;Bahn Posten;Pl;Startstempel;Zielstempel;Posten1;Stempel1;Posten2;Stempel2;Posten3;Stempel3;Posten4;Stempel4;Posten5;Stempel5;Posten6;Stempel6;Posten7;Stempel7;Posten8;Stempel8;Posten9;Stempel9;Posten10;Stempel10;(und weitere)...");
+    csv.outputRow("Stnr;Chip;Datenbank Id;Nachname;Vorname;Jg;G;Block;AK;Start;Ziel;Zeit;Wertung;Club-Nr.;Abk;Ort;Nat;Katnr;Kurz;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. Name;Straße;Zeile2;PLZ;Ort;Tel;Fax;EMail;Id/Verein;Gemietet;Startgeld;Bezahlt;Bahnnummer;Bahn;km;Hm;Bahn Posten;Pl;Startstempel;Zielstempel;Posten1;Stempel1;Posten2;Stempel2;Posten3;Stempel3;Posten4;Stempel4;Posten5;Stempel5;Posten6;Stempel6;Posten7;Stempel7;Posten8;Stempel8;Posten9;Stempel9;Posten10;Stempel10;(und weitere)...");
     maleString = "M";
     femaleString = "W";
     break;
   case 4: // Dansk
-    csv.OutputRow("Stnr;Brik;Database ID;Efternavn;Fornavn;År;K;Blok;UFK;Start;Mål;Tid;Status;Klub nr.;Navn;Klub;Land;Klasse nr.;kort;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. navn;Gade;Linie2;Post nr.;Klub;Tlf.;Fax.;Email;Id/klub;Lejet;Startafgift;Betalt;Bane nr.;Bane;km;Hm;Poster på bane;Pl;Start-stempling;Mål-stempling;Post1;Klip1;Post2;Klip2;Post3;Klip3;Post4;Klip4;Post5;Klip5;Post6;Klip6;Post7;Klip7;Post8;Klip8;Post9;Klip9;Post10;Klip10;(måske mere)...");
+    csv.outputRow("Stnr;Brik;Database ID;Efternavn;Fornavn;År;K;Blok;UFK;Start;Mål;Tid;Status;Klub nr.;Navn;Klub;Land;Klasse nr.;kort;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. navn;Gade;Linie2;Post nr.;Klub;Tlf.;Fax.;Email;Id/klub;Lejet;Startafgift;Betalt;Bane nr.;Bane;km;Hm;Poster på bane;Pl;Start-stempling;Mål-stempling;Post1;Klip1;Post2;Klip2;Post3;Klip3;Post4;Klip4;Post5;Klip5;Post6;Klip6;Post7;Klip7;Post8;Klip8;Post9;Klip9;Post10;Klip10;(måske mere)...");
     maleString = "M";
     femaleString = "K";
     break;
   case 5: // Français
-    csv.OutputRow("N° dép.;Puce;Ident. base de données;Nom;Prénom;Né;S;Plage;nc;Départ;Arrivée;Temps;Evaluation;N° club;Nom;Ville;Nat;N° cat.;Court;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. nom;Rue;Ligne2;Code Post.;Ville;Tél.;Fax;E-mail;Id/Club;Louée;Engagement;Payé;Circuit N°;Circuit;km;m;Postes du circuit;Pl;Poinçon de départ;Arrivée (P);Poste1;Poinçon1;Poste2;Poinçon2;Poste3;Poinçon3;Poste4;Poinçon4;Poste5;Poinçon5;Poste6;Poinçon6;Poste7;Poinçon7;Poste8;Poinçon8;Poste9;Poinçon9;Poste10;Poinçon10;(peut être plus) ...");
+    csv.outputRow("N° dép.;Puce;Ident. base de données;Nom;Prénom;Né;S;Plage;nc;Départ;Arrivée;Temps;Evaluation;N° club;Nom;Ville;Nat;N° cat.;Court;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. nom;Rue;Ligne2;Code Post.;Ville;Tél.;Fax;E-mail;Id/Club;Louée;Engagement;Payé;Circuit N°;Circuit;km;m;Postes du circuit;Pl;Poinçon de départ;Arrivée (P);Poste1;Poinçon1;Poste2;Poinçon2;Poste3;Poinçon3;Poste4;Poinçon4;Poste5;Poinçon5;Poste6;Poinçon6;Poste7;Poinçon7;Poste8;Poinçon8;Poste9;Poinçon9;Poste10;Poinçon10;(peut être plus) ...");
     maleString = "H";
     femaleString = "F";
     break;
   case 6: // Russian
-    csv.OutputRow("Stnr;Chip;Datenbank Id;Nachname;Vorname;Jg;G_Sex;Block;AK_notclass;Start;Ziel;Zeit;Wertung;Club-Nr.;Abk;Ort;Nat;Katnr;Kurz;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. Name;Strasse;Zeile2;PLZ;Ort;Tel;Fax;EMail;Club_TIdNr;Gemietet;Startgeld;Bezahlt;Bahnnummer;Bahn;km_Kilometer;Hm_Climbmeter;Bahn Posten;Pl_Place;Startstempel;Zielstempel;Posten1;Stempel1;Posten2;Stempel2;Posten3;Stempel3;Posten4;Stempel4;Posten5;Stempel5;Posten6;Stempel6;Posten7;Stempel7;Posten8;Stempel8;Posten9;Stempel9;Posten10;Stempel10;(und weitere)...");
+    csv.outputRow("Stnr;Chip;Datenbank Id;Nachname;Vorname;Jg;G_Sex;Block;AK_notclass;Start;Ziel;Zeit;Wertung;Club-Nr.;Abk;Ort;Nat;Katnr;Kurz;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. Name;Strasse;Zeile2;PLZ;Ort;Tel;Fax;EMail;Club_TIdNr;Gemietet;Startgeld;Bezahlt;Bahnnummer;Bahn;km_Kilometer;Hm_Climbmeter;Bahn Posten;Pl_Place;Startstempel;Zielstempel;Posten1;Stempel1;Posten2;Stempel2;Posten3;Stempel3;Posten4;Stempel4;Posten5;Stempel5;Posten6;Stempel6;Posten7;Stempel7;Posten8;Stempel8;Posten9;Stempel9;Posten10;Stempel10;(und weitere)...");
     maleString = "M";
     femaleString = "W";
     break;
   default:
-    csv.OutputRow("Stno;Chip;Database Id;Surname;First name;YB;S;Block;nc;Start;Finish;Time;Classifier;Club no.;Cl.name;City;Nat;Cl. no.;Short;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. name;Street;Line2;Zip;City;Phone;Fax;EMail;Id/Club;Rented;Start fee;Paid;Course no.;Course;km;m;Course controls;Pl;Start punch;Finish punch;Control1;Punch1;Control2;Punch2;Control3;Punch3;Control4;Punch4;Control5;Punch5;Control6;Punch6;Control7;Punch7;Control8;Punch8;Control9;Punch9;Control10;Punch10;(may be more) ...");
+    csv.outputRow("Stno;Chip;Database Id;Surname;First name;YB;S;Block;nc;Start;Finish;Time;Classifier;Club no.;Cl.name;City;Nat;Cl. no.;Short;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. name;Street;Line2;Zip;City;Phone;Fax;EMail;Id/Club;Rented;Start fee;Paid;Course no.;Course;km;m;Course controls;Pl;Start punch;Finish punch;Control1;Punch1;Control2;Punch2;Control3;Punch3;Control4;Punch4;Control5;Punch5;Control6;Punch6;Control7;Punch7;Control8;Punch8;Control9;Punch9;Control10;Punch10;(may be more) ...");
     maleString = "M";
     femaleString = "F";
   }
@@ -286,7 +286,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
 
     }
 
-    csv.OutputRow(row);
+    csv.outputRow(row);
   }
 
   csv.closeOutput();
@@ -296,7 +296,8 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
 
 void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file, 
                                  bool updateClass, bool removeNonexisting,
-                                 const set<int> &filter) {
+                                 const set<int> &filter,
+                                 const string &preferredIdType) {
   vector< pair<int, int> > runnersInTeam;
   for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isRemoved() && it->tInTeam) {
@@ -317,6 +318,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false);
+      reader.setPreferredIdType(preferredIdType);
       reader.readEntryList(gdi, xo, removeNonexisting, filter, ent, fail, removed);
     }
     else {
@@ -2578,6 +2580,14 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
   calculateResults(RTClassResult);
   calculateTeamResults(true);
   calculateTeamResults(false);
+  set<int> rgClasses;
+  for (int clz : classes) {
+    pClass pc = getClass(clz);
+    if (pc && pc->isRogaining())
+      rgClasses.insert(clz);
+  }
+  if (!rgClasses.empty())
+    calculateRogainingResults(rgClasses);
 
   if (version == IOF20)
     exportIOFResults(xml, true, classes, leg, oldStylePatrolExport);

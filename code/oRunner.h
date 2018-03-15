@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -611,8 +611,13 @@ public:
       Return 0 if place is fixed. */
   int getTimeWhenPlaceFixed() const;
 
+  enum class BibAssignResult {
+    Assigned,
+    NoBib,
+    Failed,
+  };
   /** Automatically assign a bib. Returns true if bib is assigned. */
-  bool autoAssignBib();
+  BibAssignResult autoAssignBib();
 
   /** Flag as temporary */
   void setTemporary() {isTemporaryObject=true;}

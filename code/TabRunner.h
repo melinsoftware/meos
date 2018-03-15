@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,11 +22,12 @@
 ************************************************************************/
 #include "tabbase.h"
 #include "Printer.h"
+#include "autocompletehandler.h"
 
 class Table;
 
 class TabRunner :
-  public TabBase
+  public TabBase, AutoCompleteHandler
 {
 private:
   void addToolbar(gdioutput &gdi);
@@ -108,9 +109,10 @@ private:
 
 protected:
   void clearCompetitionData();
-
+  pClub extractClub(gdioutput &gdi);
 public:
-  
+  void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) override;
+
   const char * getTypeStr() const {return "TRunnerTab";}
   TabType getType() const {return TRunnerTab;}
 

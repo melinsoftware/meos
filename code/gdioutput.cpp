@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,7 +56,10 @@
 #include "Printer.h"
 #include "recorder.h"
 #include "animationdata.h"
+#include "image.h"
+#include "autocomplete.h"
 
+extern Image image;
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -1099,12 +1102,12 @@ ButtonInfo &gdioutput::addButton(int x, int y, int w, const string &id,
       style |= BS_MULTILINE;
       height *= 2;
     }
-    bi.hWnd=CreateWindow(L"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|WS_CHILD|style|BS_NOTIFY,
+    bi.hWnd=CreateWindow(L"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |style|BS_NOTIFY,
       x-OffsetX, y, w, height, hWndTarget, NULL,
       (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
   }
   else {
-    bi.hWnd=CreateWindow(L"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|WS_CHILD|style|BS_NOTIFY,
+    bi.hWnd=CreateWindow(L"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |style|BS_NOTIFY,
       x-OffsetX, y-OffsetY-1, w,  height, hWndTarget, NULL,
       (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
   }
@@ -1210,7 +1213,7 @@ ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const wstring
   ReleaseDC(hWndTarget, hDC);
 
   bi.hWnd=CreateWindowEx(0,L"BUTTON", L"",  WS_TABSTOP|WS_VISIBLE|
-          WS_CHILD|BS_AUTOCHECKBOX|BS_NOTIFY,
+          WS_CHILD | WS_CLIPSIBLINGS |BS_AUTOCHECKBOX|BS_NOTIFY,
           x-ox, y-oy + (size.cy-h)/2, h, h, hWndTarget, NULL,
           (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
 
@@ -1311,7 +1314,7 @@ InputInfo &gdioutput::addInput(int x, int y, const string &id, const wstring &te
   int oy=OffsetY;
 
   ii.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", text.c_str(),
-    WS_TABSTOP|WS_VISIBLE | WS_CHILD | ES_AUTOHSCROLL | WS_BORDER,
+    WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS | ES_AUTOHSCROLL | WS_BORDER,
     x-ox, y-oy, length*size.cx+scaleLength(8), size.cy+scaleLength(6),
     hWndTarget, NULL, (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
 
@@ -1365,7 +1368,7 @@ InputInfo &gdioutput::addInputBox(const string &id, int x, int y, int width, int
   int oy=OffsetY;
 
   ii.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", text.c_str(), WS_HSCROLL|WS_VSCROLL|
-    WS_TABSTOP|WS_VISIBLE|WS_CHILD|ES_AUTOHSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|WS_BORDER,
+    WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |ES_AUTOHSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|WS_BORDER,
     x-ox, y-oy, width, height, hWndTarget, NULL,
     (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
 
@@ -1450,7 +1453,7 @@ ListBoxInfo &gdioutput::addListBox(int x, int y, const string &id, int width, in
   int ox=OffsetX;
   int oy=OffsetY;
 
-  DWORD style=WS_TABSTOP|WS_VISIBLE|WS_CHILD|WS_BORDER|LBS_USETABSTOPS|LBS_NOTIFY|WS_VSCROLL;
+  DWORD style=WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |WS_BORDER|LBS_USETABSTOPS|LBS_NOTIFY|WS_VSCROLL;
 
   if (multiple)
     style|=LBS_MULTIPLESEL;
@@ -1544,7 +1547,7 @@ ListBoxInfo &gdioutput::addSelection(int x, int y, const string &id, int width, 
   int ox = OffsetX;
   int oy = OffsetY;
 
-  lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",  WS_TABSTOP|WS_VISIBLE | WS_CHILD |WS_BORDER|CBS_DROPDOWNLIST|WS_VSCROLL ,
+  lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",  WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS |WS_BORDER|CBS_DROPDOWNLIST|WS_VSCROLL ,
     x-ox, y-oy, int(scale*width), int(scale*height), hWndTarget, NULL,
     (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
 
@@ -1586,7 +1589,7 @@ ListBoxInfo &gdioutput::addCombo(int x, int y, const string &id, int width, int 
   int ox=OffsetX;
   int oy=OffsetY;
 
-  lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",  WS_TABSTOP|WS_VISIBLE | WS_CHILD |WS_BORDER|CBS_DROPDOWN |CBS_AUTOHSCROLL,
+  lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",  WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS |WS_BORDER|CBS_DROPDOWN |CBS_AUTOHSCROLL,
     x-ox, y-oy, int(scale*width), int(scale*height), hWndTarget, NULL,
     (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
 
@@ -2035,6 +2038,7 @@ void gdioutput::processEditMessage(InputInfo &bi, DWORD wParam)
       break;
 
     case EN_KILLFOCUS: {
+      autoCompleteInfo.reset();
       wstring old = bi.focusText;
       getWindowText(bi.hWnd, bi.text);
       bi.synchData();
@@ -2071,6 +2075,8 @@ void gdioutput::processComboMessage(ListBoxInfo &bi, DWORD wParam)
       lockUpDown = true;
       break;
     case CBN_KILLFOCUS: {
+      if (autoCompleteInfo && !autoCompleteInfo->locked())
+        autoCompleteInfo.reset();
       lockUpDown = false;
 
       TCHAR bf[1024];
@@ -2187,6 +2193,7 @@ void gdioutput::processListMessage(ListBoxInfo &bi, DWORD wParam)
       lockUpDown = true;
       break;
     case LBN_KILLFOCUS:
+      autoCompleteInfo.reset();
       lockUpDown = false;
       break;
     case LBN_SELCHANGE:
@@ -2677,7 +2684,7 @@ InputInfo *gdioutput::getInputFocus()
   return 0;
 }
 
-void gdioutput::Enter()
+void gdioutput::enter()
 {
   if (hasCommandLock())
     return;
@@ -2702,8 +2709,11 @@ void gdioutput::Enter()
     alert(msg);
 }
 
-void gdioutput::doEnter()
-{
+void gdioutput::doEnter() {
+  if (autoCompleteInfo) {
+    autoCompleteInfo->enter();
+    return;
+  }
   list<TableInfo>::iterator tit;
 
   if (useTables)
@@ -2737,7 +2747,7 @@ void gdioutput::doEnter()
     }
 }
 
-bool gdioutput::UpDown(int direction)
+bool gdioutput::upDown(int direction)
 {
   wstring msg;
   try {
@@ -2763,17 +2773,21 @@ bool gdioutput::UpDown(int direction)
 
 bool gdioutput::doUpDown(int direction)
 {
+  if (autoCompleteInfo) {
+    autoCompleteInfo->upDown(direction);
+    return true;
+  }
   list<TableInfo>::iterator tit;
 
   if (useTables)
     for (tit=Tables.begin(); tit!=Tables.end(); ++tit)
-      if (tit->table->UpDown(*this, direction))
+      if (tit->table->upDown(*this, direction))
         return true;
 
   return false;
 }
 
-void gdioutput::Escape()
+void gdioutput::escape()
 {
   if (hasCommandLock())
     return;
@@ -2802,6 +2816,11 @@ void gdioutput::doEscape()
 {
   if (fullScreen) {
     PostMessage(hWndTarget, WM_CLOSE, 0,0);
+  }
+
+  if (autoCompleteInfo) {
+    autoCompleteInfo.reset();
+    return;
   }
 
   list<TableInfo>::iterator tit;
@@ -3969,15 +3988,33 @@ void gdioutput::RenderString(TextInfo &ti, HDC hDC)
     hDC=hThis=GetDC(hWndTarget);
   }
   RECT rc;
-  rc.left=ti.xp-OffsetX;
-  rc.top=ti.yp-OffsetY;
+  if ((ti.format & absolutePosition) == 0) {
+    rc.left = ti.xp - OffsetX;
+    rc.top = ti.yp - OffsetY;
+  }
+  else {
+    rc.left = ti.xp;
+    rc.top = ti.yp;
+  }
   rc.right = rc.left;
   rc.bottom = rc.top;
 
   formatString(ti, hDC);
   int format=ti.format&0xFF;
+  if (format == textImage) {
+    // Image
+    int id = _wtoi(ti.text.c_str());
+    image.loadImage(id, Image::ImageMethod::Default);
+    int w = image.getWidth(id);
+    int h = image.getHeight(id);
+    image.drawImage(id, Image::ImageMethod::Default, hDC, rc.left, rc.top, w, h);
 
-  if (format != 10 && (breakLines&ti.format) == 0){
+    ti.textRect.left = rc.left;
+    ti.textRect.right = rc.left + w + 5;
+    ti.textRect.top = rc.top;
+    ti.textRect.bottom = rc.bottom + h + 5;
+  }
+  else if (format != 10 && (breakLines&ti.format) == 0){
     if (ti.xlimit==0){
       if (ti.format&textRight) {
         DrawText(hDC, ti.text.c_str(), ti.text.length(), &rc, DT_CALCRECT|DT_NOPREFIX);
@@ -4110,8 +4147,14 @@ void gdioutput::RenderString(TextInfo &ti, const wstring &text, HDC hDC)
     return;
 
   RECT rc;
-  rc.left=ti.xp-OffsetX;
-  rc.top=ti.yp-OffsetY;
+  if ((ti.format & absolutePosition) == 0) {
+    rc.left = ti.xp - OffsetX;
+    rc.top = ti.yp - OffsetY;
+  }
+  else {
+    rc.left = ti.xp;
+    rc.top = ti.yp;
+  }
   rc.right = rc.left;
   rc.bottom = rc.top;
 
@@ -4212,18 +4255,31 @@ void gdioutput::formatString(const TextInfo &ti, HDC hDC) const
 
 void gdioutput::calcStringSize(TextInfo &ti, HDC hDC_in) const
 {
-  HDC hDC=hDC_in;
 
-  if (!hDC) {
-//    assert(hWndTarget!=0);
-    hDC=GetDC(hWndTarget);
-  }
   RECT rc;
   rc.left=ti.xp-OffsetX;
   rc.top=ti.yp-OffsetY;
   rc.right = rc.left;
   rc.bottom = rc.top;
 
+  if (ti.format == textImage) {
+    // Image
+    int id = _wtoi(ti.text.c_str());
+    int w = image.getWidth(id);
+    int h = image.getHeight(id);
+    ti.textRect.left = rc.left;
+    ti.textRect.right = rc.left + w + 5;
+    ti.textRect.top = rc.top;
+    ti.textRect.bottom = rc.bottom + h + 5;
+    return;
+  }
+
+  HDC hDC = hDC_in;
+
+  if (!hDC) {
+    //    assert(hWndTarget!=0);
+    hDC = GetDC(hWndTarget);
+  }
   resetLast();
   formatString(ti, hDC);
   int format=ti.format&0xFF;
@@ -6847,8 +6903,42 @@ DWORD gdioutput::selectColor(wstring &def, DWORD input) {
   return -1;
 }
 
+
 void gdioutput::setAnimationMode(shared_ptr<AnimationData> &data) {
   if (animationData && animationData->takeOver(data))
     return;
   animationData = data;
+}
+
+AutoCompleteInfo &gdioutput::addAutoComplete(const string &key) {
+  BaseInfo &bi = getBaseInfo(key.c_str());
+  RECT rc, rcMain;
+  GetWindowRect(bi.getControlWindow(), &rc);
+  GetWindowRect(hWndTarget, &rcMain);
+  POINT pt;
+  int height = scaleLength(200);
+  pt.x = rc.right;
+  pt.y = min(rc.top, rcMain.bottom-height);
+  ScreenToClient(hWndTarget, &pt);
+  // TODO Place window
+
+  if (autoCompleteInfo && autoCompleteInfo->matchKey(key)) {
+    return *autoCompleteInfo;
+  }
+
+  autoCompleteInfo.reset();
+
+  HWND hWnd = CreateWindowEx(WS_EX_CLIENTEDGE, L"AUTOCOMPLETE", L"", WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS| WS_BORDER ,
+    pt.x, pt.y, scaleLength(350), height, hWndTarget, NULL,
+    (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+
+  autoCompleteInfo.reset(new AutoCompleteInfo(hWnd, key, *this));
+  
+  //SendMessage(hWnd, WM_SETFONT, (WPARAM)getGUIFont(), 0);
+
+  return *autoCompleteInfo;
+}
+
+void gdioutput::clearAutoComplete(const string &key) {
+  autoCompleteInfo.reset();
 }

@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1301,6 +1301,12 @@ static double stringDistance(const wchar_t *a, int al, const wchar_t *b, int bl)
 
   return (sqrt(dist)+mfactor*mfactor)/double(al);
 }
+
+double stringDistanceAssymetric(const wstring &target, const wstring &sample) {
+  double d = stringDistance(target.c_str(), target.length(), sample.c_str(), sample.length());
+  return min(1.0, d);
+}
+
 
 double stringDistance(const wchar_t *a, const wchar_t *b)
 {

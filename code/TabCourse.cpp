@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -869,7 +869,8 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
   }
   else {
     set<int> noFilter;
-    oe->importXML_EntryData(gdi, filename.c_str(), addClasses, false, noFilter);
+    string noType;
+    oe->importXML_EntryData(gdi, filename.c_str(), addClasses, false, noFilter, noType);
   }
   if (addClasses) {
     // There is specific course-class matching inside the import of each format,

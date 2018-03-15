@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,7 +66,8 @@ public:
   LocalizerInternal &get() {return *linternal;}
   const wstring &tl(const string &str) const;
   const wstring &tl(const wstring &str) const {return linternal->tl(str);}
-  //const wstring &tlw(const wstring &str) const;
+  
+  const wstring tl(const wstring &str, bool cap) const;
 
   void init() {linternal = new LocalizerInternal();}
   void unload() {delete linternal; linternal = 0;}

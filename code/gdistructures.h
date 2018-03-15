@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -150,6 +150,8 @@ public:
   }
 
   TextInfo &setColor(GDICOLOR c) {color = c; return *this;}
+  GDICOLOR getColor() const { return GDICOLOR(color); }
+
   TextInfo &changeFont(const wstring &fnt) {font = fnt; return *this;} //Note: size not updated
 
   bool isFormatInfo() const { return format == pageNewPage || format == pagePageInfo; }

@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,11 +24,13 @@
 #include "SportIdent.h"
 #include "Printer.h"
 #include "inthashmap.h"
+#include "autocompletehandler.h"
 
 struct PunchInfo;
 class csvparser;
+struct AutoCompleteRecord;
 
-class TabSI :  public TabBase {
+class TabSI :  public TabBase, AutoCompleteHandler {
   public:
     enum SIMode {
     ModeReadOut,
@@ -166,12 +168,33 @@ private:
     void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
     friend class TabSI;
   };
+
+  class DirectEntryGUI : public GuiHandler {
+    TabSI *tabSI;
+    DirectEntryGUI(const DirectEntryGUI&);
+    DirectEntryGUI &operator=(const DirectEntryGUI&);
+  public:
+
+    void updateFees(gdioutput &gdi, const pClass cls, int age);
+    DirectEntryGUI() : tabSI(0) {}
+    void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
+    friend class TabSI;
+  };
+
   EditCardData editCardData;
+  DirectEntryGUI directEntryGUI;
+
+  oClub *extractClub(gdioutput &gdi) const;
+  RunnerWDBEntry *extractRunner(gdioutput &gdi) const;
 
 protected:
   void clearCompetitionData();
 
 public:
+
+  static vector<AutoCompleteRecord> getRunnerAutoCompelete(RunnerDB &db, const vector< pair<RunnerWDBEntry *, int>> &rw, pClub dbClub);
+
+  void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) override;
 
     // Returns true if a repeated check should be done (there is more to print)
   bool checkpPrintQueue(gdioutput &gdi);

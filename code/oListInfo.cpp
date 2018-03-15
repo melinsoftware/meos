@@ -1,6 +1,6 @@
 /********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2017 Melin Software HB
+    Copyright (C) 2009-2018 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -2237,7 +2237,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     }
     else if (li.calcResults) {
       if (li.rogainingResults) {
-        calculateRogainingResults();
+        calculateRogainingResults(li.lp.selection);
         if (li.sortOrder != ClassPoints)
           sortRunners(li.sortOrder);
       }
@@ -2270,7 +2270,11 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         continue;
 
       if (li.filter(EFilterExcludeDNS))
-        if (it->tStatus==StatusDNS)
+        if (it->tStatus == StatusDNS)
+          continue;
+
+
+      if (li.filter(EFilterExcludeCANCEL) && it->tStatus == StatusCANCEL)
           continue;
 
       if (li.filter(EFilterVacant)) {
@@ -2421,7 +2425,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
          continue;
  
       if (li.filter(EFilterExcludeDNS))
-        if (it->tStatus==StatusDNS)
+        if (it->tStatus == StatusDNS)
           continue;
 
       if (li.filter(EFilterVacant))
@@ -2509,7 +2513,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
                if (li.filter(EFilterHasResult) || li.subFilter(ESubFilterHasResult) || 
                    li.filter(EFilterHasPrelResult) || li.subFilter(ESubFilterHasPrelResult) ||
-                   li.filter(EFilterExcludeDNS) || li.subFilter(ESubFilterExcludeDNS) ||
+                   li.filter(EFilterExcludeDNS) || li.filter(EFilterExcludeCANCEL) || li.subFilter(ESubFilterExcludeDNS) ||
                    li.subFilter(ESubFilterVacant)) {
                  usedIx[k] = -2; // Skip totally
                }
@@ -2520,16 +2524,19 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
             bool noResult = false;
             bool noPrelResult = false;
             bool noStart = false;
+            bool cancelled = false;
             if (gResult == 0) {
               noResult = it->Runners[k]->tStatus == StatusUnknown;
               noPrelResult = it->Runners[k]->tStatus == StatusUnknown && it->Runners[k]->getRunningTime() <= 0;
-              noStart = it->Runners[k]->tStatus == StatusDNS;
+              noStart = it->Runners[k]->tStatus == StatusDNS || it->Runners[k]->tStatus == StatusCANCEL;
+              cancelled = it->Runners[k]->tStatus == StatusCANCEL;
               //XXX TODO Multiday
             }
             else {
               noResult = it->Runners[k]->tmpResult.status == StatusUnknown;
               noPrelResult = it->Runners[k]->tmpResult.status == StatusUnknown &&  it->Runners[k]->tmpResult.runningTime <= 0;
-              noStart =  it->Runners[k]->tmpResult.status == StatusDNS;
+              noStart =  it->Runners[k]->tmpResult.status == StatusDNS || it->Runners[k]->tmpResult.status == StatusCANCEL;
+              cancelled = it->Runners[k]->tmpResult.status == StatusCANCEL;
             }
 
             if (noResult && (li.filter(EFilterHasResult) || li.subFilter(ESubFilterHasResult)))
@@ -2539,6 +2546,9 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
               continue;
 
             if (noStart && (li.filter(EFilterExcludeDNS) || li.subFilter(ESubFilterExcludeDNS)))
+              continue;
+
+            if (cancelled && li.filter(EFilterExcludeCANCEL))
               continue;
 
             if (it->Runners[k]->isVacant() && li.subFilter(ESubFilterVacant))
@@ -2644,6 +2654,10 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
         if (li.filter(EFilterExcludeDNS))
           if (rit->tStatus==StatusDNS)
+            continue;
+
+        if (li.filter(EFilterExcludeCANCEL))
+          if (rit->tStatus == StatusCANCEL)
             continue;
 
         if (li.filter(EFilterHasResult)) {
@@ -3488,6 +3502,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.supportFrom = true;
       li.supportTo = true;
       li.setFilter(EFilterHasPrelResult);
+      li.setFilter(EFilterExcludeCANCEL);
       break;
     }
     case EGeneralResultList: {
@@ -3552,6 +3567,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listType=li.EBaseTypeRunner;
       li.sortOrder=ClassResult;
       li.setFilter(EFilterHasPrelResult);
+      li.setFilter(EFilterExcludeCANCEL);
       li.supportFrom = true;
       li.supportTo = true;
       li.calcTotalResults = true;
@@ -3584,6 +3600,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listType = li.EBaseTypeRunner;
       li.sortOrder = ClassResult;
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
+
       break;
 
     case EStdTeamResultList:
@@ -3606,6 +3624,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listSubType=li.EBaseTypeRunner;
       li.sortOrder=ClassResult;
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
       break;
 
     case EStdTeamResultListAll:
@@ -3641,6 +3660,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listSubType=li.EBaseTypeRunner;
       li.sortOrder=ClassResult;
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
       break;
 
     case unused_EStdTeamResultListLeg: {
@@ -3896,6 +3916,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listType=li.EBaseTypeTeam;
       li.sortOrder=ClassResult;
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
+
       break;
 
     case EStdIndMultiResultListLegLARGE:
@@ -3932,6 +3954,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listType=li.EBaseTypeTeam;
       li.sortOrder=ClassResult;
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
+
       break;
 
     case EStdIndMultiResultListAll:
@@ -3963,6 +3987,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.listSubType=li.EBaseTypeRunner;
       li.sortOrder=ClassResult;
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
+
       break;
     case EStdPatrolStartList:
     {
@@ -3992,19 +4018,6 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       mList.setListType(li.EBaseTypeTeam);
       mList.setSortOrder(ClassStartTime);
       mList.addFilter(EFilterExcludeDNS);
-
-/*      xmlparser xfoo, xbar;
-      xfoo.openMemoryOutput(true);
-
-      mList.save(xfoo);
-
-      string res;
-      xfoo.getMemoryOutput(res);
-      xbar.readMemory(res, 0);
-
-      MetaList mList2;
-      mList2.load(xbar.getObject("MeOSListDefinition"));
-*/
       mList.interpret(this, gdibase, par, lh, li);
       break;
     }
@@ -4042,6 +4055,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.sortOrder=ClassResult;
       li.lp.setLegNumberCoded(-1);
       li.calcResults=true;
+      li.setFilter(EFilterExcludeCANCEL);
+
       break;
 
     case EStdPatrolResultListLARGE:
@@ -4077,6 +4092,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       }
 
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
+
       li.listType=li.EBaseTypeTeam;
       li.sortOrder=ClassResult;
       li.lp.setLegNumberCoded(-1);
@@ -4141,6 +4158,8 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       }
 
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
+
       li.lp.setLegNumberCoded(0);
       li.listType=li.EBaseTypeRunner;
       li.sortOrder=ClassResult;
@@ -4180,6 +4199,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.addListPost(oPrintPost(lRunnerTimeStatus, L"", normalText, pos.get("status"), vspace));
 
       li.setFilter(EFilterHasResult);
+      li.setFilter(EFilterExcludeCANCEL);
 
       if (li.lp.splitAnalysis || li.lp.showInterTimes) {
         li.addSubListPost(oPrintPost(lRogainingPunch, L"", normalText, 10, 0, make_pair(1, true)));

@@ -116,7 +116,7 @@
       <Culture>0x041d</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>Msimg32.lib;comctl32.lib;odbc32.lib;odbccp32.lib;winmm.lib;ws2_32.lib;wininet.lib;zlibstat_vc15.lib;mysqlpp_vc15.lib;libhpdf.lib;RestBed.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Msimg32.lib;comctl32.lib;odbc32.lib;odbccp32.lib;winmm.lib;ws2_32.lib;wininet.lib;zlibstat_vc15.lib;mysqlpp_vc15.lib;libhpdf.lib;RestBed.lib;libpng.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Release/meos.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>./lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -170,7 +170,7 @@
       <Culture>0x041d</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>Msimg32.lib;comctl32.lib;odbc32.lib;odbccp32.lib;winmm.lib;ws2_32.lib;wininet.lib;zlibstat_vc15.lib;mysqlpp_vc15.lib;libhpdf.lib;RestBed.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Msimg32.lib;comctl32.lib;odbc32.lib;odbccp32.lib;winmm.lib;ws2_32.lib;wininet.lib;zlibstat_vc15.lib;mysqlpp_vc15.lib;libhpdf.lib;RestBed.lib;libpng.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Debug/meos.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>./lib_db;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -240,6 +240,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="animationdata.cpp" />
+    <ClCompile Include="autocomplete.cpp" />
     <ClCompile Include="autotask.cpp" />
     <ClCompile Include="classconfiginfo.cpp" />
     <ClCompile Include="csvparser.cpp">
@@ -255,6 +256,7 @@
     </ClCompile>
     <ClCompile Include="generalresult.cpp" />
     <ClCompile Include="HTMLWriter.cpp" />
+    <ClCompile Include="image.cpp" />
     <ClCompile Include="importformats.cpp" />
     <ClCompile Include="infoserver.cpp" />
     <ClCompile Include="iof30interface.cpp" />
@@ -391,6 +393,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animationdata.h" />
+    <ClInclude Include="autocomplete.h" />
+    <ClInclude Include="autocompletehandler.h" />
     <ClInclude Include="autotask.h" />
     <ClInclude Include="classconfiginfo.h" />
     <ClInclude Include="gdiconstants.h" />
@@ -399,6 +403,7 @@
     <ClInclude Include="gdistructures.h" />
     <ClInclude Include="generalresult.h" />
     <ClInclude Include="guihandler.h" />
+    <ClInclude Include="image.h" />
     <ClInclude Include="infoserver.h" />
     <ClInclude Include="inthashmap.h" />
     <ClInclude Include="intkeymap.hpp" />
