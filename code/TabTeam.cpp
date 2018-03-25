@@ -42,6 +42,7 @@
 #include "TabRunner.h"
 #include "MeOSFeatures.h"
 #include "RunnerDB.h"
+#include "autocomplete.h"
 
 #include "TabSI.h"
 
@@ -1058,6 +1059,29 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
                                   gdi.getTextNo("DirCard") > 0);
 
     }
+
+    if (oe->useRunnerDb() && ii.id == "DirName") {
+      auto &db = oe->getRunnerDatabase();
+      bool show = false;
+      if (ii.text.length() > 1) {
+        auto dbClub = TabRunner::extractClub(oe, gdi);
+        auto rw = db.getRunnerSuggestions(ii.text, dbClub ? dbClub->getId() : 0, 10);
+        if (dbClub != nullptr && rw.empty()) // Default: Any club
+          rw = db.getRunnerSuggestions(ii.text, 0, 10);
+
+        if (!rw.empty()) {
+          auto &ac = gdi.addAutoComplete(ii.id);
+          ac.setAutoCompleteHandler(this);
+
+          ac.setData(TabSI::getRunnerAutoCompelete(db, rw, dbClub));
+          ac.show();
+          show = true;
+        }
+      }
+      if (!show) {
+        gdi.clearAutoComplete(ii.id);
+      }
+    }
   }
   else if (type == GUI_INPUT) {
     InputInfo &ii=*(InputInfo *)data;
@@ -1114,6 +1138,27 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       }
     }
   
+  }
+  else if (type == GUI_COMBOCHANGE) {
+    ListBoxInfo &combo = *(ListBoxInfo *)(data);
+    bool show = false;
+    if (oe->useRunnerDb() && combo.id == "Club" && combo.text.length() > 1) {
+      auto clubs = oe->getRunnerDatabase().getClubSuggestions(combo.text, 20);
+      if (!clubs.empty()) {
+        auto &ac = gdi.addAutoComplete(combo.id);
+        ac.setAutoCompleteHandler(this);
+        vector<AutoCompleteRecord> items;
+        for (auto club : clubs)
+          items.emplace_back(club->getDisplayName(), club->getName(), club->getId());
+
+        ac.setData(items);
+        ac.show();
+        show = true;
+      }
+    }
+    if (!show) {
+      gdi.clearAutoComplete(combo.id);
+    }
   }
   else if (type==GUI_CLEAR) {
     if (teamId>0)
@@ -1322,7 +1367,7 @@ bool TabTeam::loadPage(gdioutput &gdi)
   }
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
-    gdi.addCombo("Club", 180, 300, 0, L"Klubb:");
+    gdi.addCombo("Club", 180, 300, TeamCB, L"Klubb:");
     oe->fillClubs(gdi, "Club");
     drop = true;
   }
@@ -1896,4 +1941,27 @@ bool TabTeam::warnDuplicateCard(gdioutput &gdi, string id, int cno, pRunner r, v
     }
     return false;
   }
+}
+
+void TabTeam::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
+  auto bi = gdi.setText(info.getTarget(), info.getCurrent().c_str());
+  if (bi) {
+    int ix = info.getCurrentInt();
+    bi->setExtra(ix);
+    if (info.getTarget() == "Name") {
+      auto &db = oe->getRunnerDatabase();
+      auto runner = db.getRunnerByIndex(ix);
+
+      if (runner && gdi.hasField("Club") && gdi.getText("Club").empty()) {
+        pClub club = db.getClub(runner->dbe().clubNo);
+        if (club)
+          gdi.setText("Club", club->getName());
+      }
+      if (runner && runner->dbe().cardNo > 0 && gdi.hasField("DirCard") && gdi.getText("DirCard").empty()) {
+        gdi.setText("DirCard", runner->dbe().cardNo);
+      }
+    }
+  }
+  gdi.clearAutoComplete("");
+  gdi.TabFocus(1);
 }

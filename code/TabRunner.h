@@ -109,8 +109,9 @@ private:
 
 protected:
   void clearCompetitionData();
-  pClub extractClub(gdioutput &gdi);
 public:
+  static pClub extractClub(oEvent *oe, gdioutput &gdi);
+
   void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) override;
 
   const char * getTypeStr() const {return "TRunnerTab";}

@@ -254,7 +254,7 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
     auto res = listCache.find(type);
       
     if (res != listCache.end()) {
-      gdioutput gdiPrint("print", ref.gdiBase().getScale(), ref.gdiBase().getCP());
+      gdioutput gdiPrint("print", ref.gdiBase().getScale());
       gdiPrint.clearPage(false);
 
       if (!res->second.second) {

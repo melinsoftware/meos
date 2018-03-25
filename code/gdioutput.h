@@ -283,7 +283,6 @@ protected:
   shared_ptr<AnimationData> animationData;
 
   shared_ptr<AutoCompleteInfo> autoCompleteInfo;
-  int defaultCodePage;
 public:
 
   AutoCompleteInfo &addAutoComplete(const string &key);
@@ -324,8 +323,8 @@ public:
   bool isTest() const {return isTestMode;}
   const string &getTag() const {return tag;}
   bool hasTag(const string &t) const {return tag == t;}
-  const wstring &recodeToWide(const string &input) const;
-  const string &recodeToNarrow(const wstring &input) const;
+  static const wstring &recodeToWide(const string &input);
+  static const string &recodeToNarrow(const wstring &input);
   
   static const wstring &widen(const string &input);
   static const string &narrow(const wstring &input);
@@ -752,13 +751,12 @@ public:
   void closeWindow();
 
   void setDBErrorState(bool state);
-  int getCP() const {return defaultCodePage;}
   friend int TablesCB(gdioutput *gdi, int type, void *data);
   friend class Table;
   friend gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x, int max_y);
 
-  gdioutput(const string &tag, double _scale, int defaultCodePage);
-  gdioutput(double _scale, HWND hWndTarget, const PrinterObject &defprn, int defaultCodePage);
+  gdioutput(const string &tag, double _scale);
+  gdioutput(double _scale, HWND hWndTarget, const PrinterObject &defprn);
   virtual ~gdioutput();
 };
 

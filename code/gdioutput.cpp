@@ -78,6 +78,7 @@ extern Image image;
   static int debugDrawColor = 0;
 #endif
 
+extern int defaultCodePage;
   
 GuiHandler &BaseInfo::getHandler() const {
   if (handler == 0)
@@ -106,9 +107,8 @@ bool gdioutput::skipTextRender(int format) {
 
 #ifndef MEOSDB
 
-gdioutput::gdioutput(const string &_tag, double _scale, int defaultCodePage) :
-  recorder((Recorder *)0, false),
-  defaultCodePage(defaultCodePage) {
+gdioutput::gdioutput(const string &_tag, double _scale) :
+  recorder((Recorder *)0, false) {
   tag = _tag;
   po_default = new PrinterObject();
   tabs = 0;
@@ -118,8 +118,8 @@ gdioutput::gdioutput(const string &_tag, double _scale, int defaultCodePage) :
   isTestMode = false;
 }
 
-gdioutput::gdioutput(double _scale, HWND hWnd, const PrinterObject &prndef, int defaultCodePage) :
-  recorder((Recorder *)0, false), defaultCodePage(defaultCodePage) {
+gdioutput::gdioutput(double _scale, HWND hWnd, const PrinterObject &prndef) :
+  recorder((Recorder *)0, false) {
   hasAnyTimer = false;
   po_default = new PrinterObject(prndef);
   tabs = 0;
@@ -6378,9 +6378,9 @@ const wstring &gdioutput::widen(const string &input) {
   return output;
 }
 
-const wstring &gdioutput::recodeToWide(const string &input) const {
+const wstring &gdioutput::recodeToWide(const string &input) {
   wstring &output = StringCache::getInstance().wget();
-  int cp = 1252;
+  int cp = defaultCodePage;
  // if (defaultCodePage > 0)
  //   cp = defaultCodePage;
 
@@ -6406,9 +6406,9 @@ const wstring &gdioutput::recodeToWide(const string &input) const {
   return output;
 }
 
-const string &gdioutput::recodeToNarrow(const wstring &input) const {
+const string &gdioutput::recodeToNarrow(const wstring &input) {
   string &output = StringCache::getInstance().get();
-  int cp = 1252;
+  int cp = defaultCodePage;
  // if (defaultCodePage > 0)
  //   cp = defaultCodePage;
 
@@ -6428,10 +6428,12 @@ const string &gdioutput::recodeToNarrow(const wstring &input) const {
     output = "";
     return output;
   }
-  output.reserve(input.size()+1);
+  int res = input.size() * 3 + 2;
+  output.reserve(res);
   output.resize(input.size(), 0);
   BOOL usedDef = false;
-  WideCharToMultiByte(cp, MB_PRECOMPOSED, input.c_str(), input.size(), &output[0], output.size(), "?", &usedDef);
+  int ok = WideCharToMultiByte(cp, 0, input.c_str(), input.size(), &output[0], res, "?", &usedDef);
+
   return output;
 }
 /*

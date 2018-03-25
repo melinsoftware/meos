@@ -756,7 +756,7 @@ bool Table::keyCommand(gdioutput &gdi, KeyCommandCode code) {
       gdi.refresh();
     }
     else if (code == KC_PRINT) {
-      gdioutput gdiPrint("temp", gdi.getScale(), gdi.getCP());
+      gdioutput gdiPrint("temp", gdi.getScale());
       gdiPrint.clearPage(false);
       gdiPrint.print(getEvent(), this);
     }

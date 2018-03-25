@@ -76,6 +76,8 @@ class TabClass :
 
   DrawInfo drawInfo;
   void setMultiDayClass(gdioutput &gdi, bool hasMulti, DrawMethod defaultMethod);
+  set<DrawMethod> getSupportedDrawMethods(bool multiDay) const;
+
   void drawDialog(gdioutput &gdi, DrawMethod method, const oClass &cls);
 
   void pursuitDialog(gdioutput &gdi);
@@ -136,7 +138,7 @@ class TabClass :
 
   void updateSplitDistribution(gdioutput &gdi, int numInClass, int tot) const;
 
-  DrawMethod getDefaultMethod(bool allowPursuit) const;
+  DrawMethod getDefaultMethod(const set<DrawMethod> &allowedValues) const;
 
   void enableLoadSettings(gdioutput &gdi);
 

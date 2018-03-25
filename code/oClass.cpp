@@ -1688,7 +1688,7 @@ void oClass::updateChangedCoursePool() {
     }
   }
 
-  SICard card;
+  SICard card(ConvertedTimeStatus::Unknown);
   oRunnerList::iterator it;
   for (it = oe->Runners.begin(); it != oe->Runners.end(); ++it) {
     if (it->isRemoved() || it->Class != this)
@@ -4284,6 +4284,17 @@ void oClass::loadQualificationFinalScheme(const wstring &fileName) {
     inst->synchronize();
   }
   synchronize();
+  for (oRunner &r : oe->Runners) {
+    if (r.getClassRef(false) == this) {
+      pTeam t = r.getTeam();
+      if (t == 0) {
+        t = oe->addTeam(r.getName(), r.getClubId(), getId());
+        t->setStartNo(r.getStartNo(), false);
+        t->setRunner(0, &r, true);
+      }
+      r.synchronizeAll();
+    }
+  }
 }
 
 void oClass::updateFinalClasses(oRunner *causingResult, bool updateStartNumbers) {

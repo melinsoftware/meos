@@ -376,7 +376,7 @@ void TestMeOS::checkStringRes(const char *str, int count) const {
 
 
 void TestMeOS::insertCard(int cardNo, const char *ser) const {
-  SICard sic;
+  SICard sic(ConvertedTimeStatus::Unknown);
   sic.CardNumber = cardNo;
   sic.deserializePunches(ser);
   TabSI::getSI(*gdi_main).addCard(sic);

@@ -723,7 +723,7 @@ void oRunner::addPunches(pCard card, vector<int> &missingPunches) {
   updateChanged();
 
   if (card) {
-    if (CardNo==0)
+    if (card->cardNo > 0)
       CardNo=card->cardNo;
     //315422
     assert(card->tOwner==0 || card->tOwner==this);
@@ -739,7 +739,7 @@ void oRunner::addPunches(pCard card, vector<int> &missingPunches) {
       int numCtrlLong = mainCourse->getNumControls();
       int numCtrlShort = shortVersion->getNumControls();
 
-      SICard sic;
+      SICard sic(ConvertedTimeStatus::Unknown);
       Card->getSICard(sic);
       int level = 0;
       while (mainCourse->distance(sic) < 0 && abs(numCtrl-numCtrlShort) < abs(numCtrl-numCtrlLong)) {

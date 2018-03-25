@@ -408,13 +408,18 @@ void InfoCompetition::serialize(xmlbuffer &xml, bool diffOnly) const {
 
 void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) const {
   vector< pair<string, wstring> > prop;
-  prop.push_back(make_pair("org", itow(organizationId)));
-  prop.push_back(make_pair("cls", itow(classId)));
-  prop.push_back(make_pair("stat", itow(status)));
-  prop.push_back(make_pair("st", itow(startTime)));
-  prop.push_back(make_pair("rt", itow(runningTime)));
+  prop.reserve(10);
+  prop.emplace_back("org", itow(organizationId));
+  prop.emplace_back("cls", itow(classId));
+  prop.emplace_back("stat", itow(status));
+  prop.emplace_back("st", itow(startTime));
+  prop.emplace_back("rt", itow(runningTime));
   if (course != 0)
-    prop.push_back(make_pair("crs", itow(course)));
+    prop.emplace_back("crs", itow(course));
+
+  if (!bib.empty()) {
+    prop.emplace_back("bib", bib);
+  }
 
   xml.write("base", prop, name);
 }
@@ -459,6 +464,13 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     runningTime = rt;
     ch = true;
   }
+
+  wstring newBib = bc.getBib();
+  if (bib != newBib) {
+    bib = newBib;
+    ch = true;
+  }
+
   return ch;
 }
 

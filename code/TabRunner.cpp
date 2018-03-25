@@ -877,7 +877,7 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       pRunner r=oe->getRunner(runnerId, 0);
       if (!r) return 0;
 
-      gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter, gdi.getCP());
+      gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter);
       if (bi.getExtraInt() == 0)
         r->printSplits(gdiprint);
       else
@@ -1053,7 +1053,7 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       auto &db = oe->getRunnerDatabase();
       bool show = false;
       if (ii.text.length() > 1) {
-        auto dbClub = extractClub(gdi);
+        auto dbClub = extractClub(oe, gdi);
         auto rw = db.getRunnerSuggestions(ii.text, dbClub ? dbClub->getId() : 0, 10);
         if (!rw.empty()) {
           auto &ac = gdi.addAutoComplete(ii.id);
@@ -3024,7 +3024,7 @@ void TabRunner::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
   gdi.TabFocus(1);
 }
 
-pClub TabRunner::extractClub(gdioutput &gdi) {
+pClub TabRunner::extractClub(oEvent *oe, gdioutput &gdi) {
   oClub *dbClub = nullptr;
   if (gdi.hasField("Club")) {
     auto &db = oe->getRunnerDatabase();

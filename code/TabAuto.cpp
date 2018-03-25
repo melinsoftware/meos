@@ -798,7 +798,7 @@ void PrintResultMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     wstring printError;
     lock = true;
     try {
-      gdioutput gdiPrint("print", gdi.getScale(), gdi.getCP());
+      gdioutput gdiPrint("print", gdi.getScale());
       gdiPrint.clearPage(false);
       oe->generateList(gdiPrint, true, listInfo, false);
       if (doPrint) {
@@ -986,7 +986,7 @@ void PunchMachine::status(gdioutput &gdi)
 void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
 {
 #ifndef MEOSDB
-  SICard sic;
+  SICard sic(ConvertedTimeStatus::Hour24);
   oe->generateTestCard(sic);
   SportIdent &si = TabSI::getSI(gdi);
   if (!sic.empty()) {
@@ -998,7 +998,7 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     pRunner r=oe->getRunnerByCardNo(sic.CardNumber, 0, false);
     if (r && r->getCardNo()) {
       sic.CardNumber=r->getCardNo();
-      sic.PunchOnly=true;
+      sic.punchOnly=true;
       sic.nPunch=1;
       sic.Punch[0].Code=radio;
       si.addCard(sic);

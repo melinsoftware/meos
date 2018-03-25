@@ -67,6 +67,7 @@
 #include "autocomplete.h"
 #include "image.h"
 
+int defaultCodePage = 1252;
 
 Image image;
 gdioutput *gdi_main=0;
@@ -207,9 +208,13 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     enableTests = true;
   }
 
-  HWND hSplash = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_SPLASH), nullptr, splashDialogProc);
-  ShowWindow(hSplash, SW_SHOW);
-  UpdateWindow(hSplash);
+  HWND hSplash = nullptr;
+  if (strstr(lpCmdLine, "-nosplash") == 0) {
+    hSplash = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_SPLASH), nullptr, splashDialogProc);
+    ShowWindow(hSplash, SW_SHOW);
+    UpdateWindow(hSplash);
+  }
+
   DWORD splashStart = GetTickCount();
 
   for (int k = 0; k < 100; k++) {
@@ -253,7 +258,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
   HACCEL hAccelTable;
 
-  gdi_main = new gdioutput("main", 1.0, 0);
+  gdi_main = new gdioutput("main", 1.0);
   gdi_extra.push_back(gdi_main);
 
   try {
@@ -296,6 +301,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   }
 
   wstring defLang = gEvent->getPropertyString("Language", L"Svenska");
+
+  defaultCodePage = gEvent->getPropertyInt("CodePage", 1252);
 
   // Backward compatibility
   if (defLang==L"103")
@@ -399,8 +406,10 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   gdi_main->setFont(gEvent->getPropertyInt("TextSize", 0),
                     gEvent->getPropertyString("TextFont", L"Arial"));
 
-  DWORD startupToc = GetTickCount() - splashStart;
-  Sleep(min<int>(1000, max<int>(0,700 - startupToc)));
+  if (hSplash != nullptr) {
+    DWORD startupToc = GetTickCount() - splashStart;
+    Sleep(min<int>(1000, max<int>(0, 700 - startupToc)));
+  }
 
   // Perform application initialization:
   if (!InitInstance (hInstance, nCmdShow)) {
@@ -424,8 +433,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
       (HINSTANCE) NULL, GetCurrentThreadId());
 
   hAccelTable = LoadAccelerators(hInstance, (LPCTSTR)IDC_MEOS);
-
-  
+    
   DestroyWindow(hSplash);
   
   initMySQLCriticalSection(true);
@@ -852,7 +860,7 @@ gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x,
 
   ShowWindow(hWnd, SW_SHOWNORMAL);
   UpdateWindow(hWnd);
-  gdioutput *gdi = new gdioutput(tag, 1.0, 0);
+  gdioutput *gdi = new gdioutput(tag, 1.0);
   gdi->setFont(gEvent->getPropertyInt("TextSize", 0),
                gEvent->getPropertyString("TextFont", L"Arial"));
 
@@ -1160,7 +1168,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       //The card has been read and posted to a synchronized
       //queue by different thread. Read and process this card.
       {
-        SICard sic;
+        SICard sic(ConvertedTimeStatus::Unknown);
         while (gSI && gSI->getCard(sic))
           InsertSICard(*gdi_main, sic);
         break;

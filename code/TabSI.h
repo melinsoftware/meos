@@ -192,6 +192,8 @@ protected:
 
 public:
 
+  bool showDatabase() const;
+
   static vector<AutoCompleteRecord> getRunnerAutoCompelete(RunnerDB &db, const vector< pair<RunnerWDBEntry *, int>> &rw, pClub dbClub);
 
   void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) override;
@@ -231,7 +233,7 @@ public:
 
   int siCB(gdioutput &gdi, int type, void *data);
 
-  void logCard(const SICard &card);
+  void logCard(gdioutput &gdi, const SICard &card);
 
   void setCardNumberField(const string &fieldId) {insertCardNumberField=fieldId;}
 

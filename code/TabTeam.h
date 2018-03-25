@@ -21,11 +21,12 @@
 
 ************************************************************************/
 #include "tabbase.h"
+#include "autocompletehandler.h"
 
 struct TeamLineup;
 
 class TabTeam :
-  public TabBase
+  public TabBase, AutoCompleteHandler
 {
 private:
   bool save(gdioutput &gdi, bool dontReloadTeams);
@@ -73,11 +74,11 @@ private:
 
   void switchRunners(pTeam team, int leg, pRunner r, pRunner oldR);
 
-
 protected:
   void clearCompetitionData();
 
 public:
+  void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) override;
 
   const char * getTypeStr() const {return "TTeamTab";}
   TabType getType() const {return TTeamTab;}

@@ -1045,6 +1045,7 @@ void RunnerDB::updateAdd(const oRunner &r, map<int, int> &clubIdMap)
         dbe = &dbr;
         break;
       }
+      ++it;
     }
   }
 

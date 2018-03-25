@@ -864,7 +864,7 @@ public:
 
   /** Returns the first start in a class */
   int getFirstStart(int classId = 0) const;
-  void convertTimes(SICard &sic) const;
+  void convertTimes(pRunner runner, SICard &sic) const;
 
   pCard getCard(int Id) const;
   pCard getCardByNumber(int cno) const;
@@ -941,8 +941,8 @@ public:
   /// Convert a clock time string to time relative zero time
   int getRelativeTime(const string &date, const string &absoluteTime, const string &timeZone) const;
 
-  /// Convert a clock time string (SI5 12 Hour clock) to time relative zero time
-  int getRelativeTimeFrom12Hour(const wstring &absoluteTime) const;
+  // Convert a clock time string (SI5 12 Hour clock) to time relative zero time
+  //int getRelativeTimeFrom12Hour(const wstring &absoluteTime) const;
 
   /// Convert c clock time string to absolute time (after 00:00:00)
   static int convertAbsoluteTime(const string &m);

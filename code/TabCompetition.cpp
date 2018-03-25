@@ -134,7 +134,6 @@ bool TabCompetition::save(gdioutput &gdi, bool write)
   oe->setZeroTime(zt);
 
   oe->synchronize();
-  if (gSI) gSI->setZeroTime(oe->getZeroTimeNum());
 
   gdi.setWindowTitle(oe->getTitleName());
   gdi.setText("Date", oe->getDate());
@@ -159,7 +158,6 @@ bool TabCompetition::importFile(HWND hWnd, gdioutput &gdi)
 
   gdi.setWaitCursor(true);
   if (oe->open(fileName, true)) {
-    if (gSI) gSI->setZeroTime(oe->getZeroTimeNum());
     gdi.setWindowTitle(oe->getTitleName());
     resetSaveTimer();
     return true;
@@ -1766,7 +1764,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oListInfo li;
         par.selection = allTransfer;
         oe->generateListInfo(par,  gdi.getLineHeight(), li);
-        gdioutput tGdi("temp", gdi.getScale(), gdi.getCP());
+        gdioutput tGdi("temp", gdi.getScale());
         oe->generateList(tGdi, true, li, false);
         tGdi.writeTableHTML(save, oe->getName(), 0);
         tGdi.openDoc(save.c_str());
@@ -1851,7 +1849,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         par.setLegNumberCoded(-1);
         oListInfo li;
         oe->generateListInfo(par,  gdi.getLineHeight(), li);
-        gdioutput tGdi("temp", gdi.getScale(), gdi.getCP());
+        gdioutput tGdi("temp", gdi.getScale());
         oe->generateList(tGdi, true, li, false);
         tGdi.writeTableHTML(save, oe->getName(), 0);
         tGdi.openDoc(save.c_str());
@@ -2286,7 +2284,6 @@ void TabCompetition::openCompetition(gdioutput &gdi, int id) {
     err = ex.wwhat();
   }
 
-  if (gSI) gSI->setZeroTime(oe->getZeroTimeNum());
   resetSaveTimer();
   oe->setProperty("LastCompetition", id);
   gdi.setWindowTitle(oe->getTitleName());
@@ -2308,8 +2305,6 @@ int TabCompetition::restoreCB(gdioutput &gdi, int type, void *data) {
       gdi.alert("Kunde inte öppna tävlingen.");
     }
     else {
-      if (gSI) gSI->setZeroTime(oe->getZeroTimeNum());
-
       const wstring &name = oe->getName();
       if (name.find_last_of(L"}") != name.length()-1)
         oe->setName(name + L" {" + lang.tl(L"återställd") + L"}");
@@ -3903,8 +3898,7 @@ void TabCompetition::loadSettings(gdioutput &gdi) {
   gdi.fillRight();
   gdi.pushX();
   fields.push_back("MaxTime");
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining) &&
-      oe->getMeOSFeatures().hasFeature(MeOSFeatures::Patrol)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining)) {
     fields.push_back("DiffTime");
   }
   gdi.fillDown();

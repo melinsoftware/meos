@@ -368,8 +368,7 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
 
 void OnlineInput::processCards(gdioutput &gdi, oEvent &oe, const xmlList &cards) {
   for (size_t k = 0; k < cards.size(); k++) {
-    SICard sic;
-    sic.clear(0);
+    SICard sic(ConvertedTimeStatus::Hour24);
     sic.CardNumber = cards[k].getObjectInt("number");
     if (cards[k].getObject("finish"))
       sic.FinishPunch.Time = cards[k].getObject("finish").getObjectInt("time") / 10;

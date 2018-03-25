@@ -34,6 +34,7 @@
 #include <winsock2.h>
 #include "localizer.h"
 #include "meos_util.h"
+#include "gdioutput.h"
 #include "oPunch.h"
 #include <algorithm>
 
@@ -72,7 +73,6 @@ SportIdent::SportIdent(HWND hWnd, DWORD Id)
   //ThreadHandle=0;
   n_SI_Info=0;
 
-  ZeroTime=0;
   InitializeCriticalSection(&SyncObj);
 
   tcpPortOpen=0;
@@ -859,7 +859,7 @@ int SportIdent::MonitorTCPSI(WORD port, int localZeroTime)
             vector<SIPunch> punches(nPunch);
             r = recv(client, (char*)&punches[0], 8 * nPunch, 0);
             if (r == 8 * nPunch) {
-              SICard card;
+              SICard card(ConvertedTimeStatus::Hour24);
               card.CheckPunch.Code = -1;
               card.StartPunch.Code = -1;
               card.FinishPunch.Code = -1;
@@ -1169,7 +1169,7 @@ void SportIdent::getSI5DataExt(HANDLE hComm)
         WriteFile(hComm, c, 1, &written, NULL);
 
         BYTE *Card5Data=bf+5;
-        SICard card;
+        SICard card(ConvertedTimeStatus::Hour12);
         getCard5Data(Card5Data, card);
         addCard(card);
       }
@@ -1241,7 +1241,7 @@ void SportIdent::getSI6DataExt(HANDLE hComm)
 
   OutputDebugString(L"-ACK-");
 
-  SICard card;
+  SICard card(ConvertedTimeStatus::Hour24);
   getCard6Data(b, card);
   addCard(card);
 }
@@ -1320,7 +1320,7 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
 
   OutputDebugString(L"-ACK-");
 
-  SICard card;
+  SICard card(ConvertedTimeStatus::Hour24);
   if (getCard9Data(b, card))
     addCard(card);
 }
@@ -1419,7 +1419,7 @@ void SportIdent::getSI6Data(HANDLE hComm)
   WriteFile(hComm, c, 1, &written, NULL);
 
   OutputDebugString(L"-ACK-");
-  SICard card;
+  SICard card(ConvertedTimeStatus::Hour24);
   getCard6Data(b, card);
 
   addCard(card);
@@ -1469,7 +1469,7 @@ void SportIdent::getSI5Data(HANDLE hComm)
         WriteFile(hComm, c, 1, &written, NULL);
 
         //BYTE *Card5Data=bf+5;
-        SICard card;
+        SICard card(ConvertedTimeStatus::Hour12);
         getCard5Data(bf, card);
 
         addCard(card);
@@ -1507,7 +1507,7 @@ bool SportIdent::getCard5Data(BYTE *data, SICard &card)
 
   data+=16;
 
-
+  card.convertedTime = ConvertedTimeStatus::Hour12;
   analyseSI5Time(data+3, card.StartPunch.Time, card.StartPunch.Code);
   analyseSI5Time(data+5, card.FinishPunch.Time, card.FinishPunch.Code);
   analyseSI5Time(data+9, card.CheckPunch.Time, card.CheckPunch.Code);
@@ -1571,6 +1571,7 @@ bool SportIdent::getCard9Data(BYTE *data, SICard &card)
 
   int series = data[24] & 15;
 
+  card.convertedTime = ConvertedTimeStatus::Hour24;
   analysePunch(data+12, card.StartPunch.Time, card.StartPunch.Code);
   analysePunch(data+16, card.FinishPunch.Time, card.FinishPunch.Code);
   analysePunch(data+8, card.CheckPunch.Time, card.CheckPunch.Code);
@@ -1670,26 +1671,38 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
 
 //	DWORD control;
 //	DWORD time;
-
+  card.convertedTime = ConvertedTimeStatus::Hour24;
   analysePunch(data+8, card.StartPunch.Time, card.StartPunch.Code);
   analysePunch(data+4, card.FinishPunch.Time, card.FinishPunch.Code);
   analysePunch(data+12, card.CheckPunch.Time, card.CheckPunch.Code);
   card.nPunch=min(int(data[2]), 192);
 
   int i;
+  char lastNameByte[21], firstNameByte[21];
+  wstring lastName, firstName;
 
-  memcpy(card.LastName, data+32, 20);
-  for(i=19;i>0 && card.LastName[i]==0x20;i--)
-    card.LastName[i]=0;
+  memcpy(lastNameByte, data+32, 20);
+  lastNameByte[20] = 0;
+  for (i = 19; i >= 0 && lastNameByte[i] == 0x20; i--) {
+    lastNameByte[i] = 0;
+  }
 
-  memcpy(card.FirstName, data+32+20, 20);
-  for(i=19;i>0 && card.FirstName[i]==0x20;i--)
-    card.FirstName[i]=0;
+  string2Wide(lastNameByte, lastName);
+  wcsncpy(card.lastName, lastName.c_str(), 20);
+
+  memcpy(firstNameByte, data+32+20, 20);
+  firstNameByte[20] = 0;
+
+  for (i = 19; i >= 0 && firstNameByte[i] == 0x20; i--) {
+    firstNameByte[i] = 0;
+  }
+
+  string2Wide(firstNameByte, firstName);
+  wcsncpy(card.firstName, firstName.c_str(), 20);
 
   data+=128-16;
 
-  for(unsigned k=0;k<card.nPunch;k++)
-  {
+  for(unsigned k=0;k<card.nPunch;k++) {
     analysePunch(data+4*k, card.Punch[k].Time, card.Punch[k].Code);
   }
 
@@ -1731,21 +1744,6 @@ void SportIdent::analyseSI5Time(BYTE *data, DWORD &time, DWORD &control)
 {
   if (*LPWORD(data)!=0xEEEE) {
     time=MAKEWORD(data[1], data[0]);
-
-    if (ZeroTime<12*3600) {
-      //Förmiddag
-      if ( time < ZeroTime )
-        time+=12*3600; //->Eftermiddag
-    }
-    else {
-      //Eftermiddag
-
-      if ( time >= ZeroTime%(12*3600) ) {
-        //Eftermiddag
-        time+=12*3600;
-      }
-      // else Efter midnatt OK.
-    }
     control=0;
   }
   else {
@@ -1754,6 +1752,36 @@ void SportIdent::analyseSI5Time(BYTE *data, DWORD &time, DWORD &control)
   }
 }
 
+void SICard::analyseHour12Time(DWORD zeroTime) {
+  if (convertedTime != ConvertedTimeStatus::Hour12)
+    return;
+
+  StartPunch.analyseHour12Time(zeroTime);
+  CheckPunch.analyseHour12Time(zeroTime);
+  FinishPunch.analyseHour12Time(zeroTime);
+  for (DWORD k = 0; k < nPunch; k++)
+    Punch[k].analyseHour12Time(zeroTime);
+
+  convertedTime = ConvertedTimeStatus::Hour24;
+}
+
+void SIPunch::analyseHour12Time(DWORD zeroTime) {
+  if (Code != -1 && Time>=0 && Time <=12*3600) {
+    if (zeroTime < 12 * 3600) {
+      //Förmiddag
+      if (Time < zeroTime)
+        Time += 12 * 3600; //->Eftermiddag
+    }
+    else {
+      //Eftermiddag
+      if (Time >= zeroTime % (12 * 3600)) {
+        //Eftermiddag
+        Time += 12 * 3600;
+      }
+      // else Efter midnatt OK.
+    }
+  }
+}
 
 void SportIdent::EnumrateSerialPorts(list<int> &ports)
 {
@@ -1867,7 +1895,7 @@ void SportIdent::addCard(const SICard &sic)
 
 void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode)
 {
-  SICard sic;
+  SICard sic(ConvertedTimeStatus::Hour24);
   memset(&sic, 0, sizeof(sic));
   sic.CardNumber=Card;
   sic.StartPunch.Code = -1;
@@ -1912,7 +1940,7 @@ void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode)
       sic.FinishPunch.Code = oPunch::PunchFinish;
     }
   }
-  sic.PunchOnly=true;
+  sic.punchOnly = true;
 
   addCard(sic);
 }
@@ -2048,14 +2076,6 @@ bool SportIdent::autoDetect(list<int> &ComPorts)
   return !ComPorts.empty();
 }
 
-void SportIdent::setZeroTime(DWORD zt)
-{
-  EnterCriticalSection(&SyncObj);
-  ZeroTime=zt%(24*3600);
-  LeaveCriticalSection(&SyncObj);
-
-}
-
 bool SportIdent::isPortOpen(const wstring &com)
 {
   SI_StationInfo *si = findStation(com);
@@ -2146,8 +2166,7 @@ static string formatTimeN(int t) {
   return nt;
 }
 
-vector<string> SICard::codeLogData(int row) const
-{
+vector<string> SICard::codeLogData(gdioutput &gdi, int row) const {
   vector<string> log;
 
   log.push_back(itos(row));
@@ -2158,14 +2177,10 @@ vector<string> SICard::codeLogData(int row) const
   log.push_back(itos(CardNumber));
   log.push_back("");
   log.push_back("");
-  wstring fn(FirstName), ln(LastName), cn(Club);
-  string fnn(fn.begin(), fn.end());
-  string lnn(ln.begin(), ln.end());
-  string cnn(cn.begin(), cn.end());
   
-  log.push_back(fnn);
-  log.push_back(lnn);
-  log.push_back(cnn);
+  log.push_back(gdi.recodeToNarrow(firstName));
+  log.push_back(gdi.recodeToNarrow(lastName));
+  log.push_back(gdi.recodeToNarrow(club));
   log.push_back("");
   log.push_back("");
   log.push_back("");
@@ -2179,11 +2194,12 @@ vector<string> SICard::codeLogData(int row) const
   log.push_back("");
   log.push_back("");
 
-  //We set monday on every punch, since this is our way of
-  //saying that we have 24-h clock.
+  string indicator24 = convertedTime == ConvertedTimeStatus::Hour12 ? "" : "MO";
+
+  //We set monday on every punch for 24-hour clock, since this indicates 24-hour support. Empty for 12-hour punch
   if (signed(CheckPunch.Code) >= 0) {
     log.push_back(itos(CheckPunch.Code));
-    log.push_back("MO");
+    log.push_back(indicator24);
     log.push_back(formatTimeN(CheckPunch.Time));
   }
   else {
@@ -2194,7 +2210,7 @@ vector<string> SICard::codeLogData(int row) const
 
   if (signed(StartPunch.Code) >= 0) {
     log.push_back(itos(StartPunch.Code));
-    log.push_back("MO");
+    log.push_back(indicator24);
     log.push_back(formatTimeN(StartPunch.Time));
   }
   else {
@@ -2205,7 +2221,7 @@ vector<string> SICard::codeLogData(int row) const
 
   if (signed(FinishPunch.Code) >= 0) {
     log.push_back(itos(FinishPunch.Code));
-    log.push_back("MO");
+    log.push_back(indicator24);
     log.push_back(formatTimeN(FinishPunch.Time));
   }
   else {
@@ -2219,7 +2235,7 @@ vector<string> SICard::codeLogData(int row) const
     if (k<int(nPunch)) {
       log.push_back(itos(Punch[k].Code));
       if (Punch[k].Time>0) {
-        log.push_back("MO");
+        log.push_back(indicator24);
         log.push_back(formatTimeN(Punch[k].Time));
       }
       else {
@@ -2316,6 +2332,7 @@ string SICard::serializePunches() const {
 }
 
 void SICard::deserializePunches(const string &arg) {
+  convertedTime = ConvertedTimeStatus::Hour24;
   FinishPunch.Code = -1;
   StartPunch.Code = -1;
   CheckPunch.Code = -1;
@@ -2348,5 +2365,5 @@ void SICard::deserializePunches(const string &arg) {
     *tp = atoi(mark[1].c_str());
   }
   if (out.size() == 1)
-    PunchOnly = true;
+    punchOnly = true;
 }

@@ -156,6 +156,7 @@ class InfoBaseCompetitor : public InfoBase {
     int status;
     int startTime;
     int runningTime;
+    wstring bib;
     void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
     bool synchronizeBase(oAbstractRunner &bc);
   public:

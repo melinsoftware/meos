@@ -839,17 +839,11 @@ bool csvparser::importPunches(const oEvent &oe, const wstring &file, vector<Punc
   return true;
 }
 
-int analyseSITime(const oEvent &oe, const wchar_t *dow, const wchar_t *time)
+int analyseSITime(const wchar_t *dow, const wchar_t *time, bool &is12Hour)
 {
-  int t=-1;
-  if (trim(dow).length()>0)
-    t = oe.getRelativeTime(time);
-  else
-    t = oe.getRelativeTimeFrom12Hour(time);
-
-  if (t<0)
-    t=0;
-
+  int t = oEvent::convertAbsoluteTime(time);
+  if (t >= 0 && trim(dow).empty())
+    is12Hour = true;
   return t;
 }
 
@@ -935,10 +929,10 @@ bool csvparser::checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, S
   
   if (cardNo < 1000 || cardNo > 99999999)
     return false;
-
-  int check = analyseSITime(oe, getSIC(sicCheckDOW, sp), getSIC(sicCheckTime, sp));
-  int start = analyseSITime(oe, getSIC(sicStartDOW, sp), getSIC(sicStartTime, sp));
-  int finish = analyseSITime(oe,  getSIC(sicFinishDOW, sp), getSIC(sicFinishTime, sp));
+  bool is12Hour = false;
+  int check = analyseSITime(getSIC(sicCheckDOW, sp), getSIC(sicCheckTime, sp), is12Hour);
+  int start = analyseSITime(getSIC(sicStartDOW, sp), getSIC(sicStartTime, sp), is12Hour);
+  int finish = analyseSITime(getSIC(sicFinishDOW, sp), getSIC(sicFinishTime, sp), is12Hour);
   int startCode = wtoi(getSIC(sicStart, sp));
   int finishCode = wtoi(getSIC(sicFinish, sp));
   int checkCode = wtoi(getSIC(sicCheck, sp));
@@ -954,7 +948,7 @@ bool csvparser::checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, S
     if (ix+2 >= sp.size())
       return false;
     int code = wtoi(sp[ix]);
-    int time = analyseSITime(oe, sp[ix+1].c_str(), sp[ix+2].c_str());
+    int time = analyseSITime(sp[ix+1].c_str(), sp[ix+2].c_str(), is12Hour);
     if (code > 0) {
       punches.push_back(make_pair(code, time));
     }
@@ -998,12 +992,12 @@ bool csvparser::checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, S
       card.Punch[k].Time = punches[k].second;
     }
     
-    wcsncpy_s(card.FirstName, fname.c_str(), 20);
-    card.FirstName[20] = 0;
-    wcsncpy_s(card.LastName, lname.c_str(), 20);
-    card.LastName[20] = 0;
+    wcsncpy_s(card.firstName, fname.c_str(), 20);
+    card.firstName[20] = 0;
+    wcsncpy_s(card.lastName, lname.c_str(), 20);
+    card.lastName[20] = 0;
     card.nPunch = punches.size();
-    card.convertedTime = true;
+    card.convertedTime = is12Hour ? ConvertedTimeStatus::Hour12 :  ConvertedTimeStatus::Hour24;
     return true;
   }
 
@@ -1061,7 +1055,7 @@ bool csvparser::checkSimanLine(const oEvent &oe, const vector<wstring> &sp, SICa
       card.Punch[k].Time = punches[k].second;
     }
     card.nPunch = punches.size();
-    card.convertedTime = false;
+    card.convertedTime = ConvertedTimeStatus::Hour24; //XXX Not correct in general
     return true;
   }
 
@@ -1098,7 +1092,7 @@ bool csvparser::importCards(const oEvent &oe, const wstring &file, vector<SICard
     //split(bf, sp);
     const vector<wstring> &sp = *it;
     
-    SICard card;
+    SICard card(ConvertedTimeStatus::Unknown);
 
     if (checkSimanLine(oe, sp, card)) {
       cards.push_back(card);
@@ -1111,13 +1105,13 @@ bool csvparser::importCards(const oEvent &oe, const wstring &file, vector<SICard
     else if (sp.size()>28) {
       int no = wtoi(sp[0]);
       card.CardNumber = wtoi(sp[2]);
-      wcsncpy_s(card.FirstName, sp[5].c_str(), 20);
-      wcsncpy_s(card.LastName, sp[6].c_str(), 20);
-      wcsncpy_s(card.Club, sp[7].c_str(), 40);
-
+      wcsncpy_s(card.firstName, sp[5].c_str(), 20);
+      wcsncpy_s(card.lastName, sp[6].c_str(), 20);
+      wcsncpy_s(card.club, sp[7].c_str(), 40);
+      bool hour12 = false;
       if (trim(sp[21]).length()>1) {
         card.CheckPunch.Code = wtoi(sp[19]);
-        card.CheckPunch.Time = analyseSITime(oe, sp[20].c_str(), sp[21].c_str());
+        card.CheckPunch.Time = analyseSITime(sp[20].c_str(), sp[21].c_str(), hour12);
       }
       else {
         card.CheckPunch.Code = -1;
@@ -1126,7 +1120,7 @@ bool csvparser::importCards(const oEvent &oe, const wstring &file, vector<SICard
 
       if (trim(sp[24]).length()>1) {
         card.StartPunch.Code = wtoi(sp[22]);
-        card.StartPunch.Time = analyseSITime(oe, sp[23].c_str(), sp[24].c_str());
+        card.StartPunch.Time = analyseSITime(sp[23].c_str(), sp[24].c_str(), hour12);
       }
       else {
         card.StartPunch.Code = -1;
@@ -1135,7 +1129,7 @@ bool csvparser::importCards(const oEvent &oe, const wstring &file, vector<SICard
 
       if (trim(sp[27]).length()>1) {
         card.FinishPunch.Code = wtoi(sp[25]);
-        card.FinishPunch.Time = analyseSITime(oe, sp[26].c_str(), sp[27].c_str());
+        card.FinishPunch.Time = analyseSITime(sp[26].c_str(), sp[27].c_str(), hour12);
       }
       else  {
         card.FinishPunch.Code = -1;
@@ -1147,11 +1141,11 @@ bool csvparser::importCards(const oEvent &oe, const wstring &file, vector<SICard
         if (sp.size()>28+3*card.nPunch) {
           for (unsigned k=0;k<card.nPunch;k++) {
             card.Punch[k].Code = wtoi(sp[29+k*3]);
-            card.Punch[k].Time = analyseSITime(oe, sp[30+k*3].c_str(), sp[31+k*3].c_str());
+            card.Punch[k].Time = analyseSITime(sp[30+k*3].c_str(), sp[31+k*3].c_str(), hour12);
           }
-          card.PunchOnly = false;
+          card.punchOnly = false;
           nimport++;
-          card.convertedTime = true;
+          card.convertedTime = hour12 ? ConvertedTimeStatus::Hour12 : ConvertedTimeStatus::Hour24;
           cards.push_back(card);
         }
       }

@@ -40,6 +40,8 @@ const BYTE NAK=0x15;
 // This is taken from r56 and checked in on r63
 #include <vector>
 
+class gdioutput;
+
 struct SICard5Detect
 {
   BYTE code;//Code;
@@ -49,23 +51,34 @@ struct SICard5Detect
   WORD crc;
 };
 
-struct SIPunch
-{
+struct SIPunch {
   DWORD Code;
   DWORD Time;
+
+  void analyseHour12Time(DWORD zeroTime);
+};
+
+enum class ConvertedTimeStatus {
+  Unknown = 0,
+  Hour12,
+  Hour24,
+  Done,
 };
 
 struct SICard
 {
-  SICard() {
+  SICard(ConvertedTimeStatus status) {
     clear(0);
-    convertedTime = false;
+    convertedTime = status;
   }
   // Clears the card if this == condition or condition is 0
   void clear(const SICard *condition) {
     if (this==condition || condition==0)
       memset(this, 0, sizeof(SICard));
   }
+
+  void analyseHour12Time(DWORD zeroTime);
+
   bool empty() const {return CardNumber==0;}
   DWORD CardNumber;
   SIPunch StartPunch;
@@ -73,19 +86,19 @@ struct SICard
   SIPunch CheckPunch;
   DWORD nPunch;
   SIPunch Punch[192];
-  wchar_t FirstName[21];
-  wchar_t LastName[21];
-  wchar_t Club[41];
+  wchar_t firstName[21];
+  wchar_t lastName[21];
+  wchar_t club[41];
   char readOutTime[32];
-  bool PunchOnly;
-  bool convertedTime;
+  bool punchOnly;
+  ConvertedTimeStatus convertedTime;
   // Used for manual time input
   int runnerId;
   int relativeFinishTime;
   bool statusOK;
   bool statusDNF;
 
-  vector<string> codeLogData(int row) const;
+  vector<string> codeLogData(gdioutput &converter, int row) const;
   static vector<string> logHeader();
 
   unsigned calculateHash() const;
@@ -147,7 +160,6 @@ protected:
   bool readSystemDataV2(SI_StationInfo &si);
   CRITICAL_SECTION SyncObj;
 
-  DWORD ZeroTime; //Used to analyse times. Seconds 0-24h (0-24*3600)
   int readByte_delay(BYTE &byte,  HANDLE hComm);
   int readBytes_delay(BYTE *byte, DWORD buffSize, DWORD len,  HANDLE hComm);
   int readBytesDLE_delay(BYTE *byte, DWORD buffSize, DWORD len,  HANDLE hComm);
@@ -200,7 +212,6 @@ public:
 
   void getInfoString(const wstring &com, vector<wstring> &info);
   bool isPortOpen(const wstring &com);
-  void setZeroTime(DWORD zt);
   bool autoDetect(list<int> &ComPorts);
   void stopMonitorThread();
 

@@ -962,7 +962,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.addSelection("Method", 200, 200, 0, L"Metod:");
       gdi.addItem("Method", lang.tl("Lottning"), DMRandom);
       gdi.addItem("Method", lang.tl("SOFT-lottning"), DMSOFT);
-      gdi.selectItemByData("Method", getDefaultMethod(false));
+      gdi.selectItemByData("Method", getDefaultMethod({ DMRandom, DMSOFT }));
 
       gdi.fillDown();
       gdi.addCheckbox("LateBefore", "Efteranmälda före ordinarie");
@@ -1566,7 +1566,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.setRestorePoint("MultiDayDraw");
 
       lastDrawMethod = NOMethod;
-      drawDialog(gdi, getDefaultMethod(true), *pc);
+      drawDialog(gdi, getDefaultMethod(getSupportedDrawMethods(multiDay)), *pc);
     }
     else if (bi.id == "HandleMultiDay") {
       ListBoxInfo lbi;
@@ -1576,9 +1576,9 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (!pc)
         throw std::exception("Class not found");
 
-      if (gdi.isChecked(bi.id) && (lastDrawMethod == DMReversePursuit ||
+      if (!gdi.isChecked(bi.id) && (lastDrawMethod == DMReversePursuit ||
                                    lastDrawMethod == DMPursuit)) {
-        drawDialog(gdi, getDefaultMethod(false), *pc);
+        drawDialog(gdi, DMSOFT, *pc);
       }
       else
         setMultiDayClass(gdi, gdi.isChecked(bi.id), lastDrawMethod);
@@ -2253,7 +2253,7 @@ void TabClass::showClassSettings(gdioutput &gdi)
     gdi.addItem("Method", lang.tl("Lottning"), DMRandom);
     gdi.addItem("Method", lang.tl("SOFT-lottning"), DMSOFT);
 
-    gdi.selectItemByData("Method", getDefaultMethod(false));
+    gdi.selectItemByData("Method", getDefaultMethod({DMRandom, DMSOFT}));
 
     gdi.addSelection("PairSize", 150, 200, 0, L"Tillämpa parstart:");
     gdi.addItem("PairSize", getPairOptions());
@@ -3250,15 +3250,22 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
   if (lastDrawMethod == method)
     return;
 
+  bool noUpdate = false;
+
   if (lastDrawMethod == DMPursuit && method == DMReversePursuit)
-    return;
+    noUpdate = true;
   if (lastDrawMethod == DMReversePursuit && method == DMPursuit)
-    return;
+    noUpdate = true;
 
   if (lastDrawMethod == DMRandom && method == DMSOFT)
-    return;
+    noUpdate = true;
   if (lastDrawMethod == DMSOFT && method == DMRandom)
+    noUpdate = true;
+  
+  if (noUpdate) {
+    lastDrawMethod = method;
     return;
+  }
 
   int firstStart = 3600,
       interval = 120,
@@ -3281,7 +3288,7 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
   }
   gdi.restore("MultiDayDraw", false);
 
-  const bool multiDay = oe->hasPrevStage();
+  const bool multiDay = oe->hasPrevStage() && gdi.isChecked("HandleMultiDay");
 
   if (method == DMSeeded) {
     gdi.addString("", 10, "help:seeding_info");
@@ -3352,7 +3359,7 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
     gdi.addCheckbox("HandleBibs", "Tilldela nummerlappar:", ClassesCB, lastHandleBibs).setSynchData(&lastHandleBibs);
     gdi.dropLine(-0.2);
     gdi.addInput("Bib", L"", 10, 0, L"", L"Mata in första nummerlappsnummer, eller blankt för att ta bort nummerlappar");
-    gdi.disableInput("Bib");
+    gdi.setInputStatus("Bib", lastHandleBibs);
     gdi.fillDown();
     gdi.dropLine(2.5);
     gdi.popX();
@@ -3390,6 +3397,16 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
   lastDrawMethod = method;
 }
 
+set<DrawMethod> TabClass::getSupportedDrawMethods(bool hasMulti) const {
+  set<DrawMethod> base = { DMRandom, DMSOFT, DMClumped, DMSimultaneous, DMSeeded };
+  if (hasMulti) {
+    base.insert(DMPursuit);
+    base.insert(DMReversePursuit);
+  }
+
+  return base;
+}
+
 void TabClass::setMultiDayClass(gdioutput &gdi, bool hasMulti, DrawMethod defaultMethod) {
 
   gdi.clearList("Method");
@@ -3404,12 +3421,14 @@ void TabClass::setMultiDayClass(gdioutput &gdi, bool hasMulti, DrawMethod defaul
     gdi.addItem("Method", lang.tl("Omvänd jaktstart"), DMReversePursuit);
   }
   else if (defaultMethod > 10)
-    defaultMethod = getDefaultMethod(hasMulti);
+    defaultMethod = DMSOFT;
 
   gdi.selectItemByData("Method", defaultMethod);
 
   if (gdi.hasField("Vacanses")) {
     gdi.setInputStatus("Vacanses", !hasMulti);
+  }
+  if (gdi.hasField("HandleBibs")) {
     gdi.setInputStatus("HandleBibs", !hasMulti);
 
     if (hasMulti) {
@@ -4078,28 +4097,12 @@ void TabClass::updateSplitDistribution(gdioutput &gdi, int num, int tot) const {
   gdi.refresh();
 }
 
-DrawMethod TabClass::getDefaultMethod(bool allowPursuit) const {
-  int dm = oe->getPropertyInt("DefaultDrawMethod", DMSOFT);
-  if (!allowPursuit) {
-    if (dm == DMRandom)
-      return DMRandom;
-    else
-      return DMSOFT;
-  }
-  else {
-    switch (dm) {
-      case DMRandom:
-        return DMRandom;
-      case DMPursuit:
-        return DMPursuit;
-      case DMReversePursuit:
-        return DMReversePursuit;
-      case DMSeeded:
-        return DMSeeded;
-      default:
-        return DMSOFT;
-    }
-  }
+DrawMethod TabClass::getDefaultMethod(const set<DrawMethod> &allowedValues) const {
+  DrawMethod dm = (DrawMethod)oe->getPropertyInt("DefaultDrawMethod", DMSOFT);
+  if (allowedValues.count(dm))
+    return dm;
+  else
+    return DMSOFT;
 }
 
 vector< pair<wstring, size_t> > TabClass::getPairOptions() {
