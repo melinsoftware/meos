@@ -1710,6 +1710,13 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="DoFreeImport") {
       fi.addEntries(oe, entries);
       entryText.clear();
+
+      // Update qualification/final
+      vector<pClass> cls;
+      oe->getClasses(cls, false);
+      for (pClass c : cls) {
+        c->updateFinalClasses(0, false);
+      }
       loadPage(gdi);
     }
     else if (bi.id=="Startlist") {
@@ -2377,7 +2384,8 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
                         "\n\nDanish Translation by Michael Leth Jess and Chris Bagge"
                         "\n\nRussian Translation by Paul A. Kazakov and Albert Salihov"
                         "\n\nOriginal French Translation by Jerome Monclard"
-                        "\n\nAdaption to French conditions and extended translation by Pierre Gaufillet");
+                        "\n\nAdaption to French conditions and extended translation by Pierre Gaufillet"
+                        "\n\nCzech Translation by Marek Kustka");
 
   gdi.dropLine();
   gdi.addString("", 0, "Det här programmet levereras utan någon som helst garanti. Programmet är ");
@@ -2514,7 +2522,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
     gdi.dropLine(1.2);
     gdi.addCheckbox("LongTimes", "Aktivera stöd för tider över 24 timmar", CompetitionCB, oe->useLongTimes());
 
-    if (oe->isClient()) {
+    if (false && oe->isClient()) {
       gdi.popX();
       gdi.disableInput("ZeroTime");
       gdi.disableInput("LongTimes");
@@ -3502,6 +3510,12 @@ TabCompetition::FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool r
     }
   }
 
+  // Update qualification/final
+  vector<pClass> cls;
+  oe->getClasses(cls, false);
+  for (pClass c : cls) {
+    c->updateFinalClasses(0, false);
+  }
   return FlowContinue;
 }
 

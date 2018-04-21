@@ -468,38 +468,50 @@ pFreePunch oEvent::addFreePunch(int time, int type, int card, bool updateStartFi
 
   fp->updateChanged();
   fp->synchronize();
+  pRunner tr = fp->getTiedRunner();
 
-  // Update start/finish time
-  if (updateStartFinish && type == oPunch::PunchStart || type == oPunch::PunchFinish) {
-    pRunner tr = fp->getTiedRunner();
-    if (tr && tr->getStatus() == StatusUnknown && time > 0) {
-      tr->synchronize();
-      if (type == oPunch::PunchStart) {
-        if (tr->getClassRef(false) && !tr->getClassRef(true)->ignoreStartPunch())
-          tr->setStartTime(time, true, false);
-      }
-      else
-        tr->setFinishTime(time);
-
-      // Direct result
-      if (type == oPunch::PunchFinish && tr->getClassRef(false) && tr->getClassRef(true)->hasDirectResult()) {
-        if (tr->getCourse(false) == 0 && tr->getCard() == 0) {
-          tr->setStatus(StatusOK, true, false, true);
-        }
-        else if (tr->getCourse(false) != 0 && tr->getCard() == 0) {
-          pCard card = allocateCard(tr);
-          card->setupFromRadioPunches(*tr);
-          vector<int> mp;
-          card->synchronize();
-          tr->addPunches(card, mp);
-        }
+  if (tr != nullptr) {
+    // Update start/finish time
+    if (updateStartFinish) {
+      int startType = oPunch::PunchStart;
+      int finishType = oPunch::PunchFinish;
+      pCourse pCrs = tr->getCourse(false);
+      if (pCrs) {
+        startType = pCrs->getStartPunchType();
+        finishType = pCrs->getFinishPunchType();
       }
 
-      tr->synchronize(true);
+      if (type == startType || type == finishType) {
+        if (tr->getStatus() == StatusUnknown && time > 0) {
+          tr->synchronize();
+          if (type == startType) {
+            if (tr->getClassRef(false) && !tr->getClassRef(true)->ignoreStartPunch())
+              tr->setStartTime(time, true, false);
+          }
+          else
+            tr->setFinishTime(time);
+
+          // Direct result
+          if (type == finishType && tr->getClassRef(false) && tr->getClassRef(true)->hasDirectResult()) {
+            if (tr->getCourse(false) == 0 && tr->getCard() == 0) {
+              tr->setStatus(StatusOK, true, false, true);
+            }
+            else if (tr->getCourse(false) != 0 && tr->getCard() == 0) {
+              pCard card = allocateCard(tr);
+              card->setupFromRadioPunches(*tr);
+              vector<int> mp;
+              card->synchronize();
+              tr->addPunches(card, mp);
+            }
+          }
+
+          tr->synchronize(true);
+        }
+      }
     }
-  }
-  if (fp->getTiedRunner())
+
     pushDirectChange();
+  }
   return fp;
 }
 

@@ -2389,6 +2389,11 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
     }
   }
   else if (iMessage==WM_LBUTTONDOWN) {
+    if (autoCompleteInfo) {
+      autoCompleteInfo.reset();
+      return 0;
+    }
+
     list<InfoBox>::iterator it=IBox.begin();
 
     POINT pt;
@@ -6920,9 +6925,17 @@ AutoCompleteInfo &gdioutput::addAutoComplete(const string &key) {
   POINT pt;
   int height = scaleLength(200);
   pt.x = rc.right;
-  pt.y = min(rc.top, rcMain.bottom-height);
+  //pt.y = min(rc.top, rcMain.bottom-height);
+  pt.y = rc.bottom;
+  if (pt.y + height > rcMain.bottom)
+    pt.y = rc.top - height;
+  
   ScreenToClient(hWndTarget, &pt);
-  // TODO Place window
+  if (pt.y < 0) { //Fallback
+    pt.x = rc.right;
+    pt.y = min(rc.top, rcMain.bottom - height);
+    ScreenToClient(hWndTarget, &pt);
+  }
 
   if (autoCompleteInfo && autoCompleteInfo->matchKey(key)) {
     return *autoCompleteInfo;

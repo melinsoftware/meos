@@ -27,9 +27,9 @@
 //V2: ABCDEFGHIHJKMN
 //V31: a
 //V33: abcde
-//V35: abcde
+//V35: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 669 $");
+  string revision("$Rev: 686 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -41,12 +41,12 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2018-03-25 07:29:55 +0200 (sö, 25 mar 2018) $");
+  wstring date(L"$Date: 2018-04-17 21:45:35 +0200 (ti, 17 apr 2018) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC2"; // No parantheses (...)
+  return L""; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -188,4 +188,6 @@ void getSupporters(vector<wstring> &supp)
   supp.push_back(L"Siguldas Takas, Latvia");
   supp.push_back(L"Eric Teutsch, Ottawa Orienteering Club, Canada");
   supp.push_back(L"Silkeborg OK, Denmark");
+  supp.push_back(L"Erik Ivarsson Sandberg");
+  supp.push_back(L"Stenungsunds OK");
 }

@@ -37,6 +37,7 @@
 #include "../progress.h"
 #include "../metalist.h"
 #include "../MeOSFeatures.h"
+#include "../meosexception.h"
 
 using namespace mysqlpp;
 
@@ -3493,7 +3494,7 @@ bool MeosSQL::checkConnection(oEvent *oe)
         monitorId=static_cast<int>(res.insert_id);
     }
     catch (const mysqlpp::Exception& er){
-      oe->connectedClients.push_back(er.what());
+      oe->connectedClients.push_back(L"Error: " + fromUTF(er.what()));
       return false;
     }
   }
@@ -3505,7 +3506,7 @@ bool MeosSQL::checkConnection(oEvent *oe)
       query.execute();
     }
     catch (const mysqlpp::Exception& er){
-      oe->connectedClients.push_back(er.what());
+      oe->connectedClients.push_back(L"Error: " + fromUTF(er.what()));
       return false;
     }
   }
@@ -3521,7 +3522,7 @@ bool MeosSQL::checkConnection(oEvent *oe)
     if (res) {
       for (int i=0; i<res.num_rows(); i++) {
         Row row=res.at(i);
-        oe->connectedClients.push_back(string(row["Client"]));
+        oe->connectedClients.push_back(fromUTF(string(row["Client"])));
 
         if (int(row["Id"])==monitorId)
           callback=true;
@@ -3529,7 +3530,7 @@ bool MeosSQL::checkConnection(oEvent *oe)
     }
   }
   catch (const mysqlpp::Exception& er){
-    oe->connectedClients.push_back(er.what());
+    oe->connectedClients.push_back(L"Error: " + fromUTF(er.what()));
     return false;
   }
   return callback;
@@ -3554,16 +3555,14 @@ void MeosSQL::setDefaultDB()
 
 bool MeosSQL::dropDatabase(oEvent *oe)
 {
-  // Check if other cients are connected.
+  // Check if other clients are connected.
   if ( !checkConnection(oe) ) {
     if (!oe->connectedClients.empty())
-      alert(oe->connectedClients[0]);
-
-    return false;
+      throw meosException("Database is used and cannot be deleted.");
   }
 
   if (oe->connectedClients.size()!=1) {
-    alert("Database is used and cannot be deleted");
+    throw meosException("Database is used and cannot be deleted.");
     return false;
   }
 

@@ -103,6 +103,7 @@ public:
   wstring getRadioName(int courseControlId) const;
 
   bool hasControl(const oControl *ctrl) const;
+  bool hasControlCode(int code) const;
 
   /// Returns course specific id for specified control (taking duplicats of the control into account)
   int getCourseControlId(int controlIx) const;

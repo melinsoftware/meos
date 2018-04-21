@@ -135,9 +135,12 @@ void TestMeOS::runProtected(bool protect) const {
   oe_main->setProperty("FirstTime", 0);
   oe_main->setProperty("TestPath", tp);
   oe_main->getPropertyInt("UseEventor", 1);
-
+  TabSI *tsi = dynamic_cast<TabSI*>(gdi_main->getTabs().get(TabType::TSITab));
+  tsi->setMode(TabSI::ModeReadOut);
   //string pmOrig = oe_main->getPropertyString("PayModes", "");
   //oe_main->setProperty("PayModes", "");
+
+  OutputDebugString((L"Running test" + gdi_main->widen(test) + L"\n").c_str());
   try {
     status = RUNNING;
     run();
@@ -153,6 +156,7 @@ void TestMeOS::runProtected(bool protect) const {
     gdi_main->isTestMode = false;
   }
   catch (const meosAssertionFailure & ex) {
+    OutputDebugString(L"Test FAILED (assert)\n");
     status = FAILED;
     oe_main->useDefaultProperties(false);
     gdi_main->clearDialogAnswers(false);
@@ -166,6 +170,8 @@ void TestMeOS::runProtected(bool protect) const {
   }
   catch (const std::exception &ex) {
     status = FAILED;
+    OutputDebugString(L"Test FAILED (std)\n");
+
     oe_main->useDefaultProperties(false);
     gdi_main->clearDialogAnswers(false);
     gdi_main->dbRegisterSubCommand(0, "");
@@ -177,6 +183,8 @@ void TestMeOS::runProtected(bool protect) const {
       throw;
   }
   catch (...) {
+    OutputDebugString(L"Test FAILED (...)\n");
+
     status = FAILED;
     oe_main->useDefaultProperties(false);
     gdi_main->clearDialogAnswers(false);
@@ -195,7 +203,7 @@ void TestMeOS::runProtected(bool protect) const {
   for (size_t k = 0; k < tmpFiles.size(); k++)
     removeTempFile(tmpFiles[k]);
   tmpFiles.clear();
-
+  OutputDebugString(L"Test PASSED\n");
   if (protect) {
     cleanup();
   }

@@ -1377,6 +1377,14 @@ bool oCourse::hasControl(const oControl *ctrl) const {
   return false;
 }
 
+bool oCourse::hasControlCode(int code) const {
+  for (int i = 0; i < nControls; i++) {
+    if (Controls[i]->hasNumber(code))
+      return true;
+  }
+  return false;
+}
+
 void oCourse::getClasses(vector<pClass> &usageClass) const  {
   vector<pClass> cls;
   oe->getClasses(cls, false);

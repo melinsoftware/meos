@@ -1124,7 +1124,7 @@ wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFin
   out.reserve(in.length() * 2);
   wstring bf;
   for (size_t i = 0; i < newC.size(); ++i) {
-    if (i == 0) {
+    if (i == 0 && (newC.size() > 1 || firstStart)) {
       out += lang.tl("Start");
       if (firstStart)
         out += L"(" + itow(newC[i]) + L")";
@@ -1141,6 +1141,9 @@ wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFin
       out += dash;
 
     if (i+1 == newC.size()) {
+      if (i == 0) {
+        out = lang.tl("Start") + dash;
+      }
       if (lastFinish)
         out += lang.tl("Mål") + L"(" + itow(newC[i]) + L")";
       else

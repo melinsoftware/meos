@@ -4006,17 +4006,20 @@ void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart,
   }
   
   if (noClubNb) {
+    set<int> pushed_back;
     for (size_t k = 1; k < startOrder.size(); k++) {
       int idMe = startOrder[k]->getClubId();
       if (idMe != 0 && idMe == startOrder[k-1]->getClubId()) {
         // Make sure the runner with worst ranking is moved back. (Swedish SM rules)
-        if (startOrder[k-1]->getRanking() > startOrder[k]->getRanking())
+        bool skipRank = pushed_back.count(startOrder[k - 1]->getId()) != 0;
+        if (!skipRank &&  startOrder[k-1]->getRanking() > startOrder[k]->getRanking())
           swap(startOrder[k-1], startOrder[k]);
-
+        pushed_back.insert(startOrder[k]->getId());
         vector<pair<int, pRunner> > rqueue;
         rqueue.push_back(make_pair(k, startOrder[k]));
         for (size_t j = k + 1; j < startOrder.size(); j++) {
           if (idMe != startOrder[j]->getClubId()) {
+            pushed_back.insert(startOrder[j]->getId());
             swap(startOrder[j], startOrder[k]); // k-1 now has a non-club nb behind
             rqueue.push_back(make_pair(j, pRunner(0)));
             // Shift the queue

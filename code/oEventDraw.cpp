@@ -836,7 +836,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
   int minStartNo = Runners.size();
   for(unsigned k=0;k<stimes.size(); k++) {
-    runners[k]->setStartTime(stimes[k], true, false);
+    runners[k]->setStartTime(stimes[k], true, false, false);
     minStartNo = min(minStartNo, runners[k]->getStartNo());
   }
 
@@ -1113,12 +1113,14 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
 
   k=0;
 
-  for (it=Runners.begin(); it != Runners.end(); ++it)
-    if (it->Class && it->Class->Id==ClassID){
-      it->setStartTime(stimes[k++], true, false);
-      it->StartNo=k;
+  for (it = Runners.begin(); it != Runners.end(); ++it) {
+    if (it->Class && it->Class->Id == ClassID) {
+      it->setStartTime(stimes[k++], true, false, false);
+      it->StartNo = k;
       it->synchronize();
     }
+  }
+  reCalculateLeaderTimes(ClassID);
 
   delete[] stimes;
 }
@@ -1426,15 +1428,15 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
 
     if ((times[k].first - delta) < maxTime && breakIndex == -1) {
       if (!reverse)
-        r->setStartTime(firstTime + times[k].first - delta, true, false);
+        r->setStartTime(firstTime + times[k].first - delta, true, false, false);
       else
-        r->setStartTime(firstTime - times[k].first + reverseDelta, true, false);
+        r->setStartTime(firstTime - times[k].first + reverseDelta, true, false, false);
     }
     else if (!reverse) {
       if (breakIndex == -1)
         breakIndex = k;
 
-      r->setStartTime(restartTime + ((k - breakIndex)/pairSize) * interval, true, false);
+      r->setStartTime(restartTime + ((k - breakIndex)/pairSize) * interval, true, false, false);
     }
     else {
       if (breakIndex == -1) {
@@ -1442,8 +1444,9 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
         odd = times.size() % 2;
       }
 
-      r->setStartTime(restartTime + ((breakIndex - k + odd)/pairSize) * interval, true, false);
+      r->setStartTime(restartTime + ((breakIndex - k + odd)/pairSize) * interval, true, false, false);
     }
     r->synchronize(true);
   }
+  reCalculateLeaderTimes(classId);
 }

@@ -987,20 +987,46 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
 {
 #ifndef MEOSDB
   SICard sic(ConvertedTimeStatus::Hour24);
-  oe->generateTestCard(sic);
   SportIdent &si = TabSI::getSI(gdi);
-  if (!sic.empty()) {
-    if (!radio) si.addCard(sic);
-  }
-  else gdi.addInfoBox("", L"Failed to generate card.", interval*2);
 
-  if (radio && !sic.empty()) {
-    pRunner r=oe->getRunnerByCardNo(sic.CardNumber, 0, false);
-    if (r && r->getCardNo()) {
-      sic.CardNumber=r->getCardNo();
-      sic.punchOnly=true;
-      sic.nPunch=1;
-      sic.Punch[0].Code=radio;
+  if (radio == 0) {
+    oe->generateTestCard(sic);
+    if (!sic.empty()) {
+      if (!radio) si.addCard(sic);
+    }
+    else gdi.addInfoBox("", L"Failed to generate card.", interval * 2);
+  }
+  else {
+    SICard sic(ConvertedTimeStatus::Hour24);
+    vector<pRunner> rr;
+    oe->getRunners(0, 0, rr);
+    vector<pRunner> cCand;
+    vector<pFreePunch> pp;
+    for (auto r : rr) {
+      if (r->getStatus() == StatusUnknown && r->startTimeAvailable()) {
+        auto pc = r->getCourse(false);
+        if (radio < 10 || pc->hasControlCode(radio)) {
+          pp.clear();
+          oe->getPunchesForRunner(r->getId(), pp);
+          bool hit = false;
+          for (auto p : pp) {
+            if (p->getTypeCode() == radio)
+              hit = true;
+          }
+          if (!hit)
+            cCand.push_back(r);
+        }
+      }
+    }
+    if (cCand.size() > 0) {
+      int ix = rand() % cCand.size();
+      pRunner r = cCand[ix];
+      sic.convertedTime = ConvertedTimeStatus::Done;
+      sic.CardNumber = r->getCardNo();
+      sic.punchOnly = true;
+      sic.nPunch = 1;
+      sic.Punch[0].Code = radio;
+      sic.Punch[0].Time = 600 + rand() % 1200 + r->getStartTime();
       si.addCard(sic);
     }
   }

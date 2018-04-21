@@ -31,15 +31,16 @@ class csvparser;
 struct AutoCompleteRecord;
 
 class TabSI :  public TabBase, AutoCompleteHandler {
-  public:
-    enum SIMode {
+public:
+  enum SIMode {
     ModeReadOut,
     ModeAssignCards,
     ModeCheckCards,
     ModeEntry,
     ModeCardData
   };
-
+ 
+  void setMode(SIMode m) { mode = m; }
 private:
   /** Try to automatcally assign a class to runner (if none is given)
       Return true if runner has a class on exist */

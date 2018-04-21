@@ -82,7 +82,7 @@ class TabClass :
 
   void pursuitDialog(gdioutput &gdi);
 
-  bool warnDrawStartTime(gdioutput &gdi, int time);
+  bool warnDrawStartTime(gdioutput &gdi, int time, bool absTime);
   bool warnDrawStartTime(gdioutput &gdi, const wstring &firstStart);
 
   void static clearPage(gdioutput &gdi, bool autoRefresh);

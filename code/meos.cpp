@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -287,17 +287,18 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   lang.get().addLangResource(L"Svenska", L"103");
   lang.get().addLangResource(L"Deutsch", L"105");
   lang.get().addLangResource(L"Dansk", L"106");
-  lang.get().addLangResource(L"Français", L"110");
+  lang.get().addLangResource(L"ÄŒeskÃ½", L"108");
+  lang.get().addLangResource(L"FranÃ§ais", L"110");
   lang.get().addLangResource(L"Russian", L"107");
 
   if (fileExist(L"extra.lng")) {
-    lang.get().addLangResource(L"Extraspråk", L"extra.lng");
+    lang.get().addLangResource(L"ExtrasprÃ¥k", L"extra.lng");
   }
   else {
     wchar_t lpath[260];
     getUserFile(lpath, L"extra.lng");
     if (fileExist(lpath))
-      lang.get().addLangResource(L"Extraspråk", lpath);
+      lang.get().addLangResource(L"ExtrasprÃ¥k", lpath);
   }
 
   wstring defLang = gEvent->getPropertyString("Language", L"Svenska");
@@ -1020,7 +1021,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_CREATE:
 
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TCmpTab), "Tävling"));
+      tabList->push_back(TabObject(gdi_main->getTabs().get(TCmpTab), "TÃ¤vling"));
       tabList->push_back(TabObject(gdi_main->getTabs().get(TRunnerTab), "Deltagare"));
       tabList->push_back(TabObject(gdi_main->getTabs().get(TTeamTab), "Lag(flera)"));
       tabList->push_back(TabObject(gdi_main->getTabs().get(TListTab), "Listor"));
@@ -1174,7 +1175,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
       }
     case WM_USER+1:
-      MessageBox(hWnd, lang.tl(L"Kommunikationen med en SI-enhet avbröts.").c_str(), L"SportIdent", MB_OK);
+      MessageBox(hWnd, lang.tl(L"Kommunikationen med en SI-enhet avbrÃ¶ts.").c_str(), L"SportIdent", MB_OK);
       break;
 
     case WM_USER + 3:
@@ -1209,7 +1210,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
 
     case WM_CLOSE:
-      if (!gEvent || gEvent->empty() || gdi_main->ask(L"Vill du verkligen stänga MeOS?"))
+      if (!gEvent || gEvent->empty() || gdi_main->ask(L"Vill du verkligen stÃ¤nga MeOS?"))
           DestroyWindow(hWnd);
       break;
 
@@ -1227,20 +1228,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
           gEvent->save();
         }
         catch (meosException &ex) {
-          MessageBox(hWnd, lang.tl(ex.wwhat()).c_str(), L"Fel när tävlingen skulle sparas", MB_OK);
+          MessageBox(hWnd, lang.tl(ex.wwhat()).c_str(), L"Fel nÃ¤r tÃ¤vlingen skulle sparas", MB_OK);
         }
         catch(std::exception &ex) {
-          MessageBox(hWnd, lang.tl(ex.what()).c_str(), L"Fel när tävlingen skulle sparas", MB_OK);
+          MessageBox(hWnd, lang.tl(ex.what()).c_str(), L"Fel nÃ¤r tÃ¤vlingen skulle sparas", MB_OK);
         }
 
         try {
           gEvent->saveRunnerDatabase(L"database", true);
         }
         catch (meosException &ex) {
-          MessageBox(hWnd, lang.tl(ex.wwhat()).c_str(), L"Fel när löpardatabas skulle sparas", MB_OK);
+          MessageBox(hWnd, lang.tl(ex.wwhat()).c_str(), L"Fel nÃ¤r lÃ¶pardatabas skulle sparas", MB_OK);
         }
         catch(std::exception &ex) {
-          MessageBox(hWnd, lang.tl(ex.what()).c_str(), L"Fel när löpardatabas skulle sparas", MB_OK);
+          MessageBox(hWnd, lang.tl(ex.what()).c_str(), L"Fel nÃ¤r lÃ¶pardatabas skulle sparas", MB_OK);
         }
 
         if (gEvent)

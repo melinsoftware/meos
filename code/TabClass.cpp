@@ -432,7 +432,7 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
         wstring st=gdi.getText("StartTime");
 
         int nst = oe->convertAbsoluteTime(st);
-        if (warnDrawStartTime(gdi, nst)) {
+        if (nst >= 0 && warnDrawStartTime(gdi, nst, true)) {
           nst = 3600;
           st = oe->getAbsTime(nst);
         }
@@ -876,9 +876,11 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         }
         else
           specs[ci.classId].push_back(cds);
+
+        maxST = max(cds.firstStart + drawInfo.nFields * drawInfo.baseInterval * ci.interval, maxST);
       }
 
-      if (warnDrawStartTime(gdi, maxST))
+      if (warnDrawStartTime(gdi, maxST, false))
         return 0;
 
       for (map<int, vector<ClassDrawSpecification> >::iterator it = specs.begin();
@@ -1409,7 +1411,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       else if (bi.id=="DoDrawBefore")
         dtype = oEvent::remainingBefore;
       else {
-        if (warnDrawStartTime(gdi, t))
+        if (warnDrawStartTime(gdi, t, false))
           return 0;
       }
       //bool pairwise = false;
@@ -4181,11 +4183,14 @@ void TabClass::setLockForkingState(gdioutput &gdi, bool poolState, bool lockStat
 
 bool TabClass::warnDrawStartTime(gdioutput &gdi, const wstring &firstStart) {
   int st = oe->getRelativeTime(firstStart);
-  return warnDrawStartTime(gdi, st);
+  return warnDrawStartTime(gdi, st, false);
 }
 
-bool TabClass::warnDrawStartTime(gdioutput &gdi, int time) {
-  if (!hasWarnedStartTime && time > 3600 * 8 && !oe->useLongTimes()) {
+bool TabClass::warnDrawStartTime(gdioutput &gdi, int time, bool absTime) {
+  if (absTime) 
+    time = oe->getRelativeTime(formatTimeHMS(time));
+
+  if (!hasWarnedStartTime && (time > 3600 * 11 && !oe->useLongTimes())) {
     bool res = gdi.ask(L"warn:latestarttime#" + itow(time/3600));
     if (res)
       hasWarnedStartTime = true;

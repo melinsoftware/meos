@@ -393,7 +393,7 @@ protected:
   void storeChangeStatus(bool onlyChangable=true);
 
   wstring clientName;
-  vector<string> connectedClients;
+  vector<wstring> connectedClients;
   DWORD clientCheckSum() const; //Calculate a check sum for current clients
   DWORD currentClientCS; //The current, stored check sum.
 

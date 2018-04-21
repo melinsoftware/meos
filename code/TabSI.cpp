@@ -111,9 +111,6 @@ void TabSI::logCard(gdioutput &gdi, const SICard &card)
 extern SportIdent *gSI;
 extern pEvent gEvent;
 
-void LoadRunnerPage(gdioutput &gdi);
-
-
 int SportIdentCB(gdioutput *gdi, int type, void *data) {
   TabSI &tsi = dynamic_cast<TabSI &>(*gdi->getTabs().get(TSITab));
 
@@ -1580,17 +1577,6 @@ bool TabSI::loadPage(gdioutput &gdi) {
 
     gdi.addInput("C" + itos(i+1), itow(c), 3, 0, L"#C" + itow(i+1));
   }
-  /*
-  gdi.addInput("C1", "33", 5, 0, "#C1");
-  gdi.addInput("C2", "34", 5, 0, "#C2");
-  gdi.addInput("C3", "45", 5, 0, "#C3");
-  gdi.addInput("C4", "50", 5, 0, "#C4");
-  gdi.addInput("C5", "61", 5, 0, "#C5");
-  gdi.addInput("C6", "62", 5, 0, "#C6");
-  gdi.addInput("C7", "67", 5, 0, "#C7");
-
-  gdi.addInput("C8", "100", 5, 0, "#C8");
-  */
   
   gdi.dropLine();
   gdi.addButton("Save", "Bricka", SportIdentCB);
@@ -1666,7 +1652,7 @@ bool TabSI::loadPage(gdioutput &gdi) {
   gdi.dropLine(2);
   gdi.setRestorePoint("SIPageLoaded");
 
-  if (mode==ModeReadOut) {
+  if (mode == ModeReadOut) {
     gdi.addButton("Import", "Importera från fil...", SportIdentCB);
 
     gdi.setRestorePoint("Help");
@@ -1677,7 +1663,7 @@ bool TabSI::loadPage(gdioutput &gdi) {
 
     gdi.dropLine();
   }
-  else if (mode==ModeAssignCards) {
+  else if (mode == ModeAssignCards) {
     gdi.dropLine(1);
     showAssignCard(gdi, true);
   }
@@ -3865,6 +3851,19 @@ void TabSI::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
         pClass cls = oe->getClass(clsId);
         if (cls) {
           directEntryGUI.updateFees(gdi, cls, getThisYear() - year);
+        }
+      }
+      if (r) {
+        if (gdi.hasField("Club") && r->dbe().clubNo) {
+          if (gdi.getText("Club").empty()) {
+            auto pclub = oe->getRunnerDatabase().getClub(r->dbe().clubNo);
+            if (pclub)
+              gdi.setText("Club", pclub->getName());
+          }
+        }
+        if (gdi.hasField("CardNo") && r->dbe().cardNo) {
+          if (gdi.getText("CardNo").empty())
+            gdi.setText("CardNo", r->dbe().cardNo);
         }
       }
     }

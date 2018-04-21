@@ -12,8 +12,7 @@ IDR_3002                300     DISCARDABLE     "english.lng"
 IDR_3003                300     DISCARDABLE     "german.lng"
 IDR_3004                300     DISCARDABLE     "danish.lng"
 IDR_3005                300     DISCARDABLE     "russian.lng"
-IDR_3006                300     DISCARDABLE     "cp1250.lng"
-IDR_3007                300     DISCARDABLE     "cp1255.lng"
+IDR_3006                300     DISCARDABLE     "czech.lng"
 IDR_3008                300     DISCARDABLE     "french.lng"
 /////////////////////////////////////////////////////////////////////////////
 

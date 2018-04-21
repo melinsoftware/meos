@@ -4825,7 +4825,7 @@ void oEvent::analyzeClassResultStatus() const
 void oEvent::generateTestCard(SICard &sic) const
 {
   sic.clear(0);
-  sic.convertedTime == ConvertedTimeStatus::Hour24;
+  sic.convertedTime = ConvertedTimeStatus::Hour24;
 
   if (Runners.empty())
     return;
