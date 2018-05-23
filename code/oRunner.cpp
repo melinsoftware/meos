@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -1275,7 +1275,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
 
     int point_limit = course->getMinimumRogainingPoints();
     if (point_limit>0 && tRogainingPoints<point_limit) {
-      tProblemDescription = L"X poäng fattas.#" + itow(point_limit-tRogainingPoints);
+      tProblemDescription = L"X poÃ¤ng fattas.#" + itow(point_limit-tRogainingPoints);
       OK = false;
     }
 
@@ -1327,7 +1327,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
   }
   else if (FinishTime<=0) {
     *refStatus=RunnerStatus(max(int(StatusDNF), int(tStatus)));
-    tProblemDescription = L"Måltid saknas.";
+    tProblemDescription = L"MÃ¥ltid saknas.";
     FinishTime=0;
   }
 
@@ -1335,7 +1335,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
     *refStatus = StatusMAX; //Maxtime
 
   if (!MissingPunches.empty()) {
-    tProblemDescription  = L"Stämplingar saknas: X#" + itow(MissingPunches[0]);
+    tProblemDescription  = L"StÃ¤mplingar saknas: X#" + itow(MissingPunches[0]);
     for (unsigned j = 1; j<3; j++) {
       if (MissingPunches.size()>j)
         tProblemDescription += L", " + itow(MissingPunches[j]);
@@ -1370,7 +1370,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
       if (overTime > 0) {
         tRogainingOvertime = overTime;
         tReduction = course->calculateReduction(overTime);
-        tProblemDescription = L"Tidsavdrag: X poäng.#" + itow(tReduction);
+        tProblemDescription = L"Tidsavdrag: X poÃ¤ng.#" + itow(tReduction);
         tRogainingPoints = max(0, tRogainingPoints - tReduction);
       }
     }
@@ -2226,7 +2226,7 @@ void oAbstractRunner::setName(const wstring &n, bool manualUpdate)
 {
   wstring tn = trim(n);
   if (tn.empty())
-    throw std::exception("Tomt namn är inte tillåtet.");
+    throw std::exception("Tomt namn Ã¤r inte tillÃ¥tet.");
   if (tn != sName){
     sName.swap(tn);
     if (manualUpdate)
@@ -2240,7 +2240,7 @@ void oRunner::setName(const wstring &in, bool manualUpdate)
   wstring n = trim(in);
   
   if (n.empty())
-    throw std::exception("Tomt namn är inte tillåtet.");
+    throw std::exception("Tomt namn Ã¤r inte tillÃ¥tet.");
   for (size_t k = 0; k < n.length(); k++) {
     if (iswspace(n[k]))
       n[k] = ' ';
@@ -3058,7 +3058,7 @@ Table *oEvent::getRunnersTB()//Table mode
     Table *table=new Table(this, 20, L"Deltagare", "runners");
 
     table->addColumn("Id", 70, true, true);
-    table->addColumn("Ändrad", 70, false);
+    table->addColumn("Ã„ndrad", 70, false);
 
     table->addColumn("Namn", 200, false);
     table->addColumn("Klass", 120, false);
@@ -3066,12 +3066,12 @@ Table *oEvent::getRunnersTB()//Table mode
 
     table->addColumn("Klubb", 120, false);
     table->addColumn("Lag", 120, false);
-    table->addColumn("Sträcka", 70, true);
+    table->addColumn("StrÃ¤cka", 70, true);
 
     table->addColumn("SI", 90, true, false);
 
     table->addColumn("Start", 70, false, true);
-    table->addColumn("Mål", 70, false, true);
+    table->addColumn("MÃ¥l", 70, false, true);
     table->addColumn("Status", 70, false);
     table->addColumn("Tid", 70, false, true);
     table->addColumn("Plac.", 70, true, true);
@@ -3081,7 +3081,7 @@ Table *oEvent::getRunnersTB()//Table mode
 
     table->addColumn("Tid in", 70, false, true);
     table->addColumn("Status in", 70, false, true);
-    table->addColumn("Poäng in", 70, true);
+    table->addColumn("PoÃ¤ng in", 70, true);
     table->addColumn("Placering in", 70, true);
 
     tables["runner"] = table;
@@ -3194,7 +3194,7 @@ bool oRunner::inputData(int id, const wstring &input,
       return true;
     case TID_RUNNER:
       if (trim(input).empty())
-        throw std::exception("Tomt namn inte tillåtet.");
+        throw std::exception("Tomt namn inte tillÃ¥tet.");
 
       if (sName != input && tRealName != input) {
         updateFromDB(input, getClubId(), getClassId(false), getCardNo(), getBirthYear());
@@ -3211,7 +3211,7 @@ bool oRunner::inputData(int id, const wstring &input,
       evaluateCard(true, mp);
       s=getStartTime();
       if (s!=t)
-        throw std::exception("Starttiden är definerad genom klassen eller löparens startstämpling.");
+        throw std::exception("Starttiden Ã¤r definerad genom klassen eller lÃ¶parens startstÃ¤mpling.");
       synchronize(true);
       output = getStartTimeS();
       return true;
@@ -3223,7 +3223,7 @@ bool oRunner::inputData(int id, const wstring &input,
       evaluateCard(true, mp);
       s=getFinishTime();
       if (s!=t)
-        throw std::exception("För att ändra måltiden måste löparens målstämplingstid ändras.");
+        throw std::exception("FÃ¶r att Ã¤ndra mÃ¥ltiden mÃ¥ste lÃ¶parens mÃ¥lstÃ¤mplingstid Ã¤ndras.");
       synchronize(true);
       output = getStartTimeS();
       return true;
@@ -3262,7 +3262,7 @@ bool oRunner::inputData(int id, const wstring &input,
       int s = getStatus();
       evaluateCard(true, mp);
       if (s!=getStatus())
-        throw std::exception("Status matchar inte data i löparbrickan.");
+        throw std::exception("Status matchar inte data i lÃ¶parbrickan.");
       synchronize(true);
       output = getStatusS();
     }
@@ -3321,7 +3321,7 @@ void oRunner::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &se
   }
   else if (id==TID_CLUB) {
     oe->fillClubs(out);
-    out.push_back(make_pair(lang.tl(L"Klubblös"), 0));
+    out.push_back(make_pair(lang.tl(L"KlubblÃ¶s"), 0));
     selected = getClubId();
   }
   else if (id==TID_STATUS) {
@@ -3913,7 +3913,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
   gdi.addStringUT(bnormal, getName() + L", " + getClass(true));
   gdi.addStringUT(normal, getClub());
   gdi.dropLine(0.5);
-  gdi.addStringUT(normal, lang.tl("Start: ") + getStartTimeS() + lang.tl(", Mål: ") + getFinishTimeS());
+  gdi.addStringUT(normal, lang.tl("Start: ") + getStartTimeS() + lang.tl(", MÃ¥l: ") + getFinishTimeS());
   wstring statInfo = lang.tl("Status: ") + getStatusS() + lang.tl(", Tid: ") + getRunningTimeS();
   if (withSpeed && pc && pc->getLength() > 0) {
     int kmt = (getRunningTime() * 1000) / pc->getLength();
@@ -4031,7 +4031,7 @@ void oRunner::printSplits(gdioutput &gdi) const {
           }
         }
 
-        gdi.addString("", cy, cx, fontSmall, "Mål");
+        gdi.addString("", cy, cx, fontSmall, "MÃ¥l");
         sp = getSplitTime(splitTimes.size(), false);
         if (sp>0) {
           gdi.addStringUT(cy, cx+c2, fontSmall|textRight, formatTime(sp));
@@ -4159,12 +4159,12 @@ void oRunner::printSplits(gdioutput &gdi) const {
         }
 
         if (count < 3)
-          gdi.addString("", normal, "Underlag saknas för bomanalys.");
+          gdi.addString("", normal, "Underlag saknas fÃ¶r bomanalys.");
         else
           gdi.addString("", normal, "Inga bommar registrerade.");
       }
       else {
-        wstring out = lang.tl("Tidsförluster (kontroll-tid): ");
+        wstring out = lang.tl("TidsfÃ¶rluster (kontroll-tid): ");
         for (size_t k = 0; k<misses.size(); k++) {
           if (out.length() > (wideFormat ? 80u : (withSpeed ? 40u : 35u))) {
             gdi.addStringUT(normal, out);
@@ -4269,7 +4269,7 @@ void oRunner::printStartInfo(gdioutput &gdi) const {
     else
       info = lang.tl("Faktureras");
     
-    gdi.addStringUT(fontSmall, lang.tl("Anmälningsavgift: ") + itow(fee)  + L" (" + info + L")");
+    gdi.addStringUT(fontSmall, lang.tl("AnmÃ¤lningsavgift: ") + itow(fee)  + L" (" + info + L")");
   }
 
   gdi.dropLine(1);
@@ -5198,13 +5198,13 @@ void oEvent::selectRunners(const wstring &classType, int lowAge,
   if (!firstDate.empty()) {
     firstD = convertDateYMS(firstDate, true);
     if (firstD <= 0)
-      throw meosException(L"Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + firstDate);
+      throw meosException(L"Felaktigt datumformat 'X' (AnvÃ¤nd Ã…Ã…Ã…Ã…-MM-DD).#" + firstDate);
   }
 
   if (!lastDate.empty()) {
     lastD = convertDateYMS(lastDate, true);
     if (lastD <= 0)
-      throw meosException(L"Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + lastDate);
+      throw meosException(L"Felaktigt datumformat 'X' (AnvÃ¤nd Ã…Ã…Ã…Ã…-MM-DD).#" + lastDate);
   }
 
 
@@ -5225,7 +5225,7 @@ void oEvent::selectRunners(const wstring &classType, int lowAge,
     int age = it->getBirthAge();
     if (age > 0 && (lowAge > 0 || highAge > 0)) {
       if (lowAge > highAge)
-        throw meosException("Undre åldersgränsen är högre än den övre.");
+        throw meosException("Undre Ã¥ldersgrÃ¤nsen Ã¤r hÃ¶gre Ã¤n den Ã¶vre.");
 
       if (age < lowAge || age > highAge)
         continue;

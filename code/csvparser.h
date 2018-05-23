@@ -1,4 +1,4 @@
-/************************************************************************
+﻿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv�gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -107,7 +107,9 @@ protected:
                               wstring &processedTime, wstring &date);
 
 public:
-  //void parse(const wstring &file, list< vector<string> > &dataOutput);
+
+  static void convertUTF(const wstring &file);
+
   void parse(const wstring &file, list< vector<wstring> > &dataOutput);
 
   void importTeamLineup(const wstring &file,

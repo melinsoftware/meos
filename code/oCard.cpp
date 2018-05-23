@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -328,14 +328,14 @@ bool oCard::fillPunches(gdioutput &gdi, const string &name, pCourse crs) {
       }
     }
 
-    gdi.addItem(name, lang.tl("Mål")+L"\t-", -1);
+    gdi.addItem(name, lang.tl("MÃ¥l")+L"\t-", -1);
   }
 
   if (extra) {
     //Show punches that are not used.
     k=0;
     gdi.addItem(name, L"", -1);
-    gdi.addItem(name, lang.tl("Extra stämplingar"), -1);
+    gdi.addItem(name, lang.tl("Extra stÃ¤mplingar"), -1);
     for (it=punches.begin(); it != punches.end(); ++it) {
       if (!it->isUsed && !(it->isFinish() && showFinish) && !(it->isStart() && showStart))
         gdi.addItem(name, it->getString(), it->tCardIndex);
@@ -391,7 +391,7 @@ void oCard::deletePunch(pPunch pp)
 wstring oCard::getInfo() const
 {
   wchar_t bf[128];
-  swprintf_s(bf, lang.tl("Löparbricka %d").c_str(), cardNo);
+  swprintf_s(bf, lang.tl("LÃ¶parbricka %d").c_str(), cardNo);
   return bf;
 }
 
@@ -569,14 +569,14 @@ Table *oEvent::getCardsTB() //Table mode
   Table *table=new Table(this, 20, L"Brickor", "cards");
 
   table->addColumn("Id", 70, true, true);
-  table->addColumn("Ändrad", 70, false);
+  table->addColumn("Ã„ndrad", 70, false);
 
   table->addColumn("Bricka", 120, true);
   table->addColumn("Deltagare", 200, false);
 
   table->addColumn("Starttid", 70, false);
-  table->addColumn("Måltid", 70, false);
-  table->addColumn("Stämplingar", 70, true);
+  table->addColumn("MÃ¥ltid", 70, false);
+  table->addColumn("StÃ¤mplingar", 70, true);
 
   table->setTableProp(Table::CAN_DELETE);
   table->update();

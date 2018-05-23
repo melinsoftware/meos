@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -1168,7 +1168,7 @@ void oFreeImport::init(const oRunnerList &r, const oClubList &clb, const oClassL
       swprintf_s(bf, L"%s%d K", clsPrefix[k], ages[j]);
       classDB.insert(bf);
 
-      swprintf_s(bf, L"%s%d LÂng", clsPrefix[k], ages[j]);
+      swprintf_s(bf, L"%s%d L√•ng", clsPrefix[k], ages[j]);
       classDB.insert(bf);
       swprintf_s(bf, L"%s%d Kort", clsPrefix[k], ages[j]);
       classDB.insert(bf);
@@ -1188,7 +1188,7 @@ void oFreeImport::init(const oRunnerList &r, const oClubList &clb, const oClassL
     }
   }
   classDB.insert(L"L");
-  classDB.insert(L"LÂng");
+  classDB.insert(L"L√•ng");
   classDB.insert(L"E");
   classDB.insert(L"Elit");
   classDB.insert(L"Elite");
@@ -1198,20 +1198,20 @@ void oFreeImport::init(const oRunnerList &r, const oClubList &clb, const oClassL
   classDB.insert(L"Insk.");
   classDB.insert(L"Inskolning");
   classDB.insert(L"M");
-  classDB.insert(L"÷M");
+  classDB.insert(L"√ñM");
   classDB.insert(L"Motion");
   classDB.insert(L"K");
   classDB.insert(L"Kort");
   classDB.insert(L"Mellan");
-  classDB.insert(L"SvÂr");
-  classDB.insert(L"L‰tt");
-  classDB.insert(L"Kortl‰tt");
-  classDB.insert(L"LÂngsvÂr");
+  classDB.insert(L"Sv√•r");
+  classDB.insert(L"L√§tt");
+  classDB.insert(L"Kortl√§tt");
+  classDB.insert(L"L√•ngsv√•r");
   classDB.insert(L"km");
   classDB.insert(L"Short");
   classDB.insert(L"Long");
-  classDB.insert(L"÷ppen");
-  classDB.insert(L"÷");
+  classDB.insert(L"√ñppen");
+  classDB.insert(L"√ñ");
   classDB.insert(L"Ungdom");
   classDB.insert(L"Ung.");
   classDB.insert(L"U");
@@ -1221,11 +1221,11 @@ void oFreeImport::init(const oRunnerList &r, const oClubList &clb, const oClassL
   classDB.insert(L"U4");
 
   for (int j=1;j<10;j++) {
-    swprintf_s(bf, L"÷%d", j);
+    swprintf_s(bf, L"√ñ%d", j);
     classDB.insert(bf);
-    swprintf_s(bf, L"÷ %d", j);
+    swprintf_s(bf, L"√ñ %d", j);
     classDB.insert(bf);
-    swprintf_s(bf, L"÷ppen %d", j);
+    swprintf_s(bf, L"√ñppen %d", j);
     classDB.insert(bf);
     swprintf_s(bf, L"D%d", j);
     classDB.insert(bf);
@@ -1238,11 +1238,11 @@ bool oFreeImport::isHeaderWord(const wstring &word) const {
   if (headerWords.empty()) {
     headerWords.insert(canonizeName(L"namn"));
     headerWords.insert(canonizeName(L"klass"));
-    headerWords.insert(canonizeName(L"Âlder"));
-    headerWords.insert(canonizeName(L"anm‰lda"));
-    headerWords.insert(canonizeName(L"anm‰lningar"));
+    headerWords.insert(canonizeName(L"√•lder"));
+    headerWords.insert(canonizeName(L"anm√§lda"));
+    headerWords.insert(canonizeName(L"anm√§lningar"));
     headerWords.insert(canonizeName(L"deltagare"));
-    headerWords.insert(canonizeName(L"lˆpare"));
+    headerWords.insert(canonizeName(L"l√∂pare"));
     headerWords.insert(canonizeName(L"bricka"));
     headerWords.insert(canonizeName(L"starttid"));
     headerWords.insert(canonizeName(L"nummer"));
@@ -1254,7 +1254,7 @@ bool oFreeImport::isHeaderWord(const wstring &word) const {
     headerWords.insert(canonizeName(L"pinne"));
     headerWords.insert(canonizeName(L"nummerlapp"));
     headerWords.insert(canonizeName(L"SI"));
-    headerWords.insert(canonizeName(L"fˆrening"));
+    headerWords.insert(canonizeName(L"f√∂rening"));
     headerWords.insert(canonizeName(L"rank"));
     headerWords.insert(canonizeName(L"ranking"));
     headerWords.insert(canonizeName(L"nr-lapp"));

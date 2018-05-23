@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -182,13 +182,13 @@ void Download::downloadFile(const wstring &url, const wstring &file, const vecto
           sprintf_s(bf, "HTTP Error 401: The requested resource requires user authentication.");
           break;
         case HTTP_STATUS_FORBIDDEN:
-          sprintf_s(bf, "HTTP Error 403: Åtkomst nekad (access is denied).");
+          sprintf_s(bf, "HTTP Error 403: Ã…tkomst nekad (access is denied).");
           break;
         case HTTP_STATUS_NOT_FOUND:
           sprintf_s(bf, "HTTP Error 404: Resursen kunde ej hittas (not found).");
           break;
         case HTTP_STATUS_NOT_SUPPORTED:
-          sprintf_s(bf, "HTTP Error 501: Förfrågan stöds ej (not supported).");
+          sprintf_s(bf, "HTTP Error 501: FÃ¶rfrÃ¥gan stÃ¶ds ej (not supported).");
           break;
         case HTTP_STATUS_SERVER_ERROR:
           sprintf_s(bf, "HTTP Error 500: Internt serverfel (server error).");
@@ -310,7 +310,7 @@ void Download::postFile(const wstring &url, const wstring &file, const wstring &
 
     wstring error = errorCode != 0 ? getErrorMessage(errorCode) : L"";
     if (error.empty())
-      error = L"Ett okänt fel inträffade.";
+      error = L"Ett okÃ¤nt fel intrÃ¤ffade.";
     throw meosException(error);
   }
  }
@@ -425,13 +425,13 @@ bool Download::httpSendReqEx(HINTERNET hConnect, const wstring &dest,
           sprintf_s(bf, "HTTP Error 401: The requested resource requires user authentication.");
           break;
         case HTTP_STATUS_FORBIDDEN:
-          sprintf_s(bf, "HTTP Error 403: Åtkomst nekad (access is denied).");
+          sprintf_s(bf, "HTTP Error 403: Ã…tkomst nekad (access is denied).");
           break;
         case HTTP_STATUS_NOT_FOUND:
           sprintf_s(bf, "HTTP Error 404: Resursen kunde ej hittas (not found).");
           break;
         case HTTP_STATUS_NOT_SUPPORTED:
-          sprintf_s(bf, "HTTP Error 501: Förfrågan stöds ej (not supported).");
+          sprintf_s(bf, "HTTP Error 501: FÃ¶rfrÃ¥gan stÃ¶ds ej (not supported).");
           break;
         case HTTP_STATUS_SERVER_ERROR:
           sprintf_s(bf, "HTTP Error 500: Internt serverfel (server error).");

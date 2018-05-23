@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -174,7 +174,7 @@ void gdioutput::constructor(double _scale)
 void gdioutput::setFont(int size, const wstring &font)
 {
   //setEncoding(enc);
-  double s = 1+size*sqrt(double(size))*0.2;
+  double s = 1 + double(size)*0.25;// 1 + size * sqrt(double(size))*0.2;
   initCommon(s, font);
 }
 
@@ -759,7 +759,7 @@ void CALLBACK gdiTimerProc(HWND hWnd, UINT a, UINT_PTR ptr, DWORD b) {
   catch(std::exception &ex) {
     string2Wide(ex.what(), msg);
     if (msg.empty())
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
     msg = L"Unexpected error";
@@ -1960,10 +1960,10 @@ LRESULT gdioutput::ProcessMsg(UINT iMessage, LPARAM lParam, WPARAM wParam)
   catch(std::exception &ex) {
     msg=widen(ex.what());
     if (msg.empty())
-      msg=L"Ett ok‰nt fel intr‰ffade.";
+      msg=L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
-    msg=L"Ett ok‰nt fel intr‰ffade.";
+    msg=L"Ett ok√§nt fel intr√§ffade.";
   }
   
   if (!msg.empty()) {
@@ -2170,10 +2170,10 @@ void gdioutput::keyCommand(KeyCommandCode code) {
   catch(std::exception &ex) {
     msg = widen(ex.what());
     if (msg.empty())
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
 
   if (!msg.empty())
@@ -2704,10 +2704,10 @@ void gdioutput::enter()
   catch(std::exception &ex) {
     msg = widen(ex.what());
     if (msg.empty())
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
 
   if (!msg.empty())
@@ -2764,10 +2764,10 @@ bool gdioutput::upDown(int direction)
   catch(std::exception &ex) {
     msg = widen(ex.what());
     if (msg.empty())
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
 
   if (!msg.empty())
@@ -2806,10 +2806,10 @@ void gdioutput::escape()
   catch(std::exception &ex) {
     msg = widen(ex.what());
     if (msg.empty())
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
 
   if (!msg.empty())
@@ -5548,9 +5548,9 @@ void gdioutput::tableCB(ButtonInfo &bu, Table *t)
 
     restore("tblRestore");
     int ybase =  Tables.back().yp;
-    addString("", ybase, 20, boldLarge, "V‰lj kolumner");
+    addString("", ybase, 20, boldLarge, "V√§lj kolumner");
     ybase += scaleLength(30);
-    addString("", ybase, 20, 0, L"V‰lj kolumner fˆr tabellen X.#"+ t->getTableName());
+    addString("", ybase, 20, 0, L"V√§lj kolumner f√∂r tabellen X.#"+ t->getTableName());
     ybase += getLineHeight()*2;
 
     addListBox(20, ybase, "tblColSel", 180, 450, 0, L"", L"", true);
@@ -5565,9 +5565,9 @@ void gdioutput::tableCB(ButtonInfo &bu, Table *t)
     }
     setSelection("tblColSel", sel);
     int xp = scaleLength(220);
-    addButton(xp, ybase+btnHeight*0, "tblAll", "V‰lj allt", gdiTableCB);
-    addButton(xp, ybase+btnHeight*1, "tblNone", "V‰lj inget", gdiTableCB);
-    addButton(xp, ybase+btnHeight*2, "tblAuto", "V‰lj automatiskt", gdiTableCB).setExtra(t->getTableId());
+    addButton(xp, ybase+btnHeight*0, "tblAll", "V√§lj allt", gdiTableCB);
+    addButton(xp, ybase+btnHeight*1, "tblNone", "V√§lj inget", gdiTableCB);
+    addButton(xp, ybase+btnHeight*2, "tblAuto", "V√§lj automatiskt", gdiTableCB).setExtra(t->getTableId());
 
     addButton(xp, ybase+btnHeight*4, "tblOK", "OK", gdiTableCB).setExtra(t->getTableId());
     addButton(xp, ybase+btnHeight*5, "tblCancel", "Avbryt", gdiTableCB);
@@ -5654,17 +5654,17 @@ void gdioutput::enableTables()
     string tname = string("table") + itos(t->canDelete()) + itos(t->canInsert()) + itos(t->canPaste());
     if (!toolbar->isLoaded(tname)) {
       toolbar->reset();
-      toolbar->addButton("tblColumns", 1, 2, "V‰lj vilka kolumner du vill visa");
+      toolbar->addButton("tblColumns", 1, 2, "V√§lj vilka kolumner du vill visa");
       toolbar->addButton("tblPrint", 0, STD_PRINT, "Skriv ut tabellen (X)#Ctrl+P");
-      toolbar->addButton("tblUpdate", 1, 0, "Uppdatera alla v‰rden i tabellen (X)#F5");
-      toolbar->addButton("tblReset", 1, 4, "≈terst‰ll tabeldesignen och visa allt");
+      toolbar->addButton("tblUpdate", 1, 0, "Uppdatera alla v√§rden i tabellen (X)#F5");
+      toolbar->addButton("tblReset", 1, 4, "√Öterst√§ll tabeldesignen och visa allt");
       toolbar->addButton("tblCopy", 0, STD_COPY, "Kopiera selektionen till urklipp (X)#Ctrl+C");
       if (t->canPaste())
-        toolbar->addButton("tblPaste", 0, STD_PASTE, "Klistra in data frÂn urklipp (X)#Ctrl+V");
+        toolbar->addButton("tblPaste", 0, STD_PASTE, "Klistra in data fr√•n urklipp (X)#Ctrl+V");
       if (t->canDelete())
-       toolbar->addButton("tblRemove", 1, 1, "Ta bort valda rader frÂn tabellen (X)#Del");
+       toolbar->addButton("tblRemove", 1, 1, "Ta bort valda rader fr√•n tabellen (X)#Del");
       if (t->canInsert())
-       toolbar->addButton("tblInsert", 1, 3, "L‰gg till en ny rad i tabellen (X)#Ctrl+I");
+       toolbar->addButton("tblInsert", 1, 3, "L√§gg till en ny rad i tabellen (X)#Ctrl+I");
       toolbar->createToolbar(tname, L"Tabellverktyg");
     }
     else {
@@ -5695,10 +5695,10 @@ void gdioutput::processToolbarMessage(const string &id, void *data) {
   catch(std::exception &ex) {
     msg = widen(ex.what());
     if (msg.empty())
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
 
   if (!msg.empty())

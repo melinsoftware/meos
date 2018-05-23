@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -232,7 +232,7 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
   wstring name=gdi.getText("Name");
 
   if (name.empty()) {
-    gdi.alert("Banan mÂste ha ett namn.");
+    gdi.alert("Banan m√•ste ha ett namn.");
     return;
   }
 
@@ -274,7 +274,7 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
   if (gdi.isChecked("WithLoops")) {
     int cc = gdi.getTextNo("CommonControl");
     if (cc == 0)
-      throw meosException("Ange en varvningskontroll fˆr banan");
+      throw meosException("Ange en varvningskontroll f√∂r banan");
     pc->setCommonControl(cc);
   }
   else
@@ -345,20 +345,20 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
         return 0;
       }
       gdi.clearPage(false);
-      gdi.addString("", boldLarge, L"Redigera str‰ckl‰ngder fˆr X#" + pc->getName());
+      gdi.addString("", boldLarge, L"Redigera str√§ckl√§ngder f√∂r X#" + pc->getName());
       gdi.dropLine();
       int w = gdi.scaleLength(120);
       int xp = gdi.getCX() + w;
       int yp = gdi.getCY();
-      gdi.addString("", 1, "Str‰cka:");
-      gdi.addString("", yp, xp, 1, "L‰ngd:");
+      gdi.addString("", 1, "Str√§cka:");
+      gdi.addString("", yp, xp, 1, "L√§ngd:");
 
       for (int i = 0; i <= pc->getNumControls(); i++) {
         int len = pc->getLegLength(i);
         pControl cbegin = pc->getControl(i-1);
         wstring begin = i == 0 ? lang.tl("Start") : (cbegin ? cbegin->getName() : L"");
         pControl cend = pc->getControl(i);
-        wstring end = i == pc->getNumControls() ? lang.tl("MÂl") : (cend ? cend->getName() : L"");
+        wstring end = i == pc->getNumControls() ? lang.tl("M√•l") : (cend ? cend->getName() : L"");
         gdi.pushX();
         gdi.fillRight();
         gdi.addStringUT(0, begin + makeDash(L" - ") + end + L":").xlimit = w-10;
@@ -493,7 +493,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
         clsNames += cls[k]->getName();
       }
       if (courseDrawClasses.empty())
-        throw meosException("Ingen klass anv‰nder banan.");
+        throw meosException("Ingen klass anv√§nder banan.");
 
       gdi.clearPage(false);
       gdi.addString("", boldLarge, L"Lotta klasser med banan X#" + crs->getName());
@@ -505,7 +505,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       int firstStart = 3600;
       int interval = 2*60;
       int vac = 1;
-      gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, L"Fˆrsta start:");
+      gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, L"F√∂rsta start:");
       gdi.addInput("Interval", formatTime(interval), 10, 0, L"Startintervall (min):");
       gdi.addInput("Vacances", itow(vac), 10, 0, L"Antal vakanser:");
       gdi.fillDown();
@@ -554,7 +554,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       oe->addAutoBib();
 
       gdi.clearPage(false);
-      gdi.addButton("Cancel", "≈tergÂ", CourseCB);
+      gdi.addButton("Cancel", "√Öterg√•", CourseCB);
 
       oListParam par;
       oListInfo info;
@@ -581,7 +581,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
             else
               name += L" 2";
           }
-          if (gdi.ask(L"Vill du l‰gga till banan 'X' (Y)?#" + name + L"#" + ctrl)) {
+          if (gdi.ask(L"Vill du l√§gga till banan 'X' (Y)?#" + name + L"#" + ctrl)) {
             pc = oe->addCourse(name);
             courseId = pc->getId();
             gdi.setText("Name", name);
@@ -604,7 +604,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
         throw meosException("Ingen bana vald.");
 
       if (oe->isCourseUsed(cid))
-        gdi.alert("Banan anv‰nds och kan inte tas bort.");
+        gdi.alert("Banan anv√§nds och kan inte tas bort.");
       else
         oe->removeCourse(cid);
 
@@ -723,7 +723,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.addString("", boldText, "Funktioner");
   gdi.dropLine();
   gdi.fillRight();
-  gdi.addButton("ImportCourses", "Importera frÂn fil...", CourseCB);
+  gdi.addButton("ImportCourses", "Importera fr√•n fil...", CourseCB);
   gdi.addButton("ExportCourses", "Exportera...", CourseCB);
   gdi.popX();
   gdi.dropLine(2.5);
@@ -761,17 +761,17 @@ bool TabCourse::loadPage(gdioutput &gdi) {
 
   gdi.fillRight();
   gdi.addInput("Climb", L"", 8, 0, L"Climb (m):");
-  gdi.addInput("Length", L"", 8, 0, L"L‰ngd (m):");
+  gdi.addInput("Length", L"", 8, 0, L"L√§ngd (m):");
   gdi.dropLine(0.9);
   gdi.fillDown();
-  gdi.addButton("LegLengths", "Redigera str‰ckl‰ngder...", CourseCB).isEdit(true);
+  gdi.addButton("LegLengths", "Redigera str√§ckl√§ngder...", CourseCB).isEdit(true);
   gdi.dropLine(0.5);
   gdi.popX();
 
   gdi.fillRight();
-  gdi.addCheckbox("FirstAsStart", "Anv‰nd fˆrsta kontrollen som start", CourseCB);
+  gdi.addCheckbox("FirstAsStart", "Anv√§nd f√∂rsta kontrollen som start", CourseCB);
   gdi.fillDown();
-  gdi.addCheckbox("LastAsFinish", "Anv‰nd sista kontrollen som mÂl", CourseCB);
+  gdi.addCheckbox("LastAsFinish", "Anv√§nd sista kontrollen som m√•l", CourseCB);
   gdi.popX();
 
   gdi.fillRight();
@@ -780,7 +780,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.addString("", 0, "Varvningskontroll:");
   gdi.fillDown();
   gdi.dropLine(-0.2);
-  gdi.addSelection("CommonControl", 50, 200, 0, L"", L"En bana med slingor tillÂter deltagaren att ta slingorna i valfri ordning");
+  gdi.addSelection("CommonControl", 50, 200, 0, L"", L"En bana med slingor till√•ter deltagaren att ta slingorna i valfri ordning");
 
   gdi.dropLine(0.2);
   gdi.popX();
@@ -809,20 +809,20 @@ bool TabCourse::loadPage(gdioutput &gdi) {
     gdi.fillRight();
     gdi.addSelection("Rogaining", 120, 80, CourseCB);
     gdi.addItem("Rogaining", lang.tl("Ingen rogaining"), 0);
-    gdi.addItem("Rogaining", lang.tl("Tidsgr‰ns"), 1);
-    gdi.addItem("Rogaining", lang.tl("Po‰nggr‰ns"), 2);
+    gdi.addItem("Rogaining", lang.tl("Tidsgr√§ns"), 1);
+    gdi.addItem("Rogaining", lang.tl("Po√§nggr√§ns"), 2);
 
     gdi.setCX(gdi.getCX()+gdi.scaleLength(20));
     gdi.dropLine(-0.8);
     int cx = gdi.getCX();
-    gdi.addInput("PointLimit", L"", 8, 0, L"Po‰nggr‰ns:").isEdit(false);
-    gdi.addInput("TimeLimit", L"", 8, 0, L"Tidsgr‰ns:").isEdit(false);
-    gdi.addInput("PointReduction", L"", 8, 0, L"Po‰ngavdrag (per minut):").isEdit(false);
+    gdi.addInput("PointLimit", L"", 8, 0, L"Po√§nggr√§ns:").isEdit(false);
+    gdi.addInput("TimeLimit", L"", 8, 0, L"Tidsgr√§ns:").isEdit(false);
+    gdi.addInput("PointReduction", L"", 8, 0, L"Po√§ngavdrag (per minut):").isEdit(false);
     gdi.dropLine(3.5);
     rc.right = gdi.getCX() + 5;
     gdi.setCX(cx);
     gdi.fillDown();
-    gdi.addCheckbox("ReductionPerMinute", "Po‰ngavdrag per pÂbˆrjad minut");
+    gdi.addCheckbox("ReductionPerMinute", "Po√§ngavdrag per p√•b√∂rjad minut");
 
     rc.bottom = gdi.getCY() + 5;
     gdi.addRectangle(rc, colorLightBlue, true);
@@ -997,13 +997,13 @@ void TabCourse::setupCourseImport(gdioutput& gdi, GUICALLBACK cb) {
   gdi.addInput("FileName", L"", 48, 0, L"Filnamn:");
   gdi.dropLine();
   gdi.fillDown();
-  gdi.addButton("BrowseCourse", "Bl‰ddra...", CourseCB);
+  gdi.addButton("BrowseCourse", "Bl√§ddra...", CourseCB);
 
   gdi.dropLine(0.5);
   gdi.popX();
 
   gdi.fillDown();
-  gdi.addCheckbox("AddClasses", "L‰gg till klasser", 0, true);
+  gdi.addCheckbox("AddClasses", "L√§gg till klasser", 0, true);
 
   gdi.dropLine();
   gdi.fillRight();
@@ -1132,7 +1132,7 @@ wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFin
         out += dash + formatControl(newC[i], bf);
 
       if (newC.size() == 1) {
-        out += dash + lang.tl("MÂl");
+        out += dash + lang.tl("M√•l");
         break;
       }
       continue;
@@ -1145,9 +1145,9 @@ wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFin
         out = lang.tl("Start") + dash;
       }
       if (lastFinish)
-        out += lang.tl("MÂl") + L"(" + itow(newC[i]) + L")";
+        out += lang.tl("M√•l") + L"(" + itow(newC[i]) + L")";
       else
-        out += formatControl(newC[i], bf) + dash + lang.tl("MÂl");
+        out += formatControl(newC[i], bf) + dash + lang.tl("M√•l");
     }
     else {
       out += formatControl(newC[i], bf);

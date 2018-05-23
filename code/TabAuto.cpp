@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -169,7 +169,7 @@ void TabAuto::syncCallback(gdioutput &gdi)
     msg = gdi.widen(ex.what());
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   if (!msg.empty()) {
     gdi.alert(msg);
@@ -240,7 +240,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     int nRunner=gdi.getTextNo("nRunner");
 
     if (nRunner>0 &&
-      gdi.ask(L"Vill du dumpa aktuellt t‰vling och skapa en testt‰vling?")) {
+      gdi.ask(L"Vill du dumpa aktuellt t√§vling och skapa en testt√§vling?")) {
       oe->generateTestCompetition(nClass, nRunner, gdi.isChecked("UseRelay"));
       gdi.getTabs().get(TCmpTab)->loadPage(gdi);
       return 0;
@@ -328,7 +328,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     int t=convertAbsoluteTimeMS(minute);
 
     if (t<2 || t>7200) {
-      gdi.alert("Intervallet mÂste anges pÂ formen MM:SS.");
+      gdi.alert("Intervallet m√•ste anges p√• formen MM:SS.");
     }
     else {
       PrintResultMachine *prm=dynamic_cast<PrintResultMachine*>(getMachine(bu.getExtraInt()));
@@ -385,7 +385,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     }
 
     if (file.empty()) {
-      throw meosException("Filnamnet fÂr inte vara tomt");
+      throw meosException("Filnamnet f√•r inte vara tomt");
     }
 
     //Try exporting.
@@ -508,7 +508,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
   else if ( bu.id == "BrowseSplits") {
     int index=0;
     vector< pair<wstring, wstring> > ext;
-    ext.push_back(make_pair(L"Str‰cktider", L"*.xml"));
+    ext.push_back(make_pair(L"Str√§cktider", L"*.xml"));
 
     wstring wf = gdi.browseForSave(ext, L"xml", index);
 
@@ -599,22 +599,22 @@ bool TabAuto::loadPage(gdioutput &gdi)
   gdi.addString("", 10, "help:10000");
 
   gdi.dropLine();
-  gdi.addString("", fontMediumPlus, "Tillg‰ngliga automater").setColor(colorDarkBlue);
+  gdi.addString("", fontMediumPlus, "Tillg√§ngliga automater").setColor(colorDarkBlue);
   gdi.dropLine();
   gdi.fillRight();
   gdi.pushX();
   gdi.addButton("Result", "Resultatutskrift / export", AutomaticCB, "tooltip:resultprint");
-  gdi.addButton("OnlineResults", "Resultat online", AutomaticCB, "Publicera resultat direkt pÂ n‰tet");
-  gdi.addButton("OnlineInput", "Inmatning online", AutomaticCB, "H‰mta st‰mplingar m.m. frÂn n‰tet");
+  gdi.addButton("OnlineResults", "Resultat online", AutomaticCB, "Publicera resultat direkt p√• n√§tet");
+  gdi.addButton("OnlineInput", "Inmatning online", AutomaticCB, "H√§mta st√§mplingar m.m. fr√•n n√§tet");
   gdi.popX();
   gdi.dropLine(2.5);
-  gdi.addButton("SaveBackup", "S‰kerhetskopiering", AutomaticCB);
+  gdi.addButton("SaveBackup", "S√§kerhetskopiering", AutomaticCB);
   gdi.addButton("InfoService", "Informationsserver", AutomaticCB);
-  gdi.addButton("Punches", "St‰mplingstest", AutomaticCB, "Simulera inl‰sning av st‰mplar");
+  gdi.addButton("Punches", "St√§mplingstest", AutomaticCB, "Simulera inl√§sning av st√§mplar");
   gdi.popX();
   gdi.dropLine(2.5);
-  gdi.addButton("Splits", "Str‰cktider (WinSplits)", AutomaticCB, "Spara str‰cktider till en fil fˆr automatisk synkronisering med WinSplits");
-  gdi.addButton("Prewarning", "Fˆrvarningsrˆst", AutomaticCB, "tooltip:voice");
+  gdi.addButton("Splits", "Str√§cktider (WinSplits)", AutomaticCB, "Spara str√§cktider till en fil f√∂r automatisk synkronisering med WinSplits");
+  gdi.addButton("Prewarning", "F√∂rvarningsr√∂st", AutomaticCB, "tooltip:voice");
 
 
   gdi.fillDown();
@@ -704,7 +704,7 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.fillRight();
   gdi.addCheckbox("DoPrint", "Skriv ut", AutomaticCB, doPrint);
   gdi.dropLine(-0.5);
-  gdi.addButton("PrinterSetup", "Skrivare...", AutomaticCB, "V‰lj skrivare...").setExtra(getId());
+  gdi.addButton("PrinterSetup", "Skrivare...", AutomaticCB, "V√§lj skrivare...").setExtra(getId());
 
   gdi.dropLine(4);
   gdi.popX();
@@ -713,16 +713,16 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   int cx = gdi.getCX();
   gdi.addInput("ExportFile", exportFile, 32, 0, L"Fil att exportera till:");
   gdi.dropLine(0.7);
-  gdi.addButton("BrowseFile", "Bl‰ddra...", AutomaticCB);
+  gdi.addButton("BrowseFile", "Bl√§ddra...", AutomaticCB);
   gdi.setCX(cx);
   gdi.dropLine(2.3);
   gdi.addCheckbox("StructuredExport", "Strukturerat exportformat", 0, structuredExport);
   gdi.addCheckbox("HTMLRefresh", "HTML med AutoRefresh", 0, htmlRefresh != 0);
   gdi.dropLine(1.2);
   gdi.setCX(cx);
-  gdi.addInput("ExportScript", exportScript, 32, 0, L"Skript att kˆra efter export:");
+  gdi.addInput("ExportScript", exportScript, 32, 0, L"Skript att k√∂ra efter export:");
   gdi.dropLine(0.7);
-  gdi.addButton("BrowseScript", "Bl‰ddra...", AutomaticCB);
+  gdi.addButton("BrowseScript", "Bl√§ddra...", AutomaticCB);
   gdi.dropLine(3);
   gdi.popX();
 
@@ -763,7 +763,7 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
     else
       gdi.selectItemByData("ListType", listInfo.getListCode());
 
-    gdi.addSelection("LegNumber", 140, 300, 0, L"Str‰cka:");
+    gdi.addSelection("LegNumber", 140, 300, 0, L"Str√§cka:");
     set<int> clsUnused;
     vector< pair<wstring, size_t> > out;
     oe.fillLegNumbers(clsUnused, listInfo.isTeamList(), true, out);
@@ -772,20 +772,20 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
 
     gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser", 0, pageBreak);
     gdi.addCheckbox("ShowInterResults", "Visa mellantider", 0, showInterResult,
-                                        "Mellantider visas fˆr namngivna kontroller.");
-    gdi.addCheckbox("SplitAnalysis", "Med str‰cktidsanalys", 0, splitAnalysis);
+                                        "Mellantider visas f√∂r namngivna kontroller.");
+    gdi.addCheckbox("SplitAnalysis", "Med str√§cktidsanalys", 0, splitAnalysis);
 
-    gdi.addCheckbox("OnlyChanged", "Skriv endast ut ‰ndade sidor", 0, po.onlyChanged);
+    gdi.addCheckbox("OnlyChanged", "Skriv endast ut √§ndade sidor", 0, po.onlyChanged);
 
     gdi.popX();
-    gdi.addButton("SelectAll", "V‰lj allt", AutomaticCB, "").setExtra(L"Classes");
+    gdi.addButton("SelectAll", "V√§lj allt", AutomaticCB, "").setExtra(L"Classes");
     gdi.popX();
-    gdi.addButton("SelectNone", "V‰lj inget", AutomaticCB, "").setExtra(L"Classes");
+    gdi.addButton("SelectNone", "V√§lj inget", AutomaticCB, "").setExtra(L"Classes");
   }
   else {
     gdi.fillDown();
     gdi.addString("", 1, L"Lista av typ 'X'#" + listInfo.getName());
-    gdi.addCheckbox("OnlyChanged", "Skriv endast ut ‰ndade sidor", 0, po.onlyChanged);
+    gdi.addCheckbox("OnlyChanged", "Skriv endast ut √§ndade sidor", 0, po.onlyChanged);
   }
 }
 
@@ -848,7 +848,7 @@ void PrintResultMachine::status(gdioutput &gdi)
   gdi.dropLine();
   if (doExport) {
     gdi.popX();
-    gdi.addString("", 0, "MÂlfil: ");
+    gdi.addString("", 0, "M√•lfil: ");
     gdi.addStringUT(0, exportFile).setColor(colorRed);
     gdi.dropLine();
   }
@@ -866,12 +866,12 @@ void PrintResultMachine::status(gdioutput &gdi)
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
   gdi.addButton("PrintNow", "Exportera nu", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("Result", "Inst‰llningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("Result", "Inst√§llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 
 void PrewarningMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
-  settingsTitle(gdi, "Fˆrvarningsrˆst");
+  settingsTitle(gdi, "F√∂rvarningsr√∂st");
   startCancelInterval(gdi, "StartPrewarning", created, IntervalNone, L"");
 
   gdi.addString("", 10, "help:computer_voice");
@@ -882,7 +882,7 @@ void PrewarningMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
 
   gdi.fillDown();
   gdi.dropLine();
-  gdi.addButton("WaveBrowse", "Bl‰ddra...", AutomaticCB);
+  gdi.addButton("WaveBrowse", "Bl√§ddra...", AutomaticCB);
   gdi.popX();
 
   gdi.addListBox("Controls", 100, 200, 0, L"", L"", true);
@@ -893,7 +893,7 @@ void PrewarningMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.addItem("Controls", d);
   gdi.setSelection("Controls", controls);
   gdi.popX();
-  gdi.addButton("SelectAll", "V‰lj alla", AutomaticCB, "").setExtra(L"Controls");
+  gdi.addButton("SelectAll", "V√§lj alla", AutomaticCB, "").setExtra(L"Controls");
   gdi.popX();
 }
 
@@ -906,11 +906,11 @@ void PrewarningMachine::status(gdioutput &gdi)
 {
   gdi.addString("", 1, name);
 
-  string info="Fˆrvarning pÂ (SI-kod): ";
+  string info="F√∂rvarning p√• (SI-kod): ";
   bool first=true;
 
   if (controls.empty())
-    info+="alla st‰mplingar";
+    info+="alla st√§mplingar";
   else {
     for (set<int>::iterator it=controlsSI.begin();it!=controlsSI.end();++it) {
       char bf[32];
@@ -929,14 +929,14 @@ void PrewarningMachine::status(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(0.3);
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
-  gdi.addButton("TestVoice", "Testa rˆsten", AutomaticCB).setExtra(getId());
+  gdi.addButton("TestVoice", "Testa r√∂sten", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("Prewarning", "Inst‰llningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("Prewarning", "Inst√§llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 
 void PunchMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
-  settingsTitle(gdi, "Test av st‰mplingsinl‰sningar");
+  settingsTitle(gdi, "Test av st√§mplingsinl√§sningar");
   wstring time=created ? L"10" : itow(interval);
   startCancelInterval(gdi, "StartPunch", created, IntervalSecond, time);
 
@@ -953,13 +953,13 @@ void PunchMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.fillDown();
   gdi.popX();
   gdi.dropLine(5);
-  gdi.addString("", 1, "Generera testt‰vling");
+  gdi.addString("", 1, "Generera testt√§vling");
   gdi.fillRight();
-  gdi.addInput("nRunner", L"100", 10, 0, L"Antal lˆpare");
+  gdi.addInput("nRunner", L"100", 10, 0, L"Antal l√∂pare");
   gdi.addInput("nClass", L"10", 10, 0, L"Antal klasser");
   gdi.dropLine();
   gdi.addCheckbox("UseRelay", "Med stafettklasser");
-  gdi.addButton("GenerateCMP", "Generera testt‰vling", AutomaticCB);
+  gdi.addButton("GenerateCMP", "Generera testt√§vling", AutomaticCB);
 }
 
 void PunchMachine::status(gdioutput &gdi)
@@ -968,7 +968,7 @@ void PunchMachine::status(gdioutput &gdi)
   gdi.fillRight();
   gdi.pushX();
   if (interval>0){
-    gdi.addString("", 0, "St‰mplar om: ");
+    gdi.addString("", 0, "St√§mplar om: ");
     gdi.addTimer(gdi.getCY(),  gdi.getCX(), timerIgnoreSign|timeSeconds, (GetTickCount()-timeout)/1000);
     gdi.addString("", 0, "(sekunder)");
   }
@@ -979,7 +979,7 @@ void PunchMachine::status(gdioutput &gdi)
   gdi.dropLine(2);
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("Punches", "Inst‰llningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("Punches", "Inst√§llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 
@@ -1040,11 +1040,11 @@ void SplitsMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   else if (created)
     time = L"30";
 
-  settingsTitle(gdi, "Str‰cktider / WinSplits");
+  settingsTitle(gdi, "Str√§cktider / WinSplits");
   startCancelInterval(gdi, "StartSplits", created, IntervalSecond, time);
 
-  gdi.addString("",  0, "Intervall (sekunder). L‰mna blankt fˆr att uppdatera n‰r "
-                                        "t‰vlingsdata ‰ndras.");
+  gdi.addString("",  0, "Intervall (sekunder). L√§mna blankt f√∂r att uppdatera n√§r "
+                                        "t√§vlingsdata √§ndras.");
   gdi.dropLine();
 
   gdi.addString("", 10, "help:winsplits_auto");
@@ -1054,7 +1054,7 @@ void SplitsMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.fillRight();
   gdi.addInput("FileName", file, 30, 0, L"Filnamn:");
   gdi.dropLine(0.9);
-  gdi.addButton("BrowseSplits", "Bl‰ddra...", AutomaticCB);
+  gdi.addButton("BrowseSplits", "Bl√§ddra...", AutomaticCB);
 
   gdi.popX();
   gdi.dropLine(2);
@@ -1072,13 +1072,13 @@ void SplitsMachine::status(gdioutput &gdi)
     if (interval>0){
       gdi.popX();
       gdi.dropLine(1);
-      gdi.addString("", 0, "Skriver str‰cktider om: ");
+      gdi.addString("", 0, "Skriver str√§cktider om: ");
       gdi.addTimer(gdi.getCY(),  gdi.getCX(), timerIgnoreSign|timeSeconds, (GetTickCount()-timeout)/1000);
       gdi.addString("", 0, "(sekunder)");
     }
     else {
       gdi.dropLine(1);
-      gdi.addString("", 0, "Skriver str‰cktider n‰r t‰vlingsdata ‰ndras.");
+      gdi.addString("", 0, "Skriver str√§cktider n√§r t√§vlingsdata √§ndras.");
     }
 
     gdi.popX();
@@ -1086,7 +1086,7 @@ void SplitsMachine::status(gdioutput &gdi)
   gdi.dropLine(2);
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("Splits", "Inst‰llningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("Splits", "Inst√§llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 
@@ -1109,7 +1109,7 @@ void SaveMachine::status(gdioutput &gdi) {
     if (interval>0){
       gdi.popX();
       gdi.dropLine(1);
-      gdi.addString("", 0, "S‰kerhetskopierar om: ");
+      gdi.addString("", 0, "S√§kerhetskopierar om: ");
       gdi.addTimer(gdi.getCY(),  gdi.getCX(), timerIgnoreSign, (GetTickCount()-timeout)/1000);
     }
     
@@ -1118,7 +1118,7 @@ void SaveMachine::status(gdioutput &gdi) {
   gdi.dropLine(2);
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("SaveBackup", "Inst‰llningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("SaveBackup", "Inst√§llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 
@@ -1133,14 +1133,14 @@ void SaveMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 }
 
 void SaveMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
-  settingsTitle(gdi, "S‰kerhetskopiering");
+  settingsTitle(gdi, "S√§kerhetskopiering");
   wstring time=created ? L"10:00" : getTimeMS(interval);
   startCancelInterval(gdi, "StartBackup", created, IntervalMinute, time);
 
   int cx = gdi.getCX();
   gdi.addInput("BaseFile", baseFile, 32, 0, L"Mapp:");
   gdi.dropLine(0.7);
-  gdi.addButton("BrowseFolder", "Bl‰ddra...", AutomaticCB).setExtra(L"BaseFile");
+  gdi.addButton("BrowseFolder", "Bl√§ddra...", AutomaticCB).setExtra(L"BaseFile");
   gdi.setCX(cx);
 }
 
@@ -1150,11 +1150,11 @@ void SaveMachine::saveSettings(gdioutput &gdi) {
   int t=convertAbsoluteTimeMS(minute);
 
   if (t<2 || t>7200) {
-    throw meosException("Intervallet mÂste anges pÂ formen MM:SS.");
+    throw meosException("Intervallet m√•ste anges p√• formen MM:SS.");
   }
   wstring f = gdi.getText("BaseFile");
   if (f.empty()) {
-    throw meosException("Filnamnet fÂr inte vara tomt");
+    throw meosException("Filnamnet f√•r inte vara tomt");
   }
 
   if (*f.rbegin() != '\\' && *f.rbegin() != '/')

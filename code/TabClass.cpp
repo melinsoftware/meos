@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -220,7 +220,7 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
       for (size_t k = 0; k < allR.size(); k++) {
         if (allR[k]->getCourseId() != 0) {
           if (!doClear) {
-            if (gdi.ask(L"Vill du nollst‰lla alla manuellt tilldelade banor?"))
+            if (gdi.ask(L"Vill du nollst√§lla alla manuellt tilldelade banor?"))
               doClear = true;
             else 
               break;
@@ -322,9 +322,9 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
             if (j == 0)
               ctrl += lang.tl("Start");
             else if (j + 1 == forks[k].size())
-              ctrl += lang.tl("MÂl");
+              ctrl += lang.tl("M√•l");
             else
-              ctrl += lang.tl("V‰xel");
+              ctrl += lang.tl("V√§xel");
           }
           int next = -100;
           if (j + 1 < forks[k].size()) {
@@ -355,14 +355,14 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
         for (set< pair<int, int> >::const_iterator p = unfairLegs.begin();
              p != unfairLegs.end(); ++p) {
 
-          wstring f = p->first > 0 ? itow(p->first) : lang.tl("V‰xel");
-          wstring s = p->second > 0 ? itow(p->second) : lang.tl("V‰xel");
+          wstring f = p->first > 0 ? itow(p->first) : lang.tl("V√§xel");
+          wstring s = p->second > 0 ? itow(p->second) : lang.tl("V√§xel");
           gdi_new->addStringUT(0, makeDash(f + L" - " + s));
         }
       }
 
       gdi_new->dropLine();
-      gdi_new->addButton("CloseWindow", "St‰ng", ClassesCB);
+      gdi_new->addButton("CloseWindow", "St√§ng", ClassesCB);
       gdi_new->refresh();
     }
     else if (bi.id == "OneCourse") {
@@ -462,7 +462,7 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
         oe->adjustTeamMultiRunners(pc);
       }
       else {
-        gdi.alert("Antalet str‰ckor mÂste vara ett heltal mellan 0 och 40.");
+        gdi.alert("Antalet str√§ckor m√•ste vara ett heltal mellan 0 och 40.");
       }
     }
     else if (bi.id.substr(0, 7)=="@Course") {
@@ -637,7 +637,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.addInput("Restart", oe->getAbsTime(t+600), 6, 0, L"Omstartstid");
       gdi.dropLine(0.9);
       gdi.addButton("DoRestart","OK", ClassesCB);
-      gdi.addButton("Cancel","St‰ng", ClassesCB);
+      gdi.addButton("Cancel","St√§ng", ClassesCB);
       gdi.fillDown();
       gdi.dropLine(3);
       gdi.popX();
@@ -661,11 +661,11 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         return 0;
       }
       if (restart<rope) {
-        gdi.alert("Repdragningstiden mÂste ligga fˆre omstartstiden.");
+        gdi.alert("Repdragningstiden m√•ste ligga f√∂re omstartstiden.");
         return 0;
       }
 
-      gdi.addString("", 0, L"S‰tter reptid (X) och omstartstid (Y) fˆr:#" +
+      gdi.addString("", 0, L"S√§tter reptid (X) och omstartstid (Y) f√∂r:#" +
                     oe->getAbsTime(rope) + L"#" + oe->getAbsTime(restart));
 
       for (it=cls.begin(); it!=cls.end(); ++it) {
@@ -822,7 +822,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.addString("", boldLarge, "Lotta flera klasser");
       gdi.dropLine(0.5);
 
-      gdi.addString("", 0, "Importerar lottningsinst‰llningar...");
+      gdi.addString("", 0, "Importerar lottningsinst√§llningar...");
       set<int> classes;
       for (auto &ds : DrawSettingsCSV::read(gdi, *oe, fn)) {
         pClass pc = oe->getClass(ds.classId);
@@ -891,7 +891,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       oe->addAutoBib();
 
       clearPage(gdi, false);
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB);
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB);
 
       oListParam par;
       oListInfo info;
@@ -904,7 +904,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.refresh();
     }
     else if (bi.id == "RemoveVacant") {
-      if (gdi.ask(L"Vill du radera alla vakanser frÂn t‰vlingen?")) {
+      if (gdi.ask(L"Vill du radera alla vakanser fr√•n t√§vlingen?")) {
         oe->removeVacanies(0);
         gdi.disableInput(bi.id.c_str());
       }
@@ -955,7 +955,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       gdi.pushX();
       gdi.fillRight();
-      gdi.addInput("FirstStart", oe->getAbsTime(3600), 10, 0, L"Fˆrsta (ordinarie) start:");
+      gdi.addInput("FirstStart", oe->getAbsTime(3600), 10, 0, L"F√∂rsta (ordinarie) start:");
       gdi.addInput("MinInterval", L"2:00", 10, 0, L"Minsta startintervall:");
       gdi.fillDown();
       gdi.addInput("Vacances", L"5%", 10, 0, L"Andel vakanser:");
@@ -967,7 +967,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.selectItemByData("Method", getDefaultMethod({ DMRandom, DMSOFT }));
 
       gdi.fillDown();
-      gdi.addCheckbox("LateBefore", "Efteranm‰lda fˆre ordinarie");
+      gdi.addCheckbox("LateBefore", "Efteranm√§lda f√∂re ordinarie");
       gdi.dropLine();
 
       gdi.popX();
@@ -981,7 +981,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (multiDay)
         gdi.addButton("Pursuit", "Hantera jaktstart", ClassesCB);
 
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB).setCancel();
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB).setCancel();
 
 
       gdi.dropLine(3);
@@ -1083,7 +1083,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       oe->generateListInfo(par, gdi.getLineHeight(), info);
       oe->generateList(gdi, false, info, true);
       gdi.dropLine();
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB);
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB);
       gdi.refresh();
     }
     else if (bi.id.substr(0,5) == "PLUse") {
@@ -1111,7 +1111,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
                             lateBefore, useSoft, pairSize);
       oe->addAutoBib();
       gdi.scrollToBottom();
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB);
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB);
     }
     else if (bi.id == "SelectMisses") {
       set<int> lst;
@@ -1224,12 +1224,12 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdioutput *gdi_new = getExtraWindow("help", true);
 
       if (!gdi_new)
-        gdi_new = createExtraWindow("help", makeDash(L"MeOS - " + lang.tl(L"Hj‰lp")),  gdi.scaleLength(640));
+        gdi_new = createExtraWindow("help", makeDash(L"MeOS - " + lang.tl(L"Hj√§lp")),  gdi.scaleLength(640));
       gdi_new->clearPage(true);
       gdi_new->addString("", boldLarge, "Lotta flera klasser");
       gdi_new->addString("", 10, "help_draw");
       gdi_new->dropLine();
-      gdi_new->addButton("CloseWindow", "St‰ng", ClassesCB);
+      gdi_new->addButton("CloseWindow", "St√§ng", ClassesCB);
     }
     else if (bi.id == "CloseWindow") {
       gdi.closeWindow();
@@ -1243,7 +1243,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.restore("ReadyToDistribute");
       /*
       gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
-      gdi.addButton("HelpDraw", "Hj‰lp...", ClassesCB, "");
+      gdi.addButton("HelpDraw", "Hj√§lp...", ClassesCB, "");
       gdi.dropLine(3);
 */
 
@@ -1268,12 +1268,12 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         throw meosException("Ogiltigt maximalt intervall. ");
 
       if (drawInfo.minClassInterval < drawInfo.baseInterval) {
-        throw meosException("Startintervallet fÂr inte vara kortare ‰n basintervallet.");
+        throw meosException("Startintervallet f√•r inte vara kortare √§n basintervallet.");
       }
 
       if (drawInfo.minClassInterval % drawInfo.baseInterval != 0 || 
           drawInfo.maxClassInterval % drawInfo.baseInterval != 0) {
-        throw meosException("Ett startintervall mÂste vara en multipel av basintervallet.");
+        throw meosException("Ett startintervall m√•ste vara en multipel av basintervallet.");
       }
 
       gdi.enableEditControls(false);
@@ -1306,16 +1306,16 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       gdioutput *gdi_new = getExtraWindow(visualDrawWindow, true);
       if (!gdi_new)
-        gdi_new = createExtraWindow(visualDrawWindow, makeDash(L"MeOS - " + lang.tl(L"Visualisera startf‰ltet")),  gdi.scaleLength(1000));
+        gdi_new = createExtraWindow(visualDrawWindow, makeDash(L"MeOS - " + lang.tl(L"Visualisera startf√§ltet")),  gdi.scaleLength(1000));
 
       gdi_new->clearPage(false);
-      gdi_new->addString("", boldLarge, "Visualisera startf‰ltet");
+      gdi_new->addString("", boldLarge, "Visualisera startf√§ltet");
       gdi_new->dropLine();
-      gdi_new->addString("", 0, "Fˆr muspekaren ˆver en markering fˆr att fÂ mer information.");
+      gdi_new->addString("", 0, "F√∂r muspekaren √∂ver en markering f√∂r att f√• mer information.");
       gdi_new->dropLine();
       visualizeField(*gdi_new);
       gdi_new->dropLine();
-      gdi_new->addButton("CloseWindow", "St‰ng", ClassesCB);
+      gdi_new->addButton("CloseWindow", "St√§ng", ClassesCB);
       gdi_new->registerEvent("CloseWindow", 0).setHandler(&handleCloseWindow);
       gdi_new->refresh();
       gdi.refreshFast();
@@ -1402,7 +1402,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       int t=oe->getRelativeTime(time);
 
       if (t<=0)
-        throw std::exception("Ogiltig fˆrsta starttid. MÂste vara efter nolltid.");
+        throw std::exception("Ogiltig f√∂rsta starttid. M√•ste vara efter nolltid.");
   
       
       oEvent::DrawType dtype(oEvent::drawAll);
@@ -1470,7 +1470,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           sg.push_back(val); 
         }        
         if (invalid || sg.empty())
-          throw meosException(L"Ogiltig storlek pÂ seedningsgrupper X.#" + seedGroups);
+          throw meosException(L"Ogiltig storlek p√• seedningsgrupper X.#" + seedGroups);
 
         bool noClubNb = gdi.isChecked("PreventClubNb");
         bool reverse = gdi.isChecked("ReverseSeedning"); 
@@ -1490,7 +1490,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       // Clear input
       gdi.restore("", false);
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB).setCancel();
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB).setCancel();
       
       gdi.dropLine();
 
@@ -1558,7 +1558,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       bool multiDay = oe->hasPrevStage();
 
       if (multiDay) {
-        gdi.addCheckbox("HandleMultiDay", "Anv‰nd funktioner fˆr fleretappsklass", ClassesCB, true);
+        gdi.addCheckbox("HandleMultiDay", "Anv√§nd funktioner f√∂r fleretappsklass", ClassesCB, true);
       }
 
       gdi.addSelection("Method", 200, 200, ClassesCB, L"Metod:");
@@ -1621,7 +1621,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       vector< pair<wstring, size_t> > bibOptions;
       vector< pair<wstring, size_t> > bibTeamOptions;
       bibOptions.push_back(make_pair(lang.tl("Manuell"), AutoBibManual));
-      bibOptions.push_back(make_pair(lang.tl("Lˆpande"), AutoBibConsecutive));
+      bibOptions.push_back(make_pair(lang.tl("L√∂pande"), AutoBibConsecutive));
       bibOptions.push_back(make_pair(lang.tl("Ingen"), AutoBibNone));
       bibOptions.push_back(make_pair(lang.tl("Automatisk"), AutoBibExplicit));
     
@@ -1638,8 +1638,8 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (pc->getNumDistinctRunners() > 1 || pc->getQualificationFinal()) {
         bibTeamOptions.push_back(make_pair(lang.tl("Oberoende"), BibFree));
         bibTeamOptions.push_back(make_pair(lang.tl("Samma"), BibSame));
-        bibTeamOptions.push_back(make_pair(lang.tl("÷kande"), BibAdd));
-        bibTeamOptions.push_back(make_pair(lang.tl("Str‰cka"), BibLeg));
+        bibTeamOptions.push_back(make_pair(lang.tl("√ñkande"), BibAdd));
+        bibTeamOptions.push_back(make_pair(lang.tl("Str√§cka"), BibLeg));
         gdi.addSelection("BibTeam", 80, 100, 0, L"Lagmedlem:", L"Ange relation mellan lagets och deltagarnas nummerlappar.");
         gdi.addItem("BibTeam", bibTeamOptions);
         gdi.selectItemByData("BibTeam", pc->getBibMode());
@@ -1701,7 +1701,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       gdi.restore("bib", false);
       gdi.dropLine();
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB).setDefault();
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB).setDefault();
 
       oListParam par;
       par.selection.insert(cid);
@@ -1774,7 +1774,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       pc->splitClass(ClassSplitMethod(lbi.data), parts, outClass);
       
       clearPage(gdi, true);
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB);
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB);
 
       oListParam par;
       par.selection.insert(outClass.begin(), outClass.end());
@@ -1824,17 +1824,17 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         }
       }
       if (cls.empty())
-        throw std::exception("En klass kan inte slÂs ihop med sig sj‰lv.");
+        throw std::exception("En klass kan inte sl√•s ihop med sig sj√§lv.");
 
 
       clearPage(gdi, true);
-      gdi.addString("", boldLarge, L"SlÂ ihop klass: X (denna klass behÂlls)#" + pc->getName());
+      gdi.addString("", boldLarge, L"Sl√• ihop klass: X (denna klass beh√•lls)#" + pc->getName());
       gdi.dropLine();
       gdi.addString("", 10, "help:12138");
       gdi.dropLine(2);
       gdi.pushX();
       gdi.fillRight();
-      gdi.addSelection("Class", 150, 300, 0, L"Klass att slÂ ihop:");
+      gdi.addSelection("Class", 150, 300, 0, L"Klass att sl√• ihop:");
       gdi.addItem("Class", cls);
       if (def != -1)
         gdi.selectItemByData("Class", def);
@@ -1842,7 +1842,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         gdi.selectFirstItem("Class");
 
       gdi.dropLine();
-      gdi.addButton("DoMergeAsk", "SlÂ ihop", ClassesCB).setDefault();
+      gdi.addButton("DoMergeAsk", "Sl√• ihop", ClassesCB).setDefault();
       gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
       gdi.dropLine(3);
       gdi.popX();
@@ -1861,9 +1861,9 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         throw std::exception("Ingen klass vald.");
 
       if (mergeClass->getId() == ClassId)
-        throw std::exception("En klass kan inte slÂs ihop med sig sj‰lv.");
+        throw std::exception("En klass kan inte sl√•s ihop med sig sj√§lv.");
 
-      if (gdi.ask(L"Vill du flytta lˆpare frÂn X till Y och ta bort Z?#"
+      if (gdi.ask(L"Vill du flytta l√∂pare fr√•n X till Y och ta bort Z?#"
         + mergeClass->getName() + L"#" + pc->getName() + L"#" + mergeClass->getName())) {
         bi.id = "DoMerge";
         return classCB(gdi, type, &bi);
@@ -1885,12 +1885,12 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         throw std::exception("Ingen klass vald.");
 
       if (lbi.data==ClassId)
-        throw std::exception("En klass kan inte slÂs ihop med sig sj‰lv.");
+        throw std::exception("En klass kan inte sl√•s ihop med sig sj√§lv.");
 
       pc->mergeClass(lbi.data);
     
       clearPage(gdi, true);
-      gdi.addButton("Cancel", "≈tergÂ", ClassesCB);
+      gdi.addButton("Cancel", "√Öterg√•", ClassesCB);
 
       oListParam par;
       par.selection.insert(ClassId);
@@ -1911,7 +1911,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       wstring name = gdi.getText("Name");
       pClass c = oe->getClass(ClassId);
       if (!name.empty() && c && c->getName() != name) {
-        if (gdi.ask(L"Vill du l‰gga till klassen 'X'?#" + name)) {
+        if (gdi.ask(L"Vill du l√§gga till klassen 'X'?#" + name)) {
           c = oe->addClass(name);
           ClassId = c->getId();
           save(gdi, false);
@@ -1935,7 +1935,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       DWORD cid=ClassId;
 
       if (oe->isClassUsed(cid))
-        gdi.alert("Klassen anv‰nds och kan inte tas bort.");
+        gdi.alert("Klassen anv√§nds och kan inte tas bort.");
       else
         oe->removeClass(cid);
 
@@ -1974,7 +1974,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         gdi.setText("SplitInput", L"2");
       }
       else {
-        gdi.setTextTranslate("TypeDesc", L"Lˆpare per klass:", true);
+        gdi.setTextTranslate("TypeDesc", L"L√∂pare per klass:", true);
         gdi.setText("SplitInput", L"100");
       }
     }
@@ -1994,7 +1994,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     if (ClassId>0)
       save(gdi, true);
     if (EditChanged) {
-      if (gdi.ask(L"Spara ‰ndringar?"))
+      if (gdi.ask(L"Spara √§ndringar?"))
         gdi.sendCtrlMessage("Save");
     }
     return true;
@@ -2160,8 +2160,8 @@ void TabClass::showClassSettings(gdioutput &gdi)
     gdi.dropLine();
 
     y = gdi.getCY();
-    gdi.addString("", y, xp, 1, "Sammanst‰llning, klasser:");
-    gdi.addString("", y, xp+300, 0, "Fˆrsta start:");
+    gdi.addString("", y, xp, 1, "Sammanst√§llning, klasser:");
+    gdi.addString("", y, xp+300, 0, "F√∂rsta start:");
     gdi.addString("", y, xp+300+width, 0, "Intervall:");
     gdi.addString("", y, xp+300+width*2, 0, "Vakanser:");
     gdi.addString("", y, xp+300+width*3, 0, "Reserverade:");
@@ -2218,21 +2218,21 @@ void TabClass::showClassSettings(gdioutput &gdi)
 
   gdi.fillRight();
  
-  gdi.addButton("VisualizeDraw", "Visualisera startf‰ltet...", ClassesCB);
+  gdi.addButton("VisualizeDraw", "Visualisera startf√§ltet...", ClassesCB);
  
   gdi.addButton("SaveDrawSettings", "Spara starttider", ClassesCB, 
-    "Spara inmatade tider i t‰vlingen utan att tilldela starttider.");
+    "Spara inmatade tider i t√§vlingen utan att tilldela starttider.");
 
   gdi.addButton("ExportDrawSettings", "Exportera...", ClassesCB,
-    "Exportera ett kalkylblad med lottningsinst‰llningar som du kan redigera och sedan l‰sa in igen.");
+    "Exportera ett kalkylblad med lottningsinst√§llningar som du kan redigera och sedan l√§sa in igen.");
 
 
-  gdi.addButton("DrawAllAdjust", "ƒndra inst‰llningar", ClassesCB,
-        "ƒndra grundl‰ggande inst‰llningar och gˆr en ny fˆrdelning").setExtra(13);
+  gdi.addButton("DrawAllAdjust", "√Ñndra inst√§llningar", ClassesCB,
+        "√Ñndra grundl√§ggande inst√§llningar och g√∂r en ny f√∂rdelning").setExtra(13);
  
   if (!cInfo.empty()) {
-    gdi.addButton("DrawAdjust", "Uppdatera fˆrdelning", ClassesCB,
-      "Uppdatera fˆrdelningen av starttider med h‰nsyn till manuella ‰ndringar ovan");
+    gdi.addButton("DrawAdjust", "Uppdatera f√∂rdelning", ClassesCB,
+      "Uppdatera f√∂rdelningen av starttider med h√§nsyn till manuella √§ndringar ovan");
        gdi.disableInput("DrawAdjust");
   }
 
@@ -2257,13 +2257,13 @@ void TabClass::showClassSettings(gdioutput &gdi)
 
     gdi.selectItemByData("Method", getDefaultMethod({DMRandom, DMSOFT}));
 
-    gdi.addSelection("PairSize", 150, 200, 0, L"Till‰mpa parstart:");
+    gdi.addSelection("PairSize", 150, 200, 0, L"Till√§mpa parstart:");
     gdi.addItem("PairSize", getPairOptions());
     gdi.selectItemByData("PairSize", 1);
 
     gdi.dropLine(0.9);
 
-    gdi.addButton("DoDrawAll", "Utfˆr lottning", ClassesCB);
+    gdi.addButton("DoDrawAll", "Utf√∂r lottning", ClassesCB);
     
     rc.right = gdi.getCX() + gdi.scaleLength(5);
     gdi.addRectangle(rc, colorLightGreen);
@@ -2452,7 +2452,7 @@ void TabClass::legSetup(gdioutput &gdi)
 
   gdi.addString("", 10, "help:relaysetup");
   gdi.dropLine();
-  gdi.addSelection("Predefined", 150, 200, MultiCB, L"Fˆrdefinierade t‰vlingsformer:").ignore(true);
+  gdi.addSelection("Predefined", 150, 200, MultiCB, L"F√∂rdefinierade t√§vlingsformer:").ignore(true);
   oe->fillPredefinedCmp(gdi, "Predefined");
   if (storedPredefined == oEvent::PredefinedTypes(-1)) {
     bool hasPatrol = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Patrol);
@@ -2468,7 +2468,7 @@ void TabClass::legSetup(gdioutput &gdi)
   gdi.selectItemByData("Predefined", storedPredefined);
 
   gdi.fillRight();
-  gdi.addInput("NStage", storedNStage, 4, MultiCB, L"Antal str‰ckor:").ignore(true);
+  gdi.addInput("NStage", storedNStage, 4, MultiCB, L"Antal str√§ckor:").ignore(true);
   gdi.addInput("StartTime",  storedStart, 6, MultiCB, L"Starttid (HH:MM:SS):");
   gdi.popX();
 
@@ -2480,7 +2480,7 @@ void TabClass::legSetup(gdioutput &gdi)
 
   gdi.fillRight();
   gdi.dropLine(3);
-  gdi.addButton("SetNStage", "Verkst‰ll", MultiCB);
+  gdi.addButton("SetNStage", "Verkst√§ll", MultiCB);
   gdi.fillDown();
   gdi.addButton("Cancel", "Avbryt", ClassesCB);
 
@@ -2522,7 +2522,7 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
   }
   else {
     gdi.addString("", 2, "Flera banor / stafett / patrull / banpool");
-    gdi.addString("", 0, "LÂt klassen ha mer ‰n en bana eller str‰cka");
+    gdi.addString("", 0, "L√•t klassen ha mer √§n en bana eller str√§cka");
     gdi.dropLine();
   }
   gdi.setRestorePoint("RelaySetup");
@@ -2548,10 +2548,10 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
     gdi.fillDown();
     gdi.popX();
     gdi.dropLine(2);
-    gdi.addCheckbox("CoursePool", "Anv‰nd banpool", MultiCB, false,
-                      "Knyt lˆparna till banor frÂn en pool vid mÂlgÂng.");
+    gdi.addCheckbox("CoursePool", "Anv√§nd banpool", MultiCB, false,
+                      "Knyt l√∂parna till banor fr√•n en pool vid m√•lg√•ng.");
 
-    gdi.addButton("OneCourse", "Endast en bana", MultiCB, "Anv‰nd endast en bana i klassen");
+    gdi.addButton("OneCourse", "Endast en bana", MultiCB, "Anv√§nd endast en bana i klassen");
     gdi.setRestorePoint("Courses");
     selectCourses(gdi, 0);
 
@@ -2565,7 +2565,7 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
   else {
     gdi.pushX();
     gdi.fillRight();
-    gdi.addButton("ChangeLeg", "ƒndra klassinst‰llningar...", MultiCB, "Starta en guide som hj‰lper dig gˆra klassinst‰llningar");
+    gdi.addButton("ChangeLeg", "√Ñndra klassinst√§llningar...", MultiCB, "Starta en guide som hj√§lper dig g√∂ra klassinst√§llningar");
 
     gdi.fillDown();
     gdi.popX();
@@ -2635,11 +2635,11 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
 
       if (k==0) { //Add headers
         gdi.addString("", headYPos, headXPos[0], 0, "Str.");
-        gdi.addString("", headYPos, headXPos[1], 0, "Str‰cktyp:");
+        gdi.addString("", headYPos, headXPos[1], 0, "Str√§cktyp:");
         gdi.addString("", headYPos, headXPos[2], 0, "Starttyp:");
         gdi.addString("", headYPos, headXPos[3], 0, "Starttid:");
         if (multipleRaces)
-          gdi.addString("", headYPos, headXPos[4], 0, "Lˆpare:");
+          gdi.addString("", headYPos, headXPos[4], 0, "L√∂pare:");
         if (hasRelay) {
           gdi.addString("", headYPos, headXPos[5], 0, "Rep:");
           gdi.addString("", headYPos, headXPos[6], 0, "Omstart:");
@@ -2649,12 +2649,12 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
 
     gdi.pushX();
     gdi.fillRight();
-    gdi.addCheckbox("CoursePool", "Anv‰nd banpool", MultiCB, false,
-                      "Knyt lˆparna till banor frÂn en pool vid mÂlgÂng.");
-    gdi.addCheckbox("Unordered", "Oordnade parallella str‰ckor", MultiCB, false,
-                      "TillÂt lˆpare inom en parallell grupp att springa gruppens banor i godtycklig ordning.");
-    gdi.addCheckbox("LockForking", "LÂs gafflingar", MultiCB, false,
-                      "Markera fˆr att fˆrhindra oavsiktlig ‰ndring av gafflingsnycklar.");
+    gdi.addCheckbox("CoursePool", "Anv√§nd banpool", MultiCB, false,
+                      "Knyt l√∂parna till banor fr√•n en pool vid m√•lg√•ng.");
+    gdi.addCheckbox("Unordered", "Oordnade parallella str√§ckor", MultiCB, false,
+                      "Till√•t l√∂pare inom en parallell grupp att springa gruppens banor i godtycklig ordning.");
+    gdi.addCheckbox("LockForking", "L√•s gafflingar", MultiCB, false,
+                      "Markera f√∂r att f√∂rhindra oavsiktlig √§ndring av gafflingsnycklar.");
 
     gdi.popX();
     gdi.fillRight();
@@ -2704,7 +2704,7 @@ void TabClass::save(gdioutput &gdi, bool skipReload)
     return;
 
   if (name.empty())
-    throw std::exception("Klassen mÂste ha ett namn.");
+    throw std::exception("Klassen m√•ste ha ett namn.");
 
   bool create=false;
 
@@ -2894,9 +2894,9 @@ bool TabClass::loadPage(gdioutput &gdi)
   
   const int button_w=gdi.scaleLength(90);
   string switchMode;
-  switchMode=tableMode ? "Formul‰rl‰ge" : "Tabell‰ge";
+  switchMode=tableMode ? "Formul√§rl√§ge" : "Tabell√§ge";
   gdi.addButton(2, 2, button_w, "SwitchMode", switchMode,
-    ClassesCB, "V‰lj vy", false, false).fixedCorner();
+    ClassesCB, "V√§lj vy", false, false).fixedCorner();
 
   if (tableMode) {
     Table *tbl=oe->getClassTB();
@@ -2978,19 +2978,19 @@ bool TabClass::loadPage(gdioutput &gdi)
 
   gdi.popX();
   gdi.dropLine(3.5);
-  gdi.addCheckbox("AllowQuickEntry", "TillÂt direktanm‰lan", 0);
+  gdi.addCheckbox("AllowQuickEntry", "Till√•t direktanm√§lan", 0);
   gdi.addCheckbox("NoTiming", "Utan tidtagning", 0);
 
   if (showAdvanced) {
     gdi.dropLine(2);
     gdi.popX();
-    gdi.addCheckbox("FreeStart", "Fri starttid", 0, false, "Klassen lottas inte, startst‰mpling");
-    gdi.addCheckbox("IgnoreStart", "Ignorera startst‰mpling", 0, false, "Uppdatera inte starttiden vid startst‰mpling");
+    gdi.addCheckbox("FreeStart", "Fri starttid", 0, false, "Klassen lottas inte, startst√§mpling");
+    gdi.addCheckbox("IgnoreStart", "Ignorera startst√§mpling", 0, false, "Uppdatera inte starttiden vid startst√§mpling");
 
     gdi.dropLine(2);
     gdi.popX();
     
-    gdi.addCheckbox("DirectResult", "Resultat vid mÂlst‰mpling", 0, false,
+    gdi.addCheckbox("DirectResult", "Resultat vid m√•lst√§mpling", 0, false,
                     "help:DirectResult");
   }
   gdi.dropLine(2);
@@ -3007,7 +3007,7 @@ bool TabClass::loadPage(gdioutput &gdi)
       }
     }
     if (hasCF) {
-      gdi.addCheckbox("LockStartList", "LÂs startlista", 0, false,
+      gdi.addCheckbox("LockStartList", "L√•s startlista", 0, false,
                       "help:LockStartList");
 
       gdi.dropLine(2);
@@ -3046,16 +3046,16 @@ bool TabClass::loadPage(gdioutput &gdi)
       }
 
       if (unlockedClass) {
-        func.push_back(ButtonData("LockAllForks", "LÂs gafflingar", true));
+        func.push_back(ButtonData("LockAllForks", "L√•s gafflingar", true));
       }
       if (lockedClass) {
-        func.push_back(ButtonData("UnLockAllForks", "TillÂt gafflings‰ndringar", true));
+        func.push_back(ButtonData("UnLockAllForks", "Till√•t gafflings√§ndringar", true));
       }
     }
   }
 
   if (showAdvanced) {
-    func.push_back(ButtonData("Merge", "SlÂ ihop klasser...", false));
+    func.push_back(ButtonData("Merge", "Sl√• ihop klasser...", false));
     func.push_back(ButtonData("Split", "Dela klassen...", false));
   }
 
@@ -3074,7 +3074,7 @@ bool TabClass::loadPage(gdioutput &gdi)
       func.push_back(ButtonData("RemoveVacant", "Radera vakanser", true));
   }
 
-  func.push_back(ButtonData("QuickSettings", "Snabbinst‰llningar", true));
+  func.push_back(ButtonData("QuickSettings", "Snabbinst√§llningar", true));
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces))
     func.push_back(ButtonData("QualificationFinal", "Kval-Final-Schema", false));
@@ -3212,7 +3212,7 @@ void TabClass::saveClassSettingsTable(gdioutput &gdi) {
 
 void TabClass::prepareForDrawing(gdioutput &gdi) {
   clearPage(gdi, false);
-  gdi.addString("", 2, "Klassinst‰llningar");
+  gdi.addString("", 2, "Klassinst√§llningar");
   int baseLine = gdi.getCY();
   gdi.addString("", 10, "help:59395");
   gdi.pushX();
@@ -3297,7 +3297,7 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
     gdi.dropLine(1);
     gdi.pushX();
     gdi.fillRight();
-    ListBoxInfo &seedmethod = gdi.addSelection("SeedMethod", 120, 100, 0, L"Seedningsk‰lla:");
+    ListBoxInfo &seedmethod = gdi.addSelection("SeedMethod", 120, 100, 0, L"Seedningsk√§lla:");
     vector< pair<wstring, size_t> > methods;
     oClass::getSeedingMethods(methods);
     gdi.addItem("SeedMethod", methods);
@@ -3312,9 +3312,9 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
     gdi.fillDown();
     gdi.popX();
     gdi.dropLine(3);
-    gdi.addCheckbox("PreventClubNb", "Hindra att deltagare frÂn samma klubb startar pÂ angr‰nsande tider", 
+    gdi.addCheckbox("PreventClubNb", "Hindra att deltagare fr√•n samma klubb startar p√• angr√§nsande tider", 
                     0, lastSeedPreventClubNb).setSynchData(&lastSeedPreventClubNb);
-    gdi.addCheckbox("ReverseSeedning", "LÂt de b‰sta start fˆrst", 0, lastSeedReverse).
+    gdi.addCheckbox("ReverseSeedning", "L√•t de b√§sta start f√∂rst", 0, lastSeedReverse).
                     setSynchData(&lastSeedReverse);
   }
   else {
@@ -3325,17 +3325,17 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
 
   if (method == DMRandom || method == DMSOFT || method == DMPursuit
       || method == DMReversePursuit || method == DMSeeded) {
-    gdi.addSelection("PairSize", 150, 200, 0, L"Till‰mpa parstart:").setSynchData(&lastPairSize);
+    gdi.addSelection("PairSize", 150, 200, 0, L"Till√§mpa parstart:").setSynchData(&lastPairSize);
     gdi.addItem("PairSize", getPairOptions());
     gdi.selectItemByData("PairSize", pairSize);
   }
   gdi.fillRight();
 
-  gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, L"Fˆrsta start:").setSynchData(&lastFirstStart);
+  gdi.addInput("FirstStart", oe->getAbsTime(firstStart), 10, 0, L"F√∂rsta start:").setSynchData(&lastFirstStart);
 
   if (method == DMPursuit || method == DMReversePursuit) {
-    gdi.addInput("MaxAfter", lastMaxAfter, 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren fˆr att delta i jaktstart").setSynchData(&lastMaxAfter);
-    gdi.addInput("TimeRestart", oe->getAbsTime(firstStart + 3600),  8, 0, L"Fˆrsta omstartstid:");
+    gdi.addInput("MaxAfter", lastMaxAfter, 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren f√∂r att delta i jaktstart").setSynchData(&lastMaxAfter);
+    gdi.addInput("TimeRestart", oe->getAbsTime(firstStart + 3600),  8, 0, L"F√∂rsta omstartstid:");
     gdi.addInput("ScaleFactor", lastScaleFactor,  8, 0, L"Tidsskalning:").setSynchData(&lastScaleFactor);
   }
 
@@ -3346,9 +3346,9 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
     gdi.addInput("Vacanses", itow(vac), 10, 0, L"Antal vakanser:").setSynchData(&lastNumVac);
 
   if ((method == DMRandom || method == DMSOFT || method == DMSeeded) && pc.getNumStages() > 1 && pc.getClassType() != oClassPatrol) {
-    gdi.addSelection("Leg", 90, 100, 0, L"Str‰cka:", L"Str‰cka att lotta");
+    gdi.addSelection("Leg", 90, 100, 0, L"Str√§cka:", L"Str√§cka att lotta");
     for (unsigned k = 0; k<pc.getNumStages(); k++)
-      gdi.addItem("Leg", lang.tl("Str‰cka X#" + itos(k+1)), k);
+      gdi.addItem("Leg", lang.tl("Str√§cka X#" + itos(k+1)), k);
 
     gdi.selectFirstItem("Leg");
   }
@@ -3360,7 +3360,7 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
     gdi.fillRight();
     gdi.addCheckbox("HandleBibs", "Tilldela nummerlappar:", ClassesCB, lastHandleBibs).setSynchData(&lastHandleBibs);
     gdi.dropLine(-0.2);
-    gdi.addInput("Bib", L"", 10, 0, L"", L"Mata in fˆrsta nummerlappsnummer, eller blankt fˆr att ta bort nummerlappar");
+    gdi.addInput("Bib", L"", 10, 0, L"", L"Mata in f√∂rsta nummerlappsnummer, eller blankt f√∂r att ta bort nummerlappar");
     gdi.setInputStatus("Bib", lastHandleBibs);
     gdi.fillDown();
     gdi.dropLine(2.5);
@@ -3379,8 +3379,8 @@ void TabClass::drawDialog(gdioutput &gdi, DrawMethod method, const oClass &pc) {
     gdi.addButton("DoDraw", "Tilldela", ClassesCB, "Tilldela starttider");
 
   if (method == DMRandom || method == DMSOFT) {
-    gdi.addButton("DoDrawBefore", "Ej lottade, fˆre", ClassesCB, "Lotta lˆpare som saknar starttid");
-    gdi.addButton("DoDrawAfter", "Ej lottade, efter", ClassesCB, "Lotta lˆpare som saknar starttid");
+    gdi.addButton("DoDrawBefore", "Ej lottade, f√∂re", ClassesCB, "Lotta l√∂pare som saknar starttid");
+    gdi.addButton("DoDrawAfter", "Ej lottade, efter", ClassesCB, "Lotta l√∂pare som saknar starttid");
   }
 
   gdi.addButton("DoDeleteStart", "Radera starttider", ClassesCB);
@@ -3420,7 +3420,7 @@ void TabClass::setMultiDayClass(gdioutput &gdi, bool hasMulti, DrawMethod defaul
   
   if (hasMulti) {
     gdi.addItem("Method", lang.tl("Jaktstart"), DMPursuit);
-    gdi.addItem("Method", lang.tl("Omv‰nd jaktstart"), DMReversePursuit);
+    gdi.addItem("Method", lang.tl("Omv√§nd jaktstart"), DMReversePursuit);
   }
   else if (defaultMethod > 10)
     defaultMethod = DMSOFT;
@@ -3458,9 +3458,9 @@ void TabClass::pursuitDialog(gdioutput &gdi) {
 
   gdi.fillRight();
 
-  gdi.addInput("MaxAfter", formatTime(pSavedDepth), 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren fˆr att delta i jaktstart");
-  gdi.addInput("TimeRestart", L"+" + formatTime(pFirstRestart),  8, 0, L"Fˆrsta omstartstid:",  L"Ange tiden relativt klassens fˆrsta start");
-  gdi.addInput("Interval", formatTime(pInterval),  8, 0, L"Startintervall:", L"Ange startintervall fˆr minutstart");
+  gdi.addInput("MaxAfter", formatTime(pSavedDepth), 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren f√∂r att delta i jaktstart");
+  gdi.addInput("TimeRestart", L"+" + formatTime(pFirstRestart),  8, 0, L"F√∂rsta omstartstid:",  L"Ange tiden relativt klassens f√∂rsta start");
+  gdi.addInput("Interval", formatTime(pInterval),  8, 0, L"Startintervall:", L"Ange startintervall f√∂r minutstart");
   wchar_t bf[32];
   swprintf_s(bf, L"%f", pTimeScaling);
   gdi.addInput("ScaleFactor", bf,  8, 0, L"Tidsskalning:");
@@ -3469,8 +3469,8 @@ void TabClass::pursuitDialog(gdioutput &gdi) {
   gdi.popX();
   gdi.fillDown();
   //xxx 
-  //gdi.addCheckbox("Pairwise", "Till‰mpa parstart", 0, false);
-  gdi.addSelection("PairSize", 150, 200, 0, L"Till‰mpa parstart:");
+  //gdi.addCheckbox("Pairwise", "Till√§mpa parstart", 0, false);
+  gdi.addSelection("PairSize", 150, 200, 0, L"Till√§mpa parstart:");
   gdi.addItem("PairSize", getPairOptions());
   gdi.selectItemByData("PairSize", 1);
 
@@ -3481,8 +3481,8 @@ void TabClass::pursuitDialog(gdioutput &gdi) {
   const int len40 = gdi.scaleLength(30);
   const int len200 = gdi.scaleLength(200);
 
-  gdi.addString("", cy, cx, 1, "V‰lj klasser");
-  gdi.addString("", cy, cx + len200 + len40, 1, "Fˆrsta starttid");
+  gdi.addString("", cy, cx, 1, "V√§lj klasser");
+  gdi.addString("", cy, cx + len200 + len40, 1, "F√∂rsta starttid");
   cy += gdi.getLineHeight()*2;
 
   for (size_t k = 0; k<cls.size(); k++) {
@@ -3512,8 +3512,8 @@ void TabClass::pursuitDialog(gdioutput &gdi) {
 
   gdi.dropLine();
   gdi.fillRight();
-  gdi.addButton("SelectAllNoneP", "V‰lj alla", ClassesCB).setExtra(1);
-  gdi.addButton("SelectAllNoneP", "V‰lj ingen", ClassesCB).setExtra(0);
+  gdi.addButton("SelectAllNoneP", "V√§lj alla", ClassesCB).setExtra(1);
+  gdi.addButton("SelectAllNoneP", "V√§lj ingen", ClassesCB).setExtra(0);
   gdi.popX();
   gdi.dropLine(3);
   RECT rc;
@@ -3523,15 +3523,15 @@ void TabClass::pursuitDialog(gdioutput &gdi) {
   gdi.setCX(rc.left + gdi.scaleLength(10));
   gdi.setCY(rc.top + gdi.scaleLength(10));
   gdi.addButton("DoPursuit", "Jaktstart", ClassesCB).setDefault().setExtra(1);
-  gdi.addButton("DoPursuit", "Omv‰nd jaktstart", ClassesCB).setExtra(2);
+  gdi.addButton("DoPursuit", "Omv√§nd jaktstart", ClassesCB).setExtra(2);
 
   rc.right = gdi.getCX() + gdi.scaleLength(5);
   gdi.addRectangle(rc, colorLightGreen);
   gdi.setCX(rc.right + gdi.scaleLength(10));
 
-  gdi.addButton("SavePursuit", "Spara starttider", ClassesCB, "Spara inmatade tider i t‰vlingen utan att tilldela starttider.");
+  gdi.addButton("SavePursuit", "Spara starttider", ClassesCB, "Spara inmatade tider i t√§vlingen utan att tilldela starttider.");
 
-  gdi.addButton("CancelPursuit", "≈tergÂ", ClassesCB).setCancel();
+  gdi.addButton("CancelPursuit", "√Öterg√•", ClassesCB).setCancel();
   gdi.refresh();
 }
 
@@ -3545,20 +3545,20 @@ void TabClass::showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK 
   gdi.fillRight();
   gdi.pushX();
 
-  gdi.addButton("SelectAll", "V‰lj allt", ClassesCB,
-                "V‰lj alla klasser").isEdit(true);
+  gdi.addButton("SelectAll", "V√§lj allt", ClassesCB,
+                "V√§lj alla klasser").isEdit(true);
 
   gdi.addButton("SelectMisses", "Saknad starttid", ClassesCB,
-    "V‰lj klasser d‰r nÂgon lˆpare saknar starttid").isEdit(true);
+    "V√§lj klasser d√§r n√•gon l√∂pare saknar starttid").isEdit(true);
 
   gdi.dropLine(2.3);
   gdi.popX();
 
   gdi.addButton("SelectUndrawn", "Ej lottade", ClassesCB,
-    "V‰lj klasser d‰r alla lˆpare saknar starttid").isEdit(true);
+    "V√§lj klasser d√§r alla l√∂pare saknar starttid").isEdit(true);
 
   gdi.fillDown();
-  gdi.addButton("SelectNone", "V‰lj inget", ClassesCB,
+  gdi.addButton("SelectNone", "V√§lj inget", ClassesCB,
     "Avmarkera allt").isEdit(true);
   gdi.popX();
 
@@ -3579,8 +3579,8 @@ void TabClass::showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK 
       }
       wstring name = it->first;
       if (name.empty())
-        name = lang.tl(L"ˆvriga");
-      gdi.addButton("SelectStart", L"V‰lj X#" + name, ClassesCB, L"").isEdit(true).setExtra(it->second);
+        name = lang.tl(L"√∂vriga");
+      gdi.addButton("SelectStart", L"V√§lj X#" + name, ClassesCB, L"").isEdit(true).setExtra(it->second);
       cnt++;
     }
     gdi.dropLine(2.5);
@@ -3650,7 +3650,7 @@ const wchar_t *TabClass::getCourseLabel(bool pool) {
   if (pool)
     return L"Banpool:";
   else
-    return L"Str‰ckans banor:";
+    return L"Str√§ckans banor:";
 }
 
 void TabClass::selectCourses(gdioutput &gdi, int legNo) {
@@ -3671,12 +3671,12 @@ void TabClass::selectCourses(gdioutput &gdi, int legNo) {
   bool simpleView = pc->getNumStages() == 1;
 
   if (!simpleView) {
-    swprintf_s(bf, lang.tl("Banor fˆr %s, str‰cka %d").c_str(), pc->getName().c_str(), legNo+1);
+    swprintf_s(bf, lang.tl("Banor f√∂r %s, str√§cka %d").c_str(), pc->getName().c_str(), legNo+1);
     gdi.addStringUT(1, bf);
-    ButtonInfo &bi1 = gdi.addButton("@Course" + itos(legNo-1), "<< FˆregÂende", MultiCB);
+    ButtonInfo &bi1 = gdi.addButton("@Course" + itos(legNo-1), "<< F√∂reg√•ende", MultiCB);
     if (legNo<=0)
       gdi.disableInput(bi1.id.c_str());
-    ButtonInfo &bi2 = gdi.addButton("@Course" + itos(legNo+1), "N‰sta >>", MultiCB);
+    ButtonInfo &bi2 = gdi.addButton("@Course" + itos(legNo+1), "N√§sta >>", MultiCB);
     if (unsigned(legNo + 1) >= pc->getNumStages())
       gdi.disableInput(bi2.id.c_str());
     gdi.popX();
@@ -3698,7 +3698,7 @@ void TabClass::selectCourses(gdioutput &gdi, int legNo) {
   gdi.setCX(x2);
   gdi.fillDown();
 
-  gdi.addButton("MAdd", "<< L‰gg till", MultiCB);
+  gdi.addButton("MAdd", "<< L√§gg till", MultiCB);
   gdi.setCX(x1);
   gdi.refresh();
   if (pc->getNumStages() > 1)
@@ -3838,7 +3838,7 @@ void TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
   if (useBibs) {
     gdi.addString("", yp, e, 1, "Nummerlapp");
     bibOptions.push_back(make_pair(lang.tl("Manuell"), 0));
-    bibOptions.push_back(make_pair(lang.tl("Lˆpande"), 1));
+    bibOptions.push_back(make_pair(lang.tl("L√∂pande"), 1));
     bibOptions.push_back(make_pair(lang.tl("Ingen"), 2));
     
     int bibW = gdi.scaleLength(100);
@@ -3848,8 +3848,8 @@ void TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
     
       bibTeamOptions.push_back(make_pair(lang.tl("Oberoende"), BibFree));
       bibTeamOptions.push_back(make_pair(lang.tl("Samma"), BibSame));
-      bibTeamOptions.push_back(make_pair(lang.tl("÷kande"), BibAdd));
-      bibTeamOptions.push_back(make_pair(lang.tl("Str‰cka"), BibLeg));
+      bibTeamOptions.push_back(make_pair(lang.tl("√ñkande"), BibAdd));
+      bibTeamOptions.push_back(make_pair(lang.tl("Str√§cka"), BibLeg));
       bibW += gdi.scaleLength(85);
     }
     
@@ -3857,7 +3857,7 @@ void TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
     g += bibW;
   }
   
-  gdi.addString("", yp, f, 1, "Direktanm‰lan");
+  gdi.addString("", yp, f, 1, "Direktanm√§lan");
   
   vector< pair<wstring,size_t> > arg;
   oe->fillCourses(arg, true);
@@ -3893,7 +3893,7 @@ void TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
     }
     
     if (useBibs)  {
-      gdi.addCombo(e, cyp, "Bib" + id, 90, 100, 0, L"", L"Ange lˆpande numrering eller fˆrsta nummer i klassen.");
+      gdi.addCombo(e, cyp, "Bib" + id, 90, 100, 0, L"", L"Ange l√∂pande numrering eller f√∂rsta nummer i klassen.");
       gdi.addItem("Bib" + id, bibOptions);
 
       wstring bib = it->getDCI().getString("Bib");
@@ -4111,7 +4111,7 @@ vector< pair<wstring, size_t> > TabClass::getPairOptions() {
   vector< pair<wstring, size_t> > res;
 
   res.push_back(make_pair(lang.tl("Ingen parstart"), 1));
-  res.push_back(make_pair(lang.tl("Parvis (tvÂ och tvÂ)"), 2));
+  res.push_back(make_pair(lang.tl("Parvis (tv√• och tv√•)"), 2));
   for (int j = 3; j <= 10; j++) {
     res.push_back(make_pair(lang.tl("X och Y[N by N]#" + itos(j) + "#" + itos(j)), j));
   }
@@ -4288,7 +4288,7 @@ vector<DrawSettingsCSV> DrawSettingsCSV::read(gdioutput &gdi, const oEvent &oe, 
     try {
 
       if (row.size() <= 7)
-        throw wstring(L"Rad X ‰r ogiltig#" + itow(lineNo) + L": " + row[0] + L"...");
+        throw wstring(L"Rad X √§r ogiltig#" + itow(lineNo) + L": " + row[0] + L"...");
 
       pClass pc = oe.getClass(cid);
       if (!pc || (!row[1].empty() && !compareClassName(pc->getName(), row[1]))) {
@@ -4300,7 +4300,7 @@ vector<DrawSettingsCSV> DrawSettingsCSV::read(gdioutput &gdi, const oEvent &oe, 
       if (!pc)
         throw wstring(L"Hittar inte klass X#" + row[0] + L"/" + row[1]);
       else if (usedId.count(pc->getId()))
-        throw wstring(L"Klassen X ‰r listad flera gÂnger#" + row[0] + L"/" + row[1]);
+        throw wstring(L"Klassen X √§r listad flera g√•nger#" + row[0] + L"/" + row[1]);
 
       usedId.insert(pc->getId());
       dl.classId = pc->getId();
@@ -4333,12 +4333,12 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   
   gdi.setSelection("Classes", clsId);
 
-  gdi.addString("", 1, "Grundinst‰llningar");
+  gdi.addString("", 1, "Grundinst√§llningar");
 
   gdi.pushX();
   gdi.fillRight();
 
-  gdi.addInput("FirstStart", firstStart, 10, 0, L"Fˆrsta start:");
+  gdi.addInput("FirstStart", firstStart, 10, 0, L"F√∂rsta start:");
   gdi.addInput("nFields", L"10", 10, 0, L"Max parallellt startande:");
   gdi.popX();
   gdi.dropLine(3);
@@ -4348,7 +4348,7 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
 
   vector< pair<wstring, size_t> > items;
   items.push_back(make_pair(lang.tl("Inga"), 1));
-  items.push_back(make_pair(lang.tl("Fˆrsta kontrollen"), 2));
+  items.push_back(make_pair(lang.tl("F√∂rsta kontrollen"), 2));
   for (int k = 2; k<10; k++)
     items.push_back(make_pair(lang.tl("X kontroller#" + itos(k)), k + 1));
   items.push_back(make_pair(lang.tl("Hela banan"), 1000));
@@ -4358,7 +4358,7 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   gdi.popX();
   gdi.dropLine(4);
   gdi.fillDown();
-  gdi.addCheckbox("AllowNeighbours", "TillÂt samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) == 0);
+  gdi.addCheckbox("AllowNeighbours", "Till√•t samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) == 0);
   gdi.addCheckbox("CoursesTogether", "Lotta klasser med samma bana gemensamt", 0, false);
 
   gdi.dropLine(0.5);
@@ -4367,19 +4367,19 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   gdi.fillRight();
   gdi.addInput("BaseInterval", L"1:00", 10, 0, L"Basintervall (min):");
   gdi.addInput("MinInterval", minInterval, 10, 0, L"Minsta intervall i klass:");
-  gdi.addInput("MaxInterval", minInterval, 10, 0, L"Stˆrsta intervall i klass:");
+  gdi.addInput("MaxInterval", minInterval, 10, 0, L"St√∂rsta intervall i klass:");
 
   gdi.popX();
   gdi.dropLine(4);
   gdi.fillDown();
-  gdi.addString("", 1, "Vakanser och efteranm‰lda");
+  gdi.addString("", 1, "Vakanser och efteranm√§lda");
   gdi.dropLine(0.4);
   gdi.fillRight();
   gdi.popX();
   gdi.addInput("Vacances", vacances, 6, 0, L"Andel vakanser:");
   gdi.addInput("VacancesMin", L"1", 6, 0, L"Min. vakanser (per klass):");
   gdi.addInput("VacancesMax", L"10", 6, 0, L"Max. vakanser (per klass):");
-  gdi.addInput("Extra", L"0%", 6, 0, L"Fˆrv‰ntad andel efteranm‰lda:");
+  gdi.addInput("Extra", L"0%", 6, 0, L"F√∂rv√§ntad andel efteranm√§lda:");
 
   gdi.dropLine(4);
   gdi.fillDown();
@@ -4396,13 +4396,13 @@ void TabClass::loadReadyToDistribute(gdioutput &gdi, int &bx, int &by) {
   rcPrepare.top = gdi.getCY();
   gdi.setCX(gdi.getCX() + gdi.getLineHeight());
   gdi.dropLine();
-  gdi.addString("", fontMediumPlus, "Fˆrbered lottning");
+  gdi.addString("", fontMediumPlus, "F√∂rbered lottning");
   gdi.dropLine(2.2);
   gdi.popX();
   gdi.setCX(gdi.getCX() + gdi.getLineHeight());
-  gdi.addButton("PrepareDrawAll", "Fˆrdela starttider...", ClassesCB).isEdit(true);
+  gdi.addButton("PrepareDrawAll", "F√∂rdela starttider...", ClassesCB).isEdit(true);
   gdi.addButton("EraseStartAll", "Radera starttider...", ClassesCB).isEdit(true).setExtra(0);
-  gdi.addButton("LoadSettings", "H‰mta inst‰llningar frÂn fˆregÂende lottning", ClassesCB).isEdit(true);
+  gdi.addButton("LoadSettings", "H√§mta inst√§llningar fr√•n f√∂reg√•ende lottning", ClassesCB).isEdit(true);
   enableLoadSettings(gdi);
 
   gdi.dropLine(3);
@@ -4417,12 +4417,12 @@ void TabClass::loadReadyToDistribute(gdioutput &gdi, int &bx, int &by) {
   gdi.setCX(gdi.getCX() + gdi.getLineHeight());
   gdi.dropLine();
 
-  gdi.addString("", fontMediumPlus, "Efteranm‰lningar");
+  gdi.addString("", fontMediumPlus, "Efteranm√§lningar");
   gdi.dropLine(2.2);
   gdi.popX();
   gdi.setCX(gdi.getCX() + gdi.getLineHeight());
-  gdi.addButton("DrawAllBefore", "Efteranm‰lda (fˆre ordinarie)", ClassesCB).isEdit(true);
-  gdi.addButton("DrawAllAfter", "Efteranm‰lda (efter ordinarie)", ClassesCB).isEdit(true);
+  gdi.addButton("DrawAllBefore", "Efteranm√§lda (f√∂re ordinarie)", ClassesCB).isEdit(true);
+  gdi.addButton("DrawAllAfter", "Efteranm√§lda (efter ordinarie)", ClassesCB).isEdit(true);
 
   gdi.dropLine(3);
   rcPrepare.bottom = gdi.getCY();
@@ -4432,7 +4432,7 @@ void TabClass::loadReadyToDistribute(gdioutput &gdi, int &bx, int &by) {
   gdi.popX();
   
   gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
-  gdi.addButton("HelpDraw", "Hj‰lp...", ClassesCB, "");
+  gdi.addButton("HelpDraw", "Hj√§lp...", ClassesCB, "");
   gdi.dropLine(3);
 
   by = max(by, gdi.getCY());

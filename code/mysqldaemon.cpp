@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -109,7 +109,7 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       interval = 10;
     }
     else {
-      gdi.addInfoBox("", L"Återansluten mot databasen, tävlingen synkroniserad.", 10000);
+      gdi.addInfoBox("", L"Ã…teransluten mot databasen, tÃ¤vlingen synkroniserad.", 10000);
       timeReconnect = getLocalTime();
       gdi.setDBErrorState(false);
       gdi.setWindowTitle(oe->getTitleName());
@@ -147,14 +147,14 @@ void MySQLReconnect::status(gdioutput &gdi) {
   if (interval>0){
     gdi.addStringUT(1, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkRed);
     gdi.fillRight();
-    gdi.addString("", 0, "Nästa försök:");
+    gdi.addString("", 0, "NÃ¤sta fÃ¶rsÃ¶k:");
     gdi.addTimer(gdi.getCY(),  gdi.getCX()+10, timerCanBeNegative, (GetTickCount()-timeout)/1000);
   }
   else {
     gdi.addStringUT(0, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkGrey);
     gdi.fillRight();
     gdi.addStringUT(0, timeReconnect + L":");
-    gdi.addString("", 1, "Återansluten mot databasen, tävlingen synkroniserad.").setColor(colorDarkGreen);
+    gdi.addString("", 1, "Ã…teransluten mot databasen, tÃ¤vlingen synkroniserad.").setColor(colorDarkGreen);
     gdi.dropLine();
     gdi.fillDown();
     gdi.popX();

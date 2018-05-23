@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -150,13 +150,13 @@ bool oFreePunch::canRemove() const
 Table *oEvent::getPunchesTB()//Table mode
 {
   if (tables.count("punch") == 0) {
-    Table *table=new Table(this, 20, L"Stämplingar", "punches");
+    Table *table=new Table(this, 20, L"StÃ¤mplingar", "punches");
     table->addColumn("Id", 70, true, true);
-    table->addColumn("Ändrad", 150, false);
+    table->addColumn("Ã„ndrad", 150, false);
     table->addColumn("Bricka", 70, true);
     table->addColumn("Kontroll", 70, true);
     table->addColumn("Tid", 70, false);
-    table->addColumn("Löpare", 170, false);
+    table->addColumn("LÃ¶pare", 170, false);
     table->addColumn("Lag", 170, false);
     tables["punch"] = table;
     table->addOwnership();
@@ -254,7 +254,7 @@ bool oFreePunch::setType(const wstring &t, bool databaseUpdate) {
   else {
     if (t == lang.tl("Check"))
       ttype = oPunch::PunchCheck;
-    else if (t == lang.tl("Mål"))
+    else if (t == lang.tl("MÃ¥l"))
       ttype = oPunch::PunchFinish;
     if (t == lang.tl("Start"))
       ttype = oPunch::PunchStart;

@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -81,12 +81,12 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
       
       wstring info;
       if (numVisit > 0) {
-         info = L"Antal besökare X, genomsnittlig bomtid Y, största bomtid Z#" +
+         info = L"Antal besÃ¶kare X, genomsnittlig bomtid Y, stÃ¶rsta bomtid Z#" +
            itow(numVisit) + L" (" + itow(numVisitExp) + L")#" + getTimeMS(pc->getMissedTimeTotal() / numVisit) +
           L"#" + getTimeMS(pc->getMissedTimeMax());
       }
       else if (numVisitExp > 0) {
-        info = L"Förväntat antal besökare: X#" + itow(numVisitExp);
+        info = L"FÃ¶rvÃ¤ntat antal besÃ¶kare: X#" + itow(numVisitExp);
       }
       gdi.setText("ControlID", itow(pc->getId()), true);
 
@@ -159,7 +159,7 @@ void TabControl::save(gdioutput &gdi)
     throw std::exception("Internal error");
   if (pc->getStatus() != oControl::StatusFinish && pc->getStatus() != oControl::StatusStart) {
     if (!pc->setNumbers(gdi.getText("Code")))
-      gdi.alert("Kodsiffran måste vara ett heltal. Flera kodsiffror måste separeras med komma.");
+      gdi.alert("Kodsiffran mÃ¥ste vara ett heltal. Flera kodsiffror mÃ¥ste separeras med komma.");
 
     pc->setStatus(oControl::ControlStatus(gdi.getSelectedItem("Status").first));
     pc->setTimeAdjust(gdi.getText("TimeAdjust"));
@@ -337,7 +337,7 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       }
 
       if (oe->isControlUsed(cid))
-        gdi.alert("Kontrollen används och kan inte tas bort.");
+        gdi.alert("Kontrollen anvÃ¤nds och kan inte tas bort.");
       else
         oe->removeControl(cid);
 
@@ -358,23 +358,23 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       Table *table=new Table(oe, 20, L"Kontroll X#" + itow(controlId), "controlvisitor");
 
       table->addColumn("Id", 70, true, true);
-      table->addColumn("Ändrad", 70, false);
+      table->addColumn("Ã„ndrad", 70, false);
 
       table->addColumn("Namn", 150, false);
       table->addColumn("Bana", 70, false);
-      table->addColumn("På banan", 70, false);
+      table->addColumn("PÃ¥ banan", 70, false);
       table->addColumn("Bricka", 70, true, true);
 
       table->addColumn("Tidpunkt", 70, false);
-      table->addColumn("Stämpelkod", 70, true);
-      table->addColumn("Föregående kontroll", 70, false);
+      table->addColumn("StÃ¤mpelkod", 70, true);
+      table->addColumn("FÃ¶regÃ¥ende kontroll", 70, false);
       table->setGenerator(::visitorTable, this);
       table->setTableProp(0);
       table->update();
       gdi.clearPage(false);
       int xp=gdi.getCX();
       gdi.fillDown();
-      gdi.addButton("Show", "Återgå", ControlsCB);
+      gdi.addButton("Show", "Ã…tergÃ¥", ControlsCB);
        gdi.addTable(table, xp, gdi.getCY());
       gdi.refresh();
     }
@@ -382,10 +382,10 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
        Table *table=new Table(oe, 20, L"Kontroll X#" + itow(controlId), "controlcourse");
 
       table->addColumn("Id", 70, true, true);
-      table->addColumn("Ändrad", 70, false);
+      table->addColumn("Ã„ndrad", 70, false);
 
       table->addColumn("Bana", 70, false, true);
-      table->addColumn("Förekomst", 70, true, true);
+      table->addColumn("FÃ¶rekomst", 70, true, true);
       table->addColumn("Antal deltagare", 70, true, true);
 
       table->setGenerator(::courseTable, this);
@@ -394,7 +394,7 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       gdi.clearPage(false);
       int xp=gdi.getCX();
       gdi.fillDown();
-      gdi.addButton("Show", "Återgå", ControlsCB);
+      gdi.addButton("Show", "Ã…tergÃ¥", ControlsCB);
        gdi.addTable(table, xp, gdi.getCY());
       gdi.refresh();
     }
@@ -440,9 +440,9 @@ bool TabControl::loadPage(gdioutput &gdi)
 
   const int button_w=gdi.scaleLength(90);
   string switchMode;
-  switchMode=tableMode ? "Formulärläge" : "Tabelläge";
+  switchMode=tableMode ? "FormulÃ¤rlÃ¤ge" : "TabellÃ¤ge";
   gdi.addButton(2, 2, button_w, "SwitchMode", switchMode,
-    ControlsCB, "Välj vy", false, false).fixedCorner();
+    ControlsCB, "VÃ¤lj vy", false, false).fixedCorner();
 
   if (tableMode) {
     Table *tbl=oe->getControlTB();
@@ -475,12 +475,12 @@ bool TabControl::loadPage(gdioutput &gdi)
   gdi.fillRight();
   gdi.addInput("Name", L"", 16, 0, L"Kontrollnamn:");
 
-  gdi.addSelection("Status", 150, 100, ControlsCB, L"Status:", L"Ange om kontrollen fungerar och hur den ska användas.");
+  gdi.addSelection("Status", 150, 100, ControlsCB, L"Status:", L"Ange om kontrollen fungerar och hur den ska anvÃ¤ndas.");
   oe->fillControlStatus(gdi, "Status");
 
   gdi.addInput("TimeAdjust", L"", 6, 0, L"Tidsjustering:");
   gdi.fillDown();
-  gdi.addInput("MinTime", L"", 6, 0, L"Minsta sträcktid:");
+  gdi.addInput("MinTime", L"", 6, 0, L"Minsta strÃ¤cktid:");
 
   gdi.popX();
   gdi.dropLine(0.5);
@@ -489,10 +489,10 @@ bool TabControl::loadPage(gdioutput &gdi)
   gdi.fillRight();
 
   gdi.dropLine(0.5);
-  gdi.addInput("Code", L"", 16, 0, L"Stämpelkod(er):");
+  gdi.addInput("Code", L"", 16, 0, L"StÃ¤mpelkod(er):");
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining)) {
-    gdi.addInput("Point", L"", 6, 0, L"Rogaining-poäng:");
+    gdi.addInput("Point", L"", 6, 0, L"Rogaining-poÃ¤ng:");
   }
   gdi.popX();
   gdi.dropLine(3.5);
@@ -503,7 +503,7 @@ bool TabControl::loadPage(gdioutput &gdi)
   gdi.addButton("Remove", "Radera", ControlsCB);
   gdi.disableInput("Remove");
   gdi.addButton("Courses", "Banor...", ControlsCB);
-  gdi.addButton("Visitors", "Besökare...", ControlsCB);
+  gdi.addButton("Visitors", "BesÃ¶kare...", ControlsCB);
   gdi.addButton("Add", "Ny kontroll", ControlsCB);
 
   gdi.dropLine(2.5);

@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -564,7 +564,7 @@ bool csvparser::importOCAD_CSV(oEvent &event, const wstring &file, bool addClass
       }
 
       if (wtoi(sp[firstIndex])<30 || wtoi(sp[firstIndex])>1000) {
-        wstring str = L"Ogiltig banfil. Kontroll fˆrv‰ntad pÂ position X, men hittade 'Y'.#"
+        wstring str = L"Ogiltig banfil. Kontroll f√∂rv√§ntad p√• position X, men hittade 'Y'.#"
                       + itow(firstIndex+1) + L"#" + sp[firstIndex];
         throw meosException(str.c_str());
       }
@@ -625,7 +625,7 @@ bool csvparser::importOCAD_CSV(oEvent &event, const wstring &file, bool addClass
             if (ctrl >= 30 && ctrl < 1000)
               pc->addControl(wtoi(sp[k]));
             else {
-              wstring str = L"Ov‰ntad kontroll 'X' i bana Y.#" + ctrlStr + L"#" + pc->getName();
+              wstring str = L"Ov√§ntad kontroll 'X' i bana Y.#" + ctrlStr + L"#" + pc->getName();
               throw meosException(str);
             }
           }
@@ -1155,110 +1155,12 @@ bool csvparser::importCards(const oEvent &oe, const wstring &file, vector<SICard
 
   return true;
 }
-/*
-void csvparser::parse(const wstring &file, list< vector<string> > &data) {
-  data.clear();
-
-  fin.open(file);
-  const size_t bf_size = 4096;
-  char bf[4096];
-  if (!fin.good())
-    throw meosException("Failed to read file");
-
-  bool isUTF8 = false;
-  bool isUnicode = false;
-  bool firstLine = true;
-  wstring wideString;
-  vector<char *> sp;
-    
-  while(!fin.eof()) {
-    memset(bf, 0, bf_size);
-    fin.getline(bf, bf_size);
-    if (firstLine) {
-      if (bf[0] == -17 && bf[1] == -69 && bf[2] == -65) {
-        isUTF8 = true;
-        for (int k = 0; k <bf_size-3; k++) {
-          bf[k] = bf[k+3];
-        }
-      }
-      else if (bf[0] == -1 && bf[1] == -2) {
-        isUnicode = true;
-        for (int k = 0; k < bf_size-2; k++) {
-          bf[k] = bf[k+2];
-        }
-      }
-    }
-
-    if (isUnicode) {
-      int len = 0;
-      if (bf[len] == 0 && bf[len+1] != 0)
-        len++;
-      wideString.clear();
-      while ((bf[len] != 0 || bf[len+1] != 0) && len < (bf_size -2)) {
-        wchar_t &c = *(wchar_t *)&bf[len];
-        wideString.push_back(c);
-        len+=2;
-      }
-      if (wideString.length() > 0) {
-        int untranslated;
-        WideCharToMultiByte(CP_ACP, 0, wideString.c_str(), wideString.length(), bf, bf_size-2, "?", &untranslated);
-        bf[wideString.length()-1] = 0;
-      }
-      else {
-        bf[0] = 0;
-      }
-    }
-
-    firstLine = false;
-    split(bf, sp);
-
-    if (!sp.empty()) {
-      data.push_back(vector<string>());
-      data.back().resize(sp.size());
-      for (size_t k = 0; k < sp.size(); k++) {
-        data.back()[k] = sp[k];
-      }
-    }
-  }
-
-  if (isUTF8) {
-    list< vector<string> > dataCopy;
-    for (list< vector<string> >::iterator it = data.begin(); it != data.end(); ++it) {
-      vector<string> &de = *it;
-      dataCopy.push_back(vector<string>());
-      vector<string> &out = dataCopy.back();
-      
-      wchar_t buff[buff_pre_alloc];
-      char outstr[buff_pre_alloc];
-      for (size_t k = 0; k < de.size(); k++) {
-        if (de[k].empty()) {
-          out.push_back("");
-          continue;
-        }
-        int len = de[k].size();
-        len = min(min(len+1, 1024), buff_pre_alloc-10);
-
-        int wlen = MultiByteToWideChar(CP_UTF8, 0, de[k].c_str(), len, buff, buff_pre_alloc);
-        buff[wlen-1] = 0;
-
-        BOOL untranslated = false;
-        WideCharToMultiByte(CP_ACP, 0, buff, wlen, outstr, buff_pre_alloc, "?", &untranslated);
-        outstr[wlen-1] = 0;
-        out.push_back(outstr);
-      }
-    }
-    data.swap(dataCopy);
-  }
-
-  fin.close();
-}*/
-
 
 void csvparser::parseUnicode(const wstring &file, list< vector<wstring> > &data) {
   fin.open(file, ifstream::in | ifstream::binary);
   fin.seekg(0, ios_base::end);
-  size_t len = int(fin.tellg())-2;
-  if (len == 0)
+  int len = int(fin.tellg())-2;
+  if (len <= 0)
     return;
   fin.seekg(2); // BOM
   assert(len % 2 == 0);
@@ -1266,7 +1168,7 @@ void csvparser::parseUnicode(const wstring &file, list< vector<wstring> > &data)
   fin.read((char *)&bf[0], len);
   vector<wstring> rows;
   int spp = 0;
-  for (size_t k = 0; k < len / 2; k++) {
+  for (int k = 0; k < len / 2; k++) {
     if (bf[spp] == '\r')
       spp++;
     if (bf[k] == '\n') {
@@ -1278,7 +1180,7 @@ void csvparser::parseUnicode(const wstring &file, list< vector<wstring> > &data)
       rows.push_back(r);
     }
   }
-  if (size_t(spp + 1) < len / 2) {
+  if (spp + 1 < len / 2) {
     wstring r = &bf[spp];
     rows.push_back(r);
   }
@@ -1303,7 +1205,7 @@ void csvparser::parse(const wstring &file, list< vector<wstring> > &data) {
   fin.open(file);
   
   fin.seekg(0, ios_base::end);
-  auto len = fin.tellg();
+  auto flen = fin.tellg();
   fin.seekg(0);
   
   string rbf;
@@ -1315,7 +1217,7 @@ void csvparser::parse(const wstring &file, list< vector<wstring> > &data) {
   bool firstLine = true;
   vector<wchar_t *> sp;
   vector<wchar_t> wbf_a;
-  wbf_a.resize(size_t(len));
+  wbf_a.resize(size_t(flen)+1);
   wchar_t *wbf = &wbf_a[0];
   wstring w;
   while(std::getline(fin, rbf)) {
@@ -1358,6 +1260,43 @@ void csvparser::parse(const wstring &file, list< vector<wstring> > &data) {
   fin.close();
 }
 
+void csvparser::convertUTF(const wstring &file) {
+  ifstream fin;
+  fin.open(file);
+  string rbf;
+
+  if (!fin.good())
+    throw meosException("Failed to read file");
+
+  bool isUTF8 = false;
+  bool firstLine = true;
+  wstring w;
+  vector<string> out;
+  while (std::getline(fin, rbf)) {
+    const char *bf = rbf.c_str();
+    if (firstLine) {
+      if (rbf.length() > 3 && rbf[0] == -17 && rbf[1] == -69 && rbf[2] == -65) {
+        isUTF8 = true;
+        bf += 3;
+        return; // Done
+      }
+    }
+    w = gdi_main->recodeToWide(bf);
+    out.push_back(gdi_main->toUTF8(w));
+  }
+  
+  fin.close();
+  _wrename(file.c_str(), (file + L"_").c_str());
+
+  ofstream fout;
+  fout.open(file);
+  fout.put(-17);
+  fout.put(-69);
+  fout.put(-65);
+  for (string &line : out)
+    fout << line << endl;
+}
+
 void csvparser::importTeamLineup(const wstring &file,
                                  const map<wstring, int> &classNameToNumber,
                                  vector<TeamLineup> &teams) {
@@ -1372,13 +1311,13 @@ void csvparser::importTeamLineup(const wstring &file,
     if (!line.empty()) {
       if (membersToRead == 0) {
         if (line.size() < 2 || line.size() > 3)
-          throw meosException(L"Ogiltigt lag pÂ rad X.#" + itow(lineNo) + L": " + line[0]);
+          throw meosException(L"Ogiltigt lag p√• rad X.#" + itow(lineNo) + L": " + line[0]);
         const wstring cls = trim(line[0]);
         map<wstring, int>::const_iterator res = classNameToNumber.find(cls);
         if (res == classNameToNumber.end())
-          throw meosException(L"Ok‰nd klass pÂ rad X.#" + itow(lineNo) + L": " + cls);
+          throw meosException(L"Ok√§nd klass p√• rad X.#" + itow(lineNo) + L": " + cls);
         if (res->second <= 1)
-          throw meosException(L"Klassen X ‰r individuell.#" + cls);
+          throw meosException(L"Klassen X √§r individuell.#" + cls);
 
         membersToRead = res->second;
         teams.push_back(TeamLineup());

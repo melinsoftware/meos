@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -579,7 +579,7 @@ void RunnerDB::setupCNHash() const
 static bool isVowel(int c) {
   return c=='a' || c=='e' || c=='i' ||
          c=='o' || c=='u' || c=='y' ||
-         c=='å' || c=='ä' || c=='ö';
+         c=='Ã¥' || c=='Ã¤' || c=='Ã¶';
 }
 
 void RunnerDB::canonizeSplitName(const wstring &name, vector<wstring> &split)
@@ -617,7 +617,7 @@ void RunnerDB::canonizeSplitName(const wstring &name, vector<wstring> &split)
       }
 
       if (outp>4 && out[outp-1]=='s')
-        out[outp-1] = 0; // Identify Linköping och Linköpings
+        out[outp-1] = 0; // Identify LinkÃ¶ping och LinkÃ¶pings
       split.push_back(out);
     }
     while(cname[k] == ' ')
@@ -1206,7 +1206,7 @@ void RunnerDB::releaseTables() {
 Table *RunnerDB::getRunnerTB()//Table mode
 {
   if (runnerTable == 0) {
-    Table *table=new Table(oe, 20, L"Löpardatabasen", "runnerdb");
+    Table *table=new Table(oe, 20, L"LÃ¶pardatabasen", "runnerdb");
 
     table->addColumn("Index", 70, true, true);
     table->addColumn("Id", 70, true, true);
@@ -1214,9 +1214,9 @@ Table *RunnerDB::getRunnerTB()//Table mode
     table->addColumn("Klubb", 200, false);
     table->addColumn("SI", 70, true, true);
     table->addColumn("Nationalitet", 70, false, true);
-    table->addColumn("Kön", 50, false, true);
-    table->addColumn("Födelseår", 70, true, true);
-    table->addColumn("Anmäl", 70, false, true);
+    table->addColumn("KÃ¶n", 50, false, true);
+    table->addColumn("FÃ¶delseÃ¥r", 70, true, true);
+    table->addColumn("AnmÃ¤l", 70, false, true);
 
     table->setTableProp(Table::CAN_INSERT|Table::CAN_DELETE|Table::CAN_PASTE);
     table->setClearOnHide(false);
@@ -1292,7 +1292,7 @@ Table *RunnerDB::getClubTB()//Table mode
     Table *table = new Table(oe, 20, L"Klubbdatabasen", "clubdb");
 
     table->addColumn("Id", 70, true, true);
-    table->addColumn("Ändrad", 70, false);
+    table->addColumn("Ã„ndrad", 70, false);
 
     table->addColumn("Namn", 200, false);
     oClub::buildTableCol(oe, table);

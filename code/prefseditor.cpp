@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 #include "stdafx.h"
@@ -69,7 +69,7 @@ void PrefsEditor::showPrefs(gdioutput &gdi) {
       gdi.addString("value" + prefs[k].first, y, valuePos, 0, L"#" +  val, editPos - valuePos, 0, L"Consolas;1").
         setColor(selectColor(rawVal, prefs[k].second)).setExtra(prefs[k].second);
     
-      gdi.addButton(editPos, y - gdi.getLineHeight()/4, "Edit_" + prefs[k].first, "Ändra").setHandler(this);
+      gdi.addButton(editPos, y - gdi.getLineHeight()/4, "Edit_" + prefs[k].first, "Ã„ndra").setHandler(this);
     
       wstring dkey = L"prefs" + gdi.widen(prefs[k].first);
       wstring desc = lang.tl(dkey);
@@ -99,7 +99,7 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
       PropertyType type = (PropertyType)gdi.getBaseInfo(("value" + pref).c_str()).getExtraInt();
       gdi.setData("EditPrefs", type);
       gdi.dropLine();
-      gdi.addString("", fontMediumPlus, "Ändra X#" + pref);
+      gdi.addString("", fontMediumPlus, "Ã„ndra X#" + pref);
       wstring dkey = L"prefs" + gdi.widen(pref);
       wstring desc = lang.tl(dkey);
       gdi.dropLine();
@@ -119,7 +119,7 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
       }
       gdi.dropLine();
       gdi.fillRight();
-      gdi.addButton("Save_" + pref, "Ändra").setHandler(this); 
+      gdi.addButton("Save_" + pref, "Ã„ndra").setHandler(this); 
       gdi.addButton("Cancel", "Avbryt").setHandler(this); 
       gdi.dropLine(3);
 

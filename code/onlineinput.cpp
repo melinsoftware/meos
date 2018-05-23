@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -92,7 +92,7 @@ int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
     }
     else {
       gdi.check("UseUnitId", false);
-      gdi.setTextTranslate("CmpID_label", L"Tävlingens ID-nummer:", true);
+      gdi.setTextTranslate("CmpID_label", L"TÃ¤vlingens ID-nummer:", true);
       useUnitId = false;
     }
     gdi.setInputStatus("UseUnitId", useROCProtocol);
@@ -102,7 +102,7 @@ int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
     if (useUnitId)
       gdi.setTextTranslate("CmpID_label", L"Enhetens ID-nummer (MAC):", true);
     else
-      gdi.setTextTranslate("CmpID_label", L"Tävlingens ID-nummer:", true);
+      gdi.setTextTranslate("CmpID_label", L"TÃ¤vlingens ID-nummer:", true);
   }
 
   return 0;
@@ -131,10 +131,10 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, bool created) {
   startCancelInterval(gdi, "Save", created, IntervalSecond, time);
 
   gdi.addInput("URL", url, 40, 0, L"URL:", L"Till exempel X#http://www.input.org/online.php");
-  gdi.addCheckbox("UseROC", "Använd ROC-protokoll", OnlineCB, useROCProtocol).setExtra(getId());
-  gdi.addCheckbox("UseUnitId", "Använd enhets-id istället för tävlings-id", OnlineCB, useROCProtocol & useUnitId).setExtra(getId());
+  gdi.addCheckbox("UseROC", "AnvÃ¤nd ROC-protokoll", OnlineCB, useROCProtocol).setExtra(getId());
+  gdi.addCheckbox("UseUnitId", "AnvÃ¤nd enhets-id istÃ¤llet fÃ¶r tÃ¤vlings-id", OnlineCB, useROCProtocol & useUnitId).setExtra(getId());
   gdi.setInputStatus("UseUnitId", useROCProtocol);
-  gdi.addInput("CmpID", itow(cmpId), 10, 0, L"Tävlingens ID-nummer:");
+  gdi.addInput("CmpID", itow(cmpId), 10, 0, L"TÃ¤vlingens ID-nummer:");
 
   gdi.dropLine(1);
 
@@ -143,11 +143,11 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.fillRight();
   gdi.addInput("Code", L"", 4, 0, L"Kod:");
   gdi.addSelection("Function", 80, 200, 0, L"Funktion:");
-  gdi.addItem("Function", lang.tl("Mål"), oPunch::PunchFinish);
+  gdi.addItem("Function", lang.tl("MÃ¥l"), oPunch::PunchFinish);
   gdi.addItem("Function", lang.tl("Start"), oPunch::PunchStart);
   gdi.addItem("Function", lang.tl("Check"), oPunch::PunchCheck);
   gdi.dropLine();
-  gdi.addButton("SaveMapping", "Lägg till", OnlineCB).setExtra(getId());
+  gdi.addButton("SaveMapping", "LÃ¤gg till", OnlineCB).setExtra(getId());
   gdi.popX();
   gdi.dropLine(2);
   gdi.addListBox("Mappings", 150, 100, 0, L"Definierade mappningar:", L"", true);
@@ -171,7 +171,7 @@ void OnlineInput::save(oEvent &oe, gdioutput &gdi) {
   unitId = gdi.getText("CmpID");
 
   if (xurl.empty()) {
-    throw meosException("URL måste anges.");
+    throw meosException("URL mÃ¥ste anges.");
   }
   url = xurl;
 
@@ -190,7 +190,7 @@ void OnlineInput::status(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(1);
 
-  gdi.addString("", 0, "Antal hämtade uppdateringar X (Y kb)#" +
+  gdi.addString("", 0, "Antal hÃ¤mtade uppdateringar X (Y kb)#" +
                         itos(importCounter-1) + "#" + itos(bytesImported/1024));
   gdi.popX();
   gdi.fillDown();
@@ -204,7 +204,7 @@ void OnlineInput::status(gdioutput &gdi)
   gdi.dropLine(1);
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("OnlineInput", "Inställningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("OnlineInput", "InstÃ¤llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 
@@ -315,7 +315,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
       card = r->getCardNo();
     }
     else {
-      rname=lang.tl("Okänd");
+      rname=lang.tl("OkÃ¤nd");
     }
     if (time < 0) {
       time = 0;
@@ -323,7 +323,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
     }
     oe.addFreePunch(time, code, card, true);
 
-    addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" +  oe.getAbsTime(time));
+    addInfo(L"LÃ¶pare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" +  oe.getAbsTime(time));
   }
 }
 
@@ -348,7 +348,7 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
         card = r->getCardNo();
       }
       else {
-        rname=lang.tl("Okänd");
+        rname=lang.tl("OkÃ¤nd");
       }
 
       if (time < 0) {
@@ -359,7 +359,7 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
 
       lastImportedId = max(lastImportedId, punchId);
 
-      addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" + oe.getAbsTime(time));
+      addInfo(L"LÃ¶pare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" + oe.getAbsTime(time));
     }
     else
       throw meosException("Onlineservern svarade felaktigt.");

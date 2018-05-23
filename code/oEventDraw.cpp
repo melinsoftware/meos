@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -260,10 +260,10 @@ void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> 
   vector< vector<pair<int, int> > > startField(di.nFields);
   optimizeStartOrder(startField, di, cInfo, opt.nControls, opt.alternator);
 
-  gdi.addString("", 0, "Identifierar X unika inledningar på banorna.#" + itos(di.numDistinctInit));
-  gdi.addString("", 0, "Största gruppen med samma inledning har X platser.#" + itos(di.numRunnerSameInitMax));
-  gdi.addString("", 0, "Antal löpare på vanligaste banan X.#" + itos(di.numRunnerSameCourseMax));
-  gdi.addString("", 0, "Kortast teoretiska startdjup utan krockar är X minuter.#" + itos(di.minimalStartDepth/60));
+  gdi.addString("", 0, "Identifierar X unika inledningar pÃ¥ banorna.#" + itos(di.numDistinctInit));
+  gdi.addString("", 0, "StÃ¶rsta gruppen med samma inledning har X platser.#" + itos(di.numRunnerSameInitMax));
+  gdi.addString("", 0, "Antal lÃ¶pare pÃ¥ vanligaste banan X.#" + itos(di.numRunnerSameCourseMax));
+  gdi.addString("", 0, "Kortast teoretiska startdjup utan krockar Ã¤r X minuter.#" + itos(di.minimalStartDepth/60));
   gdi.dropLine();
   //Find last starter
   int last = opt.last;
@@ -428,7 +428,7 @@ void oEvent::optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, D
     di.firstStart = 0;
 
   if (di.minClassInterval < di.baseInterval) {
-    throw meosException("Startintervallet får inte vara kortare än basintervallet.");
+    throw meosException("Startintervallet fÃ¥r inte vara kortare Ã¤n basintervallet.");
   }
 
   map<int, ClassInfo> otherClasses;
@@ -696,10 +696,10 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
       throw std::exception("Klass saknas");
 
     if (spec[k].vacances>0 && pc->getClassType()==oClassRelay)
-      throw std::exception("Vakanser stöds ej i stafett.");
+      throw std::exception("Vakanser stÃ¶ds ej i stafett.");
 
     if (spec[k].vacances>0 && (spec[k].leg>0 || pc->getParentClass()))
-      throw std::exception("Det går endast att sätta in vakanser på sträcka 1.");
+      throw std::exception("Det gÃ¥r endast att sÃ¤tta in vakanser pÃ¥ strÃ¤cka 1.");
 
     if (size_t(spec[k].leg) < pc->legInfo.size()) {
       pc->legInfo[spec[k].leg].startMethod = STDrawn; //Automatically change start method
@@ -970,7 +970,7 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
     throw std::exception("Klass saknas");
 
   if (Vacances>0 && pc->getClassType()!=oClassIndividual)
-    throw std::exception("Lottningsmetoden stöds ej i den här klassen.");
+    throw std::exception("Lottningsmetoden stÃ¶ds ej i den hÃ¤r klassen.");
 
   oRunnerList::iterator it;
   int nRunners=0;
@@ -1143,7 +1143,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
     if (iFirstStart>0)
       gdi.addString("", 1, "Gemensam start");
     else {
-      gdi.addString("", 1, "Nollställer starttider");
+      gdi.addString("", 1, "NollstÃ¤ller starttider");
       iFirstStart = 0;
     }
     gdi.refreshFast();
@@ -1159,12 +1159,12 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
   }
 
   if (baseInterval<1 || baseInterval>60*60)
-    throw std::exception("Felaktigt tidsformat för intervall");
+    throw std::exception("Felaktigt tidsformat fÃ¶r intervall");
 
   int iFirstStart = getRelativeTime(firstStart);
 
   if (iFirstStart<=0)
-    throw std::exception("Felaktigt tidsformat för första start");
+    throw std::exception("Felaktigt tidsformat fÃ¶r fÃ¶rsta start");
 
   double vacancy = _wtof(vacances.c_str())/100;
 
@@ -1277,7 +1277,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
       continue;
 
     gdi.dropLine();
-    gdi.addStringUT(1, lang.tl(L"Optimerar startfördelning ") + start);
+    gdi.addStringUT(1, lang.tl(L"Optimerar startfÃ¶rdelning ") + start);
     gdi.refreshFast();
     gdi.dropLine();
     vector<ClassInfo> cInfo;
@@ -1299,7 +1299,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
       const ClassInfo &ci = cInfo[k];
 
       if (getClass(ci.classId)->getClassType() == oClassRelay) {
-        gdi.addString("", 0, L"Hoppar över stafettklass: X#" +
+        gdi.addString("", 0, L"Hoppar Ã¶ver stafettklass: X#" +
                     getClass(ci.classId)->getName()).setColor(colorRed);
         continue;
       }
@@ -1324,7 +1324,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
     if (it->hasFreeStart())
       continue;
 
-    gdi.addStringUT(0, lang.tl(L"Lottar efteranmälda: ") + it->getName());
+    gdi.addStringUT(0, lang.tl(L"Lottar efteranmÃ¤lda: ") + it->getName());
 
     vector<ClassDrawSpecification> spec;
     spec.push_back(ClassDrawSpecification(it->getId(), leg, 0, 0, 0));
@@ -1338,7 +1338,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
   gdi.dropLine();
 
   if (drawn==0)
-    gdi.addString("", 1, "Klart: inga klasser behövde lottas.").setColor(colorGreen);
+    gdi.addString("", 1, "Klart: inga klasser behÃ¶vde lottas.").setColor(colorGreen);
   else
     gdi.addString("", 1, "Klart: alla klasser lottade.").setColor(colorGreen);
   // Relay classes?

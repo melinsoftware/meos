@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -2254,7 +2254,7 @@ void MetaListContainer::getMergeCandidates(int toMerge, vector< pair<wstring, si
       continue;
 
     if (it->second.previousList == 0) {
-      wstring desc = L"Fˆre X#" + it->second.getName();
+      wstring desc = L"F√∂re X#" + it->second.getName();
       param.push_back(make_pair(lang.tl(desc), MAXLISTPARAMID + it->first));
     }
 

@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -199,7 +199,7 @@ vector<wstring> oCourse::getCourseReadable(int limit) const
   if (needFinish && !useLastAsFinish()) {
     if (!str.empty())
       str += L"-";
-    str += lang.tl("MÂl").substr(0,1);
+    str += lang.tl("M√•l").substr(0,1);
   }
   if (!str.empty()) {
     if (str.length()<5 && !res.empty())
@@ -246,7 +246,7 @@ pControl oCourse::doAddControl(int Id)
     return c;
   }
   else
-    throw meosException("Fˆr mÂnga kontroller.");
+    throw meosException("F√∂r m√•nga kontroller.");
 }
 
 void oCourse::splitControls(const string &ctrls, vector<int> &nr) {
@@ -386,7 +386,7 @@ bool oCourse::fillCourse(gdioutput &gdi, const string &name)
     if (k == startIx)
       c += L" (" + lang.tl("Start") + L")";
     else if (k == finishIx)
-      c += L" (" + lang.tl("MÂl") + L")";
+      c += L" (" + lang.tl("M√•l") + L")";
 
     int multi = Controls[k]->getNumMulti();
     int submulti = 0;
@@ -410,7 +410,7 @@ bool oCourse::fillCourse(gdioutput &gdi, const string &name)
     offset += submulti;
   }
   if (finishIx == -1)
-    gdi.addItem(name, lang.tl("MÂl"), -1);
+    gdi.addItem(name, lang.tl("M√•l"), -1);
 
   return true;
 }
@@ -785,7 +785,7 @@ double oCourse::getPartOfCourse(int start, int end) const
 const wstring &oCourse::getControlOrdinal(int controlIndex) const
 {
   if ( (controlIndex + 1 == nControls && useLastAsFinish())  || controlIndex == nControls)
-    return lang.tl("MÂl");
+    return lang.tl("M√•l");
 
   if (oe->dataRevision != cacheDataRevision)
     clearCache();
@@ -896,7 +896,7 @@ wstring oCourse::getCourseProblems() const
     }
 
     if (max_p < min_point) {
-      return L"Banans kontroller ger fˆr fÂ po‰ng fˆr att t‰cka po‰ngkravet.";
+      return L"Banans kontroller ger f√∂r f√• po√§ng f√∂r att t√§cka po√§ngkravet.";
     }
   }
   return L"";
@@ -974,7 +974,7 @@ void oCourse::setCommonControl(int ctrlId) {
         found++;
     }
     if (found == 0)
-      throw meosException("Kontroll X finns inte pÂ banan#" + itos(ctrlId));
+      throw meosException("Kontroll X finns inte p√• banan#" + itos(ctrlId));
   }
   getDI().setInt("CControl", ctrlId);
 }

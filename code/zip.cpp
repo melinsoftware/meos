@@ -1,4 +1,4 @@
-/*
+﻿/*
 Code is based on mini unzip, demo of unzip package.
 
 Ported to C++ and modified to suite MeOS.

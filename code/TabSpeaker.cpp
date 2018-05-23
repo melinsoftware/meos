@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -118,7 +118,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.restore("settings");
     gdi.unregisterEvent("DataUpdate");
     gdi.fillDown();
-    gdi.addString("", boldLarge, "Speakerstöd");
+    gdi.addString("", boldLarge, "SpeakerstÃ¶d");
     gdi.addString("", 0, "help:speaker_setup");
     gdi.dropLine(1);
     gdi.addCheckbox("ShortNames", "Use initials in names", 0, oe->getPropertyInt("SpeakerShortNames", false) != 0);
@@ -183,7 +183,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
   }
   else if (bu.id == "PunchTable") {
     gdi.clearPage(false);
-    gdi.addButton("Cancel", "Stäng", tabSpeakerCB);
+    gdi.addButton("Cancel", "StÃ¤ng", tabSpeakerCB);
     gdi.dropLine();
     gdi.addTable(oe->getPunchesTB(), gdi.getCX(), gdi.getCY());
     gdi.refresh();
@@ -196,9 +196,9 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.fillRight();
     gdi.pushX();
     gdi.addString("", 0, "Klass:");
-    gdi.addSelection("Class", 200, 200, tabSpeakerCB, L"", L"Välj klass");
+    gdi.addSelection("Class", 200, 200, tabSpeakerCB, L"", L"VÃ¤lj klass");
     oe->fillClasses(gdi, "Class", oEvent::extraNone, oEvent::filterNone);
-    gdi.addButton("ClosePri", "Stäng", tabSpeakerCB);
+    gdi.addButton("ClosePri", "StÃ¤ng", tabSpeakerCB);
     gdi.dropLine(2);
     gdi.popX();
     gdi.refresh();
@@ -256,7 +256,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
   else if (bu.id == "Window") {
     oe->setupTimeLineEvents(0);
 
-    gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+    gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - SpeakerstÃ¶d"), gdi.getWidth() + 64 + gdi.scaleLength(120));
     if (gdi_new) {
       TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
       tl.ownWindow = true;
@@ -293,9 +293,9 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
 
     loadSettings(speakerSettings);
     if (speakerSettings.empty())
-      throw meosException("Inställningarna är ogiltiga");
+      throw meosException("InstÃ¤llningarna Ã¤r ogiltiga");
     for (size_t k = 1; k < speakerSettings.size(); k++) {
-      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - SpeakerstÃ¶d"), gdi.getWidth() + 64 + gdi.scaleLength(120));
       if (gdi_new) {
         TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
         tl.ownWindow = true;
@@ -388,9 +388,9 @@ void TabSpeaker::drawTimeLine(gdioutput &gdi) {
   gdi.dropLine(-0.2);
   gdi.addSelection("DetailLevel", 160, 100, tabSpeakerCB);
   gdi.setCX(gdi.getCX() + gdi.getLineHeight()*2);
-  gdi.addItem("DetailLevel", lang.tl("Alla händelser"), oTimeLine::PLow);
-  gdi.addItem("DetailLevel", lang.tl("Viktiga händelser"), oTimeLine::PMedium);
-  gdi.addItem("DetailLevel", lang.tl("Avgörande händelser"), oTimeLine::PHigh);
+  gdi.addItem("DetailLevel", lang.tl("Alla hÃ¤ndelser"), oTimeLine::PLow);
+  gdi.addItem("DetailLevel", lang.tl("Viktiga hÃ¤ndelser"), oTimeLine::PMedium);
+  gdi.addItem("DetailLevel", lang.tl("AvgÃ¶rande hÃ¤ndelser"), oTimeLine::PHigh);
   gdi.selectItemByData("DetailLevel", watchLevel);
 
   gdi.dropLine(0.2);
@@ -416,7 +416,7 @@ void TabSpeaker::drawTimeLine(gdioutput &gdi) {
     }
   }
   gdi.fillDown();
-  gdi.addString("", 1, L"Bevakar händelser i X#" + cls);
+  gdi.addString("", 1, L"Bevakar hÃ¤ndelser i X#" + cls);
   gdi.dropLine();
 
   gdi.setRestorePoint("TimeLine");
@@ -736,11 +736,11 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
 
       if (stages.size() > 1) {
         for (size_t k=0; k<stages.size(); k++) {
-          gdi.addItem("Leg", lang.tl("Sträcka X#" + itos(stages[k].second)), stages[k].first);
+          gdi.addItem("Leg", lang.tl("StrÃ¤cka X#" + itos(stages[k].second)), stages[k].first);
         }
         if (multiDay) {
           for (size_t k=0; k<stages.size(); k++) {
-            gdi.addItem("Leg", lang.tl("Sträcka X (total)#" + itos(stages[k].second)), 1000 + stages[k].first);
+            gdi.addItem("Leg", lang.tl("StrÃ¤cka X (total)#" + itos(stages[k].second)), 1000 + stages[k].first);
           }
         }
       }
@@ -826,7 +826,7 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
   gdi.fillDown();
   char bf[16];
   sprintf_s(bf, "ctrl%d", oPunch::PunchFinish);
-  gdi.addButton(cx, cy, bw, bf, "Mål", tabSpeakerCB, "", false, false).setExtra(previousControl);
+  gdi.addButton(cx, cy, bw, bf, "MÃ¥l", tabSpeakerCB, "", false, false).setExtra(previousControl);
 
   if (selectedControl[classId].getControl() == -1) {
     // Default control
@@ -945,13 +945,13 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
 
   int db = 0;
   if (classesToWatch.empty()) {
-    gdi.addString("", boldLarge, "Speakerstöd");
+    gdi.addString("", boldLarge, "SpeakerstÃ¶d");
     gdi.dropLine();
     cy=gdi.getCY();
     cx=gdi.getCX();
   }
   else {
-    gdi.addButton(cx+db, cy, bw-2, "Events", "Händelser", tabSpeakerCB, "Löpande information om viktiga händelser i tävlingen", false, false);
+    gdi.addButton(cx+db, cy, bw-2, "Events", "HÃ¤ndelser", tabSpeakerCB, "LÃ¶pande information om viktiga hÃ¤ndelser i tÃ¤vlingen", false, false);
     if (++cb>nbtn) {
       cb = 1, cx = basex, db = 0;
       cy += gdi.getButtonHeight()+4;
@@ -961,7 +961,7 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
     gdi.addButton(cx+db, cy, bw/5, "ZoomOut", makeDash(L"-"), tabSpeakerCB, L"Zooma ut (Ctrl + '-')", false, false);
     db += bw/5+2;
   }
-  gdi.addButton(cx+db, cy, bw-2, "Settings", "Inställningar...", tabSpeakerCB, "Välj vilka klasser och kontroller som bevakas", false, false);
+  gdi.addButton(cx+db, cy, bw-2, "Settings", "InstÃ¤llningar...", tabSpeakerCB, "VÃ¤lj vilka klasser och kontroller som bevakas", false, false);
   if (++cb>nbtn) {
     cb = 1, cx = basex, db = 0;
     cy += gdi.getButtonHeight()+4;
@@ -972,13 +972,13 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
     cy += gdi.getButtonHeight()+4;
   } else db += bw;
 
-  gdi.addButton(cx+db, cy, bw-2, "PunchTable", "Stämplingar", tabSpeakerCB, "Visa en tabell över alla stämplingar", false, false);
+  gdi.addButton(cx+db, cy, bw-2, "PunchTable", "StÃ¤mplingar", tabSpeakerCB, "Visa en tabell Ã¶ver alla stÃ¤mplingar", false, false);
   if (++cb>nbtn) {
     cb = 1, cx = basex, db = 0;
     cy += gdi.getButtonHeight()+4;
   } else db += bw;
 
-  gdi.addButton(cx+db, cy, bw-2, "LiveResult", "Liveresultat", tabSpeakerCB, "Visa rullande tider mellan kontroller i helskärmsläge", false, false);
+  gdi.addButton(cx+db, cy, bw-2, "LiveResult", "Liveresultat", tabSpeakerCB, "Visa rullande tider mellan kontroller i helskÃ¤rmslÃ¤ge", false, false);
   if (++cb>nbtn) {
     cb = 1, cx = basex, db = 0;
     cy += gdi.getButtonHeight()+4;
@@ -986,14 +986,14 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
 
 
   if (!ownWindow) {
-    gdi.addButton(cx+db, cy, bw-2, "Priority", "Prioritering", tabSpeakerCB, "Välj löpare att prioritera bevakning för", false, false);
+    gdi.addButton(cx+db, cy, bw-2, "Priority", "Prioritering", tabSpeakerCB, "VÃ¤lj lÃ¶pare att prioritera bevakning fÃ¶r", false, false);
     if (++cb>nbtn) {
       cb = 1, cx = basex, db = 0;
       cy += gdi.getButtonHeight()+4;
     } else db += bw;
 
 
-    gdi.addButton(cx+db, cy, bw-2, "Window", "Nytt fönster", tabSpeakerCB, "", false, false);
+    gdi.addButton(cx+db, cy, bw-2, "Window", "Nytt fÃ¶nster", tabSpeakerCB, "", false, false);
     if (++cb>nbtn) {
       cb = 1, cx = basex, db = 0;
       cy += gdi.getButtonHeight()+4;
@@ -1003,7 +1003,7 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
     if (getExtraWindows().size() == 1) {
       wstring sf = getSpeakerSettingsFile();
       if (fileExist(sf.c_str())) {
-        gdi.addButton(cx + db, cy, bw - 2, "LoadWindows", "Återskapa", tabSpeakerCB, "Återskapa tidigare sparade fönster- och speakerinställningar", false, false);
+        gdi.addButton(cx + db, cy, bw - 2, "LoadWindows", "Ã…terskapa", tabSpeakerCB, "Ã…terskapa tidigare sparade fÃ¶nster- och speakerinstÃ¤llningar", false, false);
         if (++cb > nbtn) {
           cb = 1, cx = basex, db = 0;
           cy += gdi.getButtonHeight() + 4;
@@ -1012,7 +1012,7 @@ bool TabSpeaker::loadPage(gdioutput &gdi)
       }
     }
     else {
-      gdi.addButton(cx + db, cy, bw - 2, "SaveWindows", "Spara", tabSpeakerCB, "Spara fönster- och speakerinställningar på datorn", false, false);
+      gdi.addButton(cx + db, cy, bw - 2, "SaveWindows", "Spara", tabSpeakerCB, "Spara fÃ¶nster- och speakerinstÃ¤llningar pÃ¥ datorn", false, false);
       if (++cb > nbtn) {
         cb = 1, cx = basex, db = 0;
         cy += gdi.getButtonHeight() + 4;
@@ -1063,7 +1063,7 @@ void TabSpeaker::manualTimePage(gdioutput &gdi) const
   gdi.fillRight();
   gdi.pushX();
   gdi.addInput("Control", lastControl, 5, 0, L"Kontroll");
-  gdi.addInput("Runner", L"", 6, 0, L"Löpare");
+  gdi.addInput("Runner", L"", 6, 0, L"LÃ¶pare");
   gdi.addInput("Time", L"", 8, 0, L"Tid");
   gdi.dropLine();
   gdi.addButton("StoreTime", "Spara", tabSpeakerCB).setDefault();
@@ -1084,7 +1084,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
   int punch=gdi.getTextNo("Control");
 
   if (punch<=0)
-    throw std::exception("Kontrollnummer måste anges.");
+    throw std::exception("Kontrollnummer mÃ¥ste anges.");
 
   lastControl=gdi.getText("Control");
   const wstring &r_str=gdi.getText("Runner");
@@ -1110,7 +1110,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
     sino = r->getCardNo();
   }
   else
-    Name = lang.tl("Okänd");
+    Name = lang.tl("OkÃ¤nd");
 
   if (sino <= 0) {
     sprintf_s(bf, "Ogiltigt bricknummer.#%d", sino);
@@ -1120,7 +1120,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
   oe->addFreePunch(itime, punch, sino, true);
 
   gdi.restore("manual", false);
-  gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch) + L"#" +  oe->getAbsTime(itime));
+  gdi.addString("", 0, L"LÃ¶pare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch) + L"#" +  oe->getAbsTime(itime));
 
   manualTimePage(gdi);
 }
@@ -1284,7 +1284,7 @@ void TabSpeaker::importSettings(gdioutput &gdi, multimap<string, wstring> &setti
       settings.find("right") == settings.end() ||
       settings.find("top") == settings.end() ||
       settings.find("bottom") == settings.end())
-    throw meosException("Inställningarna är ogiltiga");
+    throw meosException("InstÃ¤llningarna Ã¤r ogiltiga");
   
   rc.left = get(settings, "left");
   rc.right = get(settings, "right");

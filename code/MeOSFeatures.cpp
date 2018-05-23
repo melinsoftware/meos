@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -40,7 +40,7 @@ MeOSFeatures::MeOSFeatures(void)
   add(Network, L"NW", "Several MeOS Clients in a network");
 
   addHead("MeOS Features");
-  add(Speaker, L"SP", "Anv‰nd speakerstˆd");
+  add(Speaker, L"SP", "Anv√§nd speakerst√∂d");
   add(SeveralStages, L"ST", "Several stages");
   add(Economy, L"EC", "Economy and fees").require(EditClub).require(Clubs);
   add(Vacancy, L"VA", "Vacancies and entry cancellations").require(DrawStartList);

@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -1132,70 +1132,70 @@ int toLowerStripped(wchar_t c) {
     for (int i = 0; i < 65536; i++)
       map[i] = i;
 
-    setChar(map, L'≈', L'Â');
-    setChar(map, L'ƒ', L'‰');
-    setChar(map, L'÷', L'ˆ');
+    setChar(map, L'√Ö', L'√•');
+    setChar(map, L'√Ñ', L'√§');
+    setChar(map, L'√ñ', L'√∂');
 
-    setChar(map, L'…', L'e');
-    setChar(map, L'È', L'e');
-    setChar(map, L'Ë', L'e');
-    setChar(map, L'»', L'e');
-    setChar(map, L'Î', L'e');
-    setChar(map, L'À', L'e');
-    setChar(map, L'Í', L'e');
-    setChar(map, L' ', L'e');
+    setChar(map, L'√â', L'e');
+    setChar(map, L'√©', L'e');
+    setChar(map, L'√®', L'e');
+    setChar(map, L'√à', L'e');
+    setChar(map, L'√´', L'e');
+    setChar(map, L'√ã', L'e');
+    setChar(map, L'√™', L'e');
+    setChar(map, L'√ä', L'e');
 
-    setChar(map, L'˚', L'u');
-    setChar(map, L'€', L'u');
-    setChar(map, L'¸', L'u');
-    setChar(map, L'‹', L'u');
-    setChar(map, L'˙', L'u');
-    setChar(map, L'⁄', L'u');
-    setChar(map, L'˘', L'u');
-    setChar(map, L'Ÿ', L'u');
+    setChar(map, L'√ª', L'u');
+    setChar(map, L'√õ', L'u');
+    setChar(map, L'√º', L'u');
+    setChar(map, L'√ú', L'u');
+    setChar(map, L'√∫', L'u');
+    setChar(map, L'√ö', L'u');
+    setChar(map, L'√π', L'u');
+    setChar(map, L'√ô', L'u');
 
-    setChar(map, L'Ò', L'n');
-    setChar(map, L'—', L'n');
+    setChar(map, L'√±', L'n');
+    setChar(map, L'√ë', L'n');
 
-    setChar(map, L'·', L'a');
-    setChar(map, L'¡', L'a');
-    setChar(map, L'‡', L'a');
-    setChar(map, L'¿', L'a');
-    setChar(map, L'‚', L'a');
-    setChar(map, L'¬', L'a');
-    setChar(map, L'„', L'a');
-    setChar(map, L'√', L'a');
+    setChar(map, L'√°', L'a');
+    setChar(map, L'√Å', L'a');
+    setChar(map, L'√†', L'a');
+    setChar(map, L'√Ä', L'a');
+    setChar(map, L'√¢', L'a');
+    setChar(map, L'√Ç', L'a');
+    setChar(map, L'√£', L'a');
+    setChar(map, L'√É', L'a');
 
-    setChar(map, L'Ô', L'i');
-    setChar(map, L'œ', L'i');
-    setChar(map, L'Ó', L'i');
-    setChar(map, L'Œ', L'i');
-    setChar(map, L'Ì', L'i');
-    setChar(map, L'Õ', L'i');
-    setChar(map, L'Ï', L'i');
-    setChar(map, L'Ã', L'i');
+    setChar(map, L'√Ø', L'i');
+    setChar(map, L'√è', L'i');
+    setChar(map, L'√Æ', L'i');
+    setChar(map, L'√é', L'i');
+    setChar(map, L'√≠', L'i');
+    setChar(map, L'√ç', L'i');
+    setChar(map, L'√¨', L'i');
+    setChar(map, L'√å', L'i');
 
-    setChar(map, L'Û', L'o');
-    setChar(map, L'”', L'o');
-    setChar(map, L'Ú', L'o');
-    setChar(map, L'“', L'o');
-    setChar(map, L'ı', L'o');
-    setChar(map, L'’', L'o');
-    setChar(map, L'Ù', L'o');
-    setChar(map, L'‘', L'o');
+    setChar(map, L'√≥', L'o');
+    setChar(map, L'√ì', L'o');
+    setChar(map, L'√≤', L'o');
+    setChar(map, L'√í', L'o');
+    setChar(map, L'√µ', L'o');
+    setChar(map, L'√ï', L'o');
+    setChar(map, L'√¥', L'o');
+    setChar(map, L'√î', L'o');
 
-    setChar(map, L'˝', L'y');
-    setChar(map, L'›', L'Y');
-    setChar(map, L'ˇ', L'y');
+    setChar(map, L'√Ω', L'y');
+    setChar(map, L'√ù', L'Y');
+    setChar(map, L'√ø', L'y');
 
-    setChar(map, L'∆', L'‰');
-    setChar(map, L'Ê', L'‰');
+    setChar(map, L'√Ü', L'√§');
+    setChar(map, L'√¶', L'√§');
 
-    setChar(map, L'ÿ', L'ˆ');
-    setChar(map, L'¯', L'ˆ');
+    setChar(map, L'√ò', L'√∂');
+    setChar(map, L'√∏', L'√∂');
 
-    setChar(map, L'«', L'c');
-    setChar(map, L'Á', L'c');
+    setChar(map, L'√á', L'c');
+    setChar(map, L'√ß', L'c');
   }
   int a = map[c];
   return a;
@@ -1395,7 +1395,7 @@ static void decomposeClassName(const wstring &name, vector<wstring> &dec) {
   sort(dec.begin(), dec.end());
 }
 
-/** Matches H21 L with H21 LÂng and H21L 
+/** Matches H21 L with H21 L√•ng and H21L 
  but not Violet with Violet Court, which is obviously wrong.
  */
 bool compareClassName(const wstring &a, const wstring &b)
@@ -1782,23 +1782,23 @@ wstring makeValidFileName(const wstring &input, bool strict) {
         
         if (b >= 'a' && b <= 'z')
           b = b;
-        else if ( b == L'ˆ')
+        else if ( b == L'√∂')
           b = 'o';
-        else if (b == L'‰' || b == L'Â' || b== L'‡' || b == L'·' || b == L'‚' || b == L'„' || b == L'Ê')
+        else if (b == L'√§' || b == L'√•' || b== L'√†' || b == L'√°' || b == L'√¢' || b == L'√£' || b == L'√¶')
           b = 'a';
-        else if (b == L'Á')
+        else if (b == L'√ß')
           b = 'c';
-        else if (b == L'Ë' || b == L'È' || b == L'Í' || b == L'Î')
+        else if (b == L'√®' || b == L'√©' || b == L'√™' || b == L'√´')
           b = 'e';
-        else if (b == L'')
+        else if (b == L'√∞')
           b = 't';
-        else if (b == L'Ô' || b == L'Ï' || b == L'Ô' || b == L'Ó' || b == L'Ì')
+        else if (b == L'√Ø' || b == L'√¨' || b == L'√Ø' || b == L'√Æ' || b == L'√≠')
           b = 'i';
-        else if (b == L'Ú' || b == L'Û' || b == L'Ù' || b == L'ı' || b == L'¯')
+        else if (b == L'√≤' || b == L'√≥' || b == L'√¥' || b == L'√µ' || b == L'√∏')
           b = 'o';
-        else if (b == L'˘' || b == L'˙' || b == L'˚' || b == L'¸')
+        else if (b == L'√π' || b == L'√∫' || b == L'√ª' || b == L'√º')
           b = 'u';
-        else if (b == L'˝')
+        else if (b == L'√Ω')
           b = 'y';
         else
           b = '-';
@@ -2191,7 +2191,7 @@ void checkWriteAccess(const wstring &file) {
     wchar_t absPath[260];
     _wfullpath(absPath, file.c_str(), 260);
 
-    throw meosException(wstring(L"Du saknar behˆrighet att skriva till 'X'.#") + absPath);
+    throw meosException(wstring(L"Du saknar beh√∂righet att skriva till 'X'.#") + absPath);
   }
   CloseHandle(h);
 }

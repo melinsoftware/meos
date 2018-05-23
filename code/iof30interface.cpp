@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -50,7 +50,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
   courseCount = 0;
   failed = 0;
   xmlList xl;
@@ -70,7 +70,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
       }
     }
     if (ix == -1)
-      throw meosException("Filen innehÂller flera upps‰ttningar banor, men ingen har samma etappnummer som denna etapp (X).#" + itos(nr));
+      throw meosException("Filen inneh√•ller flera upps√§ttningar banor, men ingen har samma etappnummer som denna etapp (X).#" + itos(nr));
     else
       xRaceCourses = xl[ix];
   }
@@ -91,7 +91,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
     if (pc) {
       courseCount++;
       if (courses.count(pc->getName()))
-        gdi.addString("", 0, L"Varning: Banan 'X' fˆrekommer flera gÂnger#" + pc->getName());
+        gdi.addString("", 0, L"Varning: Banan 'X' f√∂rekommer flera g√•nger#" + pc->getName());
 
       courses[pc->getName()] = pc;
 
@@ -460,7 +460,7 @@ void IOF30Interface::assignTeamCourse(gdioutput &gdi, oTeam &team, xmlList &xAss
         }
       }
       else
-        gdi.addString("", 0, L"Bantilldelning fˆr 'X' h‰nvisar till en str‰cka som inte finns#" + team.getClass(false)).setColor(colorRed);
+        gdi.addString("", 0, L"Bantilldelning f√∂r 'X' h√§nvisar till en str√§cka som inte finns#" + team.getClass(false)).setColor(colorRed);
     }
     else {
       wstring name;
@@ -683,7 +683,7 @@ void IOF30Interface::readCompetitorList(gdioutput &gdi, const xmlobject &xo, int
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
 
   xmlList xl;
   xo.getObjects(xl);
@@ -705,7 +705,7 @@ void IOF30Interface::readClubList(gdioutput &gdi, const xmlobject &xo, int &club
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
 
   xmlList xl;
   xo.getObjects(xl);
@@ -741,7 +741,7 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
   entRemoved = 0;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
 
   xmlobject xEvent = xo.getObject("Event");
   map<int, vector<LegInfo> > teamClassConfig;
@@ -969,7 +969,7 @@ void IOF30Interface::readStartList(gdioutput &gdi, xmlobject &xo, int &entRead, 
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
 
   map<int, vector<LegInfo> > teamClassConfig;
 
@@ -1075,7 +1075,7 @@ void IOF30Interface::readClassList(gdioutput &gdi, xmlobject &xo, int &entRead, 
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
 
   map<int, vector<LegInfo> > teamClassConfig;
 
@@ -1113,7 +1113,7 @@ void IOF30Interface::readEventList(gdioutput &gdi, xmlobject &xo) {
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
-    gdi.addString("", 0, "Varning, ok‰nd XML-version X#" + ver);
+    gdi.addString("", 0, "Varning, ok√§nd XML-version X#" + ver);
 
   xmlList xl;
   xo.getObjects(xl);
@@ -3388,9 +3388,9 @@ bool IOF30Interface::readControl(const xmlobject &xControl) {
     if (num == 0 && finish.length()>0)
       num = int(finish[finish.length()-1])-'0';
     if (num > 0 && num<10)
-      finish = lang.tl(L"MÂl ") + itow(num);
+      finish = lang.tl(L"M√•l ") + itow(num);
     else
-      finish = lang.tl(L"MÂl");
+      finish = lang.tl(L"M√•l");
     pc = oe.getControl(getFinishIndex(num), true);
     pc->setNumbers(L"");
     pc->setName(finish);

@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -74,14 +74,14 @@ void AutoTask::autoSave() {
       msg = gdi.widen(ex.what());
     }
     catch(...) {
-      msg = L"Ett ok‰nt fel intr‰ffade.";
+      msg = L"Ett ok√§nt fel intr√§ffade.";
     }
 
     if (!msg.empty()) {
       gdi.alert(msg);
     }
     else
-      gdi.addInfoBox("", L"T‰vlingsdata har sparats.", 10);
+      gdi.addInfoBox("", L"T√§vlingsdata har sparats.", 10);
 
     gdi.setWaitCursor(false);
 
@@ -127,7 +127,7 @@ void AutoTask::interfaceTimeout(const vector<gdioutput *> &windows) {
     msg = gdi.widen(ex.what());
   }
   catch(...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
   if (!msg.empty()) {
     gdi.alert(msg);
@@ -279,7 +279,7 @@ bool AutoTask::synchronizeImpl(const vector<gdioutput *> &windows) {
                 msg = gdi.widen(ex.what());
               }
               catch(...) {
-                msg = L"Ett ok‰nt fel intr‰ffade.";
+                msg = L"Ett ok√§nt fel intr√§ffade.";
               }
             }
           }
@@ -298,7 +298,7 @@ bool AutoTask::synchronizeImpl(const vector<gdioutput *> &windows) {
     msg = gdi.widen(ex.what());
   }
   catch (...) {
-    msg = L"Ett ok‰nt fel intr‰ffade.";
+    msg = L"Ett ok√§nt fel intr√§ffade.";
   }
 
   currentRevision = oe.getRevision();

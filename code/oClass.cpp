@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -760,7 +760,7 @@ void oClass::fillStartTypes(gdioutput &gdi, const string &name, bool firstLeg)
 
   gdi.addItem(name, lang.tl("Starttid"), STTime);
   if (!firstLeg)
-    gdi.addItem(name, lang.tl("V‰xling"), STChange);
+    gdi.addItem(name, lang.tl("V√§xling"), STChange);
   gdi.addItem(name, lang.tl("Tilldelad"), STDrawn);
   if (!firstLeg)
     gdi.addItem(name, lang.tl("Jaktstart"), STHunting);
@@ -947,7 +947,7 @@ void oClass::setStartType(int leg, StartTypes st, bool throwError)
     updateChanged();
 
   if (error && throwError) {
-    throw meosException("Ogiltig startmetod pÂ str‰cka X#" + itos(leg+1));
+    throw meosException("Ogiltig startmetod p√• str√§cka X#" + itos(leg+1));
   }
 }
 
@@ -972,7 +972,7 @@ void oClass::setLegType(int leg, LegTypes lt)
   }
 
   if (error) {
-    throw meosException("Ogiltig startmetod pÂ str‰cka X#" + itos(leg+1));
+    throw meosException("Ogiltig startmetod p√• str√§cka X#" + itos(leg+1));
   }
 }
 
@@ -1045,7 +1045,7 @@ void oClass::fillLegTypes(gdioutput &gdi, const string &name)
   types.push_back( make_pair(lang.tl("Valbar"), LTParallelOptional));
   types.push_back( make_pair(lang.tl("Extra"), LTExtra));
   types.push_back( make_pair(lang.tl("Summera"), LTSum));
-  types.push_back( make_pair(lang.tl("Medlˆpare"), LTIgnore));
+  types.push_back( make_pair(lang.tl("Medl√∂pare"), LTIgnore));
   types.push_back( make_pair(lang.tl("Gruppera"), LTGroup));
 
   gdi.addItem(name, types);
@@ -1866,13 +1866,13 @@ void oClass::mergeClass(int classIdSec) {
 void oClass::getSplitMethods(vector< pair<wstring, size_t> > &methods) {
   methods.clear();
   methods.push_back(make_pair(lang.tl("Dela klubbvis"), SplitClub));
-  methods.push_back(make_pair(lang.tl("Dela slumpm‰ssigt"), SplitRandom));
+  methods.push_back(make_pair(lang.tl("Dela slumpm√§ssigt"), SplitRandom));
   methods.push_back(make_pair(lang.tl("Dela efter ranking"), SplitRank));
   methods.push_back(make_pair(lang.tl("Dela efter placering"), SplitResult));
   methods.push_back(make_pair(lang.tl("Dela efter tid"), SplitTime));
-  methods.push_back(make_pair(lang.tl("J‰mna klasser (ranking)"), SplitRankEven));
-  methods.push_back(make_pair(lang.tl("J‰mna klasser (placering)"), SplitResultEven));
-  methods.push_back(make_pair(lang.tl("J‰mna klasser (tid)"), SplitTimeEven));
+  methods.push_back(make_pair(lang.tl("J√§mna klasser (ranking)"), SplitRankEven));
+  methods.push_back(make_pair(lang.tl("J√§mna klasser (placering)"), SplitResultEven));
+  methods.push_back(make_pair(lang.tl("J√§mna klasser (tid)"), SplitTimeEven));
 }
 
 class ClassSplit {
@@ -2497,8 +2497,8 @@ void oEvent::getPredefinedClassTypes(map<wstring, ClassMetaType> &types) const {
   types[L"Vuxen"] = ctNormal;
   types[L"Ungdom"] = ctYouth;
   types[L"Motion"] = ctExercise;
-  types[L"÷ppen"] = ctOpen;
-  types[L"Tr‰ning"] = ctTraining;
+  types[L"√ñppen"] = ctOpen;
+  types[L"Tr√§ning"] = ctTraining;
 }
 
 const vector< pair<wstring, size_t> > &oEvent::fillClassTypes(vector< pair<wstring, size_t> > &out)
@@ -2553,7 +2553,7 @@ void oEvent::getStartBlocks(vector<int> &blocks, vector<wstring> &starts) const
     map<int, wstring>::iterator v = bs.find(it->getBlock());
 
     if (v!=bs.end() && v->first!=0 && v->second!=it->getStart()) {
-      wstring msg = L"Ett startblock sp‰nner ˆver flera starter: X/Y#" + it->getStart() + L"#" + v->second;
+      wstring msg = L"Ett startblock sp√§nner √∂ver flera starter: X/Y#" + it->getStart() + L"#" + v->second;
       throw meosException(msg.c_str());
     }
     bs[it->getBlock()] = it->getStart();
@@ -2588,7 +2588,7 @@ Table *oEvent::getClassTB()//Table mode
     Table *table=new Table(this, 20, L"Klasser", "classes");
 
     table->addColumn("Id", 70, true, true);
-    table->addColumn("ƒndrad", 70, false);
+    table->addColumn("√Ñndrad", 70, false);
 
     table->addColumn("Namn", 200, false);
     oe->oClassData->buildTableCol(table);
@@ -3920,7 +3920,7 @@ void oClass::getSeedingMethods(vector< pair<wstring, size_t> > &methods) {
   methods.push_back(make_pair(lang.tl("Resultat"), SeedResult));
   methods.push_back(make_pair(lang.tl("Tid"), SeedTime));
   methods.push_back(make_pair(lang.tl("Ranking"), SeedRank));
-  methods.push_back(make_pair(lang.tl("Po‰ng"), SeedPoints));
+  methods.push_back(make_pair(lang.tl("Po√§ng"), SeedPoints));
 }
 
 void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart, 
@@ -4133,7 +4133,7 @@ void oClass::initClassId(oEvent &oe) {
     long long extId = cls[k]->getExtIdentifier();
     if (extId > 0) {
       if (id2Cls.count(extId)) {
-        throw meosException(L"Klasserna X och Y har samma externa id. Anv‰nd tabell‰get fˆr att ‰ndra id.#" +
+        throw meosException(L"Klasserna X och Y har samma externa id. Anv√§nd tabell√§get f√∂r att √§ndra id.#" +
                             id2Cls[extId] + L"#" + cls[k]->getName()); 
       }
       id2Cls[extId] = cls[k]->getName();

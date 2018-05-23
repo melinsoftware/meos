@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -240,15 +240,15 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableCurrency("EliteFee", "Elitavgift");
   oEventData->addVariableCurrency("EntryFee", "Normalavgift");
   oEventData->addVariableCurrency("YouthFee", "Ungdomsavgift");
-  oEventData->addVariableInt("YouthAge", oDataContainer::oIS8U, "Åldersgräns ungdom");
-  oEventData->addVariableInt("SeniorAge", oDataContainer::oIS8U, "Åldersgräns äldre");
+  oEventData->addVariableInt("YouthAge", oDataContainer::oIS8U, "Ã…ldersgrÃ¤ns ungdom");
+  oEventData->addVariableInt("SeniorAge", oDataContainer::oIS8U, "Ã…ldersgrÃ¤ns Ã¤ldre");
 
   oEventData->addVariableString("Account", 30, "Konto");
   oEventData->addVariableDate("PaymentDue", "Sista betalningsdatum");
-  oEventData->addVariableDate("OrdinaryEntry", "Ordinarie anmälningsdatum");
-  oEventData->addVariableString("LateEntryFactor", 6, "Avgiftshöjning (procent)");
+  oEventData->addVariableDate("OrdinaryEntry", "Ordinarie anmÃ¤lningsdatum");
+  oEventData->addVariableString("LateEntryFactor", 6, "AvgiftshÃ¶jning (procent)");
 
-  oEventData->addVariableString("Organizer", "Arrangör");
+  oEventData->addVariableString("Organizer", "ArrangÃ¶r");
   oEventData->addVariableString("CareOf", 31, "c/o");
 
   oEventData->addVariableString("Street", 32, "Adress");
@@ -262,8 +262,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableInt("SkipRunnerDb", oDataContainer::oIS8U, "Databas");
   oEventData->addVariableInt("ExtId", oDataContainer::oIS64, "Externt Id");
 
-  oEventData->addVariableInt("MaxTime", oDataContainer::oISTime, "Gräns för maxtid");
-  oEventData->addVariableInt("DiffTime", oDataContainer::oISTime, "Stämplingsintervall, rogaining-patrull");
+  oEventData->addVariableInt("MaxTime", oDataContainer::oISTime, "GrÃ¤ns fÃ¶r maxtid");
+  oEventData->addVariableInt("DiffTime", oDataContainer::oISTime, "StÃ¤mplingsintervall, rogaining-patrull");
 
   oEventData->addVariableString("PreEvent", 64, "");
   oEventData->addVariableString("PostEvent", 64, "");
@@ -274,7 +274,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableInt("CurrencyFactor", oDataContainer::oIS16, "Valutafaktor");
   oEventData->addVariableString("CurrencySymbol", 5, "Valutasymbol");
   oEventData->addVariableString("CurrencySeparator", 2, "Decimalseparator");
-  oEventData->addVariableInt("CurrencyPreSymbol", oDataContainer::oIS8, "Symbolläge");
+  oEventData->addVariableInt("CurrencyPreSymbol", oDataContainer::oIS8, "SymbollÃ¤ge");
   oEventData->addVariableString("CurrencyCode", 5, "Valutakod");
   oEventData->addVariableInt("UTC", oDataContainer::oIS8, "UTC");
 
@@ -290,8 +290,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableString("EntryExtra", "Extra rader");
   oEventData->addVariableInt("NumStages", oDataContainer::oIS8, "Antal etapper");
   oEventData->addVariableInt("BibGap", oDataContainer::oIS8U, "Nummerlappshopp");
-  oEventData->addVariableInt("LongTimes", oDataContainer::oIS8U, "Långa tider");
-  oEventData->addVariableString("PayModes", "Betalsätt");
+  oEventData->addVariableInt("LongTimes", oDataContainer::oIS8U, "LÃ¥nga tider");
+  oEventData->addVariableString("PayModes", "BetalsÃ¤tt");
   
   oEventData->initData(this, dataSize);
 
@@ -313,7 +313,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
 
   vector< pair<wstring,wstring> > eInvoice;
   eInvoice.push_back(make_pair(L"E", L"Elektronisk"));
-  eInvoice.push_back(make_pair(L"A", L"Elektronisk godkänd"));
+  eInvoice.push_back(make_pair(L"A", L"Elektronisk godkÃ¤nd"));
   eInvoice.push_back(make_pair(L"P", L"Ej elektronisk"));
   eInvoice.push_back(make_pair(L"", makeDash(L"-")));
   oClubData->addVariableEnum("Invoice", 1, "Faktura", eInvoice);
@@ -325,9 +325,9 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableCurrency("Fee", "Anm. avgift");
   oRunnerData->addVariableCurrency("CardFee", "Brickhyra");
   oRunnerData->addVariableCurrency("Paid", "Betalat");
-  oRunnerData->addVariableInt("PayMode", oDataContainer::oIS8U, "Betalsätt", &paymentMethod);
+  oRunnerData->addVariableInt("PayMode", oDataContainer::oIS8U, "BetalsÃ¤tt", &paymentMethod);
   oRunnerData->addVariableCurrency("Taxable", "Skattad avgift");
-  oRunnerData->addVariableInt("BirthYear", oDataContainer::oIS32, "Födelseår");
+  oRunnerData->addVariableInt("BirthYear", oDataContainer::oIS32, "FÃ¶delseÃ¥r");
   oRunnerData->addVariableString("Bib", 8, "Nummerlapp").zeroSortPadding = 5;
   oRunnerData->addVariableInt("Rank", oDataContainer::oIS16U, "Ranking");
   //oRunnerData->addVariableInt("VacRank", oDataContainer::oIS16U, "Vak. ranking");
@@ -341,7 +341,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   sex.push_back(make_pair(L"F", L"Kvinna"));
   sex.push_back(make_pair(L"", makeDash(L"-")));
 
-  oRunnerData->addVariableEnum("Sex", 1, "Kön", sex);
+  oRunnerData->addVariableEnum("Sex", 1, "KÃ¶n", sex);
   oRunnerData->addVariableString("Nationality", 3, "Nationalitet");
   oRunnerData->addVariableString("Country", 23, "Land");
   oRunnerData->addVariableInt("ExtId", oDataContainer::oIS64, "Externt Id");
@@ -351,10 +351,10 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableInt("RaceId", oDataContainer::oIS32, "Lopp-id", &oRunner::raceIdFormatter);
 
   oRunnerData->addVariableInt("TimeAdjust", oDataContainer::oIS16, "Tidsjustering");
-  oRunnerData->addVariableInt("PointAdjust", oDataContainer::oIS32, "Poängjustering");
-  oRunnerData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring");
+  oRunnerData->addVariableInt("PointAdjust", oDataContainer::oIS32, "PoÃ¤ngjustering");
+  oRunnerData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Ã–verfÃ¶ring");
   oRunnerData->addVariableInt("Shorten", oDataContainer::oIS8U, "Avkortning");
-  oRunnerData->addVariableInt("EntrySource", oDataContainer::oIS32, "Källa");
+  oRunnerData->addVariableInt("EntrySource", oDataContainer::oIS32, "KÃ¤lla");
   oRunnerData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
   oRunnerData->addVariableInt("Reference", oDataContainer::oIS32, "Referens");
   
@@ -366,7 +366,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oControlData->addVariableDecimal("latcrd", "Latitud", 6);
   oControlData->addVariableDecimal("longcrd", "Longitud", 6);
 
-  oControlData->addVariableInt("Rogaining", oDataContainer::oIS32, "Poäng");
+  oControlData->addVariableInt("Rogaining", oDataContainer::oIS32, "PoÃ¤ng");
   oControlData->addVariableInt("Radio", oDataContainer::oIS8U, "Radio");
 
   oCourseData=new oDataContainer(oCourse::dataSize);
@@ -374,13 +374,13 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oCourseData->addVariableString("StartName", 16, "Start");
   oCourseData->addVariableInt("Climb", oDataContainer::oIS16, "Stigning");
   oCourseData->addVariableInt("StartIndex", oDataContainer::oIS32, "Startindex");
-  oCourseData->addVariableInt("FinishIndex", oDataContainer::oIS32, "Målindex");
-  oCourseData->addVariableInt("RPointLimit", oDataContainer::oIS32, "Poänggräns");
-  oCourseData->addVariableInt("RTimeLimit", oDataContainer::oIS32, "Tidsgräns");
-  oCourseData->addVariableInt("RReduction", oDataContainer::oIS32, "Poängreduktion");
+  oCourseData->addVariableInt("FinishIndex", oDataContainer::oIS32, "MÃ¥lindex");
+  oCourseData->addVariableInt("RPointLimit", oDataContainer::oIS32, "PoÃ¤nggrÃ¤ns");
+  oCourseData->addVariableInt("RTimeLimit", oDataContainer::oIS32, "TidsgrÃ¤ns");
+  oCourseData->addVariableInt("RReduction", oDataContainer::oIS32, "PoÃ¤ngreduktion");
   oCourseData->addVariableInt("RReductionMethod", oDataContainer::oIS8U, "Reduktionsmetod");
 
-  oCourseData->addVariableInt("FirstAsStart", oDataContainer::oIS8U, "Från första");
+  oCourseData->addVariableInt("FirstAsStart", oDataContainer::oIS8U, "FrÃ¥n fÃ¶rsta");
   oCourseData->addVariableInt("LastAsFinish", oDataContainer::oIS8U, "Till sista");
 
   oCourseData->addVariableInt("CControl", oDataContainer::oIS16U, "Varvningskontroll"); //Common control index
@@ -388,29 +388,29 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
  
   oClassData=new oDataContainer(oClass::dataSize);
   oClassData->addVariableInt("ExtId", oDataContainer::oIS64, "Externt Id");
-  oClassData->addVariableString("LongName", 32, "Långt namn");
-  oClassData->addVariableInt("LowAge", oDataContainer::oIS8U, "Undre ålder");
-  oClassData->addVariableInt("HighAge", oDataContainer::oIS8U, "Övre ålder");
+  oClassData->addVariableString("LongName", 32, "LÃ¥ngt namn");
+  oClassData->addVariableInt("LowAge", oDataContainer::oIS8U, "Undre Ã¥lder");
+  oClassData->addVariableInt("HighAge", oDataContainer::oIS8U, "Ã–vre Ã¥lder");
   oClassData->addVariableInt("HasPool", oDataContainer::oIS8U, "Banpool");
-  oClassData->addVariableInt("AllowQuickEntry", oDataContainer::oIS8U, "Direktanmälan");
+  oClassData->addVariableInt("AllowQuickEntry", oDataContainer::oIS8U, "DirektanmÃ¤lan");
 
   oClassData->addVariableString("ClassType", 40, "Klasstyp");
 
   vector< pair<wstring,wstring> > sexClass;
-  sexClass.push_back(make_pair(L"M", L"Män"));
+  sexClass.push_back(make_pair(L"M", L"MÃ¤n"));
   sexClass.push_back(make_pair(L"F", L"Kvinnor"));
   sexClass.push_back(make_pair(L"B", L"Alla"));
   sexClass.push_back(make_pair(L"", makeDash(L"-")));
 
-  oClassData->addVariableEnum("Sex", 1, "Kön", sexClass);
+  oClassData->addVariableEnum("Sex", 1, "KÃ¶n", sexClass);
   oClassData->addVariableString("StartName", 16, "Start");
   oClassData->addVariableInt("StartBlock", oDataContainer::oIS8U, "Block");
   oClassData->addVariableInt("NoTiming", oDataContainer::oIS8U, "Ej tidtagning");
   oClassData->addVariableInt("FreeStart", oDataContainer::oIS8U, "Fri starttid");
-  oClassData->addVariableInt("IgnoreStart", oDataContainer::oIS8U, "Ej startstämpling");
+  oClassData->addVariableInt("IgnoreStart", oDataContainer::oIS8U, "Ej startstÃ¤mpling");
 
   firstStartDefiner = new RelativeTimeFormatter("FirstStart");
-  oClassData->addVariableInt("FirstStart", oDataContainer::oIS32, "Första start", firstStartDefiner);
+  oClassData->addVariableInt("FirstStart", oDataContainer::oIS32, "FÃ¶rsta start", firstStartDefiner);
   intervalDefiner = new AbsoluteTimeFormatter("StartInterval");
   oClassData->addVariableInt("StartInterval", oDataContainer::oIS16, "Intervall", intervalDefiner);
   oClassData->addVariableInt("Vacant", oDataContainer::oIS8U, "Vakanser");
@@ -426,28 +426,28 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
 
   vector< pair<wstring,wstring> > statusClass;
   statusClass.push_back(make_pair(L"", L"OK"));
-  statusClass.push_back(make_pair(L"IR", L"Struken med återbetalning"));
-  statusClass.push_back(make_pair(L"I", L"Struken utan återbetalning"));
+  statusClass.push_back(make_pair(L"IR", L"Struken med Ã¥terbetalning"));
+  statusClass.push_back(make_pair(L"I", L"Struken utan Ã¥terbetalning"));
 
   oClassData->addVariableEnum("Status", 2, "Status", statusClass);
-  oClassData->addVariableInt("DirectResult", oDataContainer::oIS8, "Resultat vid målstämpling");
+  oClassData->addVariableInt("DirectResult", oDataContainer::oIS8, "Resultat vid mÃ¥lstÃ¤mpling");
   oClassData->addVariableString("Bib", 8, "Nummerlapp");
 
   vector< pair<wstring,wstring> > bibMode;
-  bibMode.push_back(make_pair(L"", L"Från lag"));
-  bibMode.push_back(make_pair(L"A", L"Lag + sträcka"));
+  bibMode.push_back(make_pair(L"", L"FrÃ¥n lag"));
+  bibMode.push_back(make_pair(L"A", L"Lag + strÃ¤cka"));
   bibMode.push_back(make_pair(L"F", L"Fritt"));
 
   oClassData->addVariableEnum("BibMode", 1, "Nummerlappshantering", bibMode);
   oClassData->addVariableInt("Unordered", oDataContainer::oIS8U, "Oordnade parallella");
   oClassData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
-  oClassData->addVariableInt("Locked", oDataContainer::oIS8U, "Låst gaffling");
+  oClassData->addVariableInt("Locked", oDataContainer::oIS8U, "LÃ¥st gaffling");
   oClassData->addVariableString("Qualification", "Kvalschema");
 
   oTeamData = new oDataContainer(oTeam::dataSize);
   oTeamData->addVariableCurrency("Fee", "Anm. avgift");
   oTeamData->addVariableCurrency("Paid", "Betalat");
-  oTeamData->addVariableInt("PayMode", oDataContainer::oIS8U, "Betalsätt");
+  oTeamData->addVariableInt("PayMode", oDataContainer::oIS8U, "BetalsÃ¤tt");
   oTeamData->addVariableCurrency("Taxable", "Skattad avgift");
   oTeamData->addVariableDate("EntryDate", "Anm. datum");
   oTeamData->addVariableInt("EntryTime", oDataContainer::oIS32, "Anm. tid", &atf);
@@ -458,9 +458,9 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oTeamData->addVariableInt("Priority", oDataContainer::oIS8U, "Prioritering");
   oTeamData->addVariableInt("SortIndex", oDataContainer::oIS16, "Sortering");
   oTeamData->addVariableInt("TimeAdjust", oDataContainer::oIS16, "Tidsjustering");
-  oTeamData->addVariableInt("PointAdjust", oDataContainer::oIS32, "Poängjustering");
-  oTeamData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring");
-  oTeamData->addVariableInt("EntrySource", oDataContainer::oIS32, "Källa");
+  oTeamData->addVariableInt("PointAdjust", oDataContainer::oIS32, "PoÃ¤ngjustering");
+  oTeamData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Ã–verfÃ¶ring");
+  oTeamData->addVariableInt("EntrySource", oDataContainer::oIS32, "KÃ¤lla");
   oTeamData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
 
   generalResults.push_back(GeneralResultCtr("atcontrol", L"Result at a control", new ResultAtControl()));
@@ -1081,7 +1081,7 @@ bool oEvent::open(const wstring &file, bool Import)
   if (ver) {
     wstring vs = ver.wget();
     if (vs > getMajorVersion()) {
-      // Tävlingen är skapad i MeOS X. Data kan gå förlorad om du öppnar tävlingen.\n\nVill du fortsätta?
+      // TÃ¤vlingen Ã¤r skapad i MeOS X. Data kan gÃ¥ fÃ¶rlorad om du Ã¶ppnar tÃ¤vlingen.\n\nVill du fortsÃ¤tta?
       bool cont = gdibase.ask(L"warn:opennewversion#" + vs);
       if (!cont)
         return false;
@@ -1343,7 +1343,7 @@ bool oEvent::open(const xmlparser &xml) {
     xmlobject xList = xml.getObject("Lists");
     if (xList) {
       if (!listContainer->load(MetaListContainer::ExternalList, xList, true)) {
-        err = L"Visa listor är gjorda i en senare version av MeOS och kunde inte laddas.";
+        err = L"Visa listor Ã¤r gjorda i en senare version av MeOS och kunde inte laddas.";
       }
     }
   }
@@ -1514,7 +1514,7 @@ bool oEvent::saveRunnerDatabase(const wchar_t *filename, bool onlyLocal)
 
 void oEvent::updateRunnerDatabase()
 {
-  if (Name==L"!TESTTÄVLING")
+  if (Name==L"!TESTTÃ„VLING")
     return;
 
   if (useRunnerDb()) {
@@ -1937,14 +1937,14 @@ int oEvent::getVacantClub(bool returnNoClubClub) {
       if (pc != 0 && !pc->isRemoved())
         return noClubId;
     }
-    pClub pc = getClub(L"Klubblös");
+    pClub pc = getClub(L"KlubblÃ¶s");
     if (pc == 0)
       pc = getClub(L"No club"); //eng
     if (pc == 0)
-      pc = getClub(lang.tl("Klubblös")); //other lang?
+      pc = getClub(lang.tl("KlubblÃ¶s")); //other lang?
 
     if (pc == 0)
-      pc=getClubCreate(cNoClubId, lang.tl("Klubblös"));
+      pc=getClubCreate(cNoClubId, lang.tl("KlubblÃ¶s"));
 
     noClubId = pc->getId();
     return noClubId;
@@ -1979,11 +1979,11 @@ int oEvent::getVacantClubIfExist(bool returnNoClubClub) const
     }
     if (noClubId == -1)
       return 0;
-    pClub pc=getClub(L"Klubblös");
+    pClub pc=getClub(L"KlubblÃ¶s");
     if (pc == 0)
-      pc = getClub(L"Klubblös");
+      pc = getClub(L"KlubblÃ¶s");
     if (pc == 0)
-      pc = getClub(lang.tl(L"Klubblös")); //other lang?
+      pc = getClub(lang.tl(L"KlubblÃ¶s")); //other lang?
 
     if (!pc) {
       noClubId = -1;
@@ -2130,7 +2130,7 @@ void oEvent::setName(const wstring &m)
 { 
   wstring tn = trim(m);
   if (tn.empty())
-    throw meosException("Tomt namn är inte tillåtet.");
+    throw meosException("Tomt namn Ã¤r inte tillÃ¥tet.");
 
   if (tn != getName()) {
     Name = tn;
@@ -2150,9 +2150,9 @@ wstring oEvent::getTitleName() const {
   if (empty())
     return L"";
   if (HasPendingDBConnection)
-    return getName() + lang.tl(L" (på server)") + lang.tl(L" DATABASE ERROR");
+    return getName() + lang.tl(L" (pÃ¥ server)") + lang.tl(L" DATABASE ERROR");
   else if (isClient())
-    return getName() + lang.tl(L" (på server)");
+    return getName() + lang.tl(L" (pÃ¥ server)");
   else
     return getName() + lang.tl(L" (lokalt)");
 }
@@ -2162,7 +2162,7 @@ void oEvent::setDate(const wstring &m)
   if (m!=Date) {
     int d = convertDateYMS(m, true);
     if (d <= 0)
-      throw meosException(L"Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + m);
+      throw meosException(L"Felaktigt datumformat 'X' (AnvÃ¤nd Ã…Ã…Ã…Ã…-MM-DD).#" + m);
     Date = formatDate(d, true);
     updateChanged();
   }
@@ -2809,7 +2809,7 @@ void oEvent::generateVacancyList(gdioutput &gdi, GUICALLBACK cb)
     nRunner++;
   }
   if (nVac==0)
-    gdi.addString("", y, x, 0, "Inga vakanser tillgängliga. Vakanser skapas vanligen vid lottning.");
+    gdi.addString("", y, x, 0, "Inga vakanser tillgÃ¤ngliga. Vakanser skapas vanligen vid lottning.");
   gdi.updateScrollbars();
 }
 
@@ -2958,7 +2958,7 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
         for (size_t k = 0; k < rr.size(); k++) {
           if (rr[k]->getId() != it->getId()) {
             if (otherRunners.empty()) {
-              otherRunners = lang.tl("Bricka X används också av: #" + itos(it->getCardNo()));
+              otherRunners = lang.tl("Bricka X anvÃ¤nds ocksÃ¥ av: #" + itos(it->getCardNo()));
             }
             else {
               otherRunners += L", ";
@@ -2978,12 +2978,12 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
 
         if (hasPunch) {
           if (otherRunners.empty()) {
-            RECT rc = gdi.addString("", y, x+dx[2], 0, "(har stämplat)", dx[3]-dx[2]-4).textRect;
+            RECT rc = gdi.addString("", y, x+dx[2], 0, "(har stÃ¤mplat)", dx[3]-dx[2]-4).textRect;
             capitalize(punches);
             gdi.addToolTip("", L"#" + punches, 0, &rc);
           }
           else {
-            // Återanvänd bricka
+            // Ã…teranvÃ¤nd bricka
             RECT rc = gdi.addString("", y, x+dx[2], 0, L"#(" + lang.tl("reused card") + L")", dx[3]-dx[2]-4).textRect;
             capitalize(punches);
             gdi.addToolTip("", L"#" + punches + L". " + otherRunners, 0, &rc);
@@ -3489,7 +3489,7 @@ void oEvent::checkDB()
 #ifdef _DEBUG
     if (k>0) {
       wchar_t bf[256];
-      swprintf_s(bf, L"Databasen innehåller %d osynkroniserade ändringar.", k);
+      swprintf_s(bf, L"Databasen innehÃ¥ller %d osynkroniserade Ã¤ndringar.", k);
       wstring msg(bf);
       for(int i=0;i < min<int>(err.size(), 10);i++)
         msg+=wstring(L"\n")+err[i];
@@ -4522,9 +4522,9 @@ const vector< pair<wstring, size_t> > &oEvent::fillStatus(vector< pair<wstring, 
 {
   out.clear();
   out.push_back(make_pair(lang.tl(L"-"), StatusUnknown));
-  out.push_back(make_pair(lang.tl(L"Godkänd"), StatusOK));
+  out.push_back(make_pair(lang.tl(L"GodkÃ¤nd"), StatusOK));
   out.push_back(make_pair(lang.tl(L"Ej start"), StatusDNS));
-  out.push_back(make_pair(lang.tl(L"Återbud[status]"), StatusCANCEL));
+  out.push_back(make_pair(lang.tl(L"Ã…terbud[status]"), StatusCANCEL));
   out.push_back(make_pair(lang.tl(L"Felst."), StatusMP));
   out.push_back(make_pair(lang.tl(L"Utg."), StatusDNF));
   out.push_back(make_pair(lang.tl(L"Disk."), StatusDQ));
@@ -4735,7 +4735,7 @@ void oEvent::assignCardInteractive(gdioutput &gdi, GUICALLBACK cb)
   }
 
   if (k==0)
-    gdi.addString("", 0, "Ingen löpare saknar bricka");
+    gdi.addString("", 0, "Ingen lÃ¶pare saknar bricka");
 }
 
 void oEvent::calcUseStartSeconds()
@@ -4752,8 +4752,8 @@ void oEvent::calcUseStartSeconds()
 
 const wstring &oEvent::formatStatus(RunnerStatus status)
 {
-  const static wstring stats[9]={L"?", L"Godkänd", L"Ej start", L"Felst.", L"Utg.", L"Disk.",
-                                 L"Maxtid", L"Deltar ej", L"Återbud[status]"};
+  const static wstring stats[9]={L"?", L"GodkÃ¤nd", L"Ej start", L"Felst.", L"Utg.", L"Disk.",
+                                 L"Maxtid", L"Deltar ej", L"Ã…terbud[status]"};
   switch(status) {
   case StatusOK:
     return lang.tl(stats[1]);
@@ -4997,7 +4997,7 @@ pCourse oEvent::generateTestCourse(int nCtrl)
 
   for (;i<nCtrl-1;i++)
     pc->addControl(rand()%(99-32)+32);
-  pc->addControl(100)->setName(L"Förvarning");
+  pc->addControl(100)->setName(L"FÃ¶rvarning");
 
   return pc;
 }
@@ -5055,7 +5055,7 @@ pClass oEvent::generateTestClass(int nlegs, int nrunners,
 void oEvent::generateTestCompetition(int nClasses, int nRunners,
                                      bool generateTeams) {
   if (nClasses > 0) {
-    oe->newCompetition(L"!TESTTÄVLING");
+    oe->newCompetition(L"!TESTTÃ„VLING");
     oe->setZeroTime(L"05:00:00");
     oe->getMeOSFeatures().useAll(*oe);
   }
@@ -5158,7 +5158,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
         drawList(spec, useSOFTMethod, 1, drawAll);
       }
       else
-        cls->Name += L" Öppen";
+        cls->Name += L" Ã–ppen";
     }
     else {
       int dr=cls->getNumDistinctRunners();
@@ -5237,7 +5237,7 @@ void oEvent::fillFees(gdioutput &gdi, const string &name, bool withAuto) const {
 
   vector< pair<wstring, size_t> > ff;
   if (withAuto)
-    ff.push_back(make_pair(lang.tl(L"Från klassen"), -1));
+    ff.push_back(make_pair(lang.tl(L"FrÃ¥n klassen"), -1));
   for (set<int>::iterator it = fees.begin(); it != fees.end(); ++it)
     ff.push_back(make_pair(formatCurrency(*it), *it));
 
@@ -5283,7 +5283,7 @@ void oEvent::fillLegNumbers(const set<int> &cls,
   out.reserve(legs.size() + 1);
   for (set< pair<int, int> >::const_iterator it = legs.begin(); it != legs.end(); ++it) {
     if (it->second == 0) {
-      out.push_back( make_pair(lang.tl("Sträcka X#" + itos(it->first + 1)), it->first));
+      out.push_back( make_pair(lang.tl("StrÃ¤cka X#" + itos(it->first + 1)), it->first));
     }
   }
   if (includeSubLegs) {
@@ -5293,16 +5293,16 @@ void oEvent::fillLegNumbers(const set<int> &cls,
         int sub = it->second - 1000;
         char bf[64];
         char symb = 'a' + sub;
-        sprintf_s(bf, "Sträcka X#%d%c", leg+1, symb);
+        sprintf_s(bf, "StrÃ¤cka X#%d%c", leg+1, symb);
         out.push_back( make_pair(lang.tl(bf), (leg + 1) * 10000 + sub));
       }
     }
   }
   
   if (isTeamList)
-    out.push_back(make_pair(lang.tl("Sista sträckan"), 1000));
+    out.push_back(make_pair(lang.tl("Sista strÃ¤ckan"), 1000));
   else
-    out.push_back(make_pair(lang.tl("Alla sträckor"), 1000));
+    out.push_back(make_pair(lang.tl("Alla strÃ¤ckor"), 1000));
 }
 
 void oEvent::generateTableData(const string &tname, Table &table, TableUpdateInfo &tui)
@@ -5493,7 +5493,7 @@ bool oEvent::checkCardUsed(gdioutput &gdi, oRunner &runnerToAssignCard, int card
   }
 
   if (pold) {
-    swprintf_s(bf, (L"#" + lang.tl("Bricka %d används redan av %s och kan inte tilldelas.")).c_str(),
+    swprintf_s(bf, (L"#" + lang.tl("Bricka %d anvÃ¤nds redan av %s och kan inte tilldelas.")).c_str(),
                   cardNo, pold->getCompleteIdentification().c_str());
     gdi.alert(bf);
     return true;
@@ -5535,8 +5535,8 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
     if (it->sName.empty()) {
       if (!warnNoName) {
         warnNoName = true;
-        gdi.alert("Varning: deltagare med blankt namn påträffad. MeOS "
-                  "kräver att alla deltagare har ett namn, och tilldelar namnet 'N.N.'");
+        gdi.alert("Varning: deltagare med blankt namn pÃ¥trÃ¤ffad. MeOS "
+                  "krÃ¤ver att alla deltagare har ett namn, och tilldelar namnet 'N.N.'");
       }
       it->setName(lang.tl("N.N."), false);
       it->synchronize();
@@ -5559,7 +5559,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
       else if (type == oClassRelay) {
         if (!warnNoTeam) {
           gdi.alert(L"Deltagaren 'X' deltar i stafettklassen 'Y' men saknar lag. Klassens start- "
-                    L"och resultatlistor kan därmed bli felaktiga.#" + it->getName() +
+                    L"och resultatlistor kan dÃ¤rmed bli felaktiga.#" + it->getName() +
                      L"#" + it->getClass(false));
           warnNoTeam = true;
         }
@@ -5567,7 +5567,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
       else if (type == oClassPatrol) {
         if (!warnNoPatrol) {
           gdi.alert(L"Deltagaren 'X' deltar i patrullklassen 'Y' men saknar patrull. Klassens start- "
-                    L"och resultatlistor kan därmed bli felaktiga.#" + it->getName() +
+                    L"och resultatlistor kan dÃ¤rmed bli felaktiga.#" + it->getName() +
                      + L"#" + it->getClass(false));
           warnNoPatrol = true;
         }
@@ -5588,8 +5588,8 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
     if (it->sName.empty()) {
       if (!warnNoName) {
         warnNoName = true;
-        gdi.alert("Varning: lag utan namn påträffat. "
-                  "MeOS kräver att alla lag har ett namn, och tilldelar namnet 'N.N.'");
+        gdi.alert("Varning: lag utan namn pÃ¥trÃ¤ffat. "
+                  "MeOS krÃ¤ver att alla lag har ett namn, och tilldelar namnet 'N.N.'");
       }
       it->setName(lang.tl("N.N."), false);
       it->synchronize();
@@ -5607,7 +5607,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
     if (type == oClassIndividual) {
       if (!warnIndividualTeam) {
         gdi.alert(L"Laget 'X' deltar i individuella klassen 'Y'. Klassens start- och resultatlistor "
-                  L"kan därmed bli felaktiga.#" + it->getName() + L"#" + it->getClass(true));
+                  L"kan dÃ¤rmed bli felaktiga.#" + it->getName() + L"#" + it->getClass(true));
         warnIndividualTeam = true;
       }
     }
@@ -5615,7 +5615,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
 
 
   if (expectResult && !hasResult)
-    gdi.alert("Tävlingen innehåller inga resultat.");
+    gdi.alert("TÃ¤vlingen innehÃ¥ller inga resultat.");
 
 
   bool warnBadStart = false;
@@ -5638,12 +5638,12 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
         LegTypes lt = it->getLegType(k);
         if (k==0 && (st == STChange || st == STHunting) && !warnBadStart) {
           warnBadStart = true;
-          gdi.alert(L"Klassen 'X' har jaktstart/växling på första sträckan.#" + it->getName());
+          gdi.alert(L"Klassen 'X' har jaktstart/vÃ¤xling pÃ¥ fÃ¶rsta strÃ¤ckan.#" + it->getName());
         }
         if (st == STTime && it->getStartData(k)<=0 && !warnBadStart &&
               (lt == LTNormal || lt == LTSum)) {
           warnBadStart = true;
-          gdi.alert(L"Ogiltig starttid i 'X' på sträcka Y.#" + it->getName() + L"#" + itow(k+1));
+          gdi.alert(L"Ogiltig starttid i 'X' pÃ¥ strÃ¤cka Y.#" + it->getName() + L"#" + itow(k+1));
         }
       }
     }
@@ -5716,7 +5716,7 @@ int oEvent::interpretCurrency(double val, const wstring &cur)  {
   if (_wcsicmp(L"sek", cur.c_str()) == 0)
     setCurrency(1, L"kr", L",", false);
   else if (_wcsicmp(L"eur", cur.c_str()) == 0)
-    setCurrency(100, L"€", L".", false);//WCS
+    setCurrency(100, L"â‚¬", L".", false);//WCS
 
   return int(floor(val * tCurrencyFactor+0.5));
 }
@@ -6663,7 +6663,7 @@ void oEvent::setPayMode(int id, const wstring &mode) {
         }
 
         if (!valid)
-          throw meosException("Betalningsättet behövs och kan inte tas bort.");
+          throw meosException("BetalningsÃ¤ttet behÃ¶vs och kan inte tas bort.");
 
         lines.erase(lines.begin() + k);
         k--;
@@ -6709,7 +6709,7 @@ static void checkValid(oEvent &oe, int &time, int delta, const wstring &name) {
   if (time > 24 * 3600)
     time -= 24 * 3600;
   if (time < 0 || time > 22 * 3600) {
-    throw meosException(L"X har en tid (Y) som inte är kompatibel med förändringen.#" + name + L"#" + oe.getAbsTime(srcTime));
+    throw meosException(L"X har en tid (Y) som inte Ã¤r kompatibel med fÃ¶rÃ¤ndringen.#" + name + L"#" + oe.getAbsTime(srcTime));
   }
 }
 

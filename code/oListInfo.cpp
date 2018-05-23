@@ -1,4 +1,4 @@
-/********************i****************************************************
+Ôªø/********************i****************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -139,7 +139,7 @@ bool oListInfo::needRegenerate(const oEvent &oe) const {
 
 static void generateNBestHead(const oListParam &par, oListInfo &li, int ypos) {
   if (par.filterMaxPer > 0)
-    li.addHead(oPrintPost(lString, lang.tl(L"Visar de X b‰sta#" + itow(par.filterMaxPer)), normalText, 0, ypos));
+    li.addHead(oPrintPost(lString, lang.tl(L"Visar de X b√§sta#" + itow(par.filterMaxPer)), normalText, 0, ypos));
 }
 extern gdioutput *gdi_main;
 
@@ -186,7 +186,7 @@ static void getResultTitle(const oEvent &oe, const oListParam &lp, wstring &titl
       title = lang.tl(L"Resultat - %s") + L", " + lang.tl(L"vid kontroll X#" + toS.first);
   }
   else {
-    wstring fromS = lang.tl(L"Start"), toS = lang.tl(L"MÂl");
+    wstring fromS = lang.tl(L"Start"), toS = lang.tl(L"M√•l");
     if (lp.useControlIdResultTo>0) {
       toS = getControlName(oe, lp.useControlIdResultTo).first;
     }
@@ -803,7 +803,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (par.useControlIdResultTo > 0)
         wcscpy_s(wbf, getFullControlName(*this, par.useControlIdResultTo).c_str());
       else
-        wsptr = &lang.tl(L"MÂl");
+        wsptr = &lang.tl(L"M√•l");
       break;
     case lClassLength:
       if (pc) {
@@ -2161,7 +2161,7 @@ void oEvent::generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, 
   }
 
   if (li.lp.getLegNumberCoded() != -1) {
-    listname += lang.tl(L" Str‰cka X#" + li.lp.getLegName());
+    listname += lang.tl(L" Str√§cka X#" + li.lp.getLegName());
   }
 
   generateListInternal(gdi, li, addHead);
@@ -2899,7 +2899,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   /*{
     oListInfo li;
-    li.Name=lang.tl("Stafettresultat, str‰cka (STOR)");
+    li.Name=lang.tl("Stafettresultat, str√§cka (STOR)");
     li.supportClasses = true;
     li.supportLegs = true;
     li.largeSize = true;
@@ -2918,7 +2918,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl(L"Stafettresultat, delstr‰ckor");
+    li.Name=lang.tl(L"Stafettresultat, delstr√§ckor");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = false;
@@ -2936,7 +2936,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
   /*
   {
     oListInfo li;
-    li.Name=lang.tl("Stafettresultat, str‰cka");
+    li.Name=lang.tl("Stafettresultat, str√§cka");
     li.listType=li.EBaseTypeTeam;
     li.supportClasses = true;
     li.supportLegs = true;
@@ -2954,7 +2954,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
     }
     {
       oListInfo li;
-      li.Name=lang.tl(L"Startlista, stafett (str‰cka)");
+      li.Name=lang.tl(L"Startlista, stafett (str√§cka)");
       li.listType=li.EBaseTypeTeam;
       li.supportClasses = true;
       li.supportLegs = true;
@@ -3035,7 +3035,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
   if (!filterResults) {
     {
       oListInfo li;
-      li.Name=lang.tl(L"T‰vlingsrapport");
+      li.Name=lang.tl(L"T√§vlingsrapport");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -3044,7 +3044,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
     {
       oListInfo li;
-      li.Name=lang.tl(L"Kontroll infˆr t‰vlingen");
+      li.Name=lang.tl(L"Kontroll inf√∂r t√§vlingen");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -3071,7 +3071,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
     {
       oListInfo li;
-      li.Name=lang.tl(L"Ekonomisk sammanst‰llning");
+      li.Name=lang.tl(L"Ekonomisk sammanst√§llning");
       li.supportClasses = false;
       li.supportLegs = false;
       li.listType=li.EBaseTypeNone;
@@ -3081,7 +3081,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
   /*
   {
     oListInfo li;
-    li.Name=lang.tl("Fˆrst-i-mÂl, klassvis");
+    li.Name=lang.tl("F√∂rst-i-m√•l, klassvis");
     li.supportClasses = false;
     li.supportLegs = false;
     li.listType=li.EBaseTypeNone;
@@ -3090,7 +3090,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl("Fˆrst-i-mÂl, gemensam");
+    li.Name=lang.tl("F√∂rst-i-m√•l, gemensam");
     li.supportClasses = false;
     li.supportLegs = false;
     li.listType=li.EBaseTypeNone;
@@ -3108,7 +3108,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl(L"H‰ndelser - tidslinje");
+    li.Name=lang.tl(L"H√§ndelser - tidslinje");
     li.supportClasses = true;
     li.supportLegs = false;
     li.listType=li.EBaseTypeNone;
@@ -3134,7 +3134,7 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 
   {
     oListInfo li;
-    li.Name=lang.tl(L"Stafettresultat, str‰cka (STOR)");
+    li.Name=lang.tl(L"Stafettresultat, str√§cka (STOR)");
     li.supportClasses = true;
     li.supportLegs = false;
     li.largeSize = true;
@@ -3588,7 +3588,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       li.addSubHead(oPrintPost(lClassName, L"", boldText, 0, 10));
       li.addSubHead(oPrintPost(lClassResultFraction, L"", boldText, pos.get("club"), 10));
       li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, pos.get("status"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl(L"Avgˆrs kl"), boldText, pos.get("info"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Avg√∂rs kl"), boldText, pos.get("info"), 10));
 
       li.addListPost(oPrintPost(lRunnerPlace, L"", normalText, pos.get("place"), 0));
       li.addListPost(oPrintPost(lPatrolNameNames, L"", normalText, pos.get("name"), 0));
@@ -3605,7 +3605,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       break;
 
     case EStdTeamResultList:
-      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Resultatsammanst‰llning - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Resultatsammanst√§llning - %s")), boldLarge, 0,0));
       li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
       generateNBestHead(par, li, 25+lh);
 
@@ -3666,9 +3666,9 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     case unused_EStdTeamResultListLeg: {
       wchar_t title[256];
       if (li.lp.getLegNumberCoded() != 1000)
-        swprintf_s(title, (lang.tl(L"Resultat efter str‰cka X#" + li.lp.getLegName())+L" - %%s").c_str());
+        swprintf_s(title, (lang.tl(L"Resultat efter str√§cka X#" + li.lp.getLegName())+L" - %%s").c_str());
       else
-        swprintf_s(title, (lang.tl(L"Resultat efter str‰ckan")+L" - %%s").c_str());
+        swprintf_s(title, (lang.tl(L"Resultat efter str√§ckan")+L" - %%s").c_str());
 
       pos.add("place", 25);
       pos.add("team", li.getMaxCharWidth(this, par.selection, lTeamName, L"", normalText));
@@ -3710,9 +3710,9 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     case unused_EStdTeamResultListLegLARGE: {
       wchar_t title[256];
       if (li.lp.getLegNumberCoded() != 1000)
-        swprintf_s(title, (L"%%s - "+lang.tl(L"str‰cka X#" + li.lp.getLegName())).c_str());
+        swprintf_s(title, (L"%%s - "+lang.tl(L"str√§cka X#" + li.lp.getLegName())).c_str());
       else
-        swprintf_s(title, (L"%%s - "+lang.tl(L"slutstr‰ckan")).c_str());
+        swprintf_s(title, (L"%%s - "+lang.tl(L"slutstr√§ckan")).c_str());
 
       pos.add("place", 25);
       pos.add("team", min(120, li.getMaxCharWidth(this, par.selection, lTeamName, L"", normalText)));
@@ -3824,9 +3824,9 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     case EStdTeamStartListLeg: {
       wchar_t title[256];
       if (li.lp.getLegNumberCoded() == 1000)
-        throw std::exception("Ogiltigt val av str‰cka");
+        throw std::exception("Ogiltigt val av str√§cka");
 
-      swprintf_s(title, lang.tl(L"Startlista %%s - str‰cka X#" + li.lp.getLegName()).c_str());
+      swprintf_s(title, lang.tl(L"Startlista %%s - str√§cka X#" + li.lp.getLegName()).c_str());
 
       li.addHead(oPrintPost(lCmpName, makeDash(title), boldLarge, 0,0));
       li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
@@ -3852,7 +3852,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
     case EStdIndMultiStartListLeg:
       if (li.lp.getLegNumberCoded() == 1000)
-        throw std::exception("Ogiltigt val av str‰cka");
+        throw std::exception("Ogiltigt val av str√§cka");
 
       //sprintf_s(title, lang.tl("Startlista lopp %d - %%s").c_str(), li.lp.legNumber+1);
       ln=li.lp.getLegInfo(sampleClass);
@@ -3922,7 +3922,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
     case EStdIndMultiResultListLegLARGE:
       if (li.lp.getLegNumberCoded() == 1000)
-        throw std::exception("Ogiltigt val av str‰cka");
+        throw std::exception("Ogiltigt val av str√§cka");
 
       ln=li.lp.getLegInfo(sampleClass);
 
@@ -4208,7 +4208,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       }
 
       li.addSubHead(oPrintPost(lClassName, L"", boldText, pos.get("place"), 10));
-      li.addSubHead(oPrintPost(lString, lang.tl(L"Po‰ng"), boldText, pos.get("points"), 10));
+      li.addSubHead(oPrintPost(lString, lang.tl(L"Po√§ng"), boldText, pos.get("points"), 10));
       li.addSubHead(oPrintPost(lString, lang.tl(L"Tid"), boldText, pos.get("status"), 10));
 
       li.listType=li.EBaseTypeRunner;

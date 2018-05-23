@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -26,7 +26,6 @@
 #include <fstream>
 #include <cassert>
 #include <typeinfo>
-
 
 #include "MeosSQL.h"
 
@@ -122,14 +121,15 @@ string C_START_noid(string name)
 
 string C_END()
 {
-  return " Modified TIMESTAMP, Counter INT UNSIGNED NOT NULL DEFAULT 0, "
+  return " Modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
+    "Counter INT UNSIGNED NOT NULL DEFAULT 0, "
     "INDEX(Counter), INDEX(Modified), Removed BOOL NOT NULL DEFAULT 0) "
     "ENGINE = MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci";
 }
 
 string C_END_noindex()
 {
-  return " Modified TIMESTAMP) "
+  return " Modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) "
     "ENGINE = MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci";
 }
 
@@ -175,7 +175,7 @@ bool MeosSQL::listCompetitions(oEvent *oe, bool keepConnection) {
   string serverInfo = con.server_info();
 
   if (serverInfo < "5.0.3") {
-    errorMessage = "Minst MySQL X kr‰vs. Du anv‰nder version Y.#5.0.3#" + serverInfo;
+    errorMessage = "Minst MySQL X kr√§vs. Du anv√§nder version Y.#5.0.3#" + serverInfo;
     return false;
   }
 
@@ -419,9 +419,9 @@ bool MeosSQL::openDB(oEvent *oe)
   try{
     con.select_db("MeOSMain");
   }
-  catch (const mysqlpp::Exception& er){
-    alert(string(er.what()) + " MySQL Error. Select MeosMain");
+  catch (const mysqlpp::Exception& er) {
     setDefaultDB();
+    alert(string(er.what()) + " MySQL Error. Select MeosMain");
     return 0;
   }
   monitorId=0;
@@ -718,8 +718,8 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
     //syncUpdate(queryset, "oEvent", oe, true);
   }
   catch (const mysqlpp::Exception& er){
-    alert(string(er.what())+" [UPDATING oEvent]");
     setDefaultDB();
+    alert(string(er.what()) + " [UPDATING oEvent]");
     return opStatusFail;
   }
 

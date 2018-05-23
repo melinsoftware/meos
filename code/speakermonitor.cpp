@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -457,9 +457,9 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
 
   if (res.status != StatusOK) {
     if (res.status != StatusDQ)
-      msg = L"‰r inte godk‰nd.";
+      msg = L"√§r inte godk√§nd.";
     else
-      msg = L"‰r diskvalificerad.";
+      msg = L"√§r diskvalificerad.";
 
     return;
   }
@@ -539,14 +539,14 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   }
 
   if (finish) {
-    location = L"i mÂl";
-    locverb = L"gÂr i mÂl";
-    thelocation = lang.tl(L"mÂlet") + L"#";
+    location = L"i m√•l";
+    locverb = L"g√•r i m√•l";
+    thelocation = lang.tl(L"m√•let") + L"#";
   }
   else if (changeover) {
-    location = L"vid v‰xeln";
-    locverb = L"v‰xlar";
-    thelocation = lang.tl(L"v‰xeln") + L"#";
+    location = L"vid v√§xeln";
+    locverb = L"v√§xlar";
+    thelocation = lang.tl(L"v√§xeln") + L"#";
   }
   else {
     thelocation = crs ? (crs->getRadioName(res.control) + L"#") : L"#";
@@ -558,31 +558,31 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   if (finish || changeover) {
     if (res.place == 1) {
       if ((ahead == 0 && behind == 0) || firstTimes[key] == res.time)
-        msg = L"‰r fˆrst " + location + L" med tiden X.#" + timeS;
+        msg = L"√§r f√∂rst " + location + L" med tiden X.#" + timeS;
       else if (!sharedPlace) {
         msg = L"tar ledningen med tiden X.#" + timeS;
         if (behind  && res.place>2) {
           wstring stime(getTimeDesc(behind->runTime, totTime));
-          details.push_back(L"‰r X fˆre Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
+          details.push_back(L"√§r X f√∂re Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
         }
       }
       else
-        msg = L"gÂr upp i delad ledning med tiden X.#" + timeS;
+        msg = L"g√•r upp i delad ledning med tiden X.#" + timeS;
     }
     else {
       if (firstTimes[key] == res.time) {
-        msg = L"var fˆrst " + location + L" med tiden X.#" + timeS;
+        msg = L"var f√∂rst " + location + L" med tiden X.#" + timeS;
 
         if (!sharedPlace) {
-          details.push_front(L"‰r nu pÂ X plats med tiden Y.#" +
+          details.push_front(L"√§r nu p√• X plats med tiden Y.#" +
                       getOrder(res.place) + L"#" + timeS);
           if (ahead && res.place != 2) {
             wstring stime(getTimeDesc(ahead->runTime, totTime));
-            details.push_back(L"‰r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+            details.push_back(L"√§r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
           }
         }
         else {
-          details.push_back(L"‰r nu pÂ delad X plats med tiden Y.#" + getOrder(res.place) +
+          details.push_back(L"√§r nu p√• delad X plats med tiden Y.#" + getOrder(res.place) +
                                                         L"#" + timeS);
           wstring share;
           getSharedResult(res, share);
@@ -590,15 +590,15 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
         }
       }
       else if (!sharedPlace) {
-        msg = locverb + L" pÂ X plats med tiden Y.#" +
+        msg = locverb + L" p√• X plats med tiden Y.#" +
                   getOrder(res.place) + L"#" + timeS;
         if (ahead && res.place != 2) {
           wstring stime(getTimeDesc(ahead->runTime, totTime));
-          details.push_back(L"‰r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+          details.push_back(L"√§r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
         }
       }
       else {
-        msg = locverb + L" pÂ delad X plats med tiden Y.#" + getOrder(res.place) +
+        msg = locverb + L" p√• delad X plats med tiden Y.#" + getOrder(res.place) +
                                                       L"#" + timeS;
         wstring share;
         getSharedResult(res, share);
@@ -630,31 +630,31 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
   else {
     if (res.place == 1) {
       if ((ahead == 0 && behind == 0) || res.time == firstTimes[key])
-        msg = L"‰r fˆrst vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"√§r f√∂rst vid X med tiden Y.#" + thelocation + timeS;
       else if (!sharedPlace) {
         msg = L"tar ledningen vid X med tiden Y.#" + thelocation + timeS;
         if (behind) {
           wstring stime(getTimeDesc(behind->runTime, totTime));
-          details.push_back(L"‰r X fˆre Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
+          details.push_back(L"√§r X f√∂re Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
         }
       }
       else
-        msg = L"gÂr upp i delad ledning vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"g√•r upp i delad ledning vid X med tiden Y.#" + thelocation + timeS;
     }
     else {
       if (firstTimes[key] == res.time) {
-        msg = L"var fˆrst vid X med tiden Y.#" + thelocation + timeS;
+        msg = L"var f√∂rst vid X med tiden Y.#" + thelocation + timeS;
 
         if (!sharedPlace) {
-          details.push_front(L"‰r nu pÂ X plats med tiden Y.#" +
+          details.push_front(L"√§r nu p√• X plats med tiden Y.#" +
                         getOrder(res.place) + L"#" + timeS);
           if (ahead) {
             wstring stime(getTimeDesc(ahead->runTime, totTime));
-            details.push_back(L"‰r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+            details.push_back(L"√§r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
           }
         }
         else {
-          details.push_back(L"‰r nu pÂ delad X plats med tiden Y.#" + getOrder(res.place) +
+          details.push_back(L"√§r nu p√• delad X plats med tiden Y.#" + getOrder(res.place) +
                                                         L"#" + timeS);
           wstring share;
           getSharedResult(res, share);
@@ -662,16 +662,16 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
         }
       }
       else if (!sharedPlace) {
-        msg = L"st‰mplar vid X som Y, pÂ tiden Z.#" +
+        msg = L"st√§mplar vid X som Y, p√• tiden Z.#" +
                       thelocation + getNumber(res.place) +
                       L"#" + timeS;
         if (ahead && res.place>2) {
           wstring stime(getTimeDesc(ahead->runTime, totTime));
-          details.push_back(L"‰r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+          details.push_back(L"√§r X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
         }
       }
       else {
-        msg = L"st‰mplar vid X som delad Y med tiden Z.#" + thelocation + getNumber(res.place) +
+        msg = L"st√§mplar vid X som delad Y med tiden Z.#" + thelocation + getNumber(res.place) +
                                                       L"#" + timeS;
         wstring share;
         getSharedResult(res, share);

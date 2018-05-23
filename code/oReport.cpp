@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -54,7 +54,7 @@
 void oEvent::generateCompetitionReport(gdioutput &gdi)
 {
   gdi.fillDown();
-  gdi.addString("", boldLarge, "T‰vlingsstatistik");
+  gdi.addString("", boldLarge, "T√§vlingsstatistik");
 
 
   int lh = gdi.getLineHeight();
@@ -112,7 +112,7 @@ void oEvent::generateCompetitionReport(gdioutput &gdi)
   types.clear();
   types.push_back(ctOpen);
 
-  gdi.addString("", boldText, "÷ppna klasser, vuxna");
+  gdi.addString("", boldText, "√ñppna klasser, vuxna");
   set<int> adultFee;
   set<int> youthFee;
 
@@ -136,7 +136,7 @@ void oEvent::generateCompetitionReport(gdioutput &gdi)
   started_sum +=  started;
   fee_sum += fee;
 
-  gdi.addString("", boldText, "÷ppna klasser, ungdom");
+  gdi.addString("", boldText, "√ñppna klasser, ungdom");
 
   cfee = getDCI().getInt("YouthFee");
   if (cfee > 0)
@@ -147,7 +147,7 @@ void oEvent::generateCompetitionReport(gdioutput &gdi)
   started_sum_y +=  started;
   fee_sum_y += fee;
 
-  gdi.addString("", boldText, "Sammanst‰llning");
+  gdi.addString("", boldText, "Sammanst√§llning");
   gdi.dropLine();
   int xp = gdi.getCX();
   int yp = gdi.getCY();
@@ -157,7 +157,7 @@ void oEvent::generateCompetitionReport(gdioutput &gdi)
   gdi.addString("", yp, xp+400, textRight|fontMedium, "Totalt");
 
   yp+=lh;
-  gdi.addString("", yp, xp+0, fontMedium, "Anm‰lda");
+  gdi.addString("", yp, xp+0, fontMedium, "Anm√§lda");
   gdi.addStringUT(yp, xp+200, textRight|fontMedium, itos(entries_sum));
   gdi.addStringUT(yp, xp+300, textRight|fontMedium, itos(entries_sum_y));
   gdi.addStringUT(yp, xp+400, textRight|boldText, itos(entries_sum+entries_sum_y));
@@ -181,22 +181,22 @@ void oEvent::generateCompetitionReport(gdioutput &gdi)
   gdi.addStringUT(yp, xp+400, textRight|boldText, itos(entries_sum*15+entries_sum_y*5));
 
   yp+=lh*2;
-  gdi.addString("", yp, xp+0,fontMedium, "Underlag fˆr t‰vlingsavgift:");
+  gdi.addString("", yp, xp+0,fontMedium, "Underlag f√∂r t√§vlingsavgift:");
   int baseFee =  (fee_sum+fee_sum_y) - (entries_sum*15+5*entries_sum_y);
   gdi.addStringUT(yp, xp+200,fontMedium, itos(baseFee));
 
   yp+=lh;
-  gdi.addString("", yp, xp+0,fontMedium, "Total t‰vlingsavgift:");
+  gdi.addString("", yp, xp+0,fontMedium, "Total t√§vlingsavgift:");
   int cmpFee =  int((baseFee * .34 * (baseFee - 5800)) / (200000));
   gdi.addStringUT(yp, xp+200, fontMedium, itos(cmpFee));
 
   yp+=lh;
-  gdi.addString("", yp, xp, fontMedium, "Avrundad t‰vlingsavgift:");
+  gdi.addString("", yp, xp, fontMedium, "Avrundad t√§vlingsavgift:");
   gdi.addStringUT(yp, xp+200, boldText, itos(((cmpFee+50))/100)+"00");
 
   gdi.dropLine();
-  gdi.addString("", boldText, "Geografisk fˆrdelning");
-  gdi.addString("", fontSmall, "Anm‰lda per distrikt");
+  gdi.addString("", boldText, "Geografisk f√∂rdelning");
+  gdi.addString("", fontSmall, "Anm√§lda per distrikt");
   gdi.dropLine(0.2);
   yp = gdi.getCY();
   vector<int> runners;
@@ -235,7 +235,7 @@ void oEvent::generateStatisticsPart(gdioutput &gdi, const vector<ClassMetaType> 
   gdi.addString("", yp, xp+dx[0], fontSmall, "Klass");
   gdi.addString("", yp, xp+dx[1], textRight|fontSmall, "Anm. avg.");
   gdi.addString("", yp, xp+dx[2], textRight|fontSmall, "Grund avg.");
-  gdi.addString("", yp, xp+dx[3], textRight|fontSmall, "Anm‰lda");
+  gdi.addString("", yp, xp+dx[3], textRight|fontSmall, "Anm√§lda");
   gdi.addString("", yp, xp+dx[4], textRight|fontSmall, "Avgift");
   gdi.addString("", yp, xp+dx[5], textRight|fontSmall, "Startande");
   yp+=lh;
@@ -309,30 +309,30 @@ void oEvent::getDistricts(vector<string> &districts)
 {
   districts.resize(24);
   int i=0;
-  districts[i++]="÷vriga";
+  districts[i++]="√ñvriga";
   districts[i++]="Blekinge";
-  districts[i++]="Bohusl‰n-Dal";
+  districts[i++]="Bohusl√§n-Dal";
   districts[i++]="Dalarna";
   districts[i++]="Gotland";
-  districts[i++]="G‰strikland";
-  districts[i++]="Gˆteborg";
+  districts[i++]="G√§strikland";
+  districts[i++]="G√∂teborg";
   districts[i++]="Halland";
-  districts[i++]="H‰lsingland";
-  districts[i++]="J‰mtland-H‰rjedalan";
+  districts[i++]="H√§lsingland";
+  districts[i++]="J√§mtland-H√§rjedalan";
   districts[i++]="Medelpad";
   districts[i++]="Norrbotten";
-  districts[i++]="÷rebro l‰n";
-  districts[i++]="SkÂne";
-  districts[i++]="SmÂland";
+  districts[i++]="√ñrebro l√§n";
+  districts[i++]="Sk√•ne";
+  districts[i++]="Sm√•land";
   districts[i++]="Stockholm";
-  districts[i++]="Sˆdermanland";
+  districts[i++]="S√∂dermanland";
   districts[i++]="Uppland";
-  districts[i++]="V‰rmland";
-  districts[i++]="V‰sterbotten";
-  districts[i++]="V‰stergˆtland";
-  districts[i++]="V‰stmanland";
-  districts[i++]="≈ngermanland";
-  districts[i++]="÷stergˆtland";
+  districts[i++]="V√§rmland";
+  districts[i++]="V√§sterbotten";
+  districts[i++]="V√§sterg√∂tland";
+  districts[i++]="V√§stmanland";
+  districts[i++]="√Öngermanland";
+  districts[i++]="√ñsterg√∂tland";
 }
 
 
@@ -359,7 +359,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   int x=gdi.getCX();
   int lh=gdi.getLineHeight();
 
-  gdi.addStringUT(2, lang.tl(L"Rapport infˆr: ") + getName());
+  gdi.addStringUT(2, lang.tl(L"Rapport inf√∂r: ") + getName());
 
   gdi.addStringUT(1, getDate());
   gdi.dropLine();
@@ -459,7 +459,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   
   const string Ellipsis="[ ... ]";
 
-  swprintf_s(bf, lang.tl("Lˆpare utan klass: %d.").c_str(), no_class.size());
+  swprintf_s(bf, lang.tl("L√∂pare utan klass: %d.").c_str(), no_class.size());
   gdi.addStringUT(1, bf);
   i=0;
 
@@ -474,7 +474,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   if (!no_class.empty()) gdi.addStringUT(1, Ellipsis);
 
   gdi.dropLine();
-  swprintf_s(bf, lang.tl("Lˆpare utan bana: %d.").c_str(), no_course.size());
+  swprintf_s(bf, lang.tl("L√∂pare utan bana: %d.").c_str(), no_course.size());
   gdi.addStringUT(1, bf);
   i=0;
 
@@ -490,7 +490,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
     gdi.dropLine();
-    swprintf_s(bf, lang.tl("Lˆpare utan klubb: %d.").c_str(), no_club.size());
+    swprintf_s(bf, lang.tl("L√∂pare utan klubb: %d.").c_str(), no_club.size());
     gdi.addStringUT(1, bf);
     i=0;
 
@@ -503,7 +503,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   }
 
   gdi.dropLine();
-  swprintf_s(bf, lang.tl("Lˆpare utan starttid: %d.").c_str(), no_start.size());
+  swprintf_s(bf, lang.tl("L√∂pare utan starttid: %d.").c_str(), no_start.size());
   gdi.addStringUT(1, bf);
   i=0;
 
@@ -519,7 +519,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   if (!no_start.empty()) gdi.addStringUT(1, Ellipsis);
 
   gdi.dropLine();
-  swprintf_s(bf, lang.tl("Lˆpare utan SI-bricka: %d.").c_str(), no_card.size());
+  swprintf_s(bf, lang.tl("L√∂pare utan SI-bricka: %d.").c_str(), no_card.size());
   gdi.addStringUT(1, bf);
   i=0;
 
@@ -562,7 +562,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
       if (r_it->getCardNo() > 0 && r_it->getCardNo() < 300000) {
         if (!header) {
           gdi.dropLine();
-          gdi.addStringUT(1, "Gamla brickor utan stˆd fˆr lÂnga tider");
+          gdi.addStringUT(1, "Gamla brickor utan st√∂d f√∂r l√•nga tider");
           header = true;
         }
         
@@ -600,7 +600,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     }
 
     gdi.dropLine();
-    gdi.addString("", 1, "Lˆpare som fˆrekommer i mer ‰n ett lag:");
+    gdi.addString("", 1, "L√∂pare som f√∂rekommer i mer √§n ett lag:");
     bool any = false;
     for (r_it=Runners.begin(); r_it != Runners.end(); ++r_it){
       if (r_it->_objectmarker>1) {
@@ -672,7 +672,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
           }
         }
         else
-          gdi.addString("", 0, "Lˆpare saknas");
+          gdi.addString("", 0, "L√∂pare saknas");
       }
     }
     gdi.dropLine();

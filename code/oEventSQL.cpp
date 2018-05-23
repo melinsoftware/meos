@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -145,7 +145,7 @@ bool oEvent::msSynchronize(oBase *ob)
 
   if (ret==1) {
     gdibase.RemoveFirstInfoBox("sqlwarning");
-    gdibase.addInfoBox("sqlwarning", L"Varning: ‰ndringar i X blev ˆverskrivna#" + ob->getInfo(), 5000);
+    gdibase.addInfoBox("sqlwarning", L"Varning: √§ndringar i X blev √∂verskrivna#" + ob->getInfo(), 5000);
   }
   return ret!=0;
 }
@@ -502,14 +502,14 @@ bool oEvent::uploadSynchronize()
   if ( !msOpenDatabase(this) ){
     char bf[256];
     msGetErrorState(bf);
-    string error = string("Kunde inte ˆppna databasen (X).#") + bf;
+    string error = string("Kunde inte √∂ppna databasen (X).#") + bf;
     throw std::exception(error.c_str());
   }
 
   if ( !msSynchronizeUpdate(this) ) {
     char bf[256];
     msGetErrorState(bf);
-    string error = string("Kunde inte ladda upp t‰vlingen (X).#") + bf;
+    string error = string("Kunde inte ladda upp t√§vlingen (X).#") + bf;
     throw std::exception(error.c_str());
   }
 
@@ -518,13 +518,13 @@ bool oEvent::uploadSynchronize()
   if (stat == opStatusFail) {
     char bf[256];
     msGetErrorState(bf);
-    string error = string("Kunde inte ladda upp lˆpardatabasen (X).#") + bf;
+    string error = string("Kunde inte ladda upp l√∂pardatabasen (X).#") + bf;
     throw meosException(error);
   }
   else if (stat == opStatusWarning) {
     char bf[256];
     msGetErrorState(bf);
-    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp lˆpardatabasen (X).#") + gdibase.widen(bf), 5000);
+    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp l√∂pardatabasen (X).#") + gdibase.widen(bf), 5000);
   }
 
   HasDBConnection=true;
@@ -600,7 +600,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
     char bf[256];
     msGetErrorState(bf);
 
-    string err = string("Kunde inte ˆppna t‰vlingen (X)#") + bf;
+    string err = string("Kunde inte √∂ppna t√§vlingen (X)#") + bf;
     throw std::exception(err.c_str());
   }
   else if (ret == 1) {
@@ -906,7 +906,7 @@ void oEvent::closeDBConnection()
 
   if (!oe->empty() && hadDB) {
     save();
-    Name+=L" (Lokal kopia frÂn: " + gdibase.widen(serverName) + L")";
+    Name+=L" (Lokal kopia fr√•n: " + gdibase.widen(serverName) + L")";
     wstring cn = currentNameId + L"." + gdibase.widen(serverName) + L".meos";
     getUserFile(CurrentFile, cn.c_str());
     serverName.clear();
@@ -972,7 +972,7 @@ void oEvent::dropDatabase()
     if (strlen(bf)>0)
       throw std::exception(bf);
 
-    throw std::exception("Operationen misslyckades. Orsak ok‰nd.");
+    throw std::exception("Operationen misslyckades. Orsak ok√§nd.");
   }
   clear();
 }

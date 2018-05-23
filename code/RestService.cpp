@@ -1,4 +1,4 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "RestService.h"
 #include "meos_util.h"
 #include "restserver.h"
@@ -42,7 +42,7 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
   if (!server)
     gdi.addInput("Port", itow(port), 10, 0, L"Port:", L"#http://localhost:[PORT]/meos");
   else 
-    gdi.addString("", 0, "Server startad på X#" + itos(port));
+    gdi.addString("", 0, "Server startad pÃ¥ X#" + itos(port));
 
   gdi.popX();
   gdi.addString("", 10, "help:rest");
@@ -53,13 +53,13 @@ void RestService::status(gdioutput &gdi) {
   gdi.addString("", 1, name);
 
   if (server) {
-    gdi.addString("", 0, "Server startad på X#" + itos(port));
+    gdi.addString("", 0, "Server startad pÃ¥ X#" + itos(port));
 
     RestServer::Statistics rs;
     server->getStatistics(rs);
-    gdi.addString("", 0, "Antal förfrågningar: X.#" + itos(rs.numRequests));
+    gdi.addString("", 0, "Antal fÃ¶rfrÃ¥gningar: X.#" + itos(rs.numRequests));
     gdi.addString("", 0, "Genomsnittlig svarstid: X ms.#" + itos(rs.averageResponseTime));
-    gdi.addString("", 0, "Längsta svarstid: X ms.#" + itos(rs.maxResponseTime));
+    gdi.addString("", 0, "LÃ¤ngsta svarstid: X ms.#" + itos(rs.maxResponseTime));
 
     gdi.dropLine(0.6);
     gdi.addButton("Update", "Uppdatera").setHandler(this);
@@ -72,7 +72,7 @@ void RestService::status(gdioutput &gdi) {
   gdi.fillRight();
   gdi.addButton("Stop", "Stoppa automaten", AutomaticCB).setExtra(getId());
   gdi.fillDown();
-  gdi.addButton("InfoService", "Inställningar...", AutomaticCB).setExtra(getId());
+  gdi.addButton("InfoService", "InstÃ¤llningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
 }
 

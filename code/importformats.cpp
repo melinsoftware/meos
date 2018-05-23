@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -38,7 +38,7 @@ void ImportFormats::getImportFormats(vector< pair<string, size_t> > &formats) {
 }
 
 int ImportFormats::getDefault(oEvent &oe) {
-  return oe.getPropertyString("Language", "English") == "FranÁais" ? FrenchFederationMapping : Default;
+  return oe.getPropertyString("Language", "English") == "Fran√ßais" ? FrenchFederationMapping : Default;
 }
 */
 void ImportFormats::getExportFormats(vector< pair<wstring, size_t> > &types, bool exportFilter) {
@@ -85,7 +85,7 @@ void ImportFormats::getOECSVLanguage(vector< pair<wstring, size_t> > &typeLangua
   typeLanguages.push_back(make_pair(L"Svenska", 2));
   typeLanguages.push_back(make_pair(L"Deutsch", 3));
   typeLanguages.push_back(make_pair(L"Dansk", 4));
-  typeLanguages.push_back(make_pair(L"FranÁais", 5));
+  typeLanguages.push_back(make_pair(L"Fran√ßais", 5));
   typeLanguages.push_back(make_pair(L"Russian", 6));
 }
   
@@ -101,7 +101,7 @@ int ImportFormats::getDefaultCSVLanguage(oEvent &oe) {
     defaultLanguageType = 3;
   else if (currentLanguage == "Dansk")
     defaultLanguageType = 4;
-  else if (currentLanguage == "FranÁais")
+  else if (currentLanguage == "Fran√ßais")
     defaultLanguageType = 5;
   else if (currentLanguage == "Russian(ISO 8859 - 5)")
     defaultLanguageType = 6;

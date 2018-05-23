@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -314,7 +314,7 @@ void oTeam::setRunnerInternal(int k, pRunner r)
   if (Runners[k]) {
     Runners[k]->tInTeam = this;
     Runners[k]->tLeg = k;
-    if (Class && Class->getLegType(k) != LTGroup)
+    if (Class && (Runners[k]->Class==nullptr || Class->getLegType(k) != LTGroup))
       Runners[k]->setClassId(getClassId(false), false);
   }
   updateChanged();
@@ -931,6 +931,8 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
 
     if (Runners[i]) {
       pClass actualClass = Runners[i]->getClassRef(true);
+      if (actualClass == nullptr)
+        actualClass = Class;
       if (Runners[i]->tInTeam && Runners[i]->tInTeam!=this) {
         Runners[i]->tInTeam->correctRemove(Runners[i]);
       }
@@ -989,7 +991,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
 
         if ((lt==LTParallel || lt==LTParallelOptional) && i==0) {
           pc->setLegType(0, LTNormal);
-          throw std::exception("Första sträckan kan inte vara parallell.");
+          throw std::exception("FÃ¶rsta strÃ¤ckan kan inte vara parallell.");
         }
         if (lt==LTIgnore || lt==LTExtra) {
           if (st != STDrawn)
@@ -1789,14 +1791,14 @@ Table *oEvent::getTeamsTB() //Table mode
     Table *table=new Table(this, 20, L"Lag(flera)", "teams");
 
     table->addColumn("Id", 70, true, true);
-    table->addColumn("Ändrad", 70, false);
+    table->addColumn("Ã„ndrad", 70, false);
 
     table->addColumn("Namn", 200, false);
     table->addColumn("Klass", 120, false);
     table->addColumn("Klubb", 120, false);
 
     table->addColumn("Start", 70, false, true);
-    table->addColumn("Mål", 70, false, true);
+    table->addColumn("MÃ¥l", 70, false, true);
     table->addColumn("Status", 70, false);
     table->addColumn("Tid", 70, false, true);
 
@@ -1804,7 +1806,7 @@ Table *oEvent::getTeamsTB() //Table mode
     table->addColumn("Start nr.", 70, true, false);
 
     for (unsigned k = 0; k < nRunnerMax; k++) {
-      table->addColumn("Sträcka X#" + itos(k+1), 200, false, false);
+      table->addColumn("StrÃ¤cka X#" + itos(k+1), 200, false, false);
       table->addColumn("Bricka X#" + itos(k+1), 70, true, true);
     }
     nRunnerMaxStored = nRunnerMax;
@@ -1813,7 +1815,7 @@ Table *oEvent::getTeamsTB() //Table mode
 
     table->addColumn("Tid in", 70, false, true);
     table->addColumn("Status in", 70, false, true);
-    table->addColumn("Poäng in", 70, true);
+    table->addColumn("PoÃ¤ng in", 70, true);
     table->addColumn("Placering in", 70, true);
 
     tables["team"] = table;
@@ -1952,7 +1954,7 @@ bool oTeam::inputData(int id, const wstring &input,
       apply(false, 0, false);
       s=getStartTime();
       if (s!=t)
-        throw std::exception("Starttiden är definerad genom klassen eller löparens startstämpling.");
+        throw std::exception("Starttiden Ã¤r definerad genom klassen eller lÃ¶parens startstÃ¤mpling.");
       synchronize(true);
       output = getStartTimeS();
       return true;
@@ -2044,7 +2046,7 @@ void oTeam::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &sele
   }
   else if (id==TID_CLUB) {
     oe->fillClubs(out);
-    out.push_back(make_pair(lang.tl(L"Klubblös"), 0));
+    out.push_back(make_pair(lang.tl(L"KlubblÃ¶s"), 0));
     selected = getClubId();
   }
   else if (id==TID_STATUS || id==TID_INPUTSTATUS) {
@@ -2067,7 +2069,7 @@ void oTeam::removeRunner(gdioutput &gdi, bool askRemoveRunner, int i) {
 
   //No need to delete multi runners. Disappears when parent is gone.
   if (p_old && !oe->isRunnerUsed(p_old->getId())){
-    if (!askRemoveRunner || gdi.ask(L"Ska X raderas från tävlingen?#" + p_old->getName())){
+    if (!askRemoveRunner || gdi.ask(L"Ska X raderas frÃ¥n tÃ¤vlingen?#" + p_old->getName())){
       vector<int> oldR;
       oldR.push_back(p_old->getId());
       oe->removeRunner(oldR);

@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -131,22 +131,22 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
     femaleString = "F";
     break;
   case 2: // Svenska
-    csv.outputRow("Startnr;Bricka;Databas nr.;Efternamn;Förnamn;År;K;Block;ut;Start;Mål;Tid;Status;Klubb nr.;Namn;Ort;Land;Klass nr.;Kort;Lång;Num1;Num2;Num3;Text1;Text2;Text3;Adr. namn;Gata;Rad 2;Post nr.;Ort;Tel;Fax;E-post;Id/Club;Hyrd;Startavgift;Betalt;Bana nr.;Bana;km;Hm;Bana kontroller;Pl;Startstämpling;Målstämpling;Kontroll1;Stämplar1;Kontroll2;Stämplar2;Kontroll3;Stämplar3;Kontroll4;Stämplar4;Kontroll5;Stämplar5;Kontroll6;Stämplar6;Kontroll7;Stämplar7;Kontroll8;Stämplar8;Kontroll9;Stämplar9;Kontroll10;Stämplar10;(kan fortsätta)..");
+    csv.outputRow("Startnr;Bricka;Databas nr.;Efternamn;FÃ¶rnamn;Ã…r;K;Block;ut;Start;MÃ¥l;Tid;Status;Klubb nr.;Namn;Ort;Land;Klass nr.;Kort;LÃ¥ng;Num1;Num2;Num3;Text1;Text2;Text3;Adr. namn;Gata;Rad 2;Post nr.;Ort;Tel;Fax;E-post;Id/Club;Hyrd;Startavgift;Betalt;Bana nr.;Bana;km;Hm;Bana kontroller;Pl;StartstÃ¤mpling;MÃ¥lstÃ¤mpling;Kontroll1;StÃ¤mplar1;Kontroll2;StÃ¤mplar2;Kontroll3;StÃ¤mplar3;Kontroll4;StÃ¤mplar4;Kontroll5;StÃ¤mplar5;Kontroll6;StÃ¤mplar6;Kontroll7;StÃ¤mplar7;Kontroll8;StÃ¤mplar8;Kontroll9;StÃ¤mplar9;Kontroll10;StÃ¤mplar10;(kan fortsÃ¤tta)..");
     maleString = "M"; 
     femaleString = "K"; 
     break;
   case 3: // Deutsch
-    csv.outputRow("Stnr;Chip;Datenbank Id;Nachname;Vorname;Jg;G;Block;AK;Start;Ziel;Zeit;Wertung;Club-Nr.;Abk;Ort;Nat;Katnr;Kurz;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. Name;Straße;Zeile2;PLZ;Ort;Tel;Fax;EMail;Id/Verein;Gemietet;Startgeld;Bezahlt;Bahnnummer;Bahn;km;Hm;Bahn Posten;Pl;Startstempel;Zielstempel;Posten1;Stempel1;Posten2;Stempel2;Posten3;Stempel3;Posten4;Stempel4;Posten5;Stempel5;Posten6;Stempel6;Posten7;Stempel7;Posten8;Stempel8;Posten9;Stempel9;Posten10;Stempel10;(und weitere)...");
+    csv.outputRow("Stnr;Chip;Datenbank Id;Nachname;Vorname;Jg;G;Block;AK;Start;Ziel;Zeit;Wertung;Club-Nr.;Abk;Ort;Nat;Katnr;Kurz;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. Name;StraÃŸe;Zeile2;PLZ;Ort;Tel;Fax;EMail;Id/Verein;Gemietet;Startgeld;Bezahlt;Bahnnummer;Bahn;km;Hm;Bahn Posten;Pl;Startstempel;Zielstempel;Posten1;Stempel1;Posten2;Stempel2;Posten3;Stempel3;Posten4;Stempel4;Posten5;Stempel5;Posten6;Stempel6;Posten7;Stempel7;Posten8;Stempel8;Posten9;Stempel9;Posten10;Stempel10;(und weitere)...");
     maleString = "M";
     femaleString = "W";
     break;
   case 4: // Dansk
-    csv.outputRow("Stnr;Brik;Database ID;Efternavn;Fornavn;År;K;Blok;UFK;Start;Mål;Tid;Status;Klub nr.;Navn;Klub;Land;Klasse nr.;kort;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. navn;Gade;Linie2;Post nr.;Klub;Tlf.;Fax.;Email;Id/klub;Lejet;Startafgift;Betalt;Bane nr.;Bane;km;Hm;Poster på bane;Pl;Start-stempling;Mål-stempling;Post1;Klip1;Post2;Klip2;Post3;Klip3;Post4;Klip4;Post5;Klip5;Post6;Klip6;Post7;Klip7;Post8;Klip8;Post9;Klip9;Post10;Klip10;(måske mere)...");
+    csv.outputRow("Stnr;Brik;Database ID;Efternavn;Fornavn;Ã…r;K;Blok;UFK;Start;MÃ¥l;Tid;Status;Klub nr.;Navn;Klub;Land;Klasse nr.;kort;Lang;Num1;Num2;Num3;Text1;Text2;Text3;Adr. navn;Gade;Linie2;Post nr.;Klub;Tlf.;Fax.;Email;Id/klub;Lejet;Startafgift;Betalt;Bane nr.;Bane;km;Hm;Poster pÃ¥ bane;Pl;Start-stempling;MÃ¥l-stempling;Post1;Klip1;Post2;Klip2;Post3;Klip3;Post4;Klip4;Post5;Klip5;Post6;Klip6;Post7;Klip7;Post8;Klip8;Post9;Klip9;Post10;Klip10;(mÃ¥ske mere)...");
     maleString = "M";
     femaleString = "K";
     break;
-  case 5: // Français
-    csv.outputRow("N° dép.;Puce;Ident. base de données;Nom;Prénom;Né;S;Plage;nc;Départ;Arrivée;Temps;Evaluation;N° club;Nom;Ville;Nat;N° cat.;Court;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. nom;Rue;Ligne2;Code Post.;Ville;Tél.;Fax;E-mail;Id/Club;Louée;Engagement;Payé;Circuit N°;Circuit;km;m;Postes du circuit;Pl;Poinçon de départ;Arrivée (P);Poste1;Poinçon1;Poste2;Poinçon2;Poste3;Poinçon3;Poste4;Poinçon4;Poste5;Poinçon5;Poste6;Poinçon6;Poste7;Poinçon7;Poste8;Poinçon8;Poste9;Poinçon9;Poste10;Poinçon10;(peut être plus) ...");
+  case 5: // FranÃ§ais
+    csv.outputRow("NÂ° dÃ©p.;Puce;Ident. base de donnÃ©es;Nom;PrÃ©nom;NÃ©;S;Plage;nc;DÃ©part;ArrivÃ©e;Temps;Evaluation;NÂ° club;Nom;Ville;Nat;NÂ° cat.;Court;Long;Num1;Num2;Num3;Text1;Text2;Text3;Adr. nom;Rue;Ligne2;Code Post.;Ville;TÃ©l.;Fax;E-mail;Id/Club;LouÃ©e;Engagement;PayÃ©;Circuit NÂ°;Circuit;km;m;Postes du circuit;Pl;PoinÃ§on de dÃ©part;ArrivÃ©e (P);Poste1;PoinÃ§on1;Poste2;PoinÃ§on2;Poste3;PoinÃ§on3;Poste4;PoinÃ§on4;Poste5;PoinÃ§on5;Poste6;PoinÃ§on6;Poste7;PoinÃ§on7;Poste8;PoinÃ§on8;Poste9;PoinÃ§on9;Poste10;PoinÃ§on10;(peut Ãªtre plus) ...");
     maleString = "H";
     femaleString = "F";
     break;
@@ -312,7 +312,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
   if (xo) {
 
-    gdi.addString("", 0, "Importerar anmälningar (IOF, xml)");
+    gdi.addString("", 0, "Importerar anmÃ¤lningar (IOF, xml)");
     gdi.refreshFast();
     int ent = 0, fail = 0, removed = 0;
 
@@ -372,7 +372,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
   if (xo) {
 
-    gdi.addString("", 0, "Importerar anmälningar (IOF, xml)");
+    gdi.addString("", 0, "Importerar anmÃ¤lningar (IOF, xml)");
     gdi.refreshFast();
 
     int ent = 0, fail = 0;
@@ -566,13 +566,13 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
   xo=xml.getObject("EventList");
 
   if (xo) {
-    gdi.addString("", 0, "Importerar tävlingsdata (IOF, xml)");
+    gdi.addString("", 0, "Importerar tÃ¤vlingsdata (IOF, xml)");
     gdi.refreshFast();
 
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false);
       reader.readEventList(gdi, xo);
-      gdi.addString("", 0, L"Tävlingens namn: X#" + getName());
+      gdi.addString("", 0, L"TÃ¤vlingens namn: X#" + getName());
       gdi.dropLine();
       gdi.refreshFast();
     }
@@ -585,7 +585,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
       for(it=xl.begin(); it != xl.end(); ++it){
         if (it->is("Event")){
           addXMLEvent(*it);
-          gdi.addString("", 0, L"Tävlingens namn: X#" + getName());
+          gdi.addString("", 0, L"TÃ¤vlingens namn: X#" + getName());
           gdi.dropLine();
           gdi.refreshFast();
           break;
@@ -692,7 +692,7 @@ bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
 
 bool oEvent::addOECSVCompetitorDB(const vector<wstring> &row)
 {
-  // Ident. base de données;Puce;Nom;Prénom;Né;S;N° club;Nom;Ville;Nat;N° cat.;Court;Long;Num1;Num2;Num3;E_Mail;Texte1;Texte2;Texte3;Adr. nom;Rue;Ligne2;Code Post.;Ville;Tél.;Fax;E-mail;Id/Club;Louée
+  // Ident. base de donnÃ©es;Puce;Nom;PrÃ©nom;NÃ©;S;NÂ° club;Nom;Ville;Nat;NÂ° cat.;Court;Long;Num1;Num2;Num3;E_Mail;Texte1;Texte2;Texte3;Adr. nom;Rue;Ligne2;Code Post.;Ville;TÃ©l.;Fax;E-mail;Id/Club;LouÃ©e
   enum { OEid = 0, OEcard = 1, OEsurname = 2, OEfirstname = 3, OEbirth = 4, OEsex = 5,
     OEclubno = 6, OEclub = 7, OEclubcity = 8, OEnat = 9, OEclassno = 10, OEclassshort = 11, OEclasslong = 12
   };
@@ -1131,12 +1131,12 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
   csvparser cp;
   list< vector<wstring> > data;
 
-  gdibase.addString("",0,"Läser löpare...");
+  gdibase.addString("",0,"LÃ¤ser lÃ¶pare...");
   gdibase.refresh();
 
   cp.parse(oecsvfile, data);
 
-  gdibase.addString("", 0, "Behandlar löpardatabasen").setColor(colorGreen);
+  gdibase.addString("", 0, "Behandlar lÃ¶pardatabasen").setColor(colorGreen);
   
   gdibase.refresh();
 
@@ -1163,13 +1163,13 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
     if (stat == opStatusFail) {
       char bf[256];
       msGetErrorState(bf);
-      string error = string("Kunde inte ladda upp löpardatabasen (X).#") + bf;
+      string error = string("Kunde inte ladda upp lÃ¶pardatabasen (X).#") + bf;
       throw meosException(error);
     }
     else if (stat == opStatusWarning) {
       char bf[256];
       msGetErrorState(bf);
-      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp lÃ¶pardatabasen (X).#") + gdibase.widen(bf), 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -1187,12 +1187,12 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     if (clear)
       runnerDB->clearClubs();
 
-    gdibase.addString("",0,"Läser klubbar...");
+    gdibase.addString("",0,"LÃ¤ser klubbar...");
     gdibase.refresh();
 
     xml_club.read(clubfile);
 
-    gdibase.addString("",0,"Lägger till klubbar...");
+    gdibase.addString("",0,"LÃ¤gger till klubbar...");
     gdibase.refresh();
 
     xmlobject xo = xml_club.getObject("ClubList");
@@ -1224,7 +1224,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     xmlparser xml_cmp;
     xml_cmp.setProgress(gdibase.getHWNDTarget());
     gdibase.dropLine();
-    gdibase.addString("",0,"Läser löpare...");
+    gdibase.addString("",0,"LÃ¤ser lÃ¶pare...");
     gdibase.refresh();
 
     xml_cmp.read(competitorfile);
@@ -1233,7 +1233,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
       runnerDB->clearRunners();
     }
 
-    gdibase.addString("",0,"Lägger till löpare...");
+    gdibase.addString("",0,"LÃ¤gger till lÃ¶pare...");
     gdibase.refresh();
 
     int personCount = 0;
@@ -1278,13 +1278,13 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     if (stat == opStatusFail) {
       char bf[256];
       msGetErrorState(bf);
-      string error = string("Kunde inte ladda upp löpardatabasen (X).#") + bf;
+      string error = string("Kunde inte ladda upp lÃ¶pardatabasen (X).#") + bf;
       throw meosException(error);
     }
     else if (stat == opStatusWarning) {
       char bf[256];
       msGetErrorState(bf);
-      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp lÃ¶pardatabasen (X).#") + gdibase.widen(bf), 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -1450,7 +1450,7 @@ bool oEvent::addXMLControl(const xmlobject &xcontrol, int type)
     if (num == 0 && finish.length()>0)
       num = int(finish[finish.length()-1])-'0';
     if (num > 0)
-      finish = lang.tl("Mål ") + itow(num);
+      finish = lang.tl("MÃ¥l ") + itow(num);
     pControl pc = getControl(getFinishIndex(num), true);
     pc->setNumbers(L"");
     pc->setName(finish);

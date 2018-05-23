@@ -1,4 +1,4 @@
-// SportIdent.h: interface for the SportIdent class.
+﻿// SportIdent.h: interface for the SportIdent class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -27,7 +27,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv�gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 const BYTE STX=0x02;

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+﻿#include "StdAfx.h"
 
 #include "qualification_final.h"
 
@@ -76,7 +76,7 @@ void QualificationFinal::import(const wstring &file) {
       wstring name;
       cls.getObjectString("Name", name);
       if (name.empty())
-        throw meosException("Klassen m�ste ha ett namn.");
+        throw meosException("Klassen måste ha ett namn.");
       int classId = cls.getObjectInt("id");
       if (!(classId>0))
         throw meosException("Id must be a positive integer.");

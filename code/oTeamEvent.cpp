@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -315,9 +315,9 @@ void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
 
   gdi.clearList(name);
   gdi.addItem(name, lang.tl("Endast en bana"), PNoMulti);
-  gdi.addItem(name, lang.tl("Utan inst‰llningar"), PNoSettings);
+  gdi.addItem(name, lang.tl("Utan inst√§llningar"), PNoSettings);
   if (hasForked) {
-    gdi.addItem(name, lang.tl("En gafflad str‰cka"), PForking);
+    gdi.addItem(name, lang.tl("En gafflad str√§cka"), PForking);
     gdi.addItem(name, lang.tl("Banpool, gemensam start"), PPool);
     gdi.addItem(name, lang.tl("Banpool, lottad startlista"), PPoolDrawn);
   }
@@ -331,9 +331,9 @@ void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
   if (hasRelay)
     gdi.addItem(name, lang.tl("Stafett"), PRelay);
   if (hasMulti)
-    gdi.addItem(name, lang.tl("TvÂmannastafett"), PTwinRelay);
+    gdi.addItem(name, lang.tl("Tv√•mannastafett"), PTwinRelay);
   if (hasRelay)
-    gdi.addItem(name, lang.tl("Extralˆparstafett"), PYouthRelay);
+    gdi.addItem(name, lang.tl("Extral√∂parstafett"), PYouthRelay);
 }
 
 void oEvent::setupRelayInfo(PredefinedTypes type, bool &useNLeg, bool &useStart)

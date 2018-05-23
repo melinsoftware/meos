@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -1768,7 +1768,7 @@ void SICard::analyseHour12Time(DWORD zeroTime) {
 void SIPunch::analyseHour12Time(DWORD zeroTime) {
   if (Code != -1 && Time>=0 && Time <=12*3600) {
     if (zeroTime < 12 * 3600) {
-      //Förmiddag
+      //FÃ¶rmiddag
       if (Time < zeroTime)
         Time += 12 * 3600; //->Eftermiddag
     }
@@ -1896,7 +1896,6 @@ void SportIdent::addCard(const SICard &sic)
 void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode)
 {
   SICard sic(ConvertedTimeStatus::Hour24);
-  memset(&sic, 0, sizeof(sic));
   sic.CardNumber=Card;
   sic.StartPunch.Code = -1;
   sic.CheckPunch.Code = -1;
@@ -2115,8 +2114,8 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
       info += makeDash(L"-") + itow(k+1);
 
     const SI_StationData &da = si->data[k];
-    if (da.extended) info+=lang.tl(L": Utökat protokoll. ");
-    else info+=lang.tl(L": Äldre protokoll. ");
+    if (da.extended) info+=lang.tl(L": UtÃ¶kat protokoll. ");
+    else info+=lang.tl(L": Ã„ldre protokoll. ");
 
     switch(da.stationMode){
       case 2:
@@ -2124,16 +2123,16 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
         info+=lang.tl(L"Kontrol");
         break;
       case 4:
-        info+=lang.tl(L"Mål");
+        info+=lang.tl(L"MÃ¥l");
         break;
       case 3:
         info+=lang.tl(L"Start");
         break;
       case 5:
-        info+=lang.tl(L"Läs brickor");
+        info+=lang.tl(L"LÃ¤s brickor");
         break;
       case 7:
-        info+=lang.tl(L"Töm");
+        info+=lang.tl(L"TÃ¶m");
         break;
       case 10:
         info+=lang.tl(L"Check");
@@ -2142,7 +2141,7 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
         info+=lang.tl(L"SRR Dongle ") + (da.radioChannel == 0? lang.tl(L"red channel.") : lang.tl(L"blue channel."));
         break;
       default:
-        info+=lang.tl(L"Okänd funktion");
+        info+=lang.tl(L"OkÃ¤nd funktion");
     }
 
     if (da.stationNumber) {
@@ -2152,9 +2151,9 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
     }
 
     info += lang.tl(L" Kommunikation: ");
-    if (da.autoSend) info+=lang.tl(L"skicka stämplar.");
+    if (da.autoSend) info+=lang.tl(L"skicka stÃ¤mplar.");
     else if (da.handShake) info+=lang.tl(L"handskakning.");
-    else info+=lang.tl(L"[VARNING] ingen/okänd.");
+    else info+=lang.tl(L"[VARNING] ingen/okÃ¤nd.");
 
     infov.push_back(info);
   }

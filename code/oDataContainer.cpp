@@ -1,4 +1,4 @@
-/************************************************************************
+﻿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv�gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -658,32 +658,32 @@ bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi) {
 
 string oDataContainer::C_INT64(const string &name)
 {
-  return " "+name+" BIGINT NOT NULL DEFAULT 0, ";
+  return " `"+name+"` BIGINT NOT NULL DEFAULT 0, ";
 }
 
 string oDataContainer::C_INT(const string &name)
 {
-  return " "+name+" INT NOT NULL DEFAULT 0, ";
+  return " `"+name+"` INT NOT NULL DEFAULT 0, ";
 }
 
 string oDataContainer::C_SMALLINT(const string &name)
 {
-  return " "+name+" SMALLINT NOT NULL DEFAULT 0, ";
+  return " `"+name+"` SMALLINT NOT NULL DEFAULT 0, ";
 }
 
 string oDataContainer::C_TINYINT(const string &name)
 {
-  return " "+name+" TINYINT NOT NULL DEFAULT 0, ";
+  return " `"+name+"` TINYINT NOT NULL DEFAULT 0, ";
 }
 
 string oDataContainer::C_SMALLINTU(const string &name)
 {
-  return " "+name+" SMALLINT UNSIGNED NOT NULL DEFAULT 0, ";
+  return " `"+name+"` SMALLINT UNSIGNED NOT NULL DEFAULT 0, ";
 }
 
 string oDataContainer::C_TINYINTU(const string &name)
 {
-  return " "+name+" TINYINT UNSIGNED NOT NULL DEFAULT 0, ";
+  return " `"+name+"` TINYINT UNSIGNED NOT NULL DEFAULT 0, ";
 }
 
 string oDataContainer::C_STRING(const string &name, int len)
@@ -691,10 +691,10 @@ string oDataContainer::C_STRING(const string &name, int len)
   if (len>0) {
     char bf[16];
     sprintf_s(bf, "%d", len);
-    return " "+name+" VARCHAR("+ bf +") NOT NULL DEFAULT '', ";
+    return " `"+name+"` VARCHAR("+ bf +") NOT NULL DEFAULT '', ";
   }
   else {
-    return " "+name+" MEDIUMTEXT NOT NULL, ";
+    return " `"+name+"` MEDIUMTEXT NOT NULL, ";
   }
 }
 
@@ -848,47 +848,47 @@ string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
     if (di.Type==oDTInt) {
       LPBYTE vd=LPBYTE(data)+di.Index;
       if (di.SubType == oIS8U) {
-        sprintf_s(bf, ", %s=%u", di.Name, (*((int *)vd))&0xFF);
+        sprintf_s(bf, ", `%s`=%u", di.Name, (*((int *)vd))&0xFF);
         sql+=bf;
       }
       else if (di.SubType == oIS16U) {
-        sprintf_s(bf, ", %s=%u", di.Name, (*((int *)vd))&0xFFFF);
+        sprintf_s(bf, ", `%s`=%u", di.Name, (*((int *)vd))&0xFFFF);
         sql+=bf;
       }
       else if (di.SubType == oIS8) {
         char r = (*((int *)vd))&0xFF;
-        sprintf_s(bf, ", %s=%d", di.Name, (int)r);
+        sprintf_s(bf, ", `%s`=%d", di.Name, (int)r);
         sql+=bf;
       }
       else if (di.SubType == oIS16) {
         short r = (*((int *)vd))&0xFFFF;
-        sprintf_s(bf, ", %s=%d", di.Name, (int)r);
+        sprintf_s(bf, ", `%s`=%d", di.Name, (int)r);
         sql+=bf;
       }
       else if (di.SubType != oIS64) {
-        sprintf_s(bf, ", %s=%d", di.Name, *((int *)vd));
+        sprintf_s(bf, ", `%s`=%d", di.Name, *((int *)vd));
         sql+=bf;
       }
       else {
         char tmp[32];
         _i64toa_s(*((__int64 *)vd), tmp, 32, 10);
-        sprintf_s(bf, ", %s=%s", di.Name, tmp);
+        sprintf_s(bf, ", `%s`=%s", di.Name, tmp);
         sql+=bf;
       }
     }
     else if (di.Type==oDTString) {
       LPBYTE vd=LPBYTE(data)+di.Index;
-      sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote((wchar_t *)vd).c_str());
+      sprintf_s(bf, ", `%s`='%s'", di.Name, SQL_quote((wchar_t *)vd).c_str());
       sql+=bf;
     }
     else if (di.Type==oDTStringDynamic) {
       const wstring &str = (*strptr)[0][di.Index];
-      sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote(str.c_str()).c_str());
+      sprintf_s(bf, ", `%s`='%s'", di.Name, SQL_quote(str.c_str()).c_str());
       sql+=bf;
     }
     else if (di.Type==oDTStringArray) {
       const wstring str = encodeArray((*strptr)[di.Index]);
-      sprintf_s(bf, ", %s='%s'", di.Name, SQL_quote(str.c_str()).c_str());
+      sprintf_s(bf, ", `%s`='%s'", di.Name, SQL_quote(str.c_str()).c_str());
       sql+=bf;
     }
   }

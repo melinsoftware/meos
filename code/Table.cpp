@@ -1,4 +1,4 @@
-/************************************************************************
+ï»¿/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -776,7 +776,7 @@ bool Table::deleteSelection(gdioutput &gdi) {
   int r1, r2;
   getRowRange(r1, r2);
   if (r1 != -1 && r2 != -1 && r1<=r2) {
-    if (!gdi.ask(L"Vill du radera X rader från tabellen?#" + itow(r2-r1+1)))
+    if (!gdi.ask(L"Vill du radera X rader frÃ¥n tabellen?#" + itow(r2-r1+1)))
       return false;
     gdi.setWaitCursor(true);
     int failed = deleteRows(r1, r2);
@@ -1979,7 +1979,7 @@ void Table::exportClipboard(gdioutput &gdi)
 void Table::importClipboard(gdioutput &gdi)
 {
   if (!canPaste())
-    throw std::exception("Operationen stöds ej");
+    throw std::exception("Operationen stÃ¶ds ej");
 
   wstring str;
   if (OpenClipboard(gdi.getHWNDMain()) != false) {
@@ -2041,7 +2041,7 @@ void Table::importClipboard(gdioutput &gdi)
       tw = max(tw, table[k].size());
 
     if (tw > columns.size())
-      throw std::exception("Antalet columner i urklippet är större än antalet kolumner i tabellen.");
+      throw std::exception("Antalet columner i urklippet Ã¤r stÃ¶rre Ã¤n antalet kolumner i tabellen.");
 
     if (upperRow == -1) {
       if (!gdi.ask(L"Vill du klistra in X nya rader i tabellen?#"+itow(table.size())))
@@ -2055,10 +2055,10 @@ void Table::importClipboard(gdioutput &gdi)
       getRowRange(row1, row2);
 
       if ( (row1 + table.size()) > sortIndex.size() )
-        throw std::exception("Antalet rader i urklipp får inte plats i selektionen.");
+        throw std::exception("Antalet rader i urklipp fÃ¥r inte plats i selektionen.");
 
       if ( (col1 + tw) > columns.size() )
-        throw std::exception("Antalet kolumner i urklipp får inte plats i selektionen.");
+        throw std::exception("Antalet kolumner i urklipp fÃ¥r inte plats i selektionen.");
 
       bool wrongSize = false;
 
@@ -2149,7 +2149,7 @@ void Table::importClipboard(gdioutput &gdi)
 int Table::deleteRows(int row1, int row2)
 {
   if (!canDelete())
-    throw std::exception("Operationen stöds ej");
+    throw std::exception("Operationen stÃ¶ds ej");
 
   int failed = 0;
   for (size_t k = row1; k<=size_t(row2); k++) {
@@ -2173,7 +2173,7 @@ int Table::deleteRows(int row1, int row2)
 
 void Table::insertRow(gdioutput &gdi) {
   if (!canInsert())
-    throw std::exception("Operationen stöds ej");
+    throw std::exception("Operationen stÃ¶ds ej");
 
   TableUpdateInfo tui;
   tui.doAdd = true;
@@ -2284,7 +2284,7 @@ void Table::autoSelectColumns() {
   if (nonEmpty > 1) {
     columns.clear();
     wstring id = lang.tl("Id");
-    wstring mod = lang.tl("Ändrad");
+    wstring mod = lang.tl("Ã„ndrad");
     for (size_t k = 0; k<empty.size(); k++) {
       if (!empty[k] && wcscmp(Titles[k].name, id.c_str()) != 0 && wcscmp(Titles[k].name, mod.c_str()) != 0)
         columns.push_back(k);

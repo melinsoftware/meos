@@ -66,6 +66,7 @@
 #include "restserver.h"
 #include "autocomplete.h"
 #include "image.h"
+#include "csvparser.h"
 
 int defaultCodePage = 1252;
 
@@ -196,7 +197,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   int       nCmdShow)
 {
   hInst = hInstance; // Store instance handle in our global variable
-
+  
   atexit(dumpLeaks);	//
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
@@ -214,7 +215,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     ShowWindow(hSplash, SW_SHOW);
     UpdateWindow(hSplash);
   }
-
   DWORD splashStart = GetTickCount();
 
   for (int k = 0; k < 100; k++) {
@@ -234,6 +234,17 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   StringCache::getInstance().init();
 
   GetCurrentDirectory(MAX_PATH, programPath);
+  bool utfRecode = false;
+  if (utfRecode) {
+    vector<wstring> dyn;
+
+    expandDirectory(L".", L"*.cpp", dyn);
+    expandDirectory(L".", L"*.h", dyn);
+    expandDirectory(L"./meosdb", L"*.cpp", dyn);
+    expandDirectory(L"./meosdb", L"*.h", dyn);
+    for (auto &f : dyn)
+      csvparser::convertUTF(f);
+  }
   
   GetModuleFileName(NULL, exePath, MAX_PATH);
   int lastDiv = -1;

@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 #include "stdafx.h"
@@ -100,8 +100,8 @@ void ListEditor::show(gdioutput &gdi) {
 
   gdi.addButton("EditList", "Egenskaper", editListCB);
   gdi.setCX(gdi.getCX() + gdi.scaleLength(32));
-  gdi.addButton("OpenFile", "÷ppna fil", editListCB);
-  gdi.addButton("OpenInside", "÷ppna frÂn aktuell t‰vling", editListCB);
+  gdi.addButton("OpenFile", "√ñppna fil", editListCB);
+  gdi.addButton("OpenInside", "√ñppna fr√•n aktuell t√§vling", editListCB);
 
   if (savedFileName.empty())
     gdi.addButton("SaveFile", "Spara som fil", editListCB);
@@ -110,11 +110,11 @@ void ListEditor::show(gdioutput &gdi) {
     gdi.addButton("SaveFileCopy", "Spara som...", editListCB);
   }
 
-  gdi.addButton("SaveInside", "Spara i aktuell t‰vling", editListCB);
+  gdi.addButton("SaveInside", "Spara i aktuell t√§vling", editListCB);
   gdi.addButton("NewList", "Ny lista", editListCB);
-  gdi.addButton("RemoveInside", "Radera", editListCB, "Radera listan frÂn aktuell t‰vling");
+  gdi.addButton("RemoveInside", "Radera", editListCB, "Radera listan fr√•n aktuell t√§vling");
   gdi.setInputStatus("RemoveInside", currentIndex != -1);
-  gdi.addButton("Close", "St‰ng", editListCB);
+  gdi.addButton("Close", "St√§ng", editListCB);
 
   gdi.dropLine(2);
 
@@ -160,7 +160,7 @@ void ListEditor::show(gdioutput &gdi) {
     gdi.dropLine(buttonDrop);
   }
   gdi.fillDown();
-  gdi.addButton("AddLine0", "L‰gg till rad", editListCB);
+  gdi.addButton("AddLine0", "L√§gg till rad", editListCB);
 
   gdi.dropLine(0.5);
   gdi.addString("", 1, "Underrubrik");
@@ -174,7 +174,7 @@ void ListEditor::show(gdioutput &gdi) {
     gdi.dropLine(buttonDrop);
   }
   gdi.fillDown();
-  gdi.addButton("AddLine1", "L‰gg till rad", editListCB);
+  gdi.addButton("AddLine1", "L√§gg till rad", editListCB);
 
   gdi.dropLine(0.5);
   gdi.addString("", 1, "Huvudlista");
@@ -188,7 +188,7 @@ void ListEditor::show(gdioutput &gdi) {
     gdi.dropLine(buttonDrop);
   }
   gdi.fillDown();
-  gdi.addButton("AddLine2", "L‰gg till rad", editListCB);
+  gdi.addButton("AddLine2", "L√§gg till rad", editListCB);
 
   gdi.dropLine(0.5);
   gdi.addString("", 1, "Underlista");
@@ -202,7 +202,7 @@ void ListEditor::show(gdioutput &gdi) {
     gdi.dropLine(buttonDrop);
   }
   gdi.fillDown();
-  gdi.addButton("AddLine3", "L‰gg till rad", editListCB);
+  gdi.addButton("AddLine3", "L√§gg till rad", editListCB);
 
   gdi.setRestorePoint("EditList");
 
@@ -256,7 +256,7 @@ void ListEditor::showLine(gdioutput &gdi, const vector<MetaListPost> &line, int 
     addButton(gdi, line[k], gdi.getCX(), gdi.getCY(), ix, k);
   }
 
-  gdi.addButton("AddPost" + itos(ix), "L‰gg till ny", editListCB);
+  gdi.addButton("AddPost" + itos(ix), "L√§gg till ny", editListCB);
 }
 
 ButtonInfo &ListEditor::addButton(gdioutput &gdi, const MetaListPost &mlp, int x, int y, int lineIx, int ix) const {
@@ -414,7 +414,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       wstring str = gdi.getText("Text");
       if (ptype != lString) {
         if (!str.empty() && str.find_first_of('X') == string::npos && str[0]!='@') {
-          throw meosException("Texten ska innehÂlla tecknet X, som byts ut mot t‰vlingsspecifik data");
+          throw meosException("Texten ska inneh√•lla tecknet X, som byts ut mot t√§vlingsspecifik data");
         }
       }
 
@@ -440,12 +440,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         if (newType == lResultModuleNumber || newType == lResultModuleTime ||
             newType == lResultModuleNumberTeam || newType == lResultModuleTimeTeam) {
            if (leg < 0 || leg > 1000)
-              throw meosException("X ‰r inget giltigt index#" + itos(leg));
+              throw meosException("X √§r inget giltigt index#" + itos(leg));
            mlp.setLeg(leg);
         }
         else {
           if (leg < 1 || leg > 1000)
-            throw meosException("X ‰r inget giltigt str‰cknummer#" + itos(leg));
+            throw meosException("X √§r inget giltigt str√§cknummer#" + itos(leg));
           mlp.setLeg(leg - 1);
         }
       }
@@ -623,13 +623,13 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       reverse(lists.begin(), lists.end());
 
       gdi.fillRight();
-      gdi.addSelection("OpenList", 250, 400, editListCB, L"V‰lj lista:");
+      gdi.addSelection("OpenList", 250, 400, editListCB, L"V√§lj lista:");
       gdi.addItem("OpenList", lists);
       gdi.selectFirstItem("OpenList");
 
 
       gdi.dropLine();
-      gdi.addButton("DoOpen", "÷ppna", editListCB);
+      gdi.addButton("DoOpen", "√ñppna", editListCB);
       gdi.addButton("DoOpenCopy", "Open a Copy", editListCB);
       enableOpen(gdi);
 
@@ -687,7 +687,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         if (lastSaved == SavedInside)
           lastSaved = NotSaved;
 
-        gdi.alert("Listan togs bort frÂn t‰vlingen.");
+        gdi.alert("Listan togs bort fr√•n t√§vlingen.");
         makeDirty(gdi, MakeDirty, NoTouch);
         gdi.setInputStatus("RemoveInside", false);
       }
@@ -816,8 +816,8 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.addString("", boldLarge, "Listpost").setColor(colorDarkGrey);
   gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
 
-  gdi.addButton("MoveLeft", "<< Flytta v‰nster", editListCB);
-  gdi.addButton("MoveRight", "Flytta hˆger >>", editListCB);
+  gdi.addButton("MoveLeft", "<< Flytta v√§nster", editListCB);
+  gdi.addButton("MoveRight", "Flytta h√∂ger >>", editListCB);
 
   gdi.dropLine(3);
   gdi.popX();
@@ -846,7 +846,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.addSelection("Type", 290, 500, editListCB, L"Typ:");
   gdi.addItem("Type", types);
   gdi.selectItemByData("Type", currentType);
-  gdi.addInput("Text", mlp.getText(), 16, 0, L"Egen text:", L"Anv‰nd symbolen X d‰r MeOS ska fylla i typens data.");
+  gdi.addInput("Text", mlp.getText(), 16, 0, L"Egen text:", L"Anv√§nd symbolen X d√§r MeOS ska fylla i typens data.");
   int boxX = gdi.getCX();
   gdi.popX();
   gdi.fillRight();
@@ -895,7 +895,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.dropLine(2);
   if (ix>0) {
     gdi.popX();
-    gdi.addCheckbox("MergeText", "SlÂ ihop text med fˆregÂende", 0, mlp.isMergePrevious());
+    gdi.addCheckbox("MergeText", "Sl√• ihop text med f√∂reg√•ende", 0, mlp.isMergePrevious());
     gdi.dropLine(2);
   }
   int maxY = gdi.getCY();
@@ -922,15 +922,15 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.dropLine(3);
 
   gdi.addSelection("TextAdjust", 150, 100, 0, L"Textjustering:");
-  gdi.addItem("TextAdjust", lang.tl("V‰nster"), 0);
-  gdi.addItem("TextAdjust", lang.tl("Hˆger"), textRight);
+  gdi.addItem("TextAdjust", lang.tl("V√§nster"), 0);
+  gdi.addItem("TextAdjust", lang.tl("H√∂ger"), textRight);
   gdi.addItem("TextAdjust", lang.tl("Centrera"), textCenter);
   gdi.selectItemByData("TextAdjust", mlp.getTextAdjustNum());
 
   //gdi.popX();
   //gdi.dropLine(2);
   gdi.dropLine();
-  gdi.addButton("Color", "F‰rg...", editListCB).setExtra(mlp.getColorValue());
+  gdi.addButton("Color", "F√§rg...", editListCB).setExtra(mlp.getColorValue());
 
 
   maxX = max(maxX, gdi.getCX());
@@ -970,7 +970,7 @@ const wchar_t *ListEditor::getIndexDescription(EPostType type) {
   else if (type == lResultModuleNumber || type == lResultModuleNumberTeam)
     return L"Index in X[index]#OutputNumbers";
   else  
-    return L"Applicera fˆr specifik str‰cka:";
+    return L"Applicera f√∂r specifik str√§cka:";
 }
 
 void ListEditor::editListProp(gdioutput &gdi, bool newList) {
@@ -1022,7 +1022,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.autoGrow("BaseType");
   
   list.getResultModule(*oe, types, currentType);
-  gdi.addSelection("ResultType", 150, 400, editListCB, L"Resultatutr‰kning:");
+  gdi.addSelection("ResultType", 150, 400, editListCB, L"Resultatutr√§kning:");
   gdi.addItem("ResultType", types);
   gdi.autoGrow("ResultType");
   gdi.selectItemByData("ResultType", currentType);
@@ -1035,7 +1035,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.selectItemByData("SortOrder", currentType);
 
   list.getSubType(types, currentType);
-  gdi.addSelection("SubType", 150, 400, editListCB, L"Sekund‰r typ:");
+  gdi.addSelection("SubType", 150, 400, editListCB, L"Sekund√§r typ:");
   gdi.addItem("SubType", types);
   gdi.selectItemByData("SubType", currentType);
   oListInfo::EBaseType subType = oListInfo::EBaseType(currentType);
@@ -1117,9 +1117,9 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
     gdi.setCX(gdi.getCX()+20);
     int f = list.getFontFaceFactor(k);
     wstring ff = f == 0 ? L"100 %" : itow(f) + L" %";
-    gdi.addInput("FontFactor" + itos(k), ff, 4, 0, L"Skalfaktor", L"Relativ skalfaktor fˆr typsnittets storlek i procent");
+    gdi.addInput("FontFactor" + itos(k), ff, 4, 0, L"Skalfaktor", L"Relativ skalfaktor f√∂r typsnittets storlek i procent");
     f = list.getExtraSpace(k);
-    gdi.addInput("ExtraSpace" + itos(k), itow(f), 4, 0, L"AvstÂnd", L"Extra avstÂnd ovanfˆr textblock");
+    gdi.addInput("ExtraSpace" + itos(k), itow(f), 4, 0, L"Avst√•nd", L"Extra avst√•nd ovanf√∂r textblock");
     if (k == 1) {
       gdi.dropLine(3);
       gdi.popX();
@@ -1184,7 +1184,7 @@ void ListEditor::makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside) 
 
 bool ListEditor::checkSave(gdioutput &gdi) {
   if (dirtyInt || dirtyExt) {
-    gdioutput::AskAnswer answer = gdi.askCancel(L"Vill du spara ‰ndringar?");
+    gdioutput::AskAnswer answer = gdi.askCancel(L"Vill du spara √§ndringar?");
     if (answer == gdioutput::AnswerCancel)
       return false;
 

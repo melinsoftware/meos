@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
@@ -17,7 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    EksoppsvÃ¤gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -160,7 +160,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
   void saveSettings(gdioutput &gdi);
 
-  SaveMachine():AutoMachine("Säkerhetskopiera") , saveIter(0) {
+  SaveMachine():AutoMachine("SÃ¤kerhetskopiera") , saveIter(0) {
   }
 };
 
@@ -177,7 +177,7 @@ public:
   PrewarningMachine *clone() const {return new PrewarningMachine(*this);}
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  PrewarningMachine():AutoMachine("Förvarningsröst") {}
+  PrewarningMachine():AutoMachine("FÃ¶rvarningsrÃ¶st") {}
   friend class TabAuto;
 };
 
@@ -212,7 +212,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  PunchMachine():AutoMachine("Stämplingsautomat"), radio(0) {}
+  PunchMachine():AutoMachine("StÃ¤mplingsautomat"), radio(0) {}
   friend class TabAuto;
 };
 
@@ -228,7 +228,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  SplitsMachine() : AutoMachine("Sträcktider/WinSplits"), leg(-1) {}
+  SplitsMachine() : AutoMachine("StrÃ¤cktider/WinSplits"), leg(-1) {}
   friend class TabAuto;
 };
 

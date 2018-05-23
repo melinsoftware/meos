@@ -1,4 +1,4 @@
-/************************************************************************
+Ôªø/************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2018 Melin Software HB
 
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsv‰gen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv√§gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
@@ -451,10 +451,10 @@ const vector< pair<wstring, size_t> > &oEvent::fillControlTypes(vector< pair<wst
   wchar_t bf[32];
   /*gdi.addItem(name, lang.tl("Check"), oPunch::PunchCheck);
   gdi.addItem(name, lang.tl("Start"), oPunch::PunchStart);
-  gdi.addItem(name, lang.tl("MÂl"), oPunch::PunchFinish);*/
+  gdi.addItem(name, lang.tl("M√•l"), oPunch::PunchFinish);*/
   out.push_back(make_pair(lang.tl("Check"), oPunch::PunchCheck));
   out.push_back(make_pair(lang.tl("Start"), oPunch::PunchStart));
-  out.push_back(make_pair(lang.tl("MÂl"), oPunch::PunchFinish));
+  out.push_back(make_pair(lang.tl("M√•l"), oPunch::PunchFinish));
 
   for (sit = sicodes.begin(); sit!=sicodes.end(); ++sit) {
     swprintf_s(bf, lang.tl("Kontroll %s").c_str(), itow(*sit).c_str());
@@ -765,11 +765,11 @@ const wstring oControl::getStatusS() const {
     case StatusStart:
       return lang.tl("Start");
     case StatusFinish:
-      return lang.tl("MÂl");
+      return lang.tl("M√•l");
     case StatusNoTiming:
       return lang.tl("Utan tidtagning");
     default:
-      return lang.tl("Ok‰nd");
+      return lang.tl("Ok√§nd");
   }
 }
 
@@ -802,12 +802,12 @@ Table *oEvent::getControlTB()//Table mode
     Table *table=new Table(this, 20, L"Kontroller", "controls");
 
     table->addColumn("Id", 70, true, true);
-    table->addColumn("ƒndrad", 70, false);
+    table->addColumn("√Ñndrad", 70, false);
 
     table->addColumn("Namn", 150, false);
     table->addColumn("Status", 70, false);
-    table->addColumn("St‰mpelkoder", 100, true);
-    table->addColumn("Antal lˆpare", 70, true, true);
+    table->addColumn("St√§mpelkoder", 100, true);
+    table->addColumn("Antal l√∂pare", 70, true, true);
     table->addColumn("Bomtid (max)", 70, true, true);
     table->addColumn("Bomtid (medel)", 70, true, true);
     table->addColumn("Bomtid (median)", 70, true, true);
