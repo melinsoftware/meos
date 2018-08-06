@@ -257,7 +257,7 @@ public:
   pClub getClubRef() {return Club;}
   virtual int classInstance() const = 0;
 
-  const oClass *getClassRef(bool virtualClass) const {
+  const pClass getClassRef(bool virtualClass) const {
     return (virtualClass && Class) ? Class->getVirtualClass(classInstance()) : Class;
   }
   
@@ -508,6 +508,11 @@ protected:
   mutable pCourse tAdaptedCourse;
   mutable int tAdaptedCourseRevision;
 
+  /** Internal propagate club.*/
+  void propagateClub();
+
+  bool isHiredCard(int card) const;
+
 public:
   /** Get a runner reference (drawing) */
   pRunner getReference() const;
@@ -627,7 +632,7 @@ public:
 
   /** Use db to pdate runner */
   bool updateFromDB(const wstring &name, int clubId, int classId,
-                    int cardNo, int birthYear);
+                    int cardNo, int birthYear, bool forceUpdate);
 
   void printSplits(gdioutput &gdi) const;
 
@@ -644,8 +649,8 @@ public:
   int legToRun() const {return tInTeam ? tLeg : tDuplicateLeg;}
   void setName(const wstring &n, bool manualUpdate);
   void setClassId(int id, bool isManualUpdate);
-  void setClub(const wstring &name);
-  pClub setClubId(int clubId);
+  void setClub(const wstring &name) override;
+  pClub setClubId(int clubId) override;
 
   // Start number is equal to bib-no, but bib
   // is only set when it should be shown in lists etc.
@@ -738,6 +743,8 @@ public:
   //Returns only Id of a runner-specific course, not classcourse
   int getCourseId() const {if (Course) return Course->Id; else return 0;}
   void setCourseId(int id);
+
+  bool isHiredCard() const;
 
   int getCardNo() const {return tParentRunner && CardNo == 0 ? tParentRunner->CardNo : CardNo;}
   void setCardNo(int card, bool matchCard, bool updateFromDatabase = false);

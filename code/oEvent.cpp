@@ -1785,7 +1785,14 @@ int oEvent::getFirstClassId(bool teamClass) const {
   for (oClassList::const_iterator it = Classes.begin(); it != Classes.end(); ++it) {
     if (it->isRemoved())
       continue;
+
+    if (it->getQualificationFinal())
+      return it->Id; // Both team and single
+
     int ns = it->getNumStages();
+    if (ns > 0 && it->getNumDistinctRunners() == 1)
+      return it->Id; // Both team and single
+
     if (teamClass && ns > 0)
       return it->Id;
     else if (!teamClass && ns == 0)

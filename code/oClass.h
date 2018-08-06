@@ -346,7 +346,7 @@ public:
   }
 
   oClass *getVirtualClass(int instance, bool allowCreation);
-  const oClass *getVirtualClass(int instance) const;
+  const pClass getVirtualClass(int instance) const;
 
   ClassStatus getClassStatus() const;
 

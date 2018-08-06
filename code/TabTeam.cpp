@@ -424,13 +424,13 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
             int cardNo = gdi.getTextNo(bf2);
 
             if (r) {
-              bool newName = name != r->getName();
+              bool newName = !r->matchName(name);
               int oldId = gdi.getExtraInt(bf);
               // Same runner set
               if (oldId == r->getId()) {
                 if (newName) {
                   r->updateFromDB(name, r->getClubId(), r->getClassId(false),
-                                  cardNo, 0);
+                                  cardNo, 0, false);
                   r->setName(name, true);
                 }
                 r->setCardNo(cardNo, true);
@@ -449,7 +449,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                   r->setClub(t->getClub());
                 r->resetPersonalData();
                 r->updateFromDB(name, r->getClubId(), r->getClassId(false),
-                                cardNo, 0);
+                                cardNo, 0, false);
               }
             }
             else

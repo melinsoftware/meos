@@ -166,12 +166,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   //r->apply(false);
   vector<int> mp;
   r->evaluateCard(true, mp, 0, false);
-  /*
-  if (parent!=r) {
-    parent->synchronize();
-    parent->apply(false);
-  }*/
-
+  
   gdi.selectItemByData("Runners", parent->getId());
 
   runnerId = r->getId();
@@ -267,31 +262,28 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   gdi.selectItemByData("RCourse", r->getCourseId());
   updateNumShort(gdi, r->getCourse(false), r);
 
-  int cno = parent->getCardNo();
+  int cno = r->getCardNo();
   gdi.setText("CardNo", cno > 0 ? itow(cno) : L"");
 
   warnDuplicateCard(gdi, cno, r);
 
-  gdi.check("RentCard", parent->getDI().getInt("CardFee") != 0);
+  gdi.check("RentCard", r->isHiredCard());
   bool hasFee = gdi.hasField("Fee");
 
   if (hasFee)
     gdi.setText("Fee", oe->formatCurrency(parent->getDI().getInt("Fee")));
 
-  if (parent != r) {
-    gdi.disableInput("CardNo");
-    gdi.disableInput("RentCard");
-    if (hasFee)
-      gdi.disableInput("Fee");
-    gdi.disableInput("RClass");
-  }
-  else {
-    gdi.enableInput("CardNo");
-    gdi.enableInput("RentCard");
-    if (hasFee)
-      gdi.enableInput("Fee");
-    gdi.enableInput("RClass");
-  }
+  bool canEditClass = parent == r || (parent->getClassRef(false) &&
+                                      parent->getClassRef(false)->getQualificationFinal());
+
+  gdi.setInputStatus("RClass", canEditClass);
+  gdi.enableInput("CardNo");
+  gdi.enableInput("RentCard");
+  if (hasFee)
+    gdi.setInputStatus("Fee", parent == r);
+
+  if(gdi.hasField("Club"))
+    gdi.setInputStatus("Club", parent == r);
 
   enableControlButtons(gdi, true, r->isVacant());
 
@@ -537,8 +529,8 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
       throw meosException("Internal error runner index");
 
     cardNoChanged = r->getCardNo() != cardNo;
-    if (r->getName() != name || (r->getClubId() != clubId && clubId != 0))
-      r->updateFromDB(name, clubId, classId, cardNo, r->getBirthYear());
+    if (!r->matchName(name) || (r->getClubId() != clubId && clubId != 0))
+      r->updateFromDB(name, clubId, classId, cardNo, r->getBirthYear(), false);
   }
 
   if (cardNoChanged && cardNo>0) {
@@ -580,11 +572,17 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
       }
     }
 
-    r->setCardNo(cardNo, true);
-    if (gdi.isChecked("RentCard"))
+    if (r->getCardNo() != cardNo) {
+      r->setCardNo(cardNo, true);
+    }
+    const bool hireChecked = gdi.isChecked("RentCard");
+    const bool hireState = r->isHiredCard();
+    if (hireChecked && !hireState) {
       r->getDI().setInt("CardFee", oe->getDI().getInt("CardFee"));
-    else
+    }
+    else if (!hireChecked && hireState) {
       r->getDI().setInt("CardFee", 0);
+    }
 
     if (gdi.hasField("Fee"))
       r->getDI().setInt("Fee", oe->interpretCurrency(gdi.getText("Fee")));
@@ -926,10 +924,17 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       gdi.getSelectedItem("RClass", lbi);
 
       pRunner r = oe->addRunner(oe->getAutoRunnerName(), 0,0,0,0, false);
-      if (signed(lbi.data)>0)
-        r->setClassId(lbi.data, true);
-      else
-        r->setClassId(oe->getFirstClassId(false), true);
+      int clsId = lbi.data;
+      if (clsId > 0) {
+        pClass tCls = oe->getClass(clsId);
+        if (tCls && tCls->getParentClass() != nullptr && tCls->getParentClass() != tCls) {
+          clsId = tCls->getParentClass()->getId();
+        }
+      }
+      if (clsId <= 0)
+        clsId = oe->getFirstClassId(false);
+
+      r->setClassId(clsId, true);
 
       fillRunnerList(gdi);
       oe->fillClubs(gdi, "Club");
@@ -1402,7 +1407,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, int type, void *data)
       if (pc)
         clubId = pc->getId();
     }
-    r->updateFromDB(name, clubId, r->getClassId(false), cardNo, birthYear);
+    r->updateFromDB(name, clubId, r->getClassId(false), cardNo, birthYear, false);
     r->setName(name, true);
     r->setCardNo(cardNo, true);
     r->setClub(club);

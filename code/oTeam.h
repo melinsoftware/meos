@@ -51,6 +51,7 @@ private:
   void speakerLegInfo(int leg, int specifiedLeg, int courseControlId,
                       int &missingLeg, int &totalLeg,
                       RunnerStatus &status, int &runningTime) const;
+  void propagateClub();
 
 protected:
   //pRunner Runners[maxRunnersTeam];
@@ -127,8 +128,10 @@ public:
   void resetResultCalcCache() const;
   vector< vector<int> > &getResultCache(ResultCalcCacheSymbol symb) const;
   void setResultCache(ResultCalcCacheSymbol symb, int leg, vector<int> &data) const;
-
   void markClassChanged(int controlId);
+
+  void setClub(const wstring &name) override;
+  pClub setClubId(int clubId) override;
 
   /// Returns team fee (including participating runners fees)
   int getTeamFee() const;

@@ -2035,31 +2035,33 @@ void oRunner::setClub(const wstring &clubName)
     tParentRunner->setClub(clubName);
   else {
     oAbstractRunner::setClub(clubName);
-
-    for (size_t k=0;k<multiRunner.size();k++)
-      if (multiRunner[k] && multiRunner[k]->Club!=Club) {
-        multiRunner[k]->Club = Club;
-        multiRunner[k]->updateChanged();
-      }
+    propagateClub();
   }
 }
 
-pClub oRunner::setClubId(int clubId)
-{
+pClub oRunner::setClubId(int clubId) {
   if (tParentRunner)
     tParentRunner->setClubId(clubId);
   else {
     oAbstractRunner::setClubId(clubId);
 
-    for (size_t k=0;k<multiRunner.size();k++)
-      if (multiRunner[k] && multiRunner[k]->Club!=Club) {
-        multiRunner[k]->Club = Club;
-        multiRunner[k]->updateChanged();
-      }
+    propagateClub();
   }
   return Club;
 }
 
+void oRunner::propagateClub() {
+  for (size_t k = 0; k < multiRunner.size(); k++) {
+    if (multiRunner[k] && multiRunner[k]->Club != Club) {
+      multiRunner[k]->Club = Club;
+      multiRunner[k]->updateChanged();
+    }
+  }
+  if (tInTeam && Class && Class->getNumDistinctRunners() == 1 && tInTeam->getClubRef() != Club) {
+    tInTeam->Club = Club;
+    tInTeam->updateChanged();
+  }
+}
 
 void oAbstractRunner::setStartNo(int no, bool tmpOnly) {
   if (tmpOnly) {
@@ -2190,6 +2192,27 @@ void oRunner::setCardNo(int cno, bool matchCard, bool updateFromDatabase)
       updateChanged();
   }
 }
+
+bool oRunner::isHiredCard() const {
+  if (getDCI().getInt("CardFee") != 0)
+    return true;
+  if (tParentRunner && tParentRunner != this)
+    return tParentRunner->isHiredCard(getCardNo());
+
+  return isHiredCard(CardNo);
+}
+
+bool oRunner::isHiredCard(int cno) const {
+  if (cno == CardNo)
+    return getDCI().getInt("CardFee") != 0;
+
+  for (pRunner r : multiRunner) {
+    if (r && r->getCardNo() == cno && r->getDCI().getInt("CardFee") != 0)
+      return true;
+  }
+  return false;
+}
+
 
 int oRunner::setCard(int cardId)
 {
@@ -3197,7 +3220,7 @@ bool oRunner::inputData(int id, const wstring &input,
         throw std::exception("Tomt namn inte tillåtet.");
 
       if (sName != input && tRealName != input) {
-        updateFromDB(input, getClubId(), getClassId(false), getCardNo(), getBirthYear());
+        updateFromDB(input, getClubId(), getClassId(false), getCardNo(), getBirthYear(), false);
         setName(input, true);
         synchronizeAll();
       }
@@ -3243,7 +3266,7 @@ bool oRunner::inputData(int id, const wstring &input,
         else
           pc = oe->getClubCreate(0, input);
 
-        updateFromDB(getName(), pc ? pc->getId():0, getClassId(false), getCardNo(), getBirthYear());
+        updateFromDB(getName(), pc ? pc->getId():0, getClassId(false), getCardNo(), getBirthYear(), false);
 
         setClub(pc ? pc->getName() : L"");
         synchronize(true);
@@ -3336,6 +3359,20 @@ void oRunner::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &se
 
 int oRunner::getSplitTime(int controlNumber, bool normalized) const
 {
+  if (!Card) {
+    if (controlNumber == 0)
+      return getPunchTime(0, false);
+    else {
+      int ct = getPunchTime(controlNumber, false);
+      if (ct > 0) {
+        int dt = getPunchTime(controlNumber - 1, false);
+        if (dt > 0 && ct > dt)
+          return ct - dt;
+      }
+    }
+
+    return -1;
+  }
   const vector<SplitData> &st = getSplitTimes(normalized);
   if (controlNumber>0 && controlNumber == st.size() && FinishTime>0) {
     int t = st.back().time;
@@ -3360,11 +3397,9 @@ int oRunner::getTimeAdjust(int controlNumber) const
   return 0;
 }
 
-int oRunner::getNamedSplit(int controlNumber) const
-{
+int oRunner::getNamedSplit(int controlNumber) const {
   pCourse crs=getCourse(true);
-  if (!crs || unsigned(controlNumber)>=unsigned(crs->nControls)
-        || unsigned(controlNumber)>=splitTimes.size())
+  if (!crs || unsigned(controlNumber)>=unsigned(crs->nControls))
     return -1;
 
   pControl ctrl=crs->Controls[controlNumber];
@@ -3372,24 +3407,25 @@ int oRunner::getNamedSplit(int controlNumber) const
     return -1;
 
   int k=controlNumber-1;
-
+  int ct = getPunchTime(controlNumber, false);
+  if (ct <= 0)
+    return -1;
+ 
   //Measure from previous named control
-  while(k>=0) {
-    pControl c=crs->Controls[k];
+  while (k >= 0) {
+    pControl c = crs->Controls[k];
 
     if (c && c->hasName()) {
-      if (splitTimes[controlNumber].time>0 && splitTimes[k].time>0)
-        return max(splitTimes[controlNumber].time - splitTimes[k].time, -1);
+      int dt = getPunchTime(k, false);
+      if (dt > 0 && ct > dt)
+        return max(ct - dt, -1);
       else return -1;
     }
     k--;
   }
 
   //Measure from start time
-  if (splitTimes[controlNumber].time>0)
-    return max(splitTimes[controlNumber].time - tStartTime, -1);
-
-  return -1;
+  return ct;
 }
 
 wstring oRunner::getSplitTimeS(int controlNumber, bool normalized) const
@@ -3404,6 +3440,20 @@ wstring oRunner::getNamedSplitS(int controlNumber) const
 
 int oRunner::getPunchTime(int controlNumber, bool normalized) const
 {
+  if (!Card) {
+    pCourse pc = getCourse(false);
+    if (!pc || controlNumber > pc->getNumControls())
+      return -1;
+    
+    if (controlNumber == pc->getNumControls())
+      return getFinishTime() - tStartTime;
+
+    int ccId = pc->getCourseControlId(controlNumber);
+    pFreePunch fp = oe->getPunch(Id, ccId, CardNo);
+    if (fp) 
+      return fp->Time - tStartTime;
+    return -1;
+  }
   const vector<SplitData> &st = getSplitTimes(normalized);
 
   if ( unsigned(controlNumber)<st.size() ) {
@@ -4336,14 +4386,17 @@ void oEvent::updateRunnersFromDB()
 
   for (it=Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isVacant() && !it->isRemoved())
-      it->updateFromDB(it->sName, it->getClubId(), it->getClassId(false), it->getCardNo(), it->getBirthYear());
+      it->updateFromDB(it->sName, it->getClubId(), it->getClassId(false), it->getCardNo(), it->getBirthYear(), true);
   }
 }
 
 bool oRunner::updateFromDB(const wstring &name, int clubId, int classId,
-                           int cardNo, int birthYear) {
+                           int cardNo, int birthYear, bool forceUpdate) {
   if (!oe->useRunnerDb())
     return false;
+  uint64_t oldId = getExtIdentifier();
+  if (oldId && !forceUpdate && oe->getRunnerDatabase().getRunnerById(oldId) == 0)
+    return false; // Keep data if database is not installed
 
   pRunner db_r = 0;
   if (cardNo>0) {

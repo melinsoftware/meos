@@ -1903,6 +1903,16 @@ public:
     int baseRes;
     if (r.getInputStatus() == StatusOK) {
       int t = r.getInputPlace();
+      
+      if (t == 0) {
+        const oRunner *rr = dynamic_cast<const oRunner *>(&r);
+        if (rr && rr->getTeam() && rr->getLegNumber() > 0) {
+          const pRunner rPrev = rr->getTeam()->getRunner(rr->getLegNumber() - 1);
+          if (rPrev && rPrev->getStatus() == StatusOK)
+            t = rPrev->getPlace();
+        }
+      }
+      
       if (t > 0)
         baseRes = t;
       else
@@ -3929,9 +3939,12 @@ void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart,
   vector<pRunner> r;
   oe->getRunners(Id, 0, r, true);
   vector< pair<int, int> > seedIx;
-
+  if (seed == SeedResult) {
+    oe->reEvaluateAll(set<int>(), true);
+    oe->calculateResults(oEvent::ResultType::RTClassResult, false);
+  }
   for (size_t k = 0; k < r.size(); k++) {
-    if (r[k]->tLeg != leg)
+    if (r[k]->tLeg != leg && leg != -1)
       continue;
 
     pair<int,int> sx;
@@ -4213,9 +4226,9 @@ oClass *oClass::getVirtualClass(int instance, bool allowCreation) {
   return this; // Fallback
 }
 
-const oClass *oClass::getVirtualClass(int instance) const {
+const pClass oClass::getVirtualClass(int instance) const {
   if (instance == 0)
-    return this;
+    return pClass(this);
   if (parentClass)
     return parentClass->getVirtualClass(instance);
 
@@ -4223,7 +4236,7 @@ const oClass *oClass::getVirtualClass(int instance) const {
     return virtualClasses[instance];
 
   if (instance >= getNumQualificationFinalClasses())
-    return this; // Invalid
+    return pClass(this); // Invalid
   virtualClasses.resize(getNumQualificationFinalClasses());
 
   int virtId = Id + instance * MaxClassId;
@@ -4235,7 +4248,7 @@ const oClass *oClass::getVirtualClass(int instance) const {
   configureInstance(instance, false);
   if (virtualClasses[instance])
     return virtualClasses[instance];
-  return this; // Fallback
+  return pClass(this); // Fallback
 }
 
 void oClass::configureInstance(int instance, bool allowCreation) const {

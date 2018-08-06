@@ -250,6 +250,8 @@ void Table::filter(int col, const wstring &filt, bool forceFilter)
   if (filt==oldFilter && (!forceFilter || filt.empty()))
     return;
   else if (wcsncmp(oldFilter.c_str(), filt.c_str(), oldFilter.length())==0) {
+    if (sortIndex.empty())
+      return;
     //Filter more...
     baseIndex.resize(2);
     baseIndex[0]=sortIndex[0];

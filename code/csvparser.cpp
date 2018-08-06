@@ -617,6 +617,9 @@ bool csvparser::importOCAD_CSV(oEvent &event, const wstring &file, bool addClass
         for (size_t k=firstIndex; k<sp.size()-1;k+=(hasLengths ? 2 : 1)) {
           wstring ctrlStr = trim(sp[k]);
           if (!ctrlStr.empty()) {
+            if (ctrlStr[0] == 'S')
+              continue;
+
             int ctrl = wtoi(ctrlStr.c_str());
 
             if (ctrl == 0 && trim(sp[k+1]).length() == 0)

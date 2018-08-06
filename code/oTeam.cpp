@@ -2258,3 +2258,26 @@ int oTeam::getRogainingPatrolOvertime() const {
   getRogainingPatrolPoints(false);
   return tTeamPatrolRogainingAndVersion.second.overtime;
 }
+
+void oTeam::setClub(const wstring &clubName) {
+  oAbstractRunner::setClub(clubName);
+  propagateClub();
+}
+
+pClub oTeam::setClubId(int clubId) {
+  oAbstractRunner::setClubId(clubId);
+  propagateClub();
+  return Club;
+}
+
+void oTeam::propagateClub() {
+  
+  if (Class && Class->getNumDistinctRunners() == 1) {
+    for (pRunner r : Runners) {
+      if (r && r->Club != Club) {
+        r->Club = Club;
+        r->updateChanged();
+      }
+    }
+  }
+}

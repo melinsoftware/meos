@@ -98,15 +98,12 @@ void RestServer::handleRequest(const shared_ptr<restbed::Session> &session) {
     chrono::duration<double> elapsed_seconds = end - start;
     responseTimes.push_back(int(1000 * elapsed_seconds.count()));
   }
- // lock.unlock();
 
   session->fetch(content_length, [request, answer](const shared_ptr< Session > session, const Bytes & body)
   {
-    //fprintf(stdout, "%.*s\n", (int)body.size(), body.data());
-    /*while (!answer->state) {
-      std::this_thread::yield();
-    }*/
-    session->close(restbed::OK, answer->answer, { { "Content-Length", itos(answer->answer.length()) },{ "Connection", "close" } });
+    session->close(restbed::OK, answer->answer, { { "Content-Length", itos(answer->answer.length()) },
+                                                  { "Connection", "close" },
+                                                  { "Access-Control-Allow-Origin", "*" }  });
   });
 }
 
