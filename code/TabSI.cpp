@@ -3684,8 +3684,8 @@ oClub *TabSI::extractClub(gdioutput &gdi) const {
   oClub *dbClub = nullptr;
   if (gdi.hasField("Club")) {
     int clubId = gdi.getExtraInt("Club");
-    if (clubId >= 0) {
-      dbClub = db.getClub(clubId);
+    if (clubId > 0) {
+      dbClub = db.getClub(clubId-1);
       if (dbClub && !stringMatch(dbClub->getName(), gdi.getText("Club")))
         dbClub = nullptr;
     }
@@ -3702,8 +3702,8 @@ RunnerWDBEntry *TabSI::extractRunner(gdioutput &gdi) const {
   int rId = gdi.getExtraInt("Name");
   wstring name = gdi.getText("Name");
   RunnerWDBEntry *dbR = nullptr;
-  if (rId >= 0) {
-    dbR = db.getRunnerByIndex(rId);
+  if (rId > 0) {
+    dbR = db.getRunnerByIndex(rId-1);
     if (dbR) {
       wstring fname = dbR->getFamilyName();
       wstring gname = dbR->getGivenName();
@@ -3847,8 +3847,9 @@ void TabSI::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
   auto bi = gdi.setText(info.getTarget(), info.getCurrent().c_str());
   if (bi) {
     int ix = info.getCurrentInt();
-    bi->setExtra(ix);
-    if (bi->id == "Name") {
+    
+    bi->setExtra(ix+1);
+    if (bi->id == "Name" && ix >= 0) {
       auto r = oe->getRunnerDatabase().getRunnerByIndex(ix);
       int year = r ? r->getBirthYear() : 0;
       if (year > 0) {

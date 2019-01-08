@@ -4516,9 +4516,9 @@ bool oRunner::matchName(const wstring &pname) const
         nMatched++;
 
         // Suppert changed last name in the most common case
-        if (j == 0 && k == 0 && inNames.size() == 2 && myNames.size() == 2) {
+        /*if (j == 0 && k == 0 && inNames.size() == 2 && myNames.size() == 2) {
           return true;
-        }
+        }*/
         break;
       }
     }

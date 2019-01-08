@@ -1208,7 +1208,14 @@ protected:
   bool addXMLTeamEntry(const xmlobject &xentry, int ClubId);
   bool addXMLClass(const xmlobject &xclub);
   bool addXMLClub(const xmlobject &xclub, bool importToDB);
-  bool addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRunnerId);
+  // Fill in the output map. Set flag to true if match is made on id, false if on name.
+  enum class RankStatus {
+    IdMatch,
+    NameMatch,
+    Ambivalent
+  };
+
+  bool addXMLRank(const xmlobject &xrank, const map<__int64, int> &externIdToRunnerId, map<int, pair<int, RankStatus>> &output);
   bool addXMLEvent(const xmlobject &xevent);
 
   bool addXMLCourse(const xmlobject &xcourse, bool addClasses);

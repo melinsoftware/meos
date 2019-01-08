@@ -287,7 +287,8 @@ void Download::postFile(const wstring &url, const wstring &file, const wstring &
 
   InternetCrackUrl(url.c_str(), url.length(), ICU_ESCAPE, &uc);
   int port = INTERNET_DEFAULT_HTTP_PORT;
-  if (uc.nScheme == INTERNET_SCHEME_HTTPS)
+  bool https = uc.nScheme == INTERNET_SCHEME_HTTPS;
+  if (https)
     port = INTERNET_DEFAULT_HTTPS_PORT;
   else if (uc.nPort>0)
     port = uc.nPort;
@@ -296,7 +297,7 @@ void Download::postFile(const wstring &url, const wstring &file, const wstring &
   bool vsuccess = false;
   int errorCode = 0;
   try {
-    vsuccess = httpSendReqEx(hConnect, path, headers, file, fileOut, pw, errorCode);
+    vsuccess = httpSendReqEx(hConnect, https, path, headers, file, fileOut, pw, errorCode);
   }
   catch (std::exception &) {
     InternetCloseHandle(hConnect);
@@ -315,7 +316,7 @@ void Download::postFile(const wstring &url, const wstring &file, const wstring &
   }
  }
 
-bool Download::httpSendReqEx(HINTERNET hConnect, const wstring &dest,
+bool Download::httpSendReqEx(HINTERNET hConnect, bool https, const wstring &dest,
                              const vector< pair<wstring, wstring> > &headers,
                              const wstring &upFile, const wstring &outFile, 
                              ProgressWindow &pw, 
@@ -324,8 +325,19 @@ bool Download::httpSendReqEx(HINTERNET hConnect, const wstring &dest,
   INTERNET_BUFFERS BufferIn;
   memset(&BufferIn, 0, sizeof(BufferIn));
   BufferIn.dwStructSize = sizeof( INTERNET_BUFFERS );
+  TCHAR szAccept[] = L"*/*";
+  LPCTSTR AcceptTypes[2] = { 0, 0 };
+  AcceptTypes[0] = szAccept;
+  DWORD flags = INTERNET_FLAG_NO_CACHE_WRITE |
+    INTERNET_FLAG_IGNORE_CERT_DATE_INVALID |
+    INTERNET_FLAG_IGNORE_CERT_CN_INVALID |
+    INTERNET_FLAG_KEEP_CONNECTION;
 
-  HINTERNET hRequest = HttpOpenRequest (hConnect, L"POST", dest.c_str(), NULL, NULL, NULL, INTERNET_FLAG_NO_CACHE_WRITE, 0);
+  if (https)
+    flags |= INTERNET_FLAG_SECURE;
+
+  HINTERNET hRequest = HttpOpenRequest (hConnect, L"POST", dest.c_str(), HTTP_VERSION, NULL, AcceptTypes,
+                                        flags, 0);
 
   DWORD dwBytesRead = 0;
   DWORD dwBytesWritten = 0;
@@ -396,12 +408,15 @@ bool Download::httpSendReqEx(HINTERNET hConnect, const wstring &dest,
       DWORD error = GetLastError();
       errorCode = error;
       if (error == ERROR_INTERNET_FORCE_RETRY)
-        retry--;
-      else if (error == ERROR_INTERNET_TIMEOUT) {
-        throw std::exception("Fick inget svar i tid (ERROR_INTERNET_TIMEOUT)");
-      }
+        retry--;      
       else {
         InternetCloseHandle(hRequest);
+        if (error == ERROR_INTERNET_TIMEOUT) {
+          throw std::exception("Fick inget svar i tid (ERROR_INTERNET_TIMEOUT)");
+        }
+        else if (error == ERROR_INTERNET_CONNECTION_RESET) {
+          throw std::exception("Inget svar (ERROR_INTERNET_CONNECTION_RESET)");
+        }
         return false;
       }
     }

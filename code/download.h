@@ -60,7 +60,7 @@ private:
   bool success;
   void initThread();
 
-  bool httpSendReqEx(HINTERNET hConnect, const wstring &dest, const vector< pair<wstring, wstring> > &headers,
+  bool httpSendReqEx(HINTERNET hConnect, bool https, const wstring &dest, const vector< pair<wstring, wstring> > &headers,
                      const wstring &upFile, const wstring &outFile, ProgressWindow &pw, int &errroCode) const;
 
 public:

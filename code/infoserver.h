@@ -125,6 +125,18 @@ class InfoClass : public InfoBase {
     friend class InfoCompetition;
 };
 
+class InfoMeosStatus : public InfoBase {
+  protected:
+    wstring eventNameId; // event Name Id, actual name of the database, can also be matched in oevent table of meosmain
+    bool onDatabase; // true if currently on database
+  public:
+    void serialize(xmlbuffer &xml, bool diffOnly) const;
+    InfoMeosStatus();
+    virtual ~InfoMeosStatus() {}
+    void setEventNameId(const wstring &);
+    void setOnDatabase(const bool);
+};
+
 class InfoOrganization : public InfoBase {
   protected:
     wstring name;

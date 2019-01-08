@@ -214,6 +214,8 @@ class IOF30Interface {
                            const vector<pTeam> &t);
 
   void writePersonStart(xmlparser &xml, const oRunner &r, bool includeCourse, bool teamMember);
+  
+  void writeTeamNoPersonStart(xmlparser &xml, const oTeam &t, int leg, bool includeRaceNumber);
 
   void writeTeamStart(xmlparser &xml, const oTeam &t);
 
@@ -222,7 +224,7 @@ class IOF30Interface {
 
 
   pCourse haveSameCourse(const vector<pRunner> &r) const;
-  void writeLegOrder(xmlparser &xml, const oRunner &r) const;
+  void writeLegOrder(xmlparser &xml, const oClass *pc, int legNo) const;
 
   // Returns zero if no stage number
   int getStageNumber();

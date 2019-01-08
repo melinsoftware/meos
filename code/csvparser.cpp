@@ -888,7 +888,7 @@ void csvparser::checkSIConfigHeader(const vector<wstring> &sp) {
     else if (key == L"First name") {
       siconfigmap[sicFirstName] = k;
     }
-    else if (key == L"Last name") {
+    else if (key == L"Last name" || key == L"name") {
       siconfigmap[sicLastName] = k;
     }
     else if (key == L"No. of records" || key == L"No. of punches") {

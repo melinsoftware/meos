@@ -533,6 +533,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
         throw meosException("Invalid limit: " + param.find("limit")->second);
     }
 
+    bool inclRunnersInForest = param.count("allrunners")>0;
     if (param.count("type")) {
       string type = param.find("type")->second;
 
@@ -645,7 +646,8 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
         r.swap(r2);
       }
 
-      GeneralResult::calculateIndividualResults(r, controlId, totalResult, resTag, resType, inputNumber, oe, results);
+      GeneralResult::calculateIndividualResults(r, controlId, totalResult, inclRunnersInForest, resTag, resType, inputNumber, oe, results);
+
 
       if (resType ==  oListInfo::Classwise)
         sort(results.begin(), results.end());
@@ -757,6 +759,20 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
       reslist.endTag();
 
     }
+  }
+  else if (what == "status") {
+    InfoMeosStatus iStatus;
+    if (oe.empty()) {
+      iStatus.setEventNameId(L"");	// no event
+      iStatus.setOnDatabase(false);
+    }
+    else {
+      iStatus.setEventNameId(oe.getNameId(0));	// id of event
+      iStatus.setOnDatabase(oe.isClient());	// onDatabase
+    }
+
+    iStatus.serialize(out, false);
+    okRequest = true;
   }
   if (out.size() > 0) {
     xmlparser mem;

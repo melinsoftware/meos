@@ -122,6 +122,7 @@ public:
   static void calculateIndividualResults(vector<pRunner> &runners,
                                          const pair<int, int> &controlId,
                                          bool totalResults,
+                                         bool inclForestRunners,
                                          const string &resTag,
                                          oListInfo::ResultType resType,
                                          int inputNumber,

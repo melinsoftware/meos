@@ -2361,7 +2361,7 @@ void TabCompetition::copyrightLine(gdioutput &gdi) const
 
   gdi.dropLine(0.4);
   gdi.fillDown();
-  gdi.addString("", 0, makeDash(L"#Copyright © 2007-2018 Melin Software HB"));
+  gdi.addString("", 0, makeDash(L"#Copyright © 2007-2019 Melin Software HB"));
   gdi.dropLine(1);
   gdi.popX();
 
@@ -2374,7 +2374,7 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
   gdi.clearPage(false);
   gdi.addString("", 2, makeDash(L"Om MeOS - ett Mycket Enkelt OrienteringsSystem")).setColor(colorDarkBlue);
   gdi.dropLine(2);
-  gdi.addStringUT(1, makeDash(L"Copyright © 2007-2018 Melin Software HB"));
+  gdi.addStringUT(1, makeDash(L"Copyright © 2007-2019 Melin Software HB"));
   gdi.dropLine();
   gdi.addStringUT(10, "The database connection used is MySQL++\nCopyright "
                         "(c) 1998 by Kevin Atkinson, (c) 1999, 2000 and 2001 by MySQL AB,"

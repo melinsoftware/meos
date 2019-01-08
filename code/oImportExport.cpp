@@ -491,27 +491,37 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
     xmlList xl;
     xo.getObjects(xl);
-
-    xmlList::const_iterator it;
-
+    
     map<__int64, int> ext2Id;
-    for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
+    for (auto it = Runners.begin(); it != Runners.end(); ++it) {
       if (it->skip())
         continue;
       __int64 ext = it->getExtIdentifier();
       if (ext != 0)
         ext2Id[ext] = it->getId();
     }
-
-    for(it=xl.begin(); it != xl.end(); ++it){
-      if (it->is("Competitor")){
-        if (addXMLRank(*it, ext2Id))
-          imp++;
-        else
-          fail++;
+    map<int, pair<int, RankStatus>> rankList;
+    for (auto it = xl.begin(); it != xl.end(); ++it) {
+      if (it->is("Competitor")) {
+        addXMLRank(*it, ext2Id, rankList);
       }
     }
-
+    for (auto it : rankList) {
+      if (it.second.second == RankStatus::Ambivalent)
+        fail++;
+      else {
+        pRunner r = getRunner(it.first, 0);
+        if (r) {
+          r->getDI().setInt("Rank", it.second.first);
+          r->synchronize();
+          imp++;
+        }
+        else {
+          fail++;
+        }
+      }
+    }
+    
     gdi.addString("", 0, "Klart. Antal importerade: X#" + itos(imp));
     if (fail>0)
       gdi.addString("", 0, "Antal ignorerade: X#" + itos(fail));
@@ -1734,7 +1744,8 @@ bool oEvent::addXMLClub(const xmlobject &xclub, bool savetoDB)
 }
 
 
-bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRunnerId)
+bool oEvent::addXMLRank(const xmlobject &xrank, const map<__int64, int> &externIdToRunnerId,
+                        map<int, pair<int, oEvent::RankStatus>> &output)
 {
   if (!xrank)
     return false;
@@ -1757,10 +1768,10 @@ bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRun
     else if (cit->is("Club"))
       club=*cit;
     else if (cit->is("Rank")){
-      if (cit->getObjectString("Name", tmp)=="Swedish Ranking List")
-        rank=*cit;
-      else if (cit->getObjectString("Name", tmp)=="Swedish Vacancy List")
+      if (cit->getObjectString("Name", tmp).find("Vacancy") != string::npos)
         vrank=*cit;
+      else
+        rank = *cit;
     }
     ++cit;
   }
@@ -1771,12 +1782,14 @@ bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRun
   person.getObjectString("PersonId", pid);
   const __int64 extId = oBase::converExtIdentifierString(pid);
   int id = oBase::idFromExtId(extId);
-  if (externIdToRunnerId.count(extId))
-    id = externIdToRunnerId[extId];
+  auto res = externIdToRunnerId.find(extId);
+  if (res != externIdToRunnerId.end())
+    id = res->second;
 
   pRunner r = getRunner(id, 0);
-  
-  if (!r){
+  bool idMatch = r != nullptr;
+
+  if (r == nullptr){
     xmlobject pname = person.getObject("PersonName");
 
     if (!pname) return false;
@@ -1803,15 +1816,26 @@ bool oEvent::addXMLRank(const xmlobject &xrank, map<__int64, int> &externIdToRun
 
   if (!r) return false; //No runner here!
 
-  oDataInterface DI=r->getDI();
+  if (rank) {
+    int pos =  rank.getObjectInt("RankPosition");
+    if (idMatch)
+      output[r->getId()] = make_pair(pos, RankStatus::IdMatch);
+    else {
+      auto ores = output.find(r->getId());
+      if (ores == output.end())
+        output[r->getId()] = make_pair(pos, RankStatus::NameMatch);
+      else if (ores->second.second == RankStatus::NameMatch)
+        output[r->getId()] = make_pair(pos, RankStatus::Ambivalent); // Not clear. Do not match.
+    }
+  }
+
+  
+ /* oDataInterface DI=r->getDI();
 
   if (rank)
     DI.setInt("Rank", rank.getObjectInt("RankPosition"));
 
-//  if (vrank)
-//    DI.setInt("VacRank", vrank.getObjectInt("RankPosition"));
-
-  r->synchronize();
+  r->synchronize();*/
 
   return true;
 }

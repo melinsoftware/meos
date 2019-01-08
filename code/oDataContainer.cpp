@@ -836,7 +836,7 @@ string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
   ob->getDataBuffers(data, oldData, strptr);
 
   string sql;
-  char bf[256];
+  char bf[1024*8];
 
   for (size_t kk = 0; kk < ordered.size(); kk++) {
     const oDataInfo &di=ordered[kk];

@@ -1637,7 +1637,7 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   if (sar) {
     string type;
     sar.getObjectString("type", type);
-    if (type == "groupedWithRef") {
+    if (type == "groupedWithRef" || type == "GroupedWith") {
       xmlobject pRef = sar.getObject("Person");
       if (pRef) {
         wstring sid;
@@ -2655,7 +2655,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
   }
 
   if (teamMember)
-    writeLegOrder(xml, rPerson);
+    writeLegOrder(xml, rPerson.getClassRef(false), rPerson.getLegNumber());
 
   wstring bib = rPerson.getBib();
   if (!bib.empty())
@@ -3113,6 +3113,44 @@ void IOF30Interface::writePersonStart(xmlparser &xml, const oRunner &r, bool inc
   xml.endTag();
 }
 
+void IOF30Interface::writeTeamNoPersonStart(xmlparser &xml, const oTeam &t, int leg, bool includeRaceNumber) {
+  xml.startTag("TeamMemberStart");
+
+  const pClub pc = t.getClubRef();
+  pClass cls = t.getClassRef(false);
+  if (pc && !pc->isVacant())
+    writeClub(xml, *pc, false);
+
+  {
+    if (!includeRaceNumber || (getStageNumber() == 0 && (cls && cls->getLegRunnerIndex(leg)==0)))
+      xml.startTag("Start");
+    else {
+      int rn = getStageNumber();
+      if (rn == 0)
+        rn = 1;
+      if (includeStageRaceInfo)
+        rn += cls->getLegRunnerIndex(leg);
+
+      xml.startTag("Start", "raceNumber", itos(rn));
+    }
+    
+    writeLegOrder(xml, cls, leg);
+
+    wstring bib = t.getBib();
+    if (!bib.empty())
+      xml.write("BibNumber", bib);
+    int startTime = 0;
+    if (cls && cls->getStartType(leg) == StartTypes::STTime)
+      startTime = cls->getStartData(leg);
+    if (startTime > 0)
+      xml.write("StartTime", oe.getAbsDateTimeISO(startTime, true, useGMT));
+
+    xml.endTag();
+  }
+
+  xml.endTag();
+}
+
 void IOF30Interface::writeTeamStart(xmlparser &xml, const oTeam &t) {
   xml.startTag("TeamStart");
 
@@ -3126,9 +3164,13 @@ void IOF30Interface::writeTeamStart(xmlparser &xml, const oTeam &t) {
   if (!bib.empty())
     xml.write("BibNumber", bib);
 
+  pClass cls = t.getClassRef(false);
+
   for (int k = 0; k < t.getNumRunners(); k++) {
     if (t.getRunner(k))
       writePersonStart(xml, *t.getRunner(k), true, true);
+    else if (cls && !cls->isOptional(k))
+      writeTeamNoPersonStart(xml, t, k, includeStageRaceInfo);
   }
 
   writeAssignedFee(xml, t, 0);
@@ -3150,7 +3192,7 @@ void IOF30Interface::writeStart(xmlparser &xml, const oRunner &r,
     xml.startTag("Start", "raceNumber", itos(rn));
   }
   if (teamMember)
-    writeLegOrder(xml, r);
+    writeLegOrder(xml, r.getClassRef(false), r.getLegNumber());
 
   wstring bib = r.getBib();
   if (!bib.empty())
@@ -3171,12 +3213,11 @@ void IOF30Interface::writeStart(xmlparser &xml, const oRunner &r,
   xml.endTag();
 }
 
-void IOF30Interface::writeLegOrder(xmlparser &xml, const oRunner &r) const {
+void IOF30Interface::writeLegOrder(xmlparser &xml, const oClass *pc, int legNo) const {
   // Team member race result
-  int legNumber, legOrder;
-  const oClass *pc = r.getClassRef(false);
+  int legNumber, legOrder;  
   if (pc) {
-    bool par = pc->splitLegNumberParallel(r.getLegNumber(), legNumber, legOrder);
+    bool par = pc->splitLegNumberParallel(legNo, legNumber, legOrder);
     xml.write("Leg", legNumber + 1);
     if (par)
       xml.write("LegOrder", legOrder + 1);

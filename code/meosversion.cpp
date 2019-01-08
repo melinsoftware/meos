@@ -27,9 +27,9 @@
 //V2: ABCDEFGHIHJKMN
 //V31: a
 //V33: abcde
-//V35: abcdef
+//V35: abcdefg
 int getMeosBuild() {
-  string revision("$Rev: 742 $");
+  string revision("$Rev: 804 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -41,12 +41,12 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2018-08-04 08:53:52 +0200 (lö, 04 aug 2018) $");
+  wstring date(L"$Date: 2019-01-07 21:22:06 +0100 (må, 07 jan 2019) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"U2"; // No parantheses (...)
+  return L"U3"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -121,7 +121,6 @@ void getSupporters(vector<wstring> &supp, vector<wstring> developSupp)
   supp.emplace_back(L"Siguldas Takas, Latvia");
   supp.emplace_back(L"Eric Teutsch, Ottawa Orienteering Club, Canada");
   supp.emplace_back(L"Silkeborg OK, Denmark");
-  supp.emplace_back(L"Almby IK, Örebro");
   supp.emplace_back(L"Erik Ivarsson Sandberg");
   supp.emplace_back(L"Stenungsunds OK");
   supp.emplace_back(L"OK Leipzig");
@@ -132,6 +131,14 @@ void getSupporters(vector<wstring> &supp, vector<wstring> developSupp)
   supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
   supp.emplace_back(L"Richard HEYRIES");
   supp.emplace_back(L"Ingemar Carlsson");
+  supp.emplace_back(L"Tolereds AIK");
+  supp.emplace_back(L"OK Snab");
+  supp.emplace_back(L"OK 73");
+  supp.emplace_back(L"Helsingborgs SOK");
+  supp.emplace_back(L"Sala OK");
+  supp.emplace_back(L"OK Roskilde");
+  supp.emplace_back(L"Almby IK, Örebro");
+  supp.emplace_back(L"Ligue PACA");
 
   reverse(supp.begin(), supp.end());
 }

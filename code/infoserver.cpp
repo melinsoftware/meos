@@ -85,6 +85,9 @@ InfoRadioControl::InfoRadioControl(int id) : InfoBase(id) {
 InfoClass::InfoClass(int id) : InfoBase(id) {
 }
 
+InfoMeosStatus::InfoMeosStatus() : InfoBase(0) {
+}
+
 InfoOrganization::InfoOrganization(int id) : InfoBase(id) {
 }
 
@@ -381,6 +384,23 @@ void InfoClass::serialize(xmlbuffer &xml, bool diffOnly) const {
   xml.write("cls", prop, name);
 }
 
+void InfoMeosStatus::setOnDatabase(const bool flag) {
+  onDatabase = flag;
+}
+
+void InfoMeosStatus::setEventNameId(const wstring & str) {
+  eventNameId = str;
+}
+
+void InfoMeosStatus::serialize(xmlbuffer &xml, bool diffOnly) const {
+  vector<pair<string, wstring>> prop;
+  prop.push_back(make_pair("version", getMeosCompectVersion()));
+  prop.push_back(make_pair("eventNameId", eventNameId));
+  prop.push_back(make_pair("onDatabase", itow(onDatabase)));		// 1 is true, 0 is false
+
+  xml.write("status", prop, L"");
+}
+
 bool InfoOrganization::synchronize(oClub &c) {
   const wstring &n = c.getDisplayName();
   if (n == name)
@@ -445,6 +465,10 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
   }
 
   int s = bc.getStatus();
+  int rt = bc.getRunningTime() * 10;
+  if (rt > 0 && s == RunnerStatus::StatusUnknown)
+    s = RunnerStatus::StatusOK;
+
   if (status != s) {
     status = s;
     ch = true;
@@ -459,7 +483,6 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     ch = true;
   }
 
-  int rt = bc.getRunningTime() * 10;
   if (rt != runningTime) {
     runningTime = rt;
     ch = true;
