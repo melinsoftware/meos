@@ -27,9 +27,9 @@
 //V2: ABCDEFGHIHJKMN
 //V31: a
 //V33: abcde
-//V35: abcdefg
+//V35: abcdefgh
 int getMeosBuild() {
-  string revision("$Rev: 804 $");
+  string revision("$Rev: 810 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -41,7 +41,7 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2019-01-07 21:22:06 +0100 (må, 07 jan 2019) $");
+  wstring date(L"$Date: 2019-01-10 22:42:30 +0100 (to, 10 jan 2019) $");
   return date.substr(7,10);
 }
 

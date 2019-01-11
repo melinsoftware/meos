@@ -2310,7 +2310,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
                 xml.startTag("SplitTime", "sequence", itos(no++));
                 xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
                 if (unsigned(k)<sp.size() && sp[k].time>0)
-                  xml.write("Time", "clockFormat", L"HH:MM:SS", getAbsTime((sp[k].time-it->tStartTime)-ZeroTime));
+                  xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(sp[k].time-it->tStartTime, 0));
                 else
                   xml.write("Time", L"--:--:--");
 
@@ -2415,7 +2415,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             xml.startTag("SplitTime", "sequence", itos(no++));
             xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
             if (unsigned(k)<sp.size() && sp[k].time>0)
-              xml.write("Time", "timeFormat", L"HH:MM:SS", getAbsTime((sp[k].time-it->tStartTime)-ZeroTime));
+              xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(sp[k].time - it->tStartTime, 0));
             else
               xml.write("Time", L"--:--:--");
 
@@ -2567,7 +2567,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
                 xml.startTag("SplitTime", "sequence", itos(no++));
                 xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
                 if (unsigned(k)<sp.size() && sp[k].time>0)
-                  xml.write("Time", "clockFormat", L"HH:MM:SS", getAbsTime((sp[k].time-r->tStartTime)-ZeroTime));
+                  xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(sp[k].time - it->tStartTime, 0));
                 else
                   xml.write("Time", L"--:--:--");
 
