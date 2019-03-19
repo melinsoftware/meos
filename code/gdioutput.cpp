@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -102,7 +102,8 @@ EventInfo::EventInfo() : callBack(0), keyEvent(KC_NONE) {}
 bool gdioutput::skipTextRender(int format) {
   format &= 0xFF;
   return format == pageNewPage ||
-         format == pagePageInfo;
+         format == pagePageInfo ||
+         format == pageNewChapter;
 }
 
 #ifndef MEOSDB
@@ -117,6 +118,7 @@ gdioutput::gdioutput(const string &_tag, double _scale) :
 
   isTestMode = false;
 }
+extern gdioutput *gdi_main;
 
 gdioutput::gdioutput(double _scale, HWND hWnd, const PrinterObject &prndef) :
   recorder((Recorder *)0, false) {
@@ -125,8 +127,12 @@ gdioutput::gdioutput(double _scale, HWND hWnd, const PrinterObject &prndef) :
   tabs = 0;
   setWindow(hWnd);
   constructor(_scale);
-
-  isTestMode = false;
+  if (gdi_main) {
+    isTestMode = gdi_main->isTestMode;
+    if (isTestMode)
+      cmdAnswers.swap(gdi_main->cmdAnswers);
+  }
+  else isTestMode = false;
 }
 
 void gdioutput::constructor(double _scale)
@@ -1559,7 +1565,7 @@ ListBoxInfo &gdioutput::addSelection(int x, int y, const string &id, int width, 
   lbi.xp=x;
   lbi.yp=y;
   lbi.width = scale*width;
-  lbi.height = scale*height;
+  lbi.height = scale*30;
   lbi.id=id;
   lbi.callBack=cb;
 
@@ -3098,6 +3104,11 @@ bool gdioutput::hasField(const string &id) const
       return true;
   }
 
+  for (auto &tl : TL) {
+    if (tl.id == id)
+      return true;
+  }
+
   return false;
 }
 
@@ -3651,8 +3662,8 @@ void gdioutput::refreshSmartFromSnapshot(bool allowMoveOffset) {
       }
     }
 
-    int maxOffsetY=max<int>(GetPageY()-clientRC.bottom, 0);
-    int maxOffsetX=max<int>(GetPageX()-clientRC.right, 0);
+    int maxOffsetY=max<int>(getPageY()-clientRC.bottom, 0);
+    int maxOffsetX=max<int>(getPageX()-clientRC.right, 0);
     int noy = OffsetY - offset.second;
     int nox = OffsetX - offset.first;
     if ((offset.first != 0 && nox>0 && nox<maxOffsetX) || (offset.second != 0 && noy>0 && noy<maxOffsetY) ) {
@@ -5215,8 +5226,8 @@ bool gdioutput::clipOffset(int PageX, int PageY, int &MaxOffsetX, int &MaxOffset
   int oy=OffsetY;
   int ox=OffsetX;
 
-  MaxOffsetY=max(GetPageY()-PageY, 0);
-  MaxOffsetX=max(GetPageX()-PageX, 0);
+  MaxOffsetY=max(getPageY()-PageY, 0);
+  MaxOffsetX=max(getPageX()-PageX, 0);
 
   if (OffsetY<0) OffsetY=0;
   else if (OffsetY>MaxOffsetY)
@@ -5856,7 +5867,7 @@ int gdioutput::setHighContrastMaxWidth() {
   OutputDebugString("Set high contrast\n");
 #endif
 
-  double w = GetPageX();
+  double w = getPageX();
   double s = rc.right / w;
   if (!highContrast || (fabs(s-1.0) > 1e-3 && (s * scale) >= 1.0) ) {
     lockRefresh = true;
@@ -6441,12 +6452,18 @@ const string &gdioutput::recodeToNarrow(const wstring &input) {
 
   return output;
 }
-/*
-const string &gdioutput::toUTF8(const string &input) const {
-  return toUTF8(toWide(input));
-}*/
 
-const string &gdioutput::toUTF8(const wstring &winput) const {
+const wstring &gdioutput::fromUTF8(const string &input) {
+  wstring &output = StringCache::getInstance().wget();
+  size_t alloc = input.length() + 1;
+  output.resize(alloc);
+  wchar_t *ptr = &output[0];
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, input.c_str(), input.length(), ptr, alloc);
+  ptr[wlen] = 0;
+  output.resize(wlen);
+  return output;
+}
+const string &gdioutput::toUTF8(const wstring &winput)  {
   string &output = StringCache::getInstance().get();
   size_t alloc = winput.length()*4+32;
   output.resize(alloc);
@@ -6956,4 +6973,22 @@ AutoCompleteInfo &gdioutput::addAutoComplete(const string &key) {
 
 void gdioutput::clearAutoComplete(const string &key) {
   autoCompleteInfo.reset();
+}
+
+int gdioutput::getPageY() const {
+  if (hideBG || backgroundColor1 != -1)
+    return max(MaxY, 100);
+  else
+    return max(MaxY, 100) + scaleLength(60); 
+}
+
+int gdioutput::getPageX() const { 
+  int xlimit = 100;
+  for (auto &b : BI)
+    xlimit = max(b.xp + b.width, xlimit);
+
+  if (hideBG || backgroundColor1 != -1 || xlimit >= MaxX)
+    return max(MaxX, xlimit);
+  else
+    return max(MaxX, xlimit) + scaleLength(60); 
 }

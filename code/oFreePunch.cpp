@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -158,6 +158,7 @@ Table *oEvent::getPunchesTB()//Table mode
     table->addColumn("Tid", 70, false);
     table->addColumn("Löpare", 170, false);
     table->addColumn("Lag", 170, false);
+    table->addColumn("Klass", 170, false);
     tables["punch"] = table;
     table->addOwnership();
   }
@@ -173,16 +174,14 @@ void oEvent::generatePunchTableData(Table &table, oFreePunch *addPunch)
     return;
   }
 
-  synchronizeList(oLPunchId);
+  synchronizeList({ oListId::oLPunchId, oListId::oLRunnerId });
   oFreePunchList::iterator it;
-  oe->setupCardHash(false);
   table.reserve(punches.size());
   for (it = punches.begin(); it != punches.end(); ++it){
     if (!it->isRemoved()){
       it->addTableRow(table);
     }
   }
-  oe->setupCardHash(true);
 }
 
 void oFreePunch::addTableRow(Table &table) const {
@@ -196,7 +195,7 @@ void oFreePunch::addTableRow(Table &table) const {
   table.set(row++, it, TID_TIME, getTime(), true, cellEdit);
   pRunner r = 0;
   if (CardNo > 0)
-    r = oe->getRunnerByCardNo(CardNo, Time, false);
+    r = oe->getRunnerByCardNo(CardNo, Time, oEvent::CardLookupProperty::Any);
 
   table.set(row++, it, TID_RUNNER, r ? r->getName() : L"?", false, cellEdit);
 
@@ -204,6 +203,8 @@ void oFreePunch::addTableRow(Table &table) const {
     table.set(row++, it, TID_TEAM, r->getTeam()->getName(), false, cellEdit);
   else
     table.set(row++, it, TID_TEAM, L"", false, cellEdit);
+
+  table.set(row++, it, TID_CLASSNAME, r ? r->getClass(true) : L"", false, cellEdit);
 }
 
 bool oFreePunch::inputData(int id, const wstring &input,
@@ -364,7 +365,7 @@ int oFreePunch::getControlIdFromHash(int hash, bool courseControlId) {
 
 int oEvent::getControlIdFromPunch(int time, int type, int card,
                                   bool markClassChanged, oFreePunch &punch) {
-  pRunner r = getRunnerByCardNo(card, time);
+  pRunner r = getRunnerByCardNo(card, time, oEvent::CardLookupProperty::Any);
   punch.tRunnerId = -1;
   punch.tMatchControlId = type;
   if (r!=0) {
@@ -621,11 +622,12 @@ void oEvent::getPunchesForRunner(int runnerId, vector<pFreePunch> &runnerPunches
 
   // Get times for when other runners used this card
   vector< pair<int, int> > times;
+  int refCno = r->getCardNo();
 
-  for (oRunnerList::const_iterator it = Runners.begin(); it != Runners.end(); ++it) {
+  for (auto it = Runners.begin(); it != Runners.end(); ++it) {
     if (it->Id == runnerId)
       continue;
-    if (it->Card && it->CardNo == r->CardNo) {
+    if (it->Card && it->getCardNo() == refCno) {
       pair<int, int> t = it->Card->getTimeRange();
       if (it->getStartTime() > 0)
         t.first = min(it->getStartTime(), t.first);
@@ -638,7 +640,7 @@ void oEvent::getPunchesForRunner(int runnerId, vector<pFreePunch> &runnerPunches
   }
 
   for (oFreePunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
-    if (it->CardNo == r->CardNo) {
+    if (it->CardNo == refCno) {
       bool other = false;
       int t = it->Time;
       for (size_t k = 0; k<times.size(); k++) {

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -248,10 +248,6 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       res.getObjects("entry", entries);
       processEntries(*oe, entries);
 
-      xmlList updates;
-      res.getObjects("update", updates);
-      processUpdates(*oe, updates);
-
       xmlList cards;
       res.getObjects("card", cards);
       processCards(gdi, *oe, cards);
@@ -259,6 +255,10 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       xmlList punches;
       res.getObjects("p", punches);
       processPunches(*oe, punches);
+
+      xmlList teamlineup;
+      res.getObjects("team", teamlineup);
+      processTeamLineups(*oe, teamlineup);
 
       lastImportedId = res.getAttrib("lastid").getInt();
     }
@@ -307,7 +307,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
     if (startno.length() > 0)
       r = oe.getRunnerByBibOrStartNo(startno, false);
     else
-      r = oe.getRunnerByCardNo(card, time);
+      r = oe.getRunnerByCardNo(card, time, oEvent::CardLookupProperty::Any);
 
     wstring rname;
     if (r) {
@@ -340,7 +340,7 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
       if (specialPunches.count(code))
         code = specialPunches[code];
 
-      pRunner r = oe.getRunnerByCardNo(card, time);
+      pRunner r = oe.getRunnerByCardNo(card, time, oEvent::CardLookupProperty::Any);
 
       wstring rname;
       if (r) {
@@ -385,9 +385,107 @@ void OnlineInput::processCards(gdioutput &gdi, oEvent &oe, const xmlList &cards)
   }
 }
 
-void OnlineInput::processUpdates(oEvent &oe, const xmlList &updates) {
+void OnlineInput::processTeamLineups(oEvent &oe, const xmlList &updates) {
 }
 
 void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
-}
+  
+  map<int, pRunner> raceId2R;
+  vector<pRunner> runners;
+  oe.getRunners(0, 0, runners);
+  for (auto &r : runners) {
+    int stored = r->getDCI().getInt("RaceId");
+    if (stored > 0 && (stored & (1 << 30))) {
+      int v = (stored & ~(1 << 30));
+      raceId2R[v] = r;
+    }
+  }
 
+  for (auto &entry : entries) {
+    pClass cls = nullptr;
+
+    int classId = entry.getObjectInt("classid");
+    if (classId > 0)
+      cls = oe.getClass(classId);
+
+    if (!cls) {
+      wstring clsName;
+      entry.getObjectString("classname", clsName);
+      cls = oe.getClass(clsName);
+    }
+    if (!cls)
+      continue;
+
+    int fee = entry.getObjectInt("fee");
+    bool paid = entry.getObjectBool("paid");
+
+    xmlobject xname = entry.getObject("name");
+    int birthyear = 0;
+    if (xname) {
+      birthyear = xname.getObjectInt("birthyear");
+    }
+
+    wstring name;
+    entry.getObjectString("name", name);
+    if (name.empty())
+      continue;
+
+    wstring club;
+    entry.getObjectString("club", club);
+
+    int cardNo = 0;
+    bool hiredCard = false;
+
+    xmlobject card = entry.getObject("card");
+    if (card) {
+      cardNo = card.getInt();
+      hiredCard = card.getObjectBool("hired");
+    }
+
+    pRunner r = nullptr;
+    int id = entry.getObjectInt("id");
+    if (id > 0) {
+      auto res = raceId2R.find(id);
+      if (res != raceId2R.end()) {
+        r = res->second;
+      }
+    }
+    else {
+      if (cardNo != 0) {
+        r = oe.getRunnerByCardNo(cardNo, 0, oEvent::CardLookupProperty::Any);
+        if (r && !r->matchName(name))
+          r = nullptr;
+      }
+      if (r == nullptr) {
+        r = oe.getRunnerByName(name, club);
+        if (r && r->getCardNo() != cardNo)
+          r = nullptr;
+      }
+    }
+    if (r == nullptr)
+      r = oe.addRunner(name, club, cls->getId(), cardNo, birthyear, true);
+    else {
+      r->setName(name, false);
+      r->setClub(club);
+      r->setBirthYear(birthyear);
+      r->setCardNo(cardNo, false, false);
+    }
+
+    r->getDI().setInt("Fee", fee);
+    int toPay = fee;
+    int cf = 0;
+    if (hiredCard) {
+      cf = r->getEvent()->getBaseCardFee();
+      if (cf > 0)
+        toPay += cf;
+    }
+    r->getDI().setInt("CardFee", cf);
+    r->getDI().setInt("Paid", paid ? toPay : 0);
+
+    if (id > 0) {
+      r->getDI().setInt("RaceId", id | (1 << 30));
+      raceId2R[id] = r;
+    }
+    r->synchronize(true);
+  }
+}

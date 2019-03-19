@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1023,8 +1023,8 @@ void Table::initEmpty() {
 
 void drawSymbol(gdioutput &gdi, HDC hDC, int height,
                 const TextInfo &ti, const wstring &symbol, bool highLight) {
-  int cx = ti.xp - gdi.GetOffsetX() + ti.xlimit/2;
-  int cy = ti.yp - gdi.GetOffsetY() + height/2 - 2;
+  int cx = ti.xp - gdi.getOffsetX() + ti.xlimit/2;
+  int cy = ti.yp - gdi.getOffsetY() + height/2 - 2;
   int h = int(height * 0.4);
   int w = h/3;
   h-=2;

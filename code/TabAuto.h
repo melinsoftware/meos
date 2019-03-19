@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,9 @@ enum Machines {
   mOnlineInput,
   mSaveBackup,
   mInfoService,
+
+  mMySQLReconnect,
+  Unknown = -1,
 };
 
 class AutoMachine
@@ -51,6 +54,8 @@ class AutoMachine
 private:
   int myid;
   static int uniqueId;
+  const Machines type;
+
 protected:
   bool editMode;
 
@@ -76,7 +81,12 @@ public:
   virtual void status(gdioutput &gdi) = 0;
   virtual bool stop() {return true;}
   virtual AutoMachine *clone() const = 0;
-  AutoMachine(const string &s) : myid(uniqueId++), name(s), interval(0), timeout(0),
+
+  Machines getType() {
+    return type;
+  };
+
+  AutoMachine(const string &s, Machines type) : myid(uniqueId++), type(type), name(s), interval(0), timeout(0),
             synchronize(false), synchronizePunches(false), editMode(false) {}
   virtual ~AutoMachine() = 0 {}
 };
@@ -93,6 +103,7 @@ protected:
   PrinterObject po;
   set<int> classesToPrint;
   bool pageBreak;
+  bool showHeader;
   bool showInterResult;
   bool splitAnalysis;
   bool notShown;
@@ -112,9 +123,18 @@ public:
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
   void settings(gdioutput &gdi, oEvent &oe, bool created);
 
-  PrintResultMachine(int v):AutoMachine("Resultatutskrift") {
+  void setHTML(const wstring &file, int timeout) {
+    exportFile = file;
+    doExport = true;
+    doPrint = false;
+    if (timeout > 0)
+      interval = timeout;
+  }
+
+  PrintResultMachine(int v):AutoMachine("Resultatutskrift", Machines::mPrintResultsMachine) {
     interval=v;
     pageBreak = true;
+    showHeader = false;
     showInterResult = true;
     notShown = true;
     splitAnalysis = true;
@@ -126,9 +146,10 @@ public:
     structuredExport = true;
     htmlRefresh = v;
   }
-  PrintResultMachine(int v, const oListInfo &li):AutoMachine("Utskrift / export"), listInfo(li) {
+  PrintResultMachine(int v, const oListInfo &li):AutoMachine("Utskrift / export", Machines::mPrintResultsMachine), listInfo(li) {
     interval=v;
     pageBreak = true;
+    showHeader = false;
     showInterResult = true;
     notShown = true;
     splitAnalysis = true;
@@ -160,7 +181,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
   void saveSettings(gdioutput &gdi);
 
-  SaveMachine():AutoMachine("Säkerhetskopiera") , saveIter(0) {
+  SaveMachine():AutoMachine("Säkerhetskopiera", Machines::mSaveBackup) , saveIter(0) {
   }
 };
 
@@ -177,7 +198,7 @@ public:
   PrewarningMachine *clone() const {return new PrewarningMachine(*this);}
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  PrewarningMachine():AutoMachine("Förvarningsröst") {}
+  PrewarningMachine():AutoMachine("Förvarningsröst", Machines::mPrewarningMachine) {}
   friend class TabAuto;
 };
 
@@ -212,7 +233,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  PunchMachine():AutoMachine("Stämplingsautomat"), radio(0) {}
+  PunchMachine():AutoMachine("Stämplingsautomat", Machines::mPunchMachine), radio(0) {}
   friend class TabAuto;
 };
 
@@ -228,7 +249,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, bool created);
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  SplitsMachine() : AutoMachine("Sträcktider/WinSplits"), leg(-1) {}
+  SplitsMachine() : AutoMachine("Sträcktider/WinSplits", Machines::mSplitsMachine), leg(-1) {}
   friend class TabAuto;
 };
 
@@ -271,7 +292,10 @@ public:
   int processButton(gdioutput &gdi, const ButtonInfo &bu);
   int processListBox(gdioutput &gdi, const ListBoxInfo &bu);
 
-  bool loadPage(gdioutput &gdi);
+  bool loadPage(gdioutput &gdi, bool showSettingsLast);
+  bool loadPage(gdioutput &gdi) {
+    return loadPage(gdi, false);
+  }
 
   const char * getTypeStr() const {return "TAutoTab";}
   TabType getType() const {return TAutoTab;}

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -147,6 +147,30 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
+
+      gdi.clearPage(true);
+      gdi.fillRight();
+      gdi.addString("", fontMediumPlus, "Skapar tävling...");
+      gdi.refresh();
+      Sleep(400);
+      oe->updateTabs(true, false);
+      loadPage(gdi);
+    }
+    else if (bi.id == "FNoCourses" || bi.id == "FNoCoursesRelay") {
+      if (gdi.hasField("Name"))
+        createCompetition(gdi);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::EditClub, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Network, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Vacancy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::NoCourses, true, *oe);
+
+      if (bi.id == "FNoCoursesRelay")
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *oe);
 
       gdi.clearPage(true);
       gdi.fillRight();
@@ -311,12 +335,36 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
     gdi.addString("", 1, "Välj vilka funktioner du vill använda");
     gdi.dropLine(0.5);
     gdi.fillRight();
+    gdi.addString("", 1, "Individuellt").setColor(colorDarkBlue);
+    gdi.popX();
+    gdi.dropLine(1.2);
+
     gdi.addButton("FIndividual", "Individuell tävling", NewGuideCB);
     gdi.addButton("FForked", "Individuellt, gafflat", NewGuideCB);
-    gdi.addButton("FTeam", "Tävling med lag", NewGuideCB);
+
     gdi.popX();
     gdi.dropLine(2);
-    gdi.addButton("FBasic", "Endast grundläggande", NewGuideCB);
+
+    gdi.addButton("FBasic", "Endast grundläggande (enklast möjligt)", NewGuideCB);
+    gdi.addButton("FNoCourses", "Endast tidtagning (utan banor)", NewGuideCB);
+
+    gdi.popX();
+    gdi.dropLine(3);
+    
+    gdi.addString("", 1, "Lag och stafett").setColor(colorDarkBlue);
+    gdi.popX();
+    gdi.dropLine(1.2);
+
+    gdi.addButton("FTeam", "Tävling med lag", NewGuideCB);
+    gdi.addButton("FNoCoursesRelay", "Endast tidtagning (utan banor), stafett", NewGuideCB);
+
+    gdi.popX();
+    gdi.dropLine(3);
+    
+    gdi.addString("", 1, "Övrigt").setColor(colorDarkBlue);
+    gdi.popX();
+    gdi.dropLine(1.2);
+
     gdi.addButton("FAll", "Alla funktioner", NewGuideCB);
     gdi.addButton("FSelect", "Välj från lista...", NewGuideCB);
     gdi.addButton("Cancel", "Avbryt", NewGuideCB).setCancel();
@@ -325,6 +373,7 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
       gdi.disableInput("FIndividual");
       gdi.disableInput("FForked");
       gdi.disableInput("FBasic");
+      gdi.disableInput("FNoCourses");
     }
 
     gdi.popX();

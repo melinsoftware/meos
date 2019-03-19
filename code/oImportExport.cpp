@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -117,7 +117,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
   if (!csv.openOutput(file))
     return false;
 
-  calculateResults(RTClassResult);
+  calculateResults({}, ResultType::ClassResult);
 
   oRunnerList::iterator it;
   string maleString;
@@ -309,6 +309,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
   xml.read(file);
 
   xmlobject xo = xml.getObject("EntryList");
+  set<wstring> matchedClasses;
 
   if (xo) {
 
@@ -376,7 +377,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
     gdi.refreshFast();
 
     int ent = 0, fail = 0;
-
+    
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false);
       reader.readStartList(gdi, xo, ent, fail);
@@ -384,7 +385,6 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
     else {
       xmlList xl;
       xo.getObjects(xl);
-
       xmlList::const_iterator it;
       for(it=xl.begin(); it != xl.end(); ++it){
         if (it->is("ClassStart")){
@@ -396,11 +396,11 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
             wstring clsName;
             it->getObjectString("ClassShortName", clsName);
             if (!clsName.empty())
-              cls = getClassCreate(0, clsName);
+              cls = getClassCreate(0, clsName, matchedClasses);
           }
-          else
-            cls = getClassCreate(clsId, lang.tl(L"Klass ") + itow(clsId));
-
+          else {
+            cls = getClassCreate(clsId, lang.tl(L"Klass ") + itow(clsId), matchedClasses);
+          }
           it->getObjects("PersonStart", entries);
           for (size_t k = 0; k<entries.size(); k++) {
             {
@@ -485,7 +485,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
   xo=xml.getObject("RankList");
 
   if (xo) {
-    gdi.addString("", 0, "Importerar ranking (IOF, xml)");
+    gdi.addString("", 0, "Importerar ranking...");
     gdi.refreshFast();
     int imp = 0, fail = 0;
 
@@ -522,7 +522,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
       }
     }
     
-    gdi.addString("", 0, "Klart. Antal importerade: X#" + itos(imp));
+    gdi.addString("", 0, "Klart. X värden tilldelade.#" + itos(imp));
     if (fail>0)
       gdi.addString("", 0, "Antal ignorerade: X#" + itos(fail));
     gdi.dropLine();
@@ -548,7 +548,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
       for(it=xl.begin(); it != xl.end(); ++it){
         if (it->is("Course")){
-          if (addXMLCourse(*it, updateClass))
+          if (addXMLCourse(*it, updateClass, matchedClasses))
             imp++;
           else
             fail++;
@@ -1472,8 +1472,7 @@ bool oEvent::addXMLControl(const xmlobject &xcontrol, int type)
   return true;
 }
 
-bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses)
-{
+bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses, set<wstring> &matchedClasses) {
   if (!xcrs)
     return false;
 
@@ -1558,10 +1557,9 @@ bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses)
 
     courses.push_back(pc);
   }
-
   if (addClasses) {
     for (size_t k = 0; k<cls.size(); k++) {
-      pClass pCls = getClassCreate(0, cls[k]);
+      pClass pCls = getClassCreate(0, cls[k], matchedClasses);
       if (pCls) {
         if (courses.size()==1) {
           if (pCls->getNumStages()==0) {
@@ -1811,6 +1809,9 @@ bool oEvent::addXMLRank(const xmlobject &xrank, const map<__int64, int> &externI
         swap(cn, cns);
 
       r=getRunnerByName(name, cns);
+
+      if (r == nullptr)
+        r = getRunnerByName(name);
     }
   }
 
@@ -2599,9 +2600,9 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
   oClass::initClassId(*this);
   reEvaluateAll(set<int>(), true);
   if (version != IOF20)
-    calculateResults(RTClassCourseResult);
-  calculateResults(RTTotalResult);
-  calculateResults(RTClassResult);
+    calculateResults(set<int>(), ResultType::ClassCourseResult);
+  calculateResults(set<int>(), ResultType::TotalResult);
+  calculateResults(set<int>(), ResultType::ClassResult);
   calculateTeamResults(true);
   calculateTeamResults(false);
   set<int> rgClasses;

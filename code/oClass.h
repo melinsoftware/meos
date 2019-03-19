@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -136,8 +136,13 @@ struct ClassResultInfo {
 
 class QualificationFinal;
 
-enum ClassType {oClassIndividual=1, oClassPatrol=2,
-                oClassRelay=3, oClassIndividRelay=4};
+enum ClassType {
+  oClassIndividual = 1, 
+  oClassPatrol = 2,
+  oClassRelay = 3, 
+  oClassIndividRelay = 4, 
+  oClassKnockout = 5
+};
 
 enum ClassMetaType {ctElite, ctNormal, ctYouth, ctTraining,
                     ctExercise, ctOpen, ctUnknown};
@@ -247,6 +252,13 @@ protected:
   void calculateSplits();
   void clearSplitAnalysis();
 
+  /** Map to correct leg number for diff class/runner class (for example qual/final)*/
+  int mapLeg(int inputLeg) const {
+    if (inputLeg > 0 && legInfo.size() == 1)
+      return 0; // The case with different class for team/runner. Leg is an index in another class.
+    return inputLeg;
+  }
+
   /** Info about the result in the class for each leg.
       Use oEvent::analyseClassResultStatus to setup */
   mutable vector<ClassResultInfo> tResultInfo;
@@ -266,6 +278,10 @@ protected:
 
   shared_ptr<QualificationFinal> qualificatonFinal;
 
+  int tMapsRemaining;
+  mutable int tMapsUsed;
+  mutable int tMapsUsedNoVacant;
+
   void configureInstance(int instance, bool allowCreation) const;
 public:
 
@@ -273,6 +289,21 @@ public:
   const pClass getParentClass() const { return parentClass; }
 
   const QualificationFinal *getQualificationFinal() const { return qualificatonFinal.get(); }
+
+  void clearQualificationFinal();
+
+  bool isQualificationFinalClass() const {
+    return parentClass && parentClass->isQualificationFinalBaseClass();
+  }
+
+  bool isQualificationFinalBaseClass() const {
+    return qualificatonFinal != nullptr;
+  }
+
+  bool isTeamClass() const {
+    int ns = getNumStages();
+    return ns > 0 && getNumDistinctRunners() == 1;
+  }
 
   /** Returns the number of possible final classes.*/
   int getNumQualificationFinalClasses() const;
@@ -345,7 +376,7 @@ public:
       return false;
   }
 
-  oClass *getVirtualClass(int instance, bool allowCreation);
+  pClass getVirtualClass(int instance, bool allowCreation);
   const pClass getVirtualClass(int instance) const;
 
   ClassStatus getClassStatus() const;
@@ -509,7 +540,10 @@ public:
   int getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNotCompeting) const;
 
   //Get remaining maps for class (or int::minvalue)
-  int getNumRemainingMaps(bool recalculate) const;
+  int getNumRemainingMaps(bool forceRecalculate) const;
+
+  void setNumberMaps(int nm);
+  int getNumberMaps(bool rawAttribute = false) const;
 
   const wstring &getName() const {return Name;}
   void setName(const wstring &name);

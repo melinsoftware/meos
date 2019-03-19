@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,16 +53,9 @@ public:
 };
 
 string convertSystemTimeN(const SYSTEMTIME &st);
-
-/*
-string convertSystemTime(const SYSTEMTIME &st);
-string convertSystemTimeOnly(const SYSTEMTIME &st);
-string convertSystemDate(const SYSTEMTIME &st);
-string getLocalTime();
-string getLocalDate();
-string getLocalTimeOnly();
-*/
 string getLocalTimeN();
+
+bool checkValidDate(const wstring &date);
 
 wstring convertSystemTime(const SYSTEMTIME &st);
 wstring convertSystemTimeOnly(const SYSTEMTIME &st);
@@ -83,7 +76,6 @@ const wstring &getTimeMS(int m);
 const wstring &formatTime(int rt);
 const wstring &formatTimeHMS(int rt);
 
-//const string &formatTimeN(int rt);
 wstring formatTimeIOF(int rt, int zeroTime);
 
 int convertDateYMS(const string &m, bool checkValid);
@@ -91,7 +83,6 @@ int convertDateYMS(const string &m, SYSTEMTIME &st, bool checkValid);
 
 int convertDateYMS(const wstring &m, bool checkValid);
 int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid);
-
 
 // Convert a "general" time string to a MeOS compatible time string
 void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &meosDate);
@@ -109,11 +100,6 @@ SYSTEMTIME Int64SecondToSystemTime(__int64 time);
 int convertAbsoluteTimeMS(const wstring &m);
 // Parses a time on format HH:MM:SS+01:00Z or HHMMSS+0100Z (but ignores time zone)
 int convertAbsoluteTimeISO(const wstring &m);
-
-//Returns a time converted from +/-MM:SS or NOTIME, in seconds
-//int convertAbsoluteTimeMS(const string &m);
-// Parses a time on format HH:MM:SS+01:00Z or HHMMSS+0100Z (but ignores time zone)
-//int convertAbsoluteTimeISO(const string &m);
 
 /** Returns a time converted from HH:MM:SS or -1, in seconds
    @param m time to convert
@@ -160,7 +146,7 @@ wstring getMeosFullVersion();
 wstring getMajorVersion();
 wstring getMeosCompectVersion();
 
-void getSupporters(vector<wstring> &supp, vector<wstring> developSupp);
+void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp);
 
 int countWords(const wchar_t *p);
 
@@ -254,11 +240,6 @@ void capitalize(wstring &str);
 
 /** Initial capital letter for each word. */
 void capitalizeWords(wstring &str);
-
-/*
-void capitalize(string &str);
-void capitalizeWords(string &str);*/
-
 
 wstring getTimeZoneString(const wstring &date);
 

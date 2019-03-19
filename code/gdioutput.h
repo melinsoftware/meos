@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -122,7 +122,7 @@ protected:
   bool startDoc(PrinterObject &po);
 
   bool getSelectedItem(ListBoxInfo &lbi);
-  bool doPrint(PrinterObject &po, PageInfo &pageInfo, pEvent oe);
+  bool doPrint(PrinterObject &po, PageInfo &pageInfo, pEvent oe, bool respectPageBreak);
 
   PrinterObject *po_default;
 
@@ -329,7 +329,8 @@ public:
   static const wstring &widen(const string &input);
   static const string &narrow(const wstring &input);
   
-  const string &toUTF8(const wstring &input) const;
+  static const string &toUTF8(const wstring &input);
+  static const wstring &fromUTF8(const string &input);
 
   //void setEncoding(FontEncoding encoding);
   //FontEncoding getEncoding() const;
@@ -400,16 +401,8 @@ public:
   void disableTables();
 
   void pasteText(const char *id);
-
-  bool writeHTML(const wstring &file, const wstring &title, int refreshTimeOut) const;
-  bool writeTableHTML(const wstring &file, const wstring &title, int refreshTimeOut) const;
-  bool writeTableHTML(ostream &fout, 
-                      const wstring &title,
-                      bool simpleFormat,
-                      int refreshTimeOut) const;
-
-  void print(pEvent oe, Table *t=0, bool printMeOSHeader=true, bool noMargin=false);
-  void print(PrinterObject &po, pEvent oe, bool printMeOSHeader=true, bool noMargin=false);
+  void print(pEvent oe, Table *t = 0, bool printMeOSHeader = true, bool noMargin = false, bool respectPageBreak = true);
+  void print(PrinterObject &po, pEvent oe, bool printMeOSHeader = true, bool noMargin=false, bool respectPageBreak = true);
   void printSetup(PrinterObject &po);
   void destroyPrinterDC(PrinterObject &po);
 
@@ -488,12 +481,12 @@ public:
 
   void updateScrollbars() const;
 
-  void SetOffsetY(int oy){OffsetY=oy;}
-  void SetOffsetX(int ox){OffsetX=ox;}
-  int GetPageY(){return max(MaxY, 100)+60;}
-  int GetPageX(){return max(MaxX, 100)+100;}
-  int GetOffsetY(){return OffsetY;}
-  int GetOffsetX(){return OffsetX;}
+  void setOffsetY(int oy) {OffsetY=oy;}
+  void setOffsetX(int ox) {OffsetX=ox;}
+  int getPageY() const;
+  int getPageX() const;
+  int getOffsetY() const {return OffsetY;}
+  int getOffsetX() const {return OffsetX;}
 
   void RenderString(TextInfo &ti, const wstring &text, HDC hDC);
   void RenderString(TextInfo &ti, HDC hDC=0);
@@ -753,7 +746,7 @@ public:
   void setDBErrorState(bool state);
   friend int TablesCB(gdioutput *gdi, int type, void *data);
   friend class Table;
-  friend gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x, int max_y);
+  friend gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x, int max_y, bool fixedSize);
 
   gdioutput(const string &tag, double _scale);
   gdioutput(double _scale, HWND hWndTarget, const PrinterObject &defprn);

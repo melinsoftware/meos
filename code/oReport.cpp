@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -414,7 +414,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   deque<pRunner> si_duplicate;
 
   if (Runners.size()>1){
-    Runners.sort(oRunner::CompareSINumber);
+    Runners.sort(oRunner::CompareCardNumber);
     map<int, vector<pRunner> > initDup;
 
     r_it=Runners.begin();
@@ -473,20 +473,22 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   }
   if (!no_class.empty()) gdi.addStringUT(1, Ellipsis);
 
-  gdi.dropLine();
-  swprintf_s(bf, lang.tl("Löpare utan bana: %d.").c_str(), no_course.size());
-  gdi.addStringUT(1, bf);
-  i=0;
+  if (getMeOSFeatures().withCourses(this)) {
+    gdi.dropLine();
+    swprintf_s(bf, lang.tl("Löpare utan bana: %d.").c_str(), no_course.size());
+    gdi.addStringUT(1, bf);
+    i = 0;
 
-  while(!no_course.empty() && ++i<20){
-    pRunner r=no_course.front();
-    no_course.pop_front();
-    wstring name = r->getClass(true) + L": " + r->getName();
-    if (!r->getClub().empty())
-      name += L" ("+ r->getClub()+ L")";
-    gdi.addStringUT(0, name);
+    while (!no_course.empty() && ++i < 20) {
+      pRunner r = no_course.front();
+      no_course.pop_front();
+      wstring name = r->getClass(true) + L": " + r->getName();
+      if (!r->getClub().empty())
+        name += L" (" + r->getClub() + L")";
+      gdi.addStringUT(0, name);
+    }
+    if (!no_course.empty()) gdi.addStringUT(1, Ellipsis);
   }
-  if (!no_course.empty()) gdi.addStringUT(1, Ellipsis);
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
     gdi.dropLine();

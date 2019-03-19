@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@
 #include "tabbase.h"
 
 struct ClassDrawSpecification;
-enum DrawMethod;
 
 class TabCourse :
   public TabBase
@@ -40,13 +39,13 @@ class TabCourse :
   wstring point_reduction;
 
   void fillCourseControls(gdioutput &gdi, const wstring &ctrl);
-  void fillOtherCourses(gdioutput &gdi, oCourse &crs);
+  void fillOtherCourses(gdioutput &gdi, oCourse &crs, bool withLoops);
 
   void saveLegLengths(gdioutput &gdi);
 
   vector<ClassDrawSpecification> courseDrawClasses;
 
-  DrawMethod getDefaultMethod() const;
+  oEvent::DrawMethod getDefaultMethod() const;
 
   wstring encodeCourse(const wstring &in, bool firstStart, bool lastFinish);
   void refreshCourse(const wstring &text, gdioutput &gdi);

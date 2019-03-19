@@ -7,7 +7,7 @@ Third Party Code. Additional copyright notices and license terms applicable to p
 All trademarks and registered trademarks mentioned herein are the property of their respective owners.  
 
 ------------------------------------
-Copyright 2007-2017 Melin Software HB.
+Copyright 2007-2019 Melin Software HB.
 
 ------------------------------------
 

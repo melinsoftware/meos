@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@
 #include "Table.h"
 
 //Version of database
-int oEvent::dbVersion = 80;
+int oEvent::dbVersion = 82;
 
 class RelativeTimeFormatter : public oDataDefiner {
   string name;
@@ -357,7 +357,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableInt("EntrySource", oDataContainer::oIS32, "Källa");
   oRunnerData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
   oRunnerData->addVariableInt("Reference", oDataContainer::oIS32, "Referens");
-  
+  oRunnerData->addVariableInt("NoRestart", oDataContainer::oIS8U, "Ej omstart");
+
   oControlData=new oDataContainer(oControl::dataSize);
   oControlData->addVariableInt("TimeAdjust", oDataContainer::oIS32, "Tidsjustering");
   oControlData->addVariableInt("MinTime", oDataContainer::oIS32, "Minitid");
@@ -443,6 +444,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oClassData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
   oClassData->addVariableInt("Locked", oDataContainer::oIS8U, "Låst gaffling");
   oClassData->addVariableString("Qualification", "Kvalschema");
+  oClassData->addVariableInt("NumberMaps", oDataContainer::oIS16, "Kartor");
 
   oTeamData = new oDataContainer(oTeam::dataSize);
   oTeamData->addVariableCurrency("Fee", "Anm. avgift");
@@ -462,6 +464,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oTeamData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring");
   oTeamData->addVariableInt("EntrySource", oDataContainer::oIS32, "Källa");
   oTeamData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
+  oTeamData->addVariableInt("NoRestart", oDataContainer::oIS8U, "Ej omstart");
 
   generalResults.push_back(GeneralResultCtr("atcontrol", L"Result at a control", new ResultAtControl()));
   generalResults.push_back(GeneralResultCtr("totatcontrol", L"Total/team result at a control", new TotalResultAtControl()));
@@ -1280,6 +1283,9 @@ bool oEvent::open(const xmlparser &xml) {
     }
   }
 
+  for (oRunner &r : Runners)
+    r.apply(false, 0, true);
+
   toc("team");
 
   xo=xml.getObject("PunchList");
@@ -1288,8 +1294,6 @@ bool oEvent::open(const xmlparser &xml) {
     xo.getObjects(xl);
 
     xmlList::const_iterator it;
-    if (xl.size() > 10)
-      setupCardHash(false); // This improves performance when there are many cards.
     oFreePunch::disableHashing = true;
     try {
       for(it=xl.begin(); it != xl.end(); ++it){
@@ -1306,7 +1310,6 @@ bool oEvent::open(const xmlparser &xml) {
     }
     oFreePunch::disableHashing = false;
     oFreePunch::rehashPunches(*this, 0, 0);
-    setupCardHash(true); // Clear
   }
 
   toc("punch");
@@ -1414,6 +1417,7 @@ pRunner oEvent::dbLookUpById(__int64 extId) const
   oEvent *toe = const_cast<oEvent *>(this);
   static oRunner sRunner = oRunner(toe, 0);
   sRunner = oRunner(toe, 0);
+  sRunner.setTemporary();
   RunnerWDBEntry *dbr = runnerDB->getRunnerById(int(extId));
   if (dbr != 0) {
     sRunner.init(*dbr);
@@ -1443,7 +1447,7 @@ pRunner oEvent::dbLookUpByCard(int cardNo) const
     dbr->getName(sRunner.sName);
     oRunner::getRealName(sRunner.sName, sRunner.tRealName);
     sRunner.init(*dbr);
-    sRunner.CardNo = cardNo;
+    sRunner.cardNumber = cardNo;
     return &sRunner;
   }
   else
@@ -1459,6 +1463,7 @@ pRunner oEvent::dbLookUpByName(const wstring &name, int clubId, int classId, int
 
   static oRunner sRunner = oRunner(toe, 0);
   sRunner = oRunner(toe, 0);
+  sRunner.setTemporary();
 
   if (birthYear == 0) {
     pClass pc = getClass(classId);
@@ -1521,7 +1526,7 @@ void oEvent::updateRunnerDatabase()
     oRunnerList::iterator it;
     map<int, int> clubIdMap;
     for (it=Runners.begin(); it != Runners.end(); ++it){
-      if (it->Card && it->Card->cardNo == it->CardNo &&
+      if (it->Card && it->Card->cardNo == it->cardNumber &&
         it->getDI().getInt("CardFee")==0 && it->Card->getNumPunches()>5)
         updateRunnerDatabase(&*it, clubIdMap);
     }
@@ -1544,7 +1549,7 @@ void oEvent::updateRunnerDatabase()
 
 void oEvent::updateRunnerDatabase(pRunner r, map<int, int> &clubIdMap)
 {
-  if (!r->CardNo)
+  if (!r->cardNumber)
     return;
   runnerDB->updateAdd(*r, clubIdMap);
 }
@@ -1635,7 +1640,7 @@ pRunner oEvent::addRunner(const wstring &name, int clubId, int classId,
       db_r->Club = getClub(clubId);
     db_r->Class = getClass(classId);
     if (cardNo>0)
-      db_r->CardNo = cardNo;
+      db_r->cardNumber = cardNo;
     if (birthYear>0)
       db_r->setBirthYear(birthYear);
     return addRunnerFromDB(db_r, classId, autoAdd);
@@ -1646,7 +1651,7 @@ pRunner oEvent::addRunner(const wstring &name, int clubId, int classId,
   r.Club = getClub(clubId);
   r.Class = getClass(classId);
   if (cardNo>0)
-    r.CardNo = cardNo;
+    r.cardNumber = cardNo;
   if (birthYear>0)
     r.setBirthYear(birthYear);
   pRunner pr = addRunner(r, true);
@@ -1685,7 +1690,7 @@ pRunner oEvent::addRunnerFromDB(const pRunner db_r,
   oRunner r(this);
   r.sName = db_r->sName;
   oRunner::getRealName(r.sName, r.tRealName);
-  r.CardNo = db_r->CardNo;
+  r.cardNumber = db_r->cardNumber;
 
   if (db_r->Club) {
     r.Club = getClub(db_r->getClubId());
@@ -1716,9 +1721,14 @@ pRunner oEvent::addRunnerFromDB(const pRunner db_r,
 
 pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
   bool needUpdate = Runners.empty();
-
+  
   Runners.push_back(r);
   pRunner pr=&Runners.back();
+  
+  if (cardToRunnerHash && r.getCardNo() != 0) {
+    cardToRunnerHash->emplace(r.getCardNo(), pr);
+  }  
+  
   if (pr->StartNo == 0 && updateStartNo) {
     pr->StartNo = ++nextFreeStartNo; // Need not be unique
   }
@@ -2106,13 +2116,49 @@ bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg) {
 
     Teams.sort(oTeam::compareResult);
   }
-  else if (so==ClassStartTime) {
+  else if (so==ClassStartTime || so == ClassStartTimeClub) {
+    if (leg == -1)
+      leg = 0;
     for (it=Teams.begin(); it != Teams.end(); ++it) {
       it->_cachedStatus = StatusUnknown;
       it->_sortStatus=0;
       it->_sortTime=it->getLegStartTime(leg);
       if (it->_sortTime<=0)
         it->_sortStatus=1;
+    }
+    if (so == ClassStartTime)
+      Teams.sort(oTeam::compareResult);
+    else
+      Teams.sort(oTeam::compareResultNoSno);
+  }
+  else if (so == ClassKnockoutTotalResult) {
+    for (it = Teams.begin(); it != Teams.end(); ++it) {
+      it->_cachedStatus = StatusUnknown;
+      it->_sortStatus = 0;
+      it->_sortTime = 0;
+ 
+      // Count number of races with results
+      int numResult = 0;
+      int lastClassHeat = 0;
+      for (pRunner r : it->Runners) {
+        if (r && (r->prelStatusOK() ||
+                 (r->tStatus != StatusUnknown && r->tStatus != StatusDNS && r->tStatus != StatusCANCEL))) {
+          
+          if (r->Class && r->tLeg > 0 && r->Class->isQualificationFinalBaseClass() && r->getClassRef(true) == r->Class)
+            continue; // Skip if not qualified.
+
+          numResult++;
+          lastClassHeat = r->getDCI().getInt("Heat");
+          it->_cachedStatus = r->tStatus;
+          it->_sortTime = r->getRunningTime();
+        }
+      }
+      if (lastClassHeat > 50 || lastClassHeat < 0)
+        lastClassHeat = 0;
+
+      unsigned rawStatus = it->_cachedStatus;
+      it->_sortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0] - (numResult * 100 + lastClassHeat) * 1000;
+
     }
     Teams.sort(oTeam::compareResult);
   }
@@ -2188,7 +2234,6 @@ const wstring &oEvent::getAbsTime(DWORD time) const {
      return res;
   }
 }
-
 
 const wstring &oEvent::getTimeZoneString() const {
   if (!date2LocalTZ.count(Date))
@@ -2327,12 +2372,15 @@ int oEvent::convertAbsoluteTime(const wstring &m)
 
   int len=m.length();
   bool firstComma = false;
-  for (int k=0;k<len;k++) {
-    wchar_t b=m[k];
-    if ( !(b==' ' || (b>='0' && b<='9')) ) {
-      if (b==':' && firstComma == false)
+  bool anyColon = false;
+  for (int k = 0; k < len; k++) {
+    wchar_t b = m[k];
+    if (!(b == ' ' || (b >= '0' && b <= '9'))) {
+      if (b == ':' && firstComma == false) {
+        anyColon = true;
         continue;
-      else if ((b==',' || b=='.') && firstComma == false) {
+      }
+      else if ((b == ',' || b == '.') && firstComma == false) {
         firstComma = true;
         continue;
       }
@@ -2341,6 +2389,16 @@ int oEvent::convertAbsoluteTime(const wstring &m)
   }
 
   int hour=_wtoi(m.c_str());
+
+  if (!anyColon && hour>=0 && len>=5) {
+    int second = hour % 100;
+    hour /= 100;
+    int minute = hour % 100;
+    hour /= 100;
+    if (hour > 23 || minute >=60 || second >= 60)
+      return -1;
+    return hour * 3600 + minute * 60 + second;
+  }
 
   if (hour<0 || hour>23)
     return -1;
@@ -2445,6 +2503,7 @@ int oEvent::getRelativeTime(const wstring &m) const {
 
 void oEvent::removeRunner(const vector<int> &ids)
 {
+  cardToRunnerHash.reset();
   oRunnerList::iterator it;
 
   set<int> toRemove;
@@ -2926,7 +2985,6 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
 
     y=gdi.getCY();
     vector<pRunner> rr;
-    setupCardHash(false);
 
     for(it=Runners.begin(); it != Runners.end(); ++it){
       if (it->skip() || it->needNoCard())
@@ -2961,9 +3019,9 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
           }
         }
 
-        getRunnersByCardNo(it->getCardNo(), true, true, rr);
+        getRunnersByCardNo(it->getCardNo(), false, CardLookupProperty::SkipNoStart, rr);
         for (size_t k = 0; k < rr.size(); k++) {
-          if (rr[k]->getId() != it->getId()) {
+          if (!rr[k]->skip() && rr[k]->getId() != it->getId()) {
             if (otherRunners.empty()) {
               otherRunners = lang.tl("Bricka X används också av: #" + itos(it->getCardNo()));
             }
@@ -3009,7 +3067,6 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
       gdi.addString("", 10, "inforestwarning");
     }
   }
-  setupCardHash(true);
 
   gdi.updateScrollbars();
 }
@@ -3534,6 +3591,7 @@ void oEvent::clear()
   Id=0;
   dataRevision = 0;
   tClubDataRevision = -1;
+  tCalcNumMapsDataRevision = -1;
 
   ZeroTime=0;
   Name.clear();
@@ -3548,6 +3606,7 @@ void oEvent::clear()
   tLongTimesCached = -1;
 
   //Order of destruction is extreamly important...
+  cardToRunnerHash.reset();
   runnerById.clear();
   bibStartNoToRunnerTeam.clear();
   Runners.clear();
@@ -3744,7 +3803,7 @@ void oEvent::reEvaluateAll(const set<int> &cls, bool doSync)
     if (!cls.empty() && cls.count(it->getClassId(true)) == 0)
       continue;
 
-    if (!it->tInTeam) {
+    if (!it->tInTeam || it->Class != it->tInTeam->Class || (it->Class && it->Class->isQualificationFinalBaseClass())) {
       it->resetTmpStore();
       it->apply(false, 0, true);
     }
@@ -3788,7 +3847,7 @@ void oEvent::reEvaluateAll(const set<int> &cls, bool doSync)
       if (!cls.empty() && cls.count(it->getClassId(true)) == 0)
         continue;
 
-      if (!it->tInTeam)
+      if (!it->tInTeam || it->Class != it->tInTeam->Class || (it->Class && (it->Class->isQualificationFinalBaseClass())))
         it->apply(false, 0, true);
       it->setTmpStore();
       it->storeTimes();
@@ -4146,9 +4205,10 @@ int oEvent::getFirstStart(int classId) const {
   int minTime=3600*24;
 
   while(it!=Runners.end()){
-    if (!it->isRemoved() && classId==0 || it->getClassId(true)==classId)
-      if (it->tStartTime < minTime && it->tStatus!=StatusNotCompetiting && it->tStartTime>0)
+    if (!it->isRemoved() && (classId == 0 || it->getClassId(true) == classId)) {
+      if (it->tStartTime < minTime && it->tStatus != StatusNotCompetiting && it->tStartTime>0)
         minTime = it->tStartTime;
+    }
     ++it;
   }
 
@@ -4723,7 +4783,7 @@ void oEvent::assignCardInteractive(gdioutput &gdi, GUICALLBACK cb)
       r+=it->getClass(false)+L", ";
 
     if (it->tInTeam) {
-      r+=itow(it->tInTeam->getStartNo()); + L" " + it->tInTeam->getName();
+      r+=itow(it->tInTeam->getStartNo()) + L" " + it->tInTeam->getName() + L", ";
     }
 
     r += it->getName() + L":";
@@ -4851,10 +4911,8 @@ void oEvent::generateTestCard(SICard &sic) const
   oRunner *r = 0;
   int cardNo = 0;
   while(r==0 && it!=Runners.end()) {
-    cardNo = it->CardNo;
-    if (cardNo == 0 && it->tParentRunner)
-      cardNo = it->tParentRunner->CardNo;
-
+    cardNo = it->getCardNo();
+    
     if (it->Class && it->tLeg>0) {
       StartTypes st = it->Class->getStartType(it->tLeg);
       if (st == STHunting) {
@@ -4884,9 +4942,7 @@ void oEvent::generateTestCard(SICard &sic) const
   }
   --it;
   while(r==0 && it!=Runners.begin()) {
-    cardNo = it->CardNo;
-    if (cardNo == 0 && it->tParentRunner)
-      cardNo = it->tParentRunner->CardNo;
+    cardNo = it->getCardNo();
 
     if (it->Class && it->tLeg>0) {
       StartTypes st = it->Class->getStartType(it->tLeg);
@@ -5066,7 +5122,6 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
     oe->setZeroTime(L"05:00:00");
     oe->getMeOSFeatures().useAll(*oe);
   }
-  bool useSOFTMethod = true;
   vector<wstring> gname;
   //gname.reserve(RunnerDatabase.size());
   vector<wstring> fname;
@@ -5162,7 +5217,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
       if (k%5!=5) {
         vector<ClassDrawSpecification> spec;
         spec.push_back(ClassDrawSpecification(cls->getId(), 0, getRelativeTime(start), 10, 3));
-        drawList(spec, useSOFTMethod, 1, drawAll);
+        drawList(spec, DrawMethod::MeOS, 1, oEvent::DrawType::DrawAll);
       }
       else
         cls->Name += L" Öppen";
@@ -5184,7 +5239,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
       if ( cls->getStartType(0)==STDrawn ) {
         vector<ClassDrawSpecification> spec;
         spec.push_back(ClassDrawSpecification(cls->getId(), 0, getRelativeTime(start), 20, 3));
-        drawList(spec, useSOFTMethod, 1, drawAll);
+        drawList(spec, DrawMethod::MeOS, 1, DrawType::DrawAll);
       }
     }
   }
@@ -5256,7 +5311,7 @@ void oEvent::fillLegNumbers(const set<int> &cls,
                             bool includeSubLegs, 
                             vector< pair<wstring, size_t> > &out) {
   oClassList::iterator it;
-  synchronizeList(oLClassId);
+  synchronizeList(oListId::oLClassId);
 
   out.clear();
   set< pair<int, int> > legs;
@@ -5390,8 +5445,7 @@ void oEvent::generateTableData(const string &tname, Table &table, TableUpdateInf
 void oEvent::applyEventFees(bool updateClassFromEvent,
                             bool updateFees, bool updateCardFees,
                             const set<int> &classFilter) {
-  synchronizeList(oLClassId, true, false);
-  synchronizeList(oLRunnerId, false, true);
+  synchronizeList({ oListId::oLClassId, oListId::oLRunnerId });
   bool allClass = classFilter.empty();
 
   if (updateClassFromEvent) {
@@ -5435,7 +5489,7 @@ void oEvent::applyEventFees(bool updateClassFromEvent,
 #ifndef MEOSDB
 void hideTabs();
 void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
-                bool skipEconomy, bool skipLists, bool skipRunners, bool skipControls);
+                bool skipEconomy, bool skipLists, bool skipRunners, bool skipCourses, bool skipControls);
 
 void oEvent::updateTabs(bool force, bool hide) const
 {
@@ -5449,14 +5503,14 @@ void oEvent::updateTabs(bool force, bool hide) const
 
   bool hasRunner = !Runners.empty() || !Classes.empty();
   bool hasLists = !empty();
-
+  bool skipCourses = getMeOSFeatures().withoutCourses(*this);
   if (hide || isReadOnly())
     hideTabs();
   else
     createTabs(force, empty(), !hasTeam, !getMeOSFeatures().hasFeature(MeOSFeatures::Speaker),
                !(getMeOSFeatures().hasFeature(MeOSFeatures::Economy)
                || getMeOSFeatures().hasFeature(MeOSFeatures::EditClub)),
-               !hasLists, !hasRunner, Controls.empty());
+               !hasLists, !hasRunner, skipCourses, Controls.empty() && !skipCourses);
 }
 
 #else
@@ -5465,15 +5519,16 @@ void oEvent::updateTabs(bool force) const
 }
 #endif
 
-bool oEvent::useRunnerDb() const
-{
+bool oEvent::useRunnerDb() const {
   return getMeOSFeatures().hasFeature(MeOSFeatures::RunnerDb);
-  //return getDCI().getInt("SkipRunnerDb")==0;
 }
-/*
-void oEvent::useRunnerDb(bool use) {
-  getDI().setInt("SkipRunnerDb", use ? 0 : 1);
-}*/
+
+int oEvent::getBaseCardFee() const {
+  int baseCardFee = oe->getDI().getInt("CardFee");
+  if (baseCardFee == 0)
+    baseCardFee = -1;
+  return baseCardFee;
+}
 
 bool oEvent::hasMultiRunner() const {
   for (oClassList::const_iterator it = Classes.begin(); it!=Classes.end(); ++it) {
@@ -5486,18 +5541,18 @@ bool oEvent::hasMultiRunner() const {
 
 /** Return false if card is not used */
 bool oEvent::checkCardUsed(gdioutput &gdi, oRunner &runnerToAssignCard, int cardNo) {
-  synchronizeList(oLRunnerId);
-  //pRunner pold=oe->getRunnerByCardNo(cardNo, 0, true, true);
-  wchar_t bf[1024];
   pRunner pold = 0;
-  for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
-    if (it->skip())
-      continue;
-    if (!runnerToAssignCard.canShareCard(&*it, cardNo)) {
-      pold = &*it;
-      break;
+  if (cardNo != 0) {
+    vector<pRunner> allR;
+    getRunnersByCardNo(cardNo, true, CardLookupProperty::OnlyMainInstance, allR);
+    for (pRunner it : allR) {
+      if (!runnerToAssignCard.canShareCard(it, cardNo)) {
+        pold = &*it;
+        break;
+      }
     }
   }
+  wchar_t bf[1024];
 
   if (pold) {
     swprintf_s(bf, (L"#" + lang.tl("Bricka %d används redan av %s och kan inte tilldelas.")).c_str(),
@@ -5560,6 +5615,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
     if (!it->tInTeam) {
       ClassType type = it->Class->getClassType();
       if (type == oClassIndividRelay) {
+        it->setClassId(0, true);
         it->setClassId(it->Class->getId(), true);
         it->synchronize();
       }
@@ -5772,7 +5828,7 @@ void oEvent::setCurrency(int factor, const wstring &symbol, const wstring &separ
 }
 
 wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
-                                bool cloneCourses, bool cloneResult, bool addToDate) {
+                                 bool cloneCourses, bool cloneResult, bool addToDate) {
 
   if (cloneResult) {
     cloneTimes = true;
@@ -5852,7 +5908,7 @@ wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
       r.sName = it->sName;
       oRunner::getRealName(r.sName, r.tRealName);
       r.StartNo = it->StartNo;
-      r.CardNo = it->CardNo;
+      r.cardNumber = it->cardNumber;
       r.Club = ce.getClub(it->getClubId());
       r.Class = ce.getClass(it->getClassId(false));
 
@@ -5933,11 +5989,40 @@ wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
     if (getMeOSFeatures().hasFeature(f))
       ce.getMeOSFeatures().useFeature(f, true, ce);
   }
-    
-  ce.save();
+  
+  // Transfer lists and list configurations.
+  if (listContainer) {
+    loadGeneralResults(false);
+    swap(ce.generalResults, generalResults);
+    try {
+      ce.listContainer = new MetaListContainer(&ce, *listContainer);
+      ce.save();
+    }
+    catch (...) {
+      swap(ce.generalResults, generalResults);
+      throw;
+    }
 
+    swap(ce.generalResults, generalResults);
+  }
   return ce.CurrentFile;
 }
+
+void oEvent::transferListsAndSave(const oEvent &src) {
+  src.loadGeneralResults(false);
+  swap(src.generalResults, generalResults);
+  try {
+    src.getListContainer().synchronizeTo(getListContainer());
+    save();
+  }
+  catch (...) {
+    swap(src.generalResults, generalResults);
+    throw;
+  }
+
+  swap(src.generalResults, generalResults);
+}
+
 
 bool checkTargetClass(pRunner target, pRunner source,
                       const oClassList &Classes,
@@ -6062,7 +6147,7 @@ void oEvent::transferResult(oEvent &ce,
     }
   }
 
-  calculateResults(RTTotalResult);
+  calculateResults({}, ResultType::TotalResult);
   // Lookup by id
   for (size_t k = 0; k < targetRunners.size(); k++) {
     pRunner it = targetRunners[k];
@@ -6082,7 +6167,7 @@ void oEvent::transferResult(oEvent &ce,
     wstring ccnB = canonizeName(r->getClub().c_str());
 
     if ((id1>0 && id1==id2) || 
-       (r->CardNo>0 && r->CardNo == it->CardNo) || 
+       (r->cardNumber>0 && r->cardNumber == it->cardNumber) ||
        (it->sName == r->sName) || (cnA == cnB && ccnA == ccnB)) {
       processed.insert(it->Id, 1);
       used.insert(r->Id, 1);
@@ -6098,13 +6183,12 @@ void oEvent::transferResult(oEvent &ce,
   if (processed.size() < int(targetRunners.size())) {
     // Lookup by card
     int v;
-    setupCardHash(false);
     for (size_t k = 0; k < targetRunners.size(); k++) {
       pRunner it = targetRunners[k];
       if (processed.lookup(it->Id, v))
         continue;
-      if (it->CardNo > 0) {
-        pRunner r = getRunnerByCardNo(it->CardNo, 0);
+      if (it->getCardNo() > 0) {
+        pRunner r = getRunnerByCardNo(it->getCardNo(), 0, CardLookupProperty::Any);
 
         if (!r || used.lookup(r->Id, v))
           continue;
@@ -6127,7 +6211,6 @@ void oEvent::transferResult(oEvent &ce,
         }
       }
     }
-    setupCardHash(true); // Clear cache
   }
 
   int v = -1;

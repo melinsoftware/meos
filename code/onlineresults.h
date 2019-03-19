@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,7 +36,15 @@ protected:
   int cmpId;
   set<int> classes;
   set<int> controls;
-  int dataType;
+
+  enum class DataType {
+    MOP20 = 1,
+    MOP10 = 2,
+    IOF3 = 10,
+    IOF2 = 11
+  };
+
+  DataType dataType;
   bool zipFile;
   bool includeTotal;
   bool includeCourse;

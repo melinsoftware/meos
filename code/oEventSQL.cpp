@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,51 +52,6 @@ bool oEvent::connectToServer()
   if (isThreadReconnecting())
     return false;
 
-#ifdef BUILD_DB_DLL
-  if (msOpenDatabase)
-    return true;
-#endif
-
-#ifdef BUILD_DB_DLL
-  hMod=LoadLibrary("meosdb.dll");
-
-  msOpenDatabase = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msOpenDatabase");
-  msConnectToServer = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msConnectToServer");
-  msSynchronizeUpdate = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msSynchronizeUpdate");
-  msSynchronizeRead = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msSynchronizeRead");
-  msSynchronizeList = (SYNCHRONIZELIST_FCN)GetProcAddress(hMod, "msSynchronizeList");
-  msRemove = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msRemove");
-  msMonitor = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msMonitor");
-  msDropDatabase = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msDropDatabase");
-  msUploadRunnerDB = (SYNCHRONIZE_FCN)GetProcAddress(hMod, "msUploadRunnerDB");
-
-  msGetErrorState = (ERRORMESG_FCN)GetProcAddress(hMod, "msGetErrorState");
-  msResetConnection = (OPENDB_FCN)GetProcAddress(hMod, "msResetConnection");
-  msReConnect = (OPENDB_FCN)GetProcAddress(hMod, "msReConnect");
-
-  if (!msOpenDatabase || !msSynchronizeUpdate || !msSynchronizeRead
-    || !msConnectToServer || !msReConnect || !msGetErrorState
-    || !msMonitor || !msDropDatabase || !msUploadRunnerDB) {
-    MessageBox(NULL, "Cannot load MySQL library.", NULL, MB_OK);
-    // handle the error
-    FreeLibrary(hMod);
-    hMod=0;
-    return false;//SOME_ERROR_CODE;
-  }
-#else/*
-  msOpenDatabase = (SYNCHRONIZE_FCN)::msOpenDatabase;
-  msConnectToServer = (SYNCHRONIZE_FCN)::msConnectToServer;
-  msSynchronizeUpdate = (SYNCHRONIZE_FCN)::msSynchronizeUpdate;
-  msSynchronizeRead = (SYNCHRONIZE_FCN)::msSynchronizeRead;
-  msSynchronizeList = (SYNCHRONIZELIST_FCN)::msSynchronizeList;
-  msRemove = (SYNCHRONIZE_FCN)::msRemove;
-  msMonitor = (SYNCHRONIZE_FCN)::msMonitor;
-  msDropDatabase = (SYNCHRONIZE_FCN)::msDropDatabase;
-  msUploadRunnerDB = (SYNCHRONIZE_FCN)::msUploadRunnerDB;
-  msGetErrorState = (ERRORMESG_FCN)::msGetErrorState;
-  msResetConnection = (OPENDB_FCN)::msResetConnection;
-  msReConnect = (OPENDB_FCN)::msReConnect;*/
-#endif
   return true;
 }
 
@@ -232,6 +187,30 @@ void oEvent::storeChangeStatus(bool onlyChangable)
   }
 }
 
+bool MEOSDB_API msSynchronizeList(oEvent *, oListId lid);
+
+bool oEvent::synchronizeList(initializer_list<oListId> types) {
+  if (!HasDBConnection)
+    return true;
+
+  msSynchronize(this);
+  resetSQLChanged(true, false);
+
+  for (oListId t : types) {
+    if (!msSynchronizeList(this, t)) {
+      verifyConnection();
+      return false;
+    }
+
+    if (t == oListId::oLPunchId)
+      advanceInformationPunches.clear();
+  }
+
+  reinitializeClasses();
+  reEvaluateChanged();
+  resetChangeStatus();
+  return true;
+}
 
 bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) {
   if (!HasDBConnection)
@@ -247,7 +226,7 @@ bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) 
     return false;
   }
 
-  if (id == oLPunchId)
+  if (id == oListId::oLPunchId)
     advanceInformationPunches.clear();
 
   if (postSyncEvent) {
@@ -270,6 +249,8 @@ bool oEvent::needReEvaluate() {
 }
 
 void oEvent::resetSQLChanged(bool resetAllTeamsRunners, bool cleanClasses) {
+  if (empty())
+    return;
   sqlChangedRunners = false;
   sqlChangedClasses = false;
   sqlChangedCourses = false;
@@ -305,6 +286,11 @@ void oEvent::resetSQLChanged(bool resetAllTeamsRunners, bool cleanClasses) {
 
 bool BaseIsRemoved(const oBase &ob){return ob.isRemoved();}
 
+namespace {
+  bool isSet(int mask, oListId id) {
+    return (mask & int(id)) != 0;
+  }
+}
 //Returns true if data is changed.
 bool oEvent::autoSynchronizeLists(bool SyncPunches)
 {
@@ -323,7 +309,7 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
   resetSQLChanged(true, false);
 
   //Synchronize ourself
-  if (mask & oLEventId) {
+  if (isSet(mask, oListId::oLEventId)) {
     ot=sqlUpdated;
     msSynchronize(this);
     if (sqlUpdated!=ot) {
@@ -333,73 +319,73 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
   }
 
   //Controls
-  if (mask & oLControlId) {
+  if (isSet(mask, oListId::oLControlId)) {
     int oc = sqlCounterControls;
     ot = sqlUpdateControls;
-    synchronizeList(oLControlId, false, false);
+    synchronizeList(oListId::oLControlId, false, false);
     changed |= oc!=sqlCounterControls;
     changed |= ot!=sqlUpdateControls;
   }
 
   //Courses
-  if (mask & oLCourseId) {
+  if (isSet(mask, oListId::oLCourseId)) {
     int oc = sqlCounterCourses;
     ot = sqlUpdateCourses;
-    synchronizeList(oLCourseId, false, false);
+    synchronizeList(oListId::oLCourseId, false, false);
     changed |= oc!=sqlCounterCourses;
     changed |= ot!=sqlUpdateCourses;
   }
 
   //Classes
-  if (mask & oLClassId) {
+  if (isSet(mask, oListId::oLClassId)) {
     int oc = sqlCounterClasses;
     ot = sqlUpdateClasses;
-    synchronizeList(oLClassId, false, false);
+    synchronizeList(oListId::oLClassId, false, false);
     changed |= oc!=sqlCounterClasses;
     changed |= ot!=sqlUpdateClasses;
   }
 
   //Clubs
-  if (mask & oLClubId) {
+  if (isSet(mask, oListId::oLClubId)) {
     int oc = sqlCounterClubs;
     ot = sqlUpdateClubs;
-    synchronizeList(oLClubId, false, false);
+    synchronizeList(oListId::oLClubId, false, false);
     changed |= oc!=sqlCounterClubs;
     changed |= ot!=sqlUpdateClubs;
   }
 
   //Cards
-  if (mask & oLCardId) {
+  if (isSet(mask, oListId::oLCardId)) {
     int oc = sqlCounterCards;
     ot = sqlUpdateCards;
-    synchronizeList(oLCardId, false, false);
+    synchronizeList(oListId::oLCardId, false, false);
     changed |= oc!=sqlCounterCards;
     changed |= ot!=sqlUpdateCards;
   }
 
   //Runners
-  if (mask & oLRunnerId) {
+  if (isSet(mask, oListId::oLRunnerId)) {
     int oc = sqlCounterRunners;
     ot = sqlUpdateRunners;
-    synchronizeList(oLRunnerId, false, false);
+    synchronizeList(oListId::oLRunnerId, false, false);
     changed |= oc!=sqlCounterRunners;
     changed |= ot!=sqlUpdateRunners;
   }
 
   //Teams
-  if (mask & oLTeamId) {
+  if (isSet(mask, oListId::oLTeamId)) {
     int oc = sqlCounterTeams;
     ot = sqlUpdateTeams;
-    synchronizeList(oLTeamId, false, false);
+    synchronizeList(oListId::oLTeamId, false, false);
     changed |= oc!=sqlCounterTeams;
     changed |= ot!=sqlUpdateTeams;
   }
 
-  if (SyncPunches && (mask & oLPunchId)) {
+  if (SyncPunches && isSet(mask, oListId::oLPunchId)) {
     //Punches
     int oc = sqlCounterPunches;
     ot = sqlUpdatePunches;
-    synchronizeList(oLPunchId, false, false);
+    synchronizeList(oListId::oLPunchId, false, false);
     changed |= oc!=sqlCounterPunches;
     changed |= ot!=sqlUpdatePunches;
   }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,7 +188,7 @@ void TabTeam::selectTeam(gdioutput &gdi, pTeam t)
     gdi.enableInput("Undo");
     gdi.enableInput("Remove");
 
-    oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterNone);
+    oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterOnlyMulti);
     gdi.selectItemByData("RClass", t->getClassId(false));
     gdi.selectItemByData("Teams", t->getId());
 
@@ -203,6 +203,10 @@ void TabTeam::selectTeam(gdioutput &gdi, pTeam t)
       gdi.setText("TimeIn", t->getInputTimeS());
       if (gdi.hasField("PointIn"))
         gdi.setText("PointIn", t->getInputPoints());
+    }
+
+    if (gdi.hasField("NoRestart")) {
+      gdi.check("NoRestart", t->preventRestart());
     }
 
     loadTeamMembers(gdi, 0, 0, t);
@@ -320,6 +324,10 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
     if (gdi.hasField("Fee"))
       t->getDI().setInt("Fee", oe->interpretCurrency(gdi.getText("Fee")));
 
+
+    if (gdi.hasField("NoRestart"))
+      t->preventRestart(gdi.isChecked("NoRestart"));
+    
     t->apply(false, 0, false);
 
     if (gdi.hasField("Club")) {
@@ -436,7 +444,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                 r->setCardNo(cardNo, true);
 
                 if (gdi.isChecked("RENT" + itos(i)))
-                  r->getDI().setInt("CardFee", oe->getDI().getInt("CardFee"));
+                  r->getDI().setInt("CardFee", oe->getBaseCardFee());
                 else
                   r->getDI().setInt("CardFee", 0);
 
@@ -617,15 +625,14 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       
       bool rExists = r != 0;
       
-      pRunner old = oe->getRunnerByCardNo(card, 0, true, true);
+      pRunner old = oe->getRunnerByCardNo(card, 0, oEvent::CardLookupProperty::CardInUse);
       if (old && r != old) {
         throw meosException(L"Brickan används av X.#" + old->getName() );
       }
 
-
       pClub clb = 0;
       if (!rExists) {
-        pRunner rOrig = oe->getRunnerByCardNo(card, 0, false, false);
+        pRunner rOrig = oe->getRunnerByCardNo(card, 0, oEvent::CardLookupProperty::Any);
         if (rOrig)
           clb = rOrig->getClubRef();
       }
@@ -636,7 +643,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
         r = oe->addRunner(name, clb ? clb->getId() : t->getClubId(), t->getClassId(false), card, 0, false);
       }
       if (rent)
-        r->getDI().setInt("CardFee", oe->getDI().getInt("CardFee"));
+        r->getDI().setInt("CardFee", oe->getBaseCardFee());
 
       t->synchronize();
       pRunner oldR = t->getRunner(leg);
@@ -653,13 +660,17 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
           oldR->synchronize(true);
           t->setRunner(leg, r, true);
           t->checkValdParSetup();
+
+          if (oldR->isAnnonumousTeamMember())
+            oe->removeRunner({ oldR->getId() });
+          t->synchronize(true);
         }
       }
       else {
         t->setRunner(leg, r, true);
         t->checkValdParSetup();
+        t->synchronize(true);
       }
-
       selectTeam(gdi, t);
     }
     else if (bi.id == "Browse") {
@@ -1017,7 +1028,6 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
         pClass pc=oe->getClass(lbi.data);
 
         if (pc) {
-          vector<pRunner> rCache;
           for(unsigned i=0;i<pc->getNumStages();i++){
             char bf[16];
             sprintf_s(bf, "R%d", i);
@@ -1027,7 +1037,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
                 sprintf_s(bf, "SI%d", i);
                 int cno = r->getCardNo();
                 gdi.setText(bf, cno > 0 ? itow(cno) : L"");
-                warnDuplicateCard(gdi, bf, cno, r, rCache);
+                warnDuplicateCard(gdi, bf, cno, r);
               }
             }
           }
@@ -1094,14 +1104,14 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       int cno = gdi.getTextNo("DirCard");
       if (cno > 0 && gdi.getText("DirName").empty()) {
         bool matched = false;
-        pRunner r = oe->getRunnerByCardNo(cno, 0, true, false);
+        pRunner r = oe->getRunnerByCardNo(cno, 0, oEvent::CardLookupProperty::ForReadout);
         if (r && (r->getStatus() == StatusUnknown || r->getStatus() == StatusDNS) ) {
           // Switch to exactly this runner. Has not run before
           gdi.setText("DirName", r->getName())->setExtra(r->getId());
           matched = true;
         }
         else {
-          r = oe->getRunnerByCardNo(cno, 0, false, false);
+          r = oe->getRunnerByCardNo(cno, 0, oEvent::CardLookupProperty::Any);
           if (r) {
             // Copy only the name.
             gdi.setText("DirName", r->getName())->setExtra(0);
@@ -1130,8 +1140,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
           int cardNo = _wtoi(ii.text.c_str());
           pTeam t = oe->getTeam(teamId);
           if (t) {
-            vector<pRunner> rc;
-            warnDuplicateCard(gdi, ii.id, cardNo, t->getRunner(i), rc);
+            warnDuplicateCard(gdi, ii.id, cardNo, t->getRunner(i));
           }
           break;
         }
@@ -1209,7 +1218,6 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
   gdi.addString("", yp, xp + dx[3], 0, "Hyrd:");
   gdi.addString("", yp, xp + dx[5], 0, "Status:");
   gdi.dropLine(0.5);
-  vector<pRunner> rCache;
 
   for (unsigned i=0;i<pc->getNumStages();i++) {
     yp = gdi.getCY();
@@ -1249,7 +1257,7 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
         if (hasSI) {
           int cno = r->getCardNo();
           gdi.setText(bf_si, cno > 0 ? itow(cno) : L"");
-          warnDuplicateCard(gdi, bf_si, cno, r, rCache);
+          warnDuplicateCard(gdi, bf_si, cno, r);
           gdi.check("RENT" + itos(i), r->getDCI().getInt("CardFee") != 0);
         }
         string sid = "STATUS"+itos(i);
@@ -1259,7 +1267,7 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
             ti->setColor(colorGreen);
         }
         else if (r->getStatus() != StatusUnknown) {
-          TextInfo * ti = (TextInfo *)gdi.setText(sid, r->getStatusS() + L", " + r->getRunningTimeS(), false);
+          TextInfo * ti = (TextInfo *)gdi.setText(sid, r->getStatusS(false) + L", " + r->getRunningTimeS(), false);
           if (ti)
             ti->setColor(colorRed);
         }
@@ -1378,7 +1386,7 @@ bool TabTeam::loadPage(gdioutput &gdi)
   }
 
   gdi.addSelection("RClass", 170, 300, TeamCB, L"Klass:");
-  oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterNone);
+  oe->fillClasses(gdi, "RClass", oEvent::extraNone, oEvent::filterOnlyMulti);
   gdi.addItem("RClass", lang.tl("Ny klass"), 0);
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy))
@@ -1431,9 +1439,12 @@ bool TabTeam::loadPage(gdioutput &gdi)
 
   gdi.popX();
   gdi.selectItemByData("Status", 0);
-
-  gdi.dropLine(1.5);
   
+  if (oe->hasAnyRestartTime()) {
+    gdi.addCheckbox("NoRestart", "Förhindra omstart", 0, false, "Förhindra att laget deltar i någon omstart");
+  }
+  gdi.dropLine(1.5);
+
   const bool multiDay = oe->hasPrevStage();
 
   if (multiDay) {
@@ -1491,18 +1502,18 @@ bool TabTeam::loadPage(gdioutput &gdi)
   rc.left = posXForButtons;
   rc.top = posYForButtons;
 
-  gdi.setCY(posYForButtons + gdi.scaleLength(4));
+  gdi.setCY(posYForButtons + gdi.scaleLength(10));
   gdi.setCX(posXForButtons + gdi.getLineHeight());
   gdi.fillDown();
-  gdi.addString("", 1, "Verktyg");
+  gdi.addString("", fontMediumPlus, "Verktyg");
   gdi.dropLine(0.3);
   gdi.fillRight();
   gdi.addButton("ImportTeams", "Importera laguppställningar", TeamCB);
   gdi.addButton("AddTeamMembers", "Skapa anonyma lagmedlemmar", TeamCB, "Fyll obesatta sträckor i alla lag med anonyma tillfälliga lagmedlemmar (N.N.)");
   rc.right = gdi.getCX() + gdi.getLineHeight();
-  gdi.dropLine(1.5);
+  gdi.dropLine(2);
   rc.bottom = gdi.getHeight();
-  gdi.addRectangle(rc, colorLightCyan);
+  gdi.addRectangle(rc, colorLightBlue);
 
   gdi.setRestorePoint();
 
@@ -1692,7 +1703,7 @@ pRunner TabTeam::findRunner(const wstring &name, int cardNo) const {
 
   if (cardNo != 0) {
     vector<pRunner> pr;
-    oe->getRunnersByCard(cardNo, pr);
+    oe->getRunnersByCardNo(cardNo, true, oEvent::CardLookupProperty::Any, pr);
     for (size_t k = 0; k < pr.size(); k++) {
       wstring a = canonizeName(pr[k]->getName().c_str());
       if (a == n)
@@ -1876,7 +1887,8 @@ void TabTeam::processChangeRunner(gdioutput &gdi, pTeam t, int leg, pRunner r) {
 
 void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   vector<int> mp;
-    
+  bool removeAnnonumousTeamMember = false;
+  
   if (r->getTeam()) {
     pTeam otherTeam = r->getTeam();
     int otherLeg = r->getLegNumber();
@@ -1890,7 +1902,11 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   else if (oldR) {
     t->setRunner(leg, 0, false);
     t->synchronize(true);
-    oldR->setClassId(r->getClassId(false), true);
+    if (r->getClassRef(false) && r->getClassRef(false)->isTeamClass())
+      oldR->setClassId(0, false);
+    else
+      oldR->setClassId(r->getClassId(false), true);
+    removeAnnonumousTeamMember = oldR->isAnnonumousTeamMember();
     oldR->evaluateCard(true, mp, 0, true);
     oldR->synchronize(true);
   }
@@ -1900,6 +1916,9 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   t->checkValdParSetup();
   t->apply(true, 0, false);
   t->synchronize(true);
+
+  if (removeAnnonumousTeamMember)
+    oe->removeRunner({ oldR->getId() });
 }
 
 void TabTeam::clearCompetitionData() {
@@ -1911,16 +1930,15 @@ void TabTeam::clearCompetitionData() {
   currentMode = 0;
 }
 
-bool TabTeam::warnDuplicateCard(gdioutput &gdi, string id, int cno, pRunner r, vector<pRunner> &allRCache) {
+bool TabTeam::warnDuplicateCard(gdioutput &gdi, string id, int cno, pRunner r) {
   pRunner warnCardDupl = 0;
 
-  if (r && !r->getCard()) {
-    if (allRCache.empty()) // Fill cache if not initialized
-      oe->getRunners(0, 0, allRCache, false);
-
-    for (size_t k = 0; k < allRCache.size(); k++) {
-      if (!r->canShareCard(allRCache[k], cno)) {
-        warnCardDupl = allRCache[k];
+  if (r && !r->getCard() && cno != 0) {
+    vector<pRunner> allR;
+    oe->getRunnersByCardNo(cno, true, oEvent::CardLookupProperty::Any, allR);
+    for (pRunner ar : allR) {
+      if (!r->canShareCard(ar, cno)) {
+        warnCardDupl = ar;
         break;
       }
     }

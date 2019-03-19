@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,6 +188,11 @@ public:
 
   pRunner getRunner(unsigned leg) const;
   int getNumRunners() const {return Runners.size();}
+  int getNumAssignedRunners() const { 
+    int cnt = 0;
+    for (auto &r : Runners) if (r) cnt++;
+    return cnt;
+  }
 
   void decodeRunners(const string &rns, vector<int> &rid);
   void importRunners(const vector<int> &rns);
@@ -231,8 +236,8 @@ public:
   static bool compareSNO(const oTeam &a, const oTeam &b);
   static bool compareName(const oTeam &a, const oTeam &b) {return a.sName<b.sName;}
   static bool compareResult(const oTeam &a, const oTeam &b);
-  static bool compareStartTime(const oTeam &a, const oTeam &b);
-
+  static bool compareResultNoSno(const oTeam &a, const oTeam &b);
+  
   static void checkClassesWithReferences(oEvent &oe, set<int> &clsWithRef);
   static void convertClassWithReferenceToPatrol(oEvent &oe, const set<int> &clsWithRef);
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2012 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
     Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
+
 
 #pragma once
 
@@ -46,6 +47,7 @@ enum gdiFonts {
 const int pageNewPage=100;
 //const int pageReserveHeight=101;
 const int pagePageInfo=102;
+const int pageNewChapter = 103;
 
 const int textRight=256;
 const int textCenter=512;

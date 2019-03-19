@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ protected:
   bool lastSplitState;
   bool lastLargeSize;
   
+  wstring lastHtmlTarget;
   
   EStdListType getTypeFromResultIndex(int ix) const;
 
@@ -78,6 +79,9 @@ private:
   TabList(const TabList &);
   const TabList &operator = (const TabList &);
   
+  map<string, int> htmlTemplateTag2Id;
+  map<int, wstring> html2IdToInfo;
+
   string settingsTarget;
   oListParam tmpSettingsParam;
   void changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindow);
@@ -93,14 +97,16 @@ private:
   static void getResultIndividual(oListParam &par, ClassConfigInfo &cnf);
   static void getResultClub(oListParam &par, ClassConfigInfo &cnf);
 
-  static void getStartPatrol(oListParam &par, ClassConfigInfo &cnf);
-  static void getResultPatrol(oListParam &par, ClassConfigInfo &cnf);
+  static void getStartPatrol(oEvent &oe, oListParam &par, ClassConfigInfo &cnf);
+  static void getResultPatrol(oEvent &oe, oListParam &par, ClassConfigInfo &cnf);
 
   static void getStartTeam(oListParam &par, ClassConfigInfo &cnf);
   static void getResultTeam(oListParam &par, ClassConfigInfo &cnf);
 
   static void getResultRogaining(oListParam &par, ClassConfigInfo &cnf);
 
+
+  static void readSettings(gdioutput &gdi, oListParam &par, bool forResult);
 
 public:
   /** Returns a collection of public lists. */
@@ -121,8 +127,18 @@ public:
   void rebuildList(gdioutput &gdi);
   void settingsResultList(gdioutput &gdi);
 
+  void loadClassSettings(gdioutput &gdi, string targetTag);
+  void handleClassSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi);
+
   void loadSettings(gdioutput &gdi, string targetTag);
   void handleListSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi);
+  
+  void htmlSettings(gdioutput &gdi, string targetTag);
+  void handleHTMLSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi);
+
+  void loadRememberList(gdioutput &gdi, string targetTag);
+  void handleRememberSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi);
+
   enum PrintSettingsSelection {
     Splits = 0,
     StartInfo = 1,

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -134,9 +134,11 @@ void TestMeOS::runProtected(bool protect) const {
   oe_main->useDefaultProperties(true);
   oe_main->setProperty("FirstTime", 0);
   oe_main->setProperty("TestPath", tp);
-  oe_main->getPropertyInt("UseEventor", 1);
+  oe_main->getPropertyInt("UseEventor", 1);  
+  oe_main->setProperty("Interactive", 0);
   TabSI *tsi = dynamic_cast<TabSI*>(gdi_main->getTabs().get(TabType::TSITab));
   tsi->setMode(TabSI::ModeReadOut);
+  tsi->clearQueue();
   //string pmOrig = oe_main->getPropertyString("PayModes", "");
   //oe_main->setProperty("PayModes", "");
 
@@ -206,6 +208,10 @@ void TestMeOS::runProtected(bool protect) const {
   OutputDebugString(L"Test PASSED\n");
   if (protect) {
     cleanup();
+  }
+  else {
+    gdi_main->addStringUT(1, 1, 1, "Test PASSED").setColor(colorDarkGreen);
+    gdi_main->refresh();
   }
 }
 

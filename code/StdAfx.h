@@ -36,7 +36,7 @@ bool getDesktopFile(wchar_t *fileNamePath, const wchar_t *fileName, const wchar_
 bool getMeOSFile(wchar_t *FileNamePath, const wchar_t *FileName);
 
 class gdioutput;
-gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x = 0, int max_y = 0);
+gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x = 0, int max_y = 0, bool fixedSize = false);
 gdioutput *getExtraWindow(const string &tag, bool toForeGround);
 string uniqueTag(const char *base);
 

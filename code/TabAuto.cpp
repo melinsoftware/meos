@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@
 
 #include "gdiconstants.h"
 #include "meosexception.h"
+#include "HTMLWriter.h"
 
 static TabAuto *tabAuto = 0;
 int AutoMachine::uniqueId = 1;
@@ -212,7 +213,7 @@ void TabAuto::timerCallback(gdioutput &gdi)
 
   DWORD d=0;
   if (reload && !editMode && gdi.getData("AutoPage", d) && d)
-    loadPage(gdi);
+    loadPage(gdi, false);
  }
 
 void TabAuto::setTimer(AutoMachine *am)
@@ -259,7 +260,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     if (sm) 
       sm->saveSettings(gdi);
     updateSyncInfo();
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id=="Result") {
     PrintResultMachine *sm=dynamic_cast<PrintResultMachine*>(getMachine(bu.getExtraInt()));
@@ -271,8 +272,10 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     ext.push_back(make_pair(L"Webbdokument", L"*.html;*.htm"));
 
     wstring file = gdi.browseForSave(ext, L"html", index);
-    if (!file.empty())
+    if (!file.empty()) {
       gdi.setText("ExportFile", file);
+      oe->setProperty("LastExportTarget", file);
+    }
   }
   else if (bu.id == "BrowseScript") {
     vector< pair<wstring, wstring> > ext;
@@ -288,8 +291,10 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.setInputStatus("ExportScript", stat);
     gdi.setInputStatus("BrowseFile", stat);
     gdi.setInputStatus("BrowseScript", stat);
-    gdi.setInputStatus("HTMLRefresh", stat);
-    gdi.setInputStatus("StructuredExport", stat);
+    if (gdi.hasField("HTMLRefresh")) {
+      gdi.setInputStatus("HTMLRefresh", stat);
+      gdi.setInputStatus("StructuredExport", stat);
+    }
   }
   else if (bu.id == "DoPrint") {
     bool stat = gdi.isChecked(bu.id);
@@ -339,9 +344,11 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
         prm->doPrint = gdi.isChecked("DoPrint");
         prm->exportFile = gdi.getText("ExportFile");
         prm->exportScript = gdi.getText("ExportScript");
-        prm->structuredExport = gdi.isChecked("StructuredExport");
-        prm->htmlRefresh = gdi.isChecked("HTMLRefresh") ? t : 0;
+        
         if (!prm->readOnly) {
+          prm->structuredExport = gdi.isChecked("StructuredExport");
+          prm->htmlRefresh = gdi.isChecked("HTMLRefresh") ? t : 0;
+
           gdi.getSelection("Classes", prm->classesToPrint);
 
           ListBoxInfo lbi;
@@ -350,6 +357,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
             par.selection=prm->classesToPrint;
             par.listCode = EStdListType(lbi.data);
             par.pageBreak = gdi.isChecked("PageBreak");
+            par.showHeader = gdi.isChecked("ShowHeader");
             par.showInterTimes = gdi.isChecked("ShowInterResults");
             par.splitAnalysis = gdi.isChecked("SplitAnalysis");
             int legNr = gdi.getSelectedItem("LegNumber").first;
@@ -363,13 +371,15 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
         }
         prm->po.onlyChanged = gdi.isChecked("OnlyChanged");
         prm->pageBreak = gdi.isChecked("PageBreak");
+        prm->showHeader = gdi.isChecked("ShowHeader");
+
         prm->showInterResult = gdi.isChecked("ShowInterResults");
         prm->splitAnalysis = gdi.isChecked("SplitAnalysis");
         prm->synchronize=true; //To force continuos data sync.
         setTimer(prm);
       }
       updateSyncInfo();
-      loadPage(gdi);
+      loadPage(gdi, false);
     }
 #endif
   }
@@ -401,7 +411,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
       setTimer(sm);
     }
     updateSyncInfo();
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id=="Save") { // General save
     AutoMachine *sm=getMachine(bu.getExtraInt());
@@ -410,7 +420,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
       setTimer(sm);
     }
     updateSyncInfo();
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id=="StartPrewarning") {
     PrewarningMachine *pwm=dynamic_cast<PrewarningMachine*>(getMachine(bu.getExtraInt()));
@@ -419,7 +429,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
       pwm->waveFolder=gdi.getText("WaveFolder");
       gdi.getSelection("Controls", pwm->controls);
 
-      oe->synchronizeList(oLPunchId);
+      oe->synchronizeList(oListId::oLPunchId);
       oe->clearPrewarningSounds();
 
       pwm->synchronizePunches=true;
@@ -432,7 +442,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
       }
     }
     updateSyncInfo();
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id=="StartPunch") {
 
@@ -452,17 +462,17 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
       }
     }
     updateSyncInfo();
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id == "Cancel") {
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id == "Stop") {
     if (bu.getExtraInt())
       stopMachine(getMachine(bu.getExtraInt()));
 
     updateSyncInfo(); 
-    loadPage(gdi);
+    loadPage(gdi, false);
   }
   else if (bu.id == "PrinterSetup") {
     PrintResultMachine *prm =
@@ -479,7 +489,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
      if (prm) {
        prm->process(gdi, oe, SyncNone);
        setTimer(prm);
-       loadPage(gdi);
+       loadPage(gdi, false);
      }
   }
   else if (bu.id == "SelectAll") {
@@ -540,8 +550,11 @@ bool TabAuto::stopMachine(AutoMachine *am)
 
 void TabAuto::settings(gdioutput &gdi, AutoMachine *sm, Machines ms) {
     editMode=true;
-    bool createNew = (sm==0);
-    if (!sm) {
+    bool createNew = (sm==0) || (ms == Machines::Unknown);
+    if (sm) {
+      ms = sm->getType();
+    }
+    else {
       sm = AutoMachine::construct(ms);
       machines.push_back(sm);
     }
@@ -576,7 +589,7 @@ void TabAuto::killMachines()
   AutoMachine::resetGlobalId();
 }
 
-bool TabAuto::loadPage(gdioutput &gdi)
+bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast)
 {
   oe->checkDB();
   tabAuto=this;
@@ -587,8 +600,8 @@ bool TabAuto::loadPage(gdioutput &gdi)
   int storedOY = 0;
   int storedOX = 0;
   if (isAP) {
-    storedOY = gdi.GetOffsetY();
-    storedOX = gdi.GetOffsetX();
+    storedOY = gdi.getOffsetY();
+    storedOX = gdi.getOffsetX();
   }
 
   gdi.clearPage(false);
@@ -652,7 +665,8 @@ bool TabAuto::loadPage(gdioutput &gdi)
   if (isAP) {
     gdi.setOffset(storedOY, storedOY, true);
   }
-
+  if (showSettingsLast && !machines.empty())
+    settings(gdi, *machines.rbegin(), Machines::Unknown);
   gdi.refresh();
   return true;
 }
@@ -693,7 +707,7 @@ void AutoMachine::startCancelInterval(gdioutput &gdi, char *startCommand, bool c
 
 void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   settingsTitle(gdi, "Resultatutskrift / export");
-  wstring time=created ? L"10:00" : getTimeMS(interval);
+  wstring time = (created && interval <= 0) ? L"10:00" : getTimeMS(interval);
   startCancelInterval(gdi, "StartResult", created, IntervalMinute, time);
 
   if (created) {
@@ -716,9 +730,15 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.addButton("BrowseFile", "Bläddra...", AutomaticCB);
   gdi.setCX(cx);
   gdi.dropLine(2.3);
-  gdi.addCheckbox("StructuredExport", "Strukturerat exportformat", 0, structuredExport);
-  gdi.addCheckbox("HTMLRefresh", "HTML med AutoRefresh", 0, htmlRefresh != 0);
-  gdi.dropLine(1.2);
+  if (!readOnly) {
+    gdi.addCheckbox("StructuredExport", "Strukturerat exportformat", 0, structuredExport);
+    gdi.addCheckbox("HTMLRefresh", "HTML med AutoRefresh", 0, htmlRefresh != 0);
+  }
+  else {
+    gdi.addString("", 0, "HTML formaterad genom listinställningar");
+  }
+
+  gdi.dropLine(1.8);
   gdi.setCX(cx);
   gdi.addInput("ExportScript", exportScript, 32, 0, L"Skript att köra efter export:");
   gdi.dropLine(0.7);
@@ -730,16 +750,17 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.setInputStatus("ExportScript", doExport);
   gdi.setInputStatus("BrowseFile", doExport);
   gdi.setInputStatus("BrowseScript", doExport);
-  gdi.setInputStatus("StructuredExport", doExport);
-  gdi.setInputStatus("HTMLRefresh", doExport);
   gdi.setInputStatus("PrinterSetup", doPrint);
 
   if (!readOnly) {
+    gdi.setInputStatus("StructuredExport", doExport);
+    gdi.setInputStatus("HTMLRefresh", doExport);
+
     gdi.fillDown();
-    gdi.addString("", 1, "Listval");
+    gdi.addString("", fontMediumPlus, "Listval");
     gdi.dropLine();
     gdi.fillRight();
-    gdi.addListBox("Classes", 150,300,0, L"", L"", true);
+    gdi.addListBox("Classes", 150, 300, 0, L"", L"", true);
     gdi.pushX();
     gdi.fillDown();
     vector< pair<wstring, size_t> > d;
@@ -771,8 +792,10 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
     gdi.selectItemByData("LegNumber", listInfo.getLegNumberCoded());
 
     gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser", 0, pageBreak);
+    gdi.addCheckbox("ShowHeader", "Visa rubrik", 0, showHeader);
+
     gdi.addCheckbox("ShowInterResults", "Visa mellantider", 0, showInterResult,
-                                        "Mellantider visas för namngivna kontroller.");
+                    "Mellantider visas för namngivna kontroller.");
     gdi.addCheckbox("SplitAnalysis", "Med sträcktidsanalys", 0, splitAnalysis);
 
     gdi.addCheckbox("OnlyChanged", "Skriv endast ut ändade sidor", 0, po.onlyChanged);
@@ -784,7 +807,8 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, bool created) {
   }
   else {
     gdi.fillDown();
-    gdi.addString("", 1, L"Lista av typ 'X'#" + listInfo.getName());
+    gdi.addString("", fontMediumPlus, L"Lista av typ 'X'#" + listInfo.getName());
+    gdi.dropLine();
     gdi.addCheckbox("OnlyChanged", "Skriv endast ut ändade sidor", 0, po.onlyChanged);
   }
 }
@@ -804,7 +828,7 @@ void PrintResultMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       if (doPrint) {
         gdiPrint.refresh();
         try {
-          gdiPrint.print(po, oe);
+          gdiPrint.print(po, oe, true, false, listInfo.getParam().pageBreak);
         }
         catch (const meosException &ex) {
           printError = ex.wwhat();
@@ -814,10 +838,19 @@ void PrintResultMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       }
       if (doExport) {
         if (!exportFile.empty()) {
-          if (structuredExport)
-            gdiPrint.writeTableHTML(exportFile, oe->getName(), htmlRefresh);
-          else
-            gdiPrint.writeHTML(exportFile, oe->getName(), htmlRefresh);
+          checkWriteAccess(exportFile);
+          wstring tExport = exportFile + L"~";
+          if (!readOnly) {
+            if (structuredExport)
+              HTMLWriter::writeTableHTML(gdiPrint, tExport, oe->getName(), htmlRefresh, 1.0);
+            else
+              HTMLWriter::writeHTML(gdiPrint, tExport, oe->getName(), htmlRefresh, 1.0);
+          }
+          else {
+            HTMLWriter::write(gdiPrint, tExport, oe->getName(), 0, listInfo.getParam(), *oe);
+          }
+          DeleteFile(exportFile.c_str());
+          MoveFile(tExport.c_str(), exportFile.c_str());
 
           if (!exportScript.empty()) {
             ShellExecute(NULL, NULL, exportScript.c_str(), exportFile.c_str(), NULL, SW_HIDE);

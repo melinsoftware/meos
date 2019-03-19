@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -69,6 +69,10 @@ oListParam::oListParam() {
   timePerPage = 8000;
   margin = 5;
   screenMode = 0;
+
+  htmlScale = 1.0;
+  htmlRows = 60;
+  htmlTypeTag = "free";
 }
 
 void oListParam::serialize(xmlparser &xml, 
@@ -77,10 +81,10 @@ void oListParam::serialize(xmlparser &xml,
   xml.startTag("ListParam", "Name", name);
   xml.write("ListId", container.getUniqueId(listCode));
   string sel;
-  for (set<int>::const_iterator it = selection.begin(); it != selection.end(); ++it) {
+  for (int s : selection) {
     if (!sel.empty())
       sel += ";";
-    sel += itos(*it);
+    sel += itos(s);
   }
   xml.write("ClassId", sel);
   xml.write("LegNumber", legNumber);
@@ -90,13 +94,15 @@ void oListParam::serialize(xmlparser &xml,
   xml.write("Title", title);
   xml.writeBool("Large", useLargeSize);
   xml.writeBool("PageBreak", pageBreak);
+  xml.writeBool("HideHeader", !showHeader);
+
   xml.writeBool("ShowNamedSplits", showInterTimes);
   xml.writeBool("ShowInterTitle", showInterTitle);
   xml.writeBool("ShowSplits", showSplitTimes);
   xml.writeBool("ShowAnalysis", splitAnalysis);
   xml.write("InputNumber", inputNumber);
   if (nextList != 0) {
-    map<int, int>::const_iterator res = idToIndex.find(nextList);
+    auto res = idToIndex.find(nextList);
     if (res != idToIndex.end())
       xml.write("NextList", res->second);
   }
@@ -111,11 +117,17 @@ void oListParam::serialize(xmlparser &xml,
 
   xml.write("ScreenMode", screenMode);
 
-  if (nColumns != 0) {
+  if (nColumns != 0 || htmlTypeTag != "free") {
     xml.write("NumColumns", itos(nColumns));
     xml.writeBool("Animate", animate);
     xml.write("TimePerPage", timePerPage);
     xml.write("Margin", margin);
+  }
+
+  if (htmlTypeTag != "free") {
+    xml.write("HTML", htmlTypeTag);
+    xml.write("PageRows", htmlRows);
+    xml.write("Scale", to_string(htmlScale));
   }
 
   xml.endTag();
@@ -142,6 +154,8 @@ void oListParam::deserialize(const xmlobject &xml, const MetaListContainer &cont
 
   useLargeSize = xml.getObjectBool("Large");
   pageBreak = xml.getObjectBool("PageBreak");
+  showHeader = !xml.getObjectBool("HideHeader");
+
   showInterTimes = xml.getObjectBool("ShowNamedSplits");
   showSplitTimes = xml.getObjectBool("ShowSplits");
   splitAnalysis = xml.getObjectBool("ShowAnalysis");
@@ -163,7 +177,7 @@ void oListParam::deserialize(const xmlobject &xml, const MetaListContainer &cont
 
   xml.getObjectString("Image", bgImage);
 
-  int nColumns = xml.getObjectInt("NumColumns");
+  nColumns = xml.getObjectInt("NumColumns");
 
   screenMode = xml.getObjectInt("ScreenMode");
   animate = xml.getObjectBool("Animate");
@@ -172,7 +186,22 @@ void oListParam::deserialize(const xmlobject &xml, const MetaListContainer &cont
     timePerPage = xml.getObjectInt("TimePerPage");
 
   if (xml.got("Margin"))
-    timePerPage = xml.getObjectInt("Margin");
+    margin = xml.getObjectInt("Margin");
+
+  if (xml.got("HTML"))
+    xml.getObjectString("HTML", htmlTypeTag);
+
+  if (xml.got("Scale")) {
+    string tmp;
+    xml.getObjectString("Scale", tmp);
+    htmlScale = atof(tmp.c_str());
+    if (!(htmlScale > 0.1 && htmlScale < 1000))
+      htmlScale = 1.0;
+  }
+
+  if (xml.got("PageRows")) {
+    htmlRows = xml.getObjectInt("PageRows");
+  }
 
   saved = true;
 }
@@ -374,10 +403,18 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   li.calcResults = false;
   li.calcTotalResults = false;
   li.rogainingResults = false;
+  li.calculateLiveResults = false;
   li.calcCourseClassResults = false;
   if (par.useControlIdResultFrom > 0 || par.useControlIdResultTo > 0)
-    li.needPunches = true;
-  const bool isPunchList = mList.listSubType == oListInfo::EBaseTypePunches;
+    li.needPunches = oListInfo::PunchMode::SpecificPunch;
+  const bool isPunchList = mList.listSubType == oListInfo::EBaseTypeCoursePunches ||
+                           mList.listSubType == oListInfo::EBaseTypeAllPunches;
+  if (isPunchList) {
+    if ((!li.filter(EFilterList::EFilterHasResult) && !li.filter(EFilterList::EFilterHasPrelResult)) 
+        || li.sortOrder == SortOrder::ClassLiveResult)
+      li.needPunches = oListInfo::PunchMode::AnyPunch;
+  }
+  
   map<tuple<int, int, int>, int> indexPosToWidth;
   map< pair<int, int>, int> linePostCount;
   for (int i = 0; i<4; i++) {
@@ -411,7 +448,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         // Automatically determine what needs to be calculated
         if (mp.type == lTeamPlace || mp.type == lRunnerPlace || mp.type == lRunnerGeneralPlace) {
           if (!li.calcResults) {
-            oe->calculateResults(oEvent::RTClassResult);
+            oe->calculateResults(set<int>(), oEvent::ResultType::ClassResult);
             oe->calculateTeamResults(false);
           }
           li.calcResults = true;
@@ -420,7 +457,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                 || mp.type == lTeamTotalPlace || mp.type == lTeamPlaceDiff 
                 || mp.type == lRunnerGeneralPlace) {
           if (!li.calcTotalResults) {
-            oe->calculateResults(oEvent::RTTotalResult);
+            oe->calculateResults(set<int>(), oEvent::ResultType::TotalResult);
             oe->calculateTeamResults(true);
           }
           li.calcTotalResults = true;
@@ -431,12 +468,13 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         }
         else if (mp.type == lRunnerClassCoursePlace || mp.type == lRunnerClassCourseTimeAfter) {
           if (!li.calcCourseClassResults)
-            oe->calculateResults(oEvent::RTClassCourseResult);
+            oe->calculateResults(set<int>(), oEvent::ResultType::ClassCourseResult);
 
           li.calcCourseClassResults = true;
         }
         else if (mp.type == lRunnerTempTimeAfter || mp.type == lRunnerTempTimeStatus) {
-          li.needPunches = true;
+          if (li.needPunches == oListInfo::PunchMode::NoPunch)
+          li.needPunches = oListInfo::PunchMode::SpecificPunch;
         }
 
         string label = "P" + itos(i*1000 + j*100 + k);
@@ -515,7 +553,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   for (map<pair<int, int>, int>::iterator it = linePostCount.begin(); it != linePostCount.end(); ++it) {
     if (it->second == 1) {
       int base = it->first.first;
-      if (base == MLSubList && listSubType == oListInfo::EBaseTypePunches)
+      if (base == MLSubList && listSubType == oListInfo::EBaseTypeCoursePunches)
         continue; // This type of list requires actual width
       indexPosToWidth[tuple<int,int,int>(base, it->first.second, 0)] = totalWidth; 
     }
@@ -738,6 +776,9 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                                       it != filter.end(); ++it) {
     li.setFilter(*it);
   }
+  if (li.filter(EFilterList::EFilterAnyResult) || sortOrder == SortOrder::ClassLiveResult)
+    li.calculateLiveResults = true;
+
   for (set<ESubFilterList>::const_iterator it = subFilter.begin();
                                       it != subFilter.end(); ++it) {
     li.setSubFilter(*it);
@@ -749,7 +790,6 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   if (!resultModule.empty() || li.calcResults || li.calcCourseClassResults || li.calcTotalResults)
     hasResults_ = true;
 }
-
 
 void Position::indent(int ind) {
   int end = pos.size() - 1;
@@ -1629,15 +1669,17 @@ void MetaList::initSymbols() {
     typeToSymbol[lPatrolClubNameNames] = L"PatrolClubNameNames";
     typeToSymbol[lRunnerFinish] = L"RunnerFinish";
     typeToSymbol[lRunnerTime] = L"RunnerTime";
+    typeToSymbol[lRunnerGrossTime] = L"RunnerGrossTime";
     typeToSymbol[lRunnerTimeStatus] = L"RunnerTimeStatus";
     typeToSymbol[lRunnerTempTimeStatus] = L"RunnerTempTimeStatus";
     typeToSymbol[lRunnerTempTimeAfter] = L"RunnerTempTimeAfter";
     typeToSymbol[lRunnerTimeAfter] = L"RunnerTimeAfter";
     typeToSymbol[lRunnerClassCourseTimeAfter] = L"RunnerClassCourseTimeAfter";
-    typeToSymbol[lRunnerMissedTime] = L"RunnerTimeLost";
+    typeToSymbol[lRunnerLostTime] = L"RunnerTimeLost";
     typeToSymbol[lRunnerPlace] = L"RunnerPlace";
     typeToSymbol[lRunnerClassCoursePlace] = L"RunnerClassCoursePlace";
     typeToSymbol[lRunnerStart] = L"RunnerStart";
+    typeToSymbol[lRunnerCheck] = L"RunnerCheck";
     typeToSymbol[lRunnerStartCond] = L"RunnerStartCond";
     typeToSymbol[lRunnerStartZero] = L"RunnerStartZero";
     typeToSymbol[lRunnerClub] = L"RunnerClub";
@@ -1674,6 +1716,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerPayMethod] = L"RunnerPayMethod";
     typeToSymbol[lRunnerEntryDate] = L"RunnerEntryDate";
     typeToSymbol[lRunnerEntryTime] = L"RunnerEntryTime";
+    typeToSymbol[lRunnerId] = L"RunnerId";
 
     typeToSymbol[lTeamName] = L"TeamName";
     typeToSymbol[lTeamStart] = L"TeamStart";
@@ -1693,19 +1736,30 @@ void MetaList::initSymbols() {
     typeToSymbol[lTeamPointAdjustment] = L"TeamPointAdjustment";
   
     typeToSymbol[lTeamTime] = L"TeamTime";
+    typeToSymbol[lTeamGrossTime] = L"TeamGrossTime";
     typeToSymbol[lTeamStatus] = L"TeamStatus";
     typeToSymbol[lTeamClub] = L"TeamClub";
     typeToSymbol[lTeamRunner] = L"TeamRunner";
     typeToSymbol[lTeamRunnerCard] = L"TeamRunnerCard";
     typeToSymbol[lTeamBib] = L"TeamBib";
     typeToSymbol[lTeamStartNo] = L"TeamStartNo";
+    
     typeToSymbol[lPunchNamedTime] = L"PunchNamedTime";
+    typeToSymbol[lPunchName] = L"PunchName";
+    typeToSymbol[lPunchNamedSplit] = L"PunchNamedSplit";
+
     typeToSymbol[lPunchTime] = L"PunchTime";
     typeToSymbol[lPunchControlNumber] = L"PunchControlNumber";
     typeToSymbol[lPunchControlCode] = L"PunchControlCode";
     typeToSymbol[lPunchLostTime] = L"PunchLostTime";
     typeToSymbol[lPunchControlPlace] = L"PunchControlPlace";
     typeToSymbol[lPunchControlPlaceAcc] = L"PunchControlPlaceAcc";
+
+    typeToSymbol[lPunchSplitTime] = L"PunchSplitTime";
+    typeToSymbol[lPunchTotalTime] = L"PunchTotalTime";
+    typeToSymbol[lPunchAbsTime] = L"PunchAbsTime";
+    typeToSymbol[lPunchTotalTimeAfter] = L"PunchTotalTimeAfter";
+    typeToSymbol[lPunchTimeSinceLast] = L"PunchTimeSinceLast";
 
     typeToSymbol[lRogainingPunch] = L"RogainingPunch";
     typeToSymbol[lTotalCounter] = L"TotalCounter";
@@ -1746,6 +1800,8 @@ void MetaList::initSymbols() {
     typeToSymbol[lControlRunnersLeft] = L"ControlRunnersLeft";
     typeToSymbol[lControlCodes] = L"ControlCodes";
     
+    typeToSymbol[lLineBreak] = L"LineBreak";
+
     for (map<EPostType, wstring>::iterator it = typeToSymbol.begin();
       it != typeToSymbol.end(); ++it) {
       symbolToType[it->second] = it->first;
@@ -1760,7 +1816,8 @@ void MetaList::initSymbols() {
     baseTypeToSymbol[oListInfo::EBaseTypeRunner] = "Runner";
     baseTypeToSymbol[oListInfo::EBaseTypeTeam] = "Team";
     baseTypeToSymbol[oListInfo::EBaseTypeClub] = "ClubRunner";
-    baseTypeToSymbol[oListInfo::EBaseTypePunches] = "Punches";
+    baseTypeToSymbol[oListInfo::EBaseTypeCoursePunches] = "CoursePunches";
+    baseTypeToSymbol[oListInfo::EBaseTypeAllPunches] = "AllPunches";
     baseTypeToSymbol[oListInfo::EBaseTypeNone] = "None";
     baseTypeToSymbol[oListInfo::EBaseTypeRunnerGlobal] = "RunnerGlobal";
     baseTypeToSymbol[oListInfo::EBaseTypeRunnerLeg] = "RunnerLeg";
@@ -1778,6 +1835,7 @@ void MetaList::initSymbols() {
 
     if (symbolToBaseType.size() != oListInfo::EBasedTypeLast_)
       throw std::exception("Bad symbol setup");
+    symbolToBaseType["Punches"] = oListInfo::EBaseTypeCoursePunches; // Back comp MeOS --3.5
 
     orderToSymbol[ClassStartTime] = "ClassStartTime";
     orderToSymbol[ClassStartTimeClub] = "ClassStartTimeClub";
@@ -1789,6 +1847,7 @@ void MetaList::initSymbols() {
     orderToSymbol[SortByFinishTimeReverse] = "FinishTimeReverse";
     orderToSymbol[ClassFinishTime] = "ClassFinishTime";
     orderToSymbol[SortByStartTime] = "StartTime";
+    orderToSymbol[SortByStartTimeClass] = "StartTimeClass";
     orderToSymbol[SortByEntryTime] = "EntryTime";
     orderToSymbol[ClassPoints] = "ClassPoints";
     orderToSymbol[ClassTotalResult] = "ClassTotalResult";
@@ -1796,6 +1855,8 @@ void MetaList::initSymbols() {
     orderToSymbol[CourseResult] = "CourseResult";
     orderToSymbol[CourseStartTime] = "CourseStartTime";
     orderToSymbol[ClassTeamLeg] = "ClassTeamLeg";
+    orderToSymbol[ClassLiveResult] = "ClassLiveResult";
+  	orderToSymbol[ClassKnockoutTotalResult] = "ClassKnockoutTotalResult";
     orderToSymbol[Custom] = "CustomSort";
 
     for (map<SortOrder, string>::iterator it = orderToSymbol.begin();
@@ -1818,6 +1879,8 @@ void MetaList::initSymbols() {
     filterToSymbol[EFilterVacant] = "FilterNotVacant";
     filterToSymbol[EFilterOnlyVacant] = "FilterOnlyVacant";
     filterToSymbol[EFilterHasNoCard] = "FilterNoCard";
+    filterToSymbol[EFilterAnyResult] = "FilterAnyResult";
+    filterToSymbol[EFilterAPIEntry] = "EFilterAPIEntry";
 
     for (map<EFilterList, string>::iterator it = filterToSymbol.begin();
       it != filterToSymbol.end(); ++it) {
@@ -1836,6 +1899,8 @@ void MetaList::initSymbols() {
     subFilterToSymbol[ESubFilterVacant] = "FilterNotVacant";
     subFilterToSymbol[ESubFilterSameParallel] = "FilterSameParallel";
     subFilterToSymbol[ESubFilterSameParallelNotFirst] = "FilterSameParallelNotFirst";
+    subFilterToSymbol[ESubFilterNotFinish] = "FilterNotFinish";
+    subFilterToSymbol[ESubFilterNamedControl] = "FilterNamedControl";
     
     for (map<ESubFilterList, string>::iterator it = subFilterToSymbol.begin();
       it != subFilterToSymbol.end(); ++it) {
@@ -1875,7 +1940,14 @@ void MetaList::initSymbols() {
   }
 }
 
-MetaListContainer::MetaListContainer(oEvent *ownerIn): owner(ownerIn) {}
+MetaListContainer::MetaListContainer(oEvent *owner): owner(owner) {}
+
+
+MetaListContainer::MetaListContainer(oEvent *owner, const MetaListContainer &src) {
+  *this = src;
+  this->owner = owner;
+}
+
 
 MetaListContainer::~MetaListContainer() {}
 
@@ -2426,7 +2498,8 @@ void MetaList::getBaseType(vector< pair<wstring, size_t> > &types, int &currentT
   types.clear();
   for(map<oListInfo::EBaseType, string>::const_iterator it = baseTypeToSymbol.begin();
     it != baseTypeToSymbol.end(); ++it) {
-      if (it->first == oListInfo::EBaseTypeNone || it->first == oListInfo::EBaseTypePunches)
+      if (it->first == oListInfo::EBaseTypeNone || it->first == oListInfo::EBaseTypeCoursePunches
+        || it->first == oListInfo::EBaseTypeAllPunches)
         continue;
       types.push_back(make_pair(lang.tl(it->second), it->first));
   }
@@ -2444,7 +2517,11 @@ void MetaList::getSubType(vector< pair<wstring, size_t> > &types, int &currentTy
   tt.insert(t);
   types.push_back(make_pair(lang.tl(baseTypeToSymbol[t]), t));
 
-  t = oListInfo::EBaseTypePunches;
+  t = oListInfo::EBaseTypeCoursePunches;
+  tt.insert(t);
+  types.push_back(make_pair(lang.tl(baseTypeToSymbol[t]), t));
+
+  t = oListInfo::EBaseTypeAllPunches;
   tt.insert(t);
   types.push_back(make_pair(lang.tl(baseTypeToSymbol[t]), t));
 
@@ -2493,7 +2570,7 @@ void MetaListContainer::removeParam(int index) {
     throw meosException("No such parameters exist");
 }
 
-void MetaListContainer::addListParam(oListParam &param) {
+int MetaListContainer::addListParam(oListParam &param) {
   param.saved = true;
   int ix = 0;
   if (!listParam.empty())
@@ -2502,6 +2579,7 @@ void MetaListContainer::addListParam(oListParam &param) {
   listParam[ix] = param;
   if (owner)
     owner->updateChanged();
+  return ix;
 }
 
 const oListParam &MetaListContainer::getParam(int index) const {
@@ -2605,4 +2683,80 @@ bool MetaList::supportClasses() const {
     return false;
   else
     return true;
+}
+
+EPostType MetaList::getTypeFromSymbol(wstring &symb) noexcept {
+  auto res = symbolToType.find(symb);
+  if (res == symbolToType.end())
+    return EPostType::lNone; // Error code
+
+  return res->second;
+}
+
+void MetaList::fillSymbols(vector < pair<wstring, size_t>> &symb) {
+  for (auto s : symbolToType) {
+    if (s.second == lAlignNext || s.second == lNone  || s.second == lLineBreak)
+      continue;
+    wstring desc = L"[" + s.first + L"]\t" + lang.tl(s.first);
+    symb.emplace_back(desc, size_t(s.second));
+  }
+}
+
+void MetaListContainer::synchronizeTo(MetaListContainer &dst) const {
+  auto &dstData = dst.data;
+  map<wstring, int> dstLst;
+  map<string, int> dstLstId;
+
+  for (size_t k = 0; k < dstData.size(); k++) {
+    auto &d = dstData[k];
+    if (d.first == MetaListType::ExternalList) {
+      wstring n = d.second.getListName();
+      dstLst[n] = k;
+
+      string id = d.second.getUniqueId();
+      dstLstId[id] = k;
+    }
+  }
+
+  for (auto &d : data) {
+    if (d.first == MetaListType::ExternalList) {
+      wstring n = d.second.getListName();
+      string id = d.second.getUniqueId();
+
+      if (dstLst.count(n))
+        dstData[dstLst[n]].second = d.second;
+      else if (!dstLstId.count(id)) {
+        dstData.push_back(d);
+      }
+    }
+    else if (d.first != MetaListType::RemovedList) {
+      dstData.push_back(d); // All internal lists
+    }
+  }
+
+  dst.setupIndex(EFirstLoadedList);
+
+  map<wstring, int> dstLstParam;
+
+  for (auto &lp : dst.listParam) {
+    const wstring &n = lp.second.getName();
+    dstLstParam[n] = lp.first;
+  }
+
+  for (auto &lp : listParam) {
+    EStdListType dstCode = dst.getCodeFromUnqiueId(getUniqueId(lp.second.listCode));
+    const wstring &n = lp.second.getName();
+    if (dstLstParam.count(n)) {
+      dst.listParam[dstLstParam[n]] = lp.second;
+      dst.listParam[dstLstParam[n]].listCode = dstCode;
+    }
+    else {
+      int ix = 0;
+      if (!listParam.empty())
+        ix = listParam.rbegin()->first + 1;
+
+      dst.listParam[ix] = lp.second;
+      dst.listParam[ix].listCode = dstCode;
+    }
+  }
 }

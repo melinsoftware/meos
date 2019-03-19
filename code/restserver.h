@@ -2,7 +2,7 @@
 
 /************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2018 Melin Software HB
+Copyright (C) 2009-2019 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include <mutex>
 #include <deque>
 #include <condition_variable>
+#include <tuple>
 
 namespace restbed {
   class Service;
@@ -37,11 +38,30 @@ namespace restbed {
 };
 
 class RestServer {
+public:
+  
+  enum class EntryPermissionClass {
+    None,
+    DirectEntry,
+    Any
+  };
+
+  enum class EntryPermissionType {
+    None,
+    InDbExistingClub,
+    InDbAny,
+    Any
+  };
+
+  static vector<pair<wstring, size_t>> getPermissionsPersons();
+  static vector<pair<wstring, size_t>> getPermissionsClass();
+
 private:
   struct EventRequest {
     EventRequest() : state(false) {}
     multimap<string, string> parameters;
     string answer;
+    vector<uint8_t> image;
     atomic_bool state; //false - asked, true - answerd
 
     bool isCompleted() { 
@@ -49,6 +69,9 @@ private:
     }
   };
 
+  EntryPermissionClass  epClass = EntryPermissionClass::None;
+  EntryPermissionType epType = EntryPermissionType::None;
+  
   mutex lock;
   atomic_bool hasAnyRequest;
   shared_ptr<thread> service;
@@ -57,6 +80,10 @@ private:
 
   deque<shared_ptr<EventRequest>> requests;
   void getData(oEvent &ref, const string &what, const multimap<string, string> &param, string &answer);
+  void lookup(oEvent &ref, const string &what, const multimap<string, string> &param, string &answer);
+  
+  void newEntry(oEvent &ref, const multimap<string, string> &param, string &answer);
+
   void compute(oEvent &ref);
   void startThread(int port);
 
@@ -70,13 +97,14 @@ private:
 
   vector<int> responseTimes;
   
+  map<string, vector<uint8_t>> imageCache;
+
   RestServer();
   static vector< shared_ptr<RestServer> > startedServers;
  
   RestServer(const RestServer &);
   RestServer & operator=(const RestServer &) const;
-
-
+  
   void computeInternal(oEvent &ref, shared_ptr<RestServer::EventRequest> &rq);
 
   map<int, pair<oListParam, shared_ptr<oListInfo> > > listCache;
@@ -89,8 +117,13 @@ public:
   
   static shared_ptr<RestServer> construct();
   static void remove(shared_ptr<RestServer> server);
-
   static void computeRequested(oEvent &ref);
+
+  void setEntryPermission(EntryPermissionClass epClass, EntryPermissionType epType);
+
+  tuple<EntryPermissionClass, EntryPermissionType> getEntryPermission() const {
+    return make_tuple(epClass, epType);
+  }
 
   struct Statistics {
     int numRequests;

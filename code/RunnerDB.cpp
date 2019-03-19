@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -994,7 +994,7 @@ void RunnerDB::updateAdd(const oRunner &r, map<int, int> &clubIdMap)
   if (r.getExtIdentifier() > 0) {
     RunnerWDBEntry *dbe = getRunnerById(int(r.getExtIdentifier()));
     if (dbe) {
-      dbe->dbe().cardNo = r.CardNo;
+      dbe->dbe().cardNo = r.getCardNo();
       return; // Do not change too much in runner from national database
     }
   }

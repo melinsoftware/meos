@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1902,7 +1902,7 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll)
 
   mysqlpp::Query queryset = con.query();
   queryset << " Name=" << quote << toString(r->sName) << ", "
-      << " CardNo=" << r->CardNo << ", "
+      << " CardNo=" << r->cardNumber << ", "
       << " StartNo=" << r->StartNo << ", "
       << " StartTime=" << r->startTime << ", "
       << " FinishTime=" << r->FinishTime << ", "
@@ -3680,6 +3680,11 @@ bool MeosSQL::skipSynchronize(const oBase &entity) const {
   notskipped++;
   return false;
 }
+namespace {
+  int encode(oListId id) {
+    return int(id);
+  }
+}
 
 int MeosSQL::getModifiedMask(oEvent &oe) {
   try {
@@ -3699,23 +3704,23 @@ int MeosSQL::getModifiedMask(oEvent &oe) {
       int e = r["oEvent"];
 
       if (ctrl > oe.sqlCounterControls)
-        res |= oLControlId;
+        res |= encode(oListId::oLControlId);
       if (crs > oe.sqlCounterCourses)
-        res |= oLCourseId;
+        res |= encode(oListId::oLCourseId);
       if (cls > oe.sqlCounterClasses)
-        res |= oLClassId;
+        res |= encode(oListId::oLClassId);
       if (card > oe.sqlCounterCards)
-        res |= oLCardId;
+        res |= encode(oListId::oLCardId);
       if (club > oe.sqlCounterClubs)
-        res |= oLClubId;
+        res |= encode(oListId::oLClubId);
       if (punch > oe.sqlCounterPunches)
-        res |= oLPunchId;
+        res |= encode(oListId::oLPunchId);
       if (runner > oe.sqlCounterRunners)
-        res |= oLRunnerId;
+        res |= encode(oListId::oLRunnerId);
       if (t > oe.sqlCounterTeams)
-        res |= oLTeamId;
+        res |= encode(oListId::oLTeamId);
       if (e > oe.counter)
-        res |= oLEventId;
+        res |= encode(oListId::oLEventId);
 
       return res;
     }

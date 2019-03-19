@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "stdafx.h"
 
 #include <vector>
+#include <deque>
 #include <set>
 #include <cassert>
 #include <algorithm>
@@ -101,87 +102,323 @@ bool ClassBlockInfo::operator <(ClassBlockInfo &ci)
   return Depth<ci.Depth;
 }
 
-bool isFree(const DrawInfo &di, vector< vector<pair<int, int> > > &StartField, int nFields,
-            int FirstPos, int PosInterval, ClassInfo &cInfo)
-{
-  int Type = cInfo.unique;
-  int courseId = cInfo.courseId;
+namespace {
 
-  int nEntries = cInfo.nRunners;
-  bool disallowNeighbors = !di.allowNeighbourSameCourse;
-  // Adjust first pos to make room for extra (before first start)
-  if (cInfo.nExtra>0) {
-    int newFirstPos = FirstPos - cInfo.nExtra * PosInterval;
-    while (newFirstPos<0)
-      newFirstPos += PosInterval;
-    int extra = (FirstPos - newFirstPos) / PosInterval;
-    nEntries += extra;
-    FirstPos = newFirstPos;
-  }
-
-  //Check if free at all...
-  for(int k = 0; k < nEntries; k++){
-    bool hasFree=false;
-    for(int f=0;f<nFields;f++){
-      size_t ix = FirstPos+k*PosInterval;
-      int t = StartField[f][ix].first;
-
-      if (disallowNeighbors) {
-        int prevT = -1, nextT = -1;
-        if (PosInterval > 1 && ix+1 < StartField[f].size())
-          nextT = StartField[f][ix + 1].second;
-        if (PosInterval > 1 && ix>0)
-          prevT = StartField[f][ix - 1].second;
-
-        if ((nextT > 0 && nextT == courseId) || (prevT > 0 && prevT == courseId))
-          return false;
-      }
-      if (t == 0)
-        hasFree=true;
-      else if (t == Type)
-        return false;//Type of course occupied. Cannot put it here;
+  void getLargestClub(map<int, vector<pRunner> > &clubRunner, vector<pRunner> &largest)
+  {
+    size_t maxClub = 0;
+    for (map<int, vector<pRunner> >::iterator it =
+         clubRunner.begin(); it != clubRunner.end(); ++it) {
+      maxClub = max(maxClub, it->second.size());
     }
 
-    if (!hasFree) return false;//No free start position.
+    for (map<int, vector<pRunner> >::iterator it =
+         clubRunner.begin(); it != clubRunner.end(); ++it) {
+      if (it->second.size() == maxClub) {
+        swap(largest, it->second);
+        clubRunner.erase(it);
+        return;
+      }
+    }
   }
 
-  return true;
-}
-
-bool insertStart(vector< vector< pair<int, int> > > &StartField, int nFields, ClassInfo &cInfo)
-{
-  int Type = cInfo.unique;
-  int courseId = cInfo.courseId;
-  int nEntries = cInfo.nRunners;
-  int FirstPos = cInfo.firstStart;
-  int PosInterval = cInfo.interval;
-
-  // Adjust first pos to make room for extra (before first start)
-  if (cInfo.nExtra>0) {
-    int newFirstPos = FirstPos - cInfo.nExtra * PosInterval;
-    while (newFirstPos<0)
-      newFirstPos += PosInterval;
-    int extra = (FirstPos - newFirstPos) / PosInterval;
-    nEntries += extra;
-    FirstPos = newFirstPos;
+  void getRange(int size, vector<int> &p) {
+    p.resize(size);
+    for (size_t k = 0; k < p.size(); k++)
+      p[k] = k;
   }
 
-  for (int k=0; k<nEntries; k++) {
-    bool HasFree=false;
+  void drawSOFTMethod(vector<pRunner> &runners, bool handleBlanks) {
+    if (runners.empty())
+      return;
 
-    for (int f=0;f<nFields && !HasFree;f++) {
-      if (StartField[f][FirstPos+k*PosInterval].first == 0) {
-        StartField[f][FirstPos+k*PosInterval].first = Type;
-        StartField[f][FirstPos+k*PosInterval].second = courseId;
-        HasFree=true;
+    //Group runners per club
+    map<int, vector<pRunner> > clubRunner;
+
+    for (size_t k = 0; k < runners.size(); k++) {
+      int clubId = runners[k] ? runners[k]->getClubId() : -1;
+      clubRunner[clubId].push_back(runners[k]);
+    }
+
+    vector< vector<pRunner> > runnerGroups(1);
+
+    // Find largest club
+    getLargestClub(clubRunner, runnerGroups[0]);
+
+    int largeSize = runnerGroups[0].size();
+    int ngroups = (runners.size() + largeSize - 1) / largeSize;
+    runnerGroups.resize(ngroups);
+
+    while (!clubRunner.empty()) {
+      // Find the smallest available group
+      unsigned small = runners.size() + 1;
+      int cgroup = -1;
+      for (size_t k = 1; k < runnerGroups.size(); k++)
+        if (runnerGroups[k].size() < small) {
+          cgroup = k;
+          small = runnerGroups[k].size();
+        }
+
+      // Add the largest remaining group to the smallest.
+      vector<pRunner> largest;
+      getLargestClub(clubRunner, largest);
+      runnerGroups[cgroup].insert(runnerGroups[cgroup].end(), largest.begin(), largest.end());
+    }
+
+    unsigned maxGroup = runnerGroups[0].size();
+
+    //Permute the first group
+    vector<int> pg(maxGroup);
+    getRange(pg.size(), pg);
+    permute(pg);
+    vector<pRunner> pr(maxGroup);
+    for (unsigned k = 0; k < maxGroup; k++)
+      pr[k] = runnerGroups[0][pg[k]];
+    runnerGroups[0] = pr;
+
+    //Find the largest group
+    for (size_t k = 1; k < runnerGroups.size(); k++)
+      maxGroup = max(maxGroup, runnerGroups[k].size());
+
+    if (handleBlanks) {
+      //Give all groups same size (fill with 0)
+      for (size_t k = 1; k < runnerGroups.size(); k++)
+        runnerGroups[k].resize(maxGroup);
+    }
+
+    // Apply algorithm recursivly to groups with several clubs
+    for (size_t k = 1; k < runnerGroups.size(); k++)
+      drawSOFTMethod(runnerGroups[k], true);
+
+    // Permute the order of groups
+    vector<int> p(runnerGroups.size());
+    getRange(p.size(), p);
+    permute(p);
+
+    // Write back result
+    int index = 0;
+    for (unsigned level = 0; level < maxGroup; level++) {
+      for (size_t k = 0; k < runnerGroups.size(); k++) {
+        int gi = p[k];
+        if (level < runnerGroups[gi].size() && (runnerGroups[gi][level] != 0 || !handleBlanks))
+          runners[index++] = runnerGroups[gi][level];
       }
     }
 
-    if (!HasFree)
-      return false; //No free start position. Fail.
+    if (handleBlanks)
+      runners.resize(index);
   }
 
-  return true;
+  void drawMeOSMethod(vector<pRunner> &runners) {
+    if (runners.empty())
+      return;
+    map<int, vector<pRunner>> runnersPerClub;
+    for (pRunner r : runners)
+      runnersPerClub[r->getClubId()].push_back(r);
+    vector<pair<int, int>> sizeClub;
+    for (auto &rc : runnersPerClub)
+      sizeClub.emplace_back(rc.second.size(), rc.first);
+
+    sort(sizeClub.rbegin(), sizeClub.rend());
+
+    int targetGroupSize = max<int>(runners.size()/20, sizeClub.front().first);
+
+    vector<vector<pRunner>> groups(1);
+    for (auto &sc : sizeClub) {
+      int currentSize = groups.back().size();
+      int newSize = currentSize + sc.first;
+      if (abs(currentSize - targetGroupSize) < abs(newSize - targetGroupSize)) {
+        groups.emplace_back();
+      }
+      groups.back().insert(groups.back().end(), runnersPerClub[sc.second].begin(), 
+                                                runnersPerClub[sc.second].end());
+    }
+
+    size_t nRunnerTot = runners.size();
+
+    if (groups.front().size() > (nRunnerTot + 2) / 2 && groups.size() > 1) {
+      // We cannot distribute without clashes -> move some to other groups to prevent tail of same club
+      int toMove = groups.front().size() - (nRunnerTot + 2) / 2;
+      for (int i = 0; i < toMove; i++) {
+        int dest = 1 + i % (groups.size() - 1);
+        groups[dest].push_back(groups.front().back());
+        groups.front().pop_back();
+      }
+    }
+
+    // Permute groups
+    size_t maxGroupSize = 0;
+    vector<int> pv;
+
+    for (auto &group : groups) {
+      pv.clear();
+      for (size_t i = 0; i < group.size(); i++) {
+        pv.push_back(i);
+      }
+      permute(pv);
+      vector<pRunner> tg;
+      tg.reserve(group.size());
+      for (int i : pv)
+        tg.push_back(group[i]);
+      tg.swap(group);
+      maxGroupSize = max(maxGroupSize, group.size());
+
+    }
+
+    runners.clear();
+    size_t takeMaxGroupInterval;
+    if (groups.size() > 10)
+      takeMaxGroupInterval = groups.size() / 4;
+    else
+      takeMaxGroupInterval = max(2u, groups.size() - 2);
+
+    deque<int> recentGroups;
+
+    int ix = 0;
+
+    if (maxGroupSize * 2 > nRunnerTot) {
+      takeMaxGroupInterval = 2;
+      ix = 1;
+    }
+
+    while (true) {
+      ix++;
+      pair<size_t, int> currentMaxGroup(0, -1);
+      int otherNonEmpty = -1;
+      size_t nonEmptyGroups = 0;
+      for (size_t gx = 0; gx < groups.size(); gx++) {
+        if (groups[gx].empty())
+          continue;
+        
+        nonEmptyGroups++;
+
+        if (groups[gx].size() > currentMaxGroup.first) {
+          if (otherNonEmpty == -1 || groups[otherNonEmpty].size() < currentMaxGroup.first)
+            otherNonEmpty = currentMaxGroup.second;
+
+          currentMaxGroup.first = groups[gx].size();
+          currentMaxGroup.second = gx;
+        }
+        else {
+          if (otherNonEmpty == -1 || groups[otherNonEmpty].size() < groups[gx].size())
+            otherNonEmpty = gx;
+        }
+      }
+      if (currentMaxGroup.first == 0)
+        break; // Done
+      
+      int groupToUse = currentMaxGroup.second;
+      if (ix != takeMaxGroupInterval) {
+        // Select some other group
+        for (size_t attempt = 0; attempt < groups.size() * 2; attempt++) {
+          int g = GetRandomNumber(groups.size());
+          if (!groups[g].empty() && count(recentGroups.begin(), recentGroups.end(), g) == 0) {
+            groupToUse = g;
+            break;
+          }
+        }
+      }
+      else {
+        ix = 0;
+      }
+
+      if (!recentGroups.empty()) { //Make sure to avoid duplicates of same group (if possible)
+        if (recentGroups.back() == groupToUse && otherNonEmpty != -1)
+          groupToUse = otherNonEmpty;
+      }
+
+      // Try to spread groups by ensuring that the same group is not used near itself
+      recentGroups.push_back(groupToUse);
+      if (recentGroups.size() > takeMaxGroupInterval || recentGroups.size() >= nonEmptyGroups)
+        recentGroups.pop_front();
+
+      runners.push_back(groups[groupToUse].back());
+      groups[groupToUse].pop_back();
+    }
+  }
+
+  bool isFree(const DrawInfo &di, vector< vector<pair<int, int> > > &StartField, int nFields,
+              int FirstPos, int PosInterval, ClassInfo &cInfo)
+  {
+    int Type = cInfo.unique;
+    int courseId = cInfo.courseId;
+
+    int nEntries = cInfo.nRunners;
+    bool disallowNeighbors = !di.allowNeighbourSameCourse;
+    // Adjust first pos to make room for extra (before first start)
+    if (cInfo.nExtra > 0) {
+      int newFirstPos = FirstPos - cInfo.nExtra * PosInterval;
+      while (newFirstPos < 0)
+        newFirstPos += PosInterval;
+      int extra = (FirstPos - newFirstPos) / PosInterval;
+      nEntries += extra;
+      FirstPos = newFirstPos;
+    }
+
+    //Check if free at all...
+    for (int k = 0; k < nEntries; k++) {
+      bool hasFree = false;
+      for (int f = 0; f < nFields; f++) {
+        size_t ix = FirstPos + k * PosInterval;
+        int t = StartField[f][ix].first;
+
+        if (disallowNeighbors) {
+          int prevT = -1, nextT = -1;
+          if (PosInterval > 1 && ix + 1 < StartField[f].size())
+            nextT = StartField[f][ix + 1].second;
+          if (PosInterval > 1 && ix > 0)
+            prevT = StartField[f][ix - 1].second;
+
+          if ((nextT > 0 && nextT == courseId) || (prevT > 0 && prevT == courseId))
+            return false;
+        }
+        if (t == 0)
+          hasFree = true;
+        else if (t == Type)
+          return false;//Type of course occupied. Cannot put it here;
+      }
+
+      if (!hasFree) return false;//No free start position.
+    }
+
+    return true;
+  }
+
+  bool insertStart(vector< vector< pair<int, int> > > &StartField, int nFields, ClassInfo &cInfo)
+  {
+    int Type = cInfo.unique;
+    int courseId = cInfo.courseId;
+    int nEntries = cInfo.nRunners;
+    int FirstPos = cInfo.firstStart;
+    int PosInterval = cInfo.interval;
+
+    // Adjust first pos to make room for extra (before first start)
+    if (cInfo.nExtra > 0) {
+      int newFirstPos = FirstPos - cInfo.nExtra * PosInterval;
+      while (newFirstPos < 0)
+        newFirstPos += PosInterval;
+      int extra = (FirstPos - newFirstPos) / PosInterval;
+      nEntries += extra;
+      FirstPos = newFirstPos;
+    }
+
+    for (int k = 0; k < nEntries; k++) {
+      bool HasFree = false;
+
+      for (int f = 0; f < nFields && !HasFree; f++) {
+        if (StartField[f][FirstPos + k * PosInterval].first == 0) {
+          StartField[f][FirstPos + k * PosInterval].first = Type;
+          StartField[f][FirstPos + k * PosInterval].second = courseId;
+          HasFree = true;
+        }
+      }
+
+      if (!HasFree)
+        return false; //No free start position. Fail.
+    }
+
+    return true;
+  }
 }
 
 void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> &cInfo)
@@ -661,23 +898,22 @@ void oEvent::optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, D
       alternator += alteration;
     }
   }
-
 }
 
-void oEvent::drawRemaining(bool useSOFTMethod, bool placeAfter)
+void oEvent::drawRemaining(DrawMethod method, bool placeAfter)
 {
-  DrawType drawType = placeAfter ? remainingAfter : remainingBefore;
+  DrawType drawType = placeAfter ? DrawType::RemainingAfter : DrawType::RemainingBefore;
 
   for (oClassList::iterator it = Classes.begin(); it !=  Classes.end(); ++it) {
     vector<ClassDrawSpecification> spec;
     spec.push_back(ClassDrawSpecification(it->getId(), 0, 0, 0, 0));
 
-    drawList(spec, useSOFTMethod, 1, drawType);
+    drawList(spec, method, 1, drawType);
   }
 }
 
 void oEvent::drawList(const vector<ClassDrawSpecification> &spec, 
-                      bool useSOFTMethod, int pairSize, DrawType drawType) {
+                      DrawMethod method, int pairSize, DrawType drawType) {
 
   autoSynchronizeLists(false);
   assert(pairSize > 0);
@@ -716,7 +952,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   vector<pRunner> runners;
   runners.reserve(Runners.size());
 
-  if (drawType == drawAll) {
+  if (drawType == DrawType::DrawAll) {
     
     if (!clsIdClearVac.empty()) {
       //Only remove vacances on leg 0.
@@ -796,7 +1032,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     }
 
     for (size_t k = 0; k < spec.size(); k++) {
-      if (drawType == remainingBefore)
+      if (drawType == DrawType::RemainingBefore)
         spec[k].firstStart = first[k] - runners.size()*baseInterval;
       else
         spec[k].firstStart = last[k] + baseInterval;
@@ -829,10 +1065,19 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   if (gdibase.isTest())
     InitRanom(0,0);
 
-  if (useSOFTMethod)
-    drawSOFTMethod(runners);
-  else
+  switch (method) {
+  case DrawMethod::SOFT:
+    drawSOFTMethod(runners, true);
+    break;
+  case DrawMethod::MeOS:
+    drawMeOSMethod(runners);
+    break;
+  case DrawMethod::Random:
     permute(stimes);
+    break;
+  default:
+    throw 0;
+  }
 
   int minStartNo = Runners.size();
   for(unsigned k=0;k<stimes.size(); k++) {
@@ -853,114 +1098,6 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
   nextFreeStartNo = max<int>(nextFreeStartNo, minStartNo + stimes.size());
 }
-
-void getLargestClub(map<int, vector<pRunner> > &clubRunner, vector<pRunner> &largest)
-{
-  size_t maxClub=0;
-  for (map<int, vector<pRunner> >::iterator it =
-               clubRunner.begin(); it!=clubRunner.end(); ++it) {
-    maxClub = max(maxClub, it->second.size());
-  }
-
-  for (map<int, vector<pRunner> >::iterator it =
-               clubRunner.begin(); it!=clubRunner.end(); ++it) {
-    if (it->second.size()==maxClub) {
-      swap(largest, it->second);
-      clubRunner.erase(it);
-      return;
-    }
-  }
-}
-
-void getRange(int size, vector<int> &p)
-{
-  p.resize(size);
-  for (size_t k=0;k<p.size();k++)
-    p[k] = k;
-}
-
-void oEvent::drawSOFTMethod(vector<pRunner> &runners, bool handleBlanks)
-{
-  if (runners.empty())
-    return;
-
-  //Group runners per club
-  map<int, vector<pRunner> > clubRunner;
-
-  for (size_t k=0;k<runners.size();k++) {
-    int clubId = runners[k] ? runners[k]->getClubId() : -1;
-    clubRunner[clubId].push_back(runners[k]);
-  }
-
-  vector< vector<pRunner> > runnerGroups(1);
-
-  // Find largest club
-  getLargestClub(clubRunner, runnerGroups[0]);
-
-  int largeSize = runnerGroups[0].size();
-  int ngroups = (runners.size()+largeSize-1) / largeSize;
-  runnerGroups.resize(ngroups);
-
-  while (!clubRunner.empty()) {
-    // Find the smallest available group
-    unsigned small = runners.size()+1;
-    int cgroup = -1;
-    for (size_t k=1;k<runnerGroups.size();k++)
-      if (runnerGroups[k].size()<small) {
-        cgroup = k;
-        small = runnerGroups[k].size();
-      }
-
-    // Add the largest remaining group to the smallest.
-    vector<pRunner> largest;
-    getLargestClub(clubRunner, largest);
-    runnerGroups[cgroup].insert(runnerGroups[cgroup].end(), largest.begin(), largest.end());
-  }
-
-  unsigned maxGroup=runnerGroups[0].size();
-
-  //Permute the first group
-  vector<int> pg(maxGroup);
-  getRange(pg.size(), pg);
-  permute(pg);
-  vector<pRunner> pr(maxGroup);
-  for (unsigned k=0;k<maxGroup;k++)
-    pr[k] = runnerGroups[0][pg[k]];
-  runnerGroups[0] = pr;
-
-  //Find the largest group
-  for (size_t k=1;k<runnerGroups.size();k++)
-    maxGroup = max(maxGroup, runnerGroups[k].size());
-
-  if (handleBlanks) {
-    //Give all groups same size (fill with 0)
-    for (size_t k=1;k<runnerGroups.size();k++)
-      runnerGroups[k].resize(maxGroup);
-  }
-
-  // Apply algorithm recursivly to groups with several clubs
-  for (size_t k=1;k<runnerGroups.size();k++)
-    drawSOFTMethod(runnerGroups[k]);
-
-  // Permute the order of groups
-  vector<int> p(runnerGroups.size());
-  getRange(p.size(), p);
-  permute(p);
-
-  // Write back result
-  int index = 0;
-  for (unsigned level = 0; level<maxGroup; level++) {
-    for (size_t k=0;k<runnerGroups.size();k++) {
-      int gi = p[k];
-      if (level<runnerGroups[gi].size() && (runnerGroups[gi][level]!=0  || !handleBlanks))
-        runners[index++] = runnerGroups[gi][level];
-    }
-  }
-
-  if (handleBlanks)
-    runners.resize(index);
-}
-
 
 void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vacances)
 {
@@ -1126,8 +1263,8 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
 }
 
 void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
-                               const wstring &minIntervall, const wstring &vacances,
-                               bool lateBefore, bool softMethod, int pairSize)
+                              const wstring &minIntervall, const wstring &vacances,
+                              bool lateBefore, DrawMethod method, int pairSize)
 {
   gdi.refresh();
   const int leg = 0;
@@ -1153,7 +1290,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
         continue;
       vector<ClassDrawSpecification> spec;
       spec.push_back(ClassDrawSpecification(it->getId(), 0, iFirstStart, 0, 0));
-      oe->drawList(spec, false, 1, drawAll);
+      oe->drawList(spec, DrawMethod::Random, 1, DrawType::DrawAll);
     }
     return;
   }
@@ -1310,7 +1447,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
                                   di.firstStart + di.baseInterval * ci.firstStart, 
                                   di.baseInterval * ci.interval, ci.nVacant));
 
-      drawList(spec, softMethod, pairSize, oEvent::drawAll);
+      drawList(spec, method, pairSize, DrawType::DrawAll);
       gdi.scrollToBottom();
       gdi.refreshFast();
       drawn++;
@@ -1328,7 +1465,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
 
     vector<ClassDrawSpecification> spec;
     spec.push_back(ClassDrawSpecification(it->getId(), leg, 0, 0, 0));
-    drawList(spec, softMethod, 1, lateBefore ? remainingBefore : remainingAfter);
+    drawList(spec, method, 1, lateBefore ? DrawType::RemainingBefore : DrawType::RemainingAfter);
 
     gdi.scrollToBottom();
     gdi.refreshFast();

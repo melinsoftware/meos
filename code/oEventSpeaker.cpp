@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -528,7 +528,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   if (refresh)
     gdi.takeShownStringsSnapshot();
 
-  int storedY = gdi.GetOffsetY();
+  int storedY = gdi.getOffsetY();
   int storedHeight = gdi.getHeight();
 
   gdi.restoreNoUpdate("SpeakerList");
@@ -537,7 +537,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   gdi.pushX(); gdi.pushY();
   gdi.updatePos(0,0,0, storedHeight);
   gdi.popX(); gdi.popY();
-  gdi.SetOffsetY(storedY);
+  gdi.setOffsetY(storedY);
 
   gdi.setData("ClassId", ClassId);
   gdi.setData("ControlId", ControlId);
@@ -786,7 +786,7 @@ void oEvent::playPrewarningSounds(const wstring &basedir, set<int> &controls)
   for (it=punches.rbegin(); it!=punches.rend() && !it->hasBeenPlayed; ++it) {
 
     if (controls.count(it->Type)==1 || controls.empty()) {
-      pRunner r = getRunnerByCardNo(it->CardNo, it->getAdjustedTime());
+      pRunner r = getRunnerByCardNo(it->CardNo, it->getAdjustedTime(), oEvent::CardLookupProperty::ForReadout);
 
       if (r){
         wchar_t wave[20];

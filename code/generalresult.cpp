@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1017,8 +1017,8 @@ void DynamicResult::getSymbolInfo(int ix, wstring &name, wstring &desc) const {
 
 void DynamicResult::prepareCalculations(oEvent &oe, bool prepareForTeam, int inputNumber) const {
   compile(false);
-  oe.calculateResults(oEvent::RTClassResult);
-  oe.calculateResults(oEvent::RTTotalResult);
+  oe.calculateResults(set<int>(), oEvent::ResultType::ClassResult);
+  oe.calculateResults(set<int>(), oEvent::ResultType::TotalResult);
 
   declareSymbols(MRScore, true);
   if (prepareForTeam) {
@@ -1344,7 +1344,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
         controlId.first == oPunch::PunchStart) {
 
       if (!totalResults) {
-        oe.calculateResults(oEvent::RTClassResult, true);
+        oe.calculateResults(set<int>(), oEvent::ResultType::ClassResult, true);
         for (pRunner r : runners) {
           ri.status = r->getStatus();
           if (ri.status == StatusUnknown) {
@@ -1373,7 +1373,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
         }
       }
       else {
-        oe.calculateResults(oEvent::RTTotalResult, true);
+        oe.calculateResults(set<int>(), oEvent::ResultType::TotalResult, true);
         for (pRunner r : runners) {
           ri.status = r->getTotalStatus();
           if (ri.status == StatusUnknown && r->getInputStatus() == StatusOK) {

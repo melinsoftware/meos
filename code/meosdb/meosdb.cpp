@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,7 +55,6 @@ using namespace std;
   Localizer lang;
 #endif
 
-extern "C"{
 
 int MEOSDB_API getMeosVersion()
 {
@@ -70,27 +69,27 @@ int getListMask(oEvent &oe) {
   return msql.getModifiedMask(oe);
 }
 
-bool MEOSDB_API msSynchronizeList(oEvent *oe, int lid)
+bool MEOSDB_API msSynchronizeList(oEvent *oe, oListId lid)
 {
   nSynchList++;
   if (nSynchList % 100 == 99)
     OutputDebugString(L"Synchronized 100 lists\n");
 
-  if (lid==oLRunnerId)
+  if (lid == oListId::oLRunnerId)
     return msql.syncListRunner(oe);
-  else if (lid==oLClassId)
+  else if (lid == oListId::oLClassId)
     return msql.syncListClass(oe);
-  else if (lid==oLCourseId)
+  else if (lid == oListId::oLCourseId)
     return msql.syncListCourse(oe);
-  else if (lid==oLControlId)
+  else if (lid == oListId::oLControlId)
     return msql.syncListControl(oe);
-  else if (lid==oLClubId)
+  else if (lid == oListId::oLClubId)
     return msql.syncListClub(oe);
-  else if (lid==oLCardId)
+  else if (lid == oListId::oLCardId)
     return msql.syncListCard(oe);
-  else if (lid==oLPunchId)
+  else if (lid == oListId::oLPunchId)
     return msql.syncListPunch(oe);
-  else if (lid==oLTeamId)
+  else if (lid == oListId::oLTeamId)
     return msql.syncListTeam(oe);
 
   return false;
@@ -227,7 +226,6 @@ bool MEOSDB_API msReConnect()
 }
 
 
-} //Extern "C"
 
 bool repairTables(const string &db, vector<string> &output) {
   return msql.repairTables(db, output);

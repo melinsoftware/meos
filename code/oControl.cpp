@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -355,7 +355,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillControls(vector< pair<wstring
 {
   out.clear();
   oControlList::iterator it;
-  synchronizeList(oLControlId);
+  synchronizeList(oListId::oLControlId);
   Controls.sort();
 
   if (type == oEvent::CTCourseControl) {
@@ -434,7 +434,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillControls(vector< pair<wstring
 const vector< pair<wstring, size_t> > &oEvent::fillControlTypes(vector< pair<wstring, size_t> > &out)
 {
   oControlList::iterator it;
-  synchronizeList(oLControlId);
+  synchronizeList(oListId::oLControlId);
   out.clear();
   //gdi.clearList(name);
   out.clear();
@@ -830,7 +830,7 @@ void oEvent::generateControlTableData(Table &table, oControl *addControl)
     return;
   }
 
-  synchronizeList(oLControlId);
+  synchronizeList(oListId::oLControlId);
   oControlList::iterator it;
 
   for (it=Controls.begin(); it != Controls.end(); ++it){

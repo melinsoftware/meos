@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -337,6 +337,11 @@ public:
   void newHead() {addRow(MLHead);}
   void newSubHead() {addRow(MLSubHead);}
 
+  /** Lookup type from symbol. Return lNone if not found, no exception*/
+  static EPostType getTypeFromSymbol(wstring &symb) noexcept;
+
+  static void fillSymbols(vector < pair<wstring, size_t>> &symb);
+
   friend class MetaListPost;
 };
 
@@ -354,6 +359,8 @@ private:
 public:
 
   MetaListContainer(oEvent *owner);
+  MetaListContainer(oEvent *owner, const MetaListContainer &src);
+
   virtual ~MetaListContainer();
 
   string getUniqueId(EStdListType code) const;
@@ -402,12 +409,15 @@ public:
 
   void getListParam( vector< pair<wstring, size_t> > &param) const;
   void removeParam(int index);
-  void addListParam(oListParam &listParam);
+  /** Return the list index.*/
+  int addListParam(oListParam &listParam);
 
   void mergeParam(int toInsertAfter, int toMerge, bool showTitleBetween);
   void getMergeCandidates(int toMerge, vector< pair<wstring, size_t> > &param) const;
   bool canSplit(int index) const;
   void split(int index);
+
+  void synchronizeTo(MetaListContainer &dst) const;
 
   bool interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
                  int lineHeight, oListInfo &li) const;

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -156,7 +156,7 @@ void IOF30Interface::classCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
       wstring cname;
       xClsAssignment.getObjectString("ClassName", cname);
       if (cname.length() > 0) {
-        pClass pc = oe.getClassCreate(0, cname);
+        pClass pc = oe.getClassCreate(0, cname, matchedClasses);
         if (pc)
           cls2Stages.insert(make_pair(pc->getId(), vector<int>()) );
       }
@@ -510,7 +510,7 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
         wstring cName;
         xCls[j].getObjectString("Name", cName);
         int id = xCls[j].getObjectInt("Id");
-        pClass cls = oe.getClassCreate(id, cName);
+        pClass cls = oe.getClassCreate(id, cName, matchedClasses);
         if (cls) {
           class2Courses[cls->getId()].push_back(pc);
 
@@ -2314,7 +2314,8 @@ void IOF30Interface::setupRelayClasses(const map<int, vector<LegInfo> > &teamCla
     if (classId > 0) {
       pClass pc = oe.getClass(classId);
       if (!pc) {
-        pc = oe.getClassCreate(classId, L"tmp" + itow(classId));
+        set<wstring> dmy;
+        pc = oe.getClassCreate(classId, L"tmp" + itow(classId), dmy);
       }
       setupRelayClass(pc, legs);
     }
@@ -2732,13 +2733,13 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
 
       xml.endTag();
     }
-
-    pCourse crs = r.getCourse(!unrollLoops);
+    bool doUnroll = unrollLoops && r.getNumShortening() == 0;
+    pCourse crs = r.getCourse(!doUnroll);
     if (crs) {
       if (includeCourse)
         writeCourse(xml, *crs);
 
-      const vector<SplitData> &sp = r.getSplitTimes(unrollLoops);
+      const vector<SplitData> &sp = r.getSplitTimes(doUnroll);
       if (r.getStatus()>0 && r.getStatus() != StatusDNS && 
                              r.getStatus() != StatusCANCEL && 
                              r.getStatus() != StatusNotCompetiting) {

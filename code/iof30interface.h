@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,6 +64,8 @@ class IOF30Interface {
   // Include data on stage number
   bool includeStageRaceInfo;
   void operator=(const IOF30Interface &);
+
+  set<wstring> matchedClasses;
 
   struct LegInfo {
     int maxRunners;

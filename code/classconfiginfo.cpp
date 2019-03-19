@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -115,6 +115,7 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
   cnf.clear();
 
   cnf.hasMultiEvent = hasPrevStage() || hasNextStage();
+  map<int, vector<const oRunner *>> runnerPerClass;
 
   for (it = Classes.begin(); it != Classes.end(); ++it) {
     if (it->isRemoved())
@@ -128,7 +129,58 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
 
     if (it->getCourse() == 0)
       cnf.classWithoutCourse.push_back(it->getName()); //MultiCourse not analysed...
+    
+    if (it->isQualificationFinalBaseClass())
+      cnf.knockout.push_back(it->getId());
 
+    if (Courses.empty() || (it->getCourse(false) == nullptr && it->getCourse(0,0, false) == nullptr)  ||
+        (it->getCourse(false) && it->getCourse(false)->getNumControls() == 0)) {
+
+      if (!it->isQualificationFinalBaseClass()) {
+        // No course.
+        if (runnerPerClass.empty()) {
+          for (auto &r : Runners) {
+            if (!r.skip() && r.getClassRef(false) != nullptr)
+              runnerPerClass[r.getClassId(true)].push_back(&r);
+          }
+        }
+
+        map<int, int> punches;
+        int cntSample = 0;
+        for (auto r : runnerPerClass[it->getId()]) {
+          if (r->getCard()) {
+            for (auto &p : r->getCard()->punches) {
+              int tc = p.getTypeCode();
+              if (tc > 30)
+                ++punches[tc];
+            }
+            if (++cntSample > 10)
+              break;
+          }
+        }
+
+        bool single = true, extra = true;
+
+        if (cntSample > 3) {
+          int usedControlCodes = 0;
+          for (auto &p : punches) {
+            if (p.second >= cntSample / 2)
+              usedControlCodes++;
+          }
+
+          if (usedControlCodes == 1)
+            extra = false;
+          else if (usedControlCodes > 1)
+            single = false;
+        }
+
+        if (single)
+          cnf.lapcountsingle.push_back(it->getId());
+        if (extra)
+          cnf.lapcountextra.push_back(it->getId());
+      }
+    }
+    
     if ( !it->hasCoursePool() ) {
       for (size_t k = 0; k< it->MultiCourse.size(); k++) {
         if (it->MultiCourse[k].size() > 1)

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -249,7 +249,7 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
     return value[i];
   }
 #ifdef _DEBUG
-  if (key.length() > 1)
+  if (key.length() > 1 && _wtoi(key.c_str()) == 0)
     unknown[key] = L"";
 #endif
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -134,10 +134,21 @@ public:
   bool importCards(const oEvent &oe, const wstring &file,
                    vector<SICard> &punches);
 
-  int split(char *line, vector<char *> &split);
-  int split(wchar_t *line, vector<wchar_t *> &split);
+  int importRanking(oEvent &oe, const wstring &file, vector<wstring> & problems);
 
-  int iscsv(const wstring &file);
+  static int split(char *line, vector<char *> &split);
+  static int split(wchar_t *line, vector<wchar_t *> &split);
+
+  enum class CSV {
+    NoCSV,
+    Unknown,
+    RAID,
+    OE,
+    OS,
+  };
+
+  static CSV iscsv(const wstring &file);
+
   csvparser();
   virtual ~csvparser();
 

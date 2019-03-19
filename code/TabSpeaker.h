@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -58,6 +58,9 @@ private:
   set<int> controlsToWatch;
   set<int> classesToWatch;
   
+  // For runner report
+  int runnerId = -1;
+
   int lastControlToWatch;
   int lastClassToWatch;
 
@@ -99,6 +102,8 @@ private:
   static void saveSettings(const vector< multimap<string, wstring> > &settings);
   static wstring getSpeakerSettingsFile();
 public:
+
+  void setSelectedRunner(const oRunner &r) { runnerId = r.getId(); }
 
   bool onClear(gdioutput &gdi);
   void loadPriorityClass(gdioutput &gdi, int classId);

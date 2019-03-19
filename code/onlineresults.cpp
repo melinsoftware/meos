@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,7 +68,7 @@ static int OnlineCB(gdioutput *gdi, int type, void *data) {
   return 0;
 }
 
-OnlineResults::OnlineResults() : AutoMachine("Onlineresultat"), infoServer(nullptr), dataType(1),
+OnlineResults::OnlineResults() : AutoMachine("Onlineresultat", Machines::mOnlineResults), infoServer(nullptr), dataType(DataType::MOP20),
  zipFile(true), includeCourse(false),
  includeTotal(false), sendToURL(false), sendToFile(false),
  cmpId(0), exportCounter(1), bytesExported(0), lastSync(0) {
@@ -130,10 +130,11 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
  // gdi.addInput("Interval", time, 10, 0, "Uppdateringsintervall (sekunder):");
 
   gdi.addSelection("Format", 200, 200, OnlineCB, L"Exportformat:");
-  gdi.addItem("Format", L"MeOS Online Protocol XML", 1);
-  gdi.addItem("Format", L"IOF XML 2.0.3", 2);
-  gdi.addItem("Format", L"IOF XML 3.0", 3);
-  gdi.selectItemByData("Format", dataType);
+  gdi.addItem("Format", L"MeOS Online Protocol XML 2.0", int(DataType::MOP20));
+  gdi.addItem("Format", L"MeOS Online Protocol XML 1.0", int(DataType::MOP10));
+  gdi.addItem("Format", L"IOF XML 3.0", int(DataType::IOF3));
+  gdi.addItem("Format", L"IOF XML 2.0.3", int(DataType::IOF2));
+  gdi.selectItemByData("Format", int(dataType));
 
   gdi.addCheckbox("IncludeCourse", "Inkludera bana", 0, includeCourse);
 
@@ -142,7 +143,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
     gdi.addCheckbox("IncludeTotal", "Inkludera resultat från tidigare etapper", 0, includeTotal);
     InfoCompetition &ic = getInfoServer();
     gdi.check("IncludeTotal", ic.includeTotalResults());
-    gdi.setInputStatus("IncludeTotal", dataType == 1);
+    gdi.setInputStatus("IncludeTotal", int(dataType) < 10);
   }
   int cx = gdi.getCX();
   gdi.fillRight();
@@ -268,8 +269,8 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
 
   ListBoxInfo lbi;
   gdi.getSelectedItem("Format", lbi);
-  dataType = lbi.data;
-  if (dataType == 1) {
+  dataType = DataType(lbi.data);
+  if (lbi.data < 10) {
     getInfoServer().includeTotalResults(includeTotal);
     getInfoServer().includeCourse(includeCourse);
   }
@@ -370,18 +371,18 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   int xmlSize = 0;
   InfoCompetition &ic = getInfoServer();
   xmlbuffer xmlbuff;
-  if (dataType == 1) {
-    if (ic.synchronize(*oe, false, classes, controls)) {
+  if (dataType == DataType::MOP10 || dataType == DataType::MOP20) {
+    if (ic.synchronize(*oe, false, classes, controls, dataType != DataType::MOP10)) {
       lastSync = tick; // If error, avoid to quick retry
       ic.getDiffXML(xmlbuff);
     }
   }
   else {
     t = getTempFile();
-    if (dataType == 2)
+    if (dataType == DataType::IOF2)
       oe->exportIOFSplits(oEvent::IOF20, t.c_str(), false, false,
                           classes, -1, false, true, true, false);
-    else if (dataType == 3)
+    else if (dataType == DataType::IOF3)
       oe->exportIOFSplits(oEvent::IOF30, t.c_str(), false, false, 
                           classes, -1, false, true, true, false);
     else

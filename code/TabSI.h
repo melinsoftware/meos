@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,6 +71,8 @@ private:
   vector<SICard> cards;
   vector<wstring> filterDate;
 
+  set<int> warnedClassOutOfMaps;
+    
   int runnerMatchedId;
   bool printErrorShown;
   void printProtected(gdioutput &gdi, gdioutput &gdiprint);
@@ -132,7 +134,6 @@ private:
   // Insert card without converting times and with/without runner
   void processInsertCard(const SICard &csic);
 
-
   void generateSplits(const pRunner r, gdioutput &gdi);
   int logcounter;
   csvparser *logger;
@@ -140,6 +141,8 @@ private:
   string insertCardNumberField;
 
   void insertSICardAux(gdioutput &gdi, SICard &sic);
+
+  pRunner getRunnerForCardSplitPrint(const SICard &sic) const;
 
   // Ask if card is to be overwritten
   bool askOverwriteCard(gdioutput &gdi, pRunner r) const;
@@ -246,7 +249,7 @@ public:
   TabType getType() const {return TSITab;}
 
   void insertSICard(gdioutput &gdi, SICard &sic);
-
+  void clearQueue() { CardQueue.clear(); }
   void refillComPorts(gdioutput &gdi);
 
   bool loadPage(gdioutput &gdi);

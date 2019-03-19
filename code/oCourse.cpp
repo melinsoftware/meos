@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -584,7 +584,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillCourses(vector< pair<wstring,
 {
   out.clear();
   oCourseList::iterator it;
-  synchronizeList(oLCourseId);
+  synchronizeList(oListId::oLCourseId);
 
   Courses.sort();
 
@@ -599,7 +599,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillCourses(vector< pair<wstring,
   }
 
   for (size_t k = 0; k < ac.size(); k++) {
-    pCourse sh = ac[k].first->getShorterVersion();
+    pCourse sh = ac[k].first->getShorterVersion().second;
     if (sh != 0) {
       int ix = id2ix[sh->getId()];
       if (!ac[ix].second.first)
@@ -643,14 +643,13 @@ int oCourse::getNumberMaps() const
 
 int oCourse::getNumUsedMaps(bool noVacant) const {
   if (tMapsUsed == -1)
-    oe->calculateNumRemainingMaps();
+    oe->calculateNumRemainingMaps(false);
 
   if (noVacant)
     return tMapsUsedNoVacant;
   else
     return tMapsUsed;
 }
-
 
 void oCourse::setStart(const wstring &start, bool sync)
 {
@@ -673,25 +672,42 @@ wstring oCourse::getStart() const
   return getDCI().getString("StartName");
 }
 
-void oEvent::calculateNumRemainingMaps()
-{
-  synchronizeList(oLCourseId, true, false);
-  synchronizeList(oLTeamId, false, false);
-  synchronizeList(oLRunnerId, false, true);
-  
-  for (oCourseList::iterator cit=Courses.begin();
-    cit!=Courses.end();++cit) {      
-    int numMaps = cit->getNumberMaps();
-    if (numMaps == 0)
-      cit->tMapsRemaining = numeric_limits<int>::min();
-    else
-      cit->tMapsRemaining = numMaps;
-
-    cit->tMapsUsed = 0;
-    cit->tMapsUsedNoVacant = 0;
+void oEvent::calculateNumRemainingMaps(bool forceRecalculate) {
+  if (!forceRecalculate) {
+    if (dataRevision == tCalcNumMapsDataRevision)
+      return;
   }
 
+  synchronizeList({ oListId::oLCourseId, oListId::oLClassId, oListId::oLTeamId, oListId::oLRunnerId });
   
+  for (auto &cit : Courses) {
+    if (cit.isRemoved())
+      continue;
+
+    int numMaps = cit.getNumberMaps();
+    if (numMaps == 0)
+      cit.tMapsRemaining = numeric_limits<int>::min();
+    else
+      cit.tMapsRemaining = numMaps;
+
+    cit.tMapsUsed = 0;
+    cit.tMapsUsedNoVacant = 0;
+  }
+
+  for (auto &cit : Classes) {
+    if (cit.isRemoved())
+      continue;
+
+    int numMaps = cit.getNumberMaps(true);
+    if (numMaps == 0)
+      cit.tMapsRemaining = numeric_limits<int>::min();
+    else
+      cit.tMapsRemaining = numMaps;
+
+    cit.tMapsUsed = 0;
+    cit.tMapsUsedNoVacant = 0;
+  }
+
   for (oRunnerList::const_iterator it=Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isRemoved() && it->getStatus() != StatusDNS && it->getStatus() != StatusCANCEL) {
       pCourse pc = it->getCourse(false);
@@ -703,19 +719,33 @@ void oEvent::calculateNumRemainingMaps()
         if (!it->isVacant())
           pc->tMapsUsedNoVacant++;
       }
+      pClass cls = it->getClassRef(true);
+      if (cls) {
+        if (cls->tMapsRemaining != numeric_limits<int>::min())
+          cls->tMapsRemaining--;
+
+        cls->tMapsUsed++;
+        if (!it->isVacant())
+          cls->tMapsUsedNoVacant++;
+      }
     }
   }
 
   // Count maps used for vacant team positions
 
   for (oTeamList::const_iterator it=Teams.begin(); it != Teams.end(); ++it) {
-    if (!it->isRemoved()/* && it->getStatus() != StatusDNS*/) {
+    if (!it->isRemoved()) {
       for (size_t j = 0; j < it->Runners.size(); j++) {
         pRunner r = it->Runners[j];
         if (r)
           continue; // Already included
 
         if (it->Class) {
+          it->Class->tMapsUsed++;
+
+          if (it->Class->tMapsRemaining != numeric_limits<int>::min())
+            it->Class->tMapsRemaining--;
+
           const vector<pCourse> &courses = it->Class->MultiCourse[j];
           if (courses.size()>0) {
             int index = it->StartNo;
@@ -733,6 +763,8 @@ void oEvent::calculateNumRemainingMaps()
       }
     }    
   }
+
+  tCalcNumMapsDataRevision = dataRevision;
 }
 
 int oCourse::getIdSum(int nC) {
@@ -966,6 +998,24 @@ int oCourse::getCommonControl() const {
   return getDCI().getInt("CControl");
 }
 
+
+int oCourse::getNumLoops() const {
+  int cc = getCommonControl();
+  if (cc == 0)
+    return 0;
+  bool wasCC = true;
+  int loopCount = 0;
+  for (int i = 0; i < nControls; i++) {
+    if (Controls[i]->getId() == cc)
+      wasCC = true;
+    else if (wasCC) {
+      loopCount++;
+      wasCC = false;
+    }
+  }
+  return loopCount;
+}
+
 void oCourse::setCommonControl(int ctrlId) {
   if (ctrlId != 0) {
     int found = 0;
@@ -979,7 +1029,7 @@ void oCourse::setCommonControl(int ctrlId) {
   getDI().setInt("CControl", ctrlId);
 }
 
-pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse) const {
+pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &numShorten) const {
   /*adaptedToOriginalCardOrder.resize(nControls + 1);
   for (int k = 0; k < nControls + 1; k++)
     adaptedToOriginalCardOrder[k] = k;*/
@@ -988,13 +1038,13 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse) const 
     return pCourse(this);
 
   vector<int> ccIndex;
-  vector< vector<pControl> > loopKeys;
+  vector<vector<pControl>> loopKeys;
   if (!constructLoopKeys(cc, loopKeys, ccIndex))
     return pCourse(this);
   
   bool firstAsStart = ccIndex[0] == 0;
 
-  vector< vector<int> > punchSequence;
+  vector<vector<int>> punchSequence;
 
   vector<pPunch> punches;
   card.getPunches(punches);
@@ -1012,7 +1062,6 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse) const 
     }
   }
 
-  
   map<int, vector< pair<int,int> > > preferences;
   for (size_t k = 0; k < punchSequence.size(); k++) {
     for (size_t j = 0; j < loopKeys.size(); j++) {
@@ -1060,43 +1109,6 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse) const 
       break;
   }
 
-  
-  /*for (size_t k = 0; k < punchSequence.size(); k++) {
-    bool done = false;
-    for (size_t j = 0; j < loopKeys.size(); j++) {
-      if (assignedKeys[j] == -1 && matchLoopKey(punchSequence[k], loopKeys[j])) {
-        assignedKeys[j] = k;
-        done = true;
-        break;
-      }
-    }
-    if (!done) {
-      // Check if an already assigned key matches the current loop
-      int undone = -1;
-      size_t start = loopKeys.size();
-      for (size_t j = 0; j < loopKeys.size(); j++) {
-        if (matchLoopKey(punchSequence[k], loopKeys[j])) {
-          // Push that key away and try it somewhere else
-          undone = assignedKeys[j];
-          start = j + 1;
-          assignedKeys[j] = k;
-          done = true;
-          break;
-        }
-      }
-
-      // Try an already assigned key later
-      for (size_t j = start; undone != -1 && j < loopKeys.size(); j++) {
-         if (matchLoopKey(punchSequence[undone], loopKeys[j])) {
-           swap(assignedKeys[j], undone);
-         }
-      }
-    }
-  }*/
-
-  //set<int> loops;
-  //for (size_t k = 0; k < ccIndex.size(); k++)
-  //  loops.insert(k);
   vector<int> loopOrder;
   map<int, int> keyToIndex;
   assert(ccIndex.size() == assignedKeys.size());
@@ -1137,13 +1149,17 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse) const 
     if (0 < legLengths.size())
       tmpCourse.legLengths.push_back(legLengths[0]);
   }
-
-
+  bool allowShorten = getShorterVersion().first;
+  numShorten = 0;
   bool lastAsFinish = useLastAsFinish() || Controls[nControls-1]->getId() == cc;
 
   int endIx = lastAsFinish ? nControls - 1 : nControls;
 
   for (size_t k = 0; k< loopOrder.size(); k++) {
+    if (allowShorten && assignedKeys[loopOrder[k]] == -1) {
+      numShorten++;
+      continue;
+    }
     int start = ccIndex[loopOrder[k]];
     int end = size_t(loopOrder[k] + 1) < ccIndex.size() ? ccIndex[loopOrder[k] + 1] : endIx;
     for (int i = start + 1; i < end; i++) {
@@ -1155,29 +1171,43 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse) const 
     tmpCourse.tMapToOriginalOrder.push_back(end);
     if (k + 1 < loopOrder.size()) {
       int currentCC = ccIndex[k+1];
-      //tmpCourse.tMapToOriginalOrder.push_back(currentCC);
       tmpCourse.Controls[tmpCourse.nControls++] = Controls[currentCC];
       if (size_t(end) < legLengths.size())
         tmpCourse.legLengths.push_back(legLengths[end]);
     }
   }
 
+  if (numShorten > 0) {
+    //Shortened course. Do not duplicate last.
+    if (lastAsFinish && !useLastAsFinish()) {
+      lastAsFinish = false;  
+    }
+    else {
+      if (tmpCourse.nControls > 0) {
+        tmpCourse.tMapToOriginalOrder.pop_back();
+        tmpCourse.nControls--;
+        if (!legLengths.empty())
+          tmpCourse.legLengths.pop_back();
+      }
+    }
+  }
   if (lastAsFinish) {
-    //tmpCourse.tMapToOriginalOrder.push_back(nControls - 1);
     tmpCourse.tMapToOriginalOrder.push_back(nControls);
     tmpCourse.Controls[tmpCourse.nControls++] = Controls[nControls - 1];
     if (size_t(nControls-1) < legLengths.size())
       tmpCourse.legLengths.push_back(legLengths[nControls-1]);
   }
 
-  //tmpCourse.tMapToOriginalOrder.push_back(nControls);
-
-  assert(tmpCourse.nControls == nControls);
-  assert(tmpCourse.tMapToOriginalOrder.size() == nControls + 1);
+  if (!allowShorten) {
+    assert(tmpCourse.nControls == nControls);
+    assert(tmpCourse.tMapToOriginalOrder.size() == nControls + 1);
+  }
 
   if (!legLengths.empty()) {
     tmpCourse.legLengths.push_back(legLengths.back());
-    assert(tmpCourse.legLengths.size() == legLengths.size());
+    if (!allowShorten) {
+      assert(tmpCourse.legLengths.size() == legLengths.size());
+    }
   }
   tmpCourse.Id = Id;
   return &tmpCourse;
@@ -1346,9 +1376,12 @@ wstring oCourse::getRadioName(int courseControlId) const {
 }
 
 // Returns the next shorter course, if any, null otherwise
-pCourse oCourse::getShorterVersion() const {
+pair<bool, pCourse> oCourse::getShorterVersion() const {
   int ix = getDCI().getInt("Shorten");
-  return oe->getCourse(ix);
+  if (ix == -1)
+    return make_pair(true, nullptr);
+  auto c = oe->getCourse(ix);
+  return make_pair(c != 0, c);
 }
 
 // Returns the next longer course, if any, null otherwise. Note that this method is slow.
@@ -1362,9 +1395,9 @@ pCourse oCourse::getLongerVersion() const {
   return 0;
 }
 
-void oCourse::setShorterVersion(pCourse shorten) {
-  if (shorten != 0)
-    getDI().setInt("Shorten", shorten->getId());
+void oCourse::setShorterVersion(bool activeShortening, pCourse shorten) {
+  if (activeShortening)
+    getDI().setInt("Shorten", shorten != 0 ? shorten->getId() : -1);
   else
     getDI().setInt("Shorten", 0);
 }

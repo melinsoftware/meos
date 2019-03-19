@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,6 +140,7 @@ public:
   friend class oRunner;
   friend class oTeam;
   friend class MeosSQL;
+  friend class oListInfo;
 };
 
 #endif // !defined(AFX_OCARD_H__674EAB76_A232_4E44_A9B4_C52F6A04D7CF__INCLUDED_)

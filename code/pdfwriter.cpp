@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -146,7 +146,8 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
                             const wstring &file,
                             const wstring &pageTitleW,
                             const wstring &authorW,
-                            const list<TextInfo> &tl) {
+                            const list<TextInfo> &tl,
+                            bool respectPageBreak) {
   checkWriteAccess(file);
   string pageTitle = gdi.narrow(pageTitleW); // XXX WCS
   string author = gdi.narrow(authorW);
@@ -220,7 +221,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   pageInfo.yMM2PrintK = 0;
 
   list<RectangleInfo> rectangles;
-  pageInfo.renderPages(tl, rectangles, true, pages);
+  pageInfo.renderPages(tl, rectangles, true, respectPageBreak, pages);
   for (size_t j = 0; j< pages.size(); j++) {
     wstring pinfo = pageInfo.pageInfo(pages[j]);
     if (!pinfo.empty()) {

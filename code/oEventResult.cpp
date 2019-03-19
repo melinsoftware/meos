@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -105,10 +105,14 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo)
   }
 }
 
-void oEvent::calculateResults(ResultType resultType, bool includePreliminary) {
-  const bool totalResults = resultType == RTTotalResult;
-  const bool courseResults = resultType == RTCourseResult;
-  const bool classCourseResults = resultType == RTClassCourseResult;
+void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bool includePreliminary) {
+  if (resultType == ResultType::PreliminarySplitResults) {
+    computePreliminarySplitResults(classes);
+    return;
+  }
+  const bool totalResults = resultType == ResultType::TotalResult;
+  const bool courseResults = resultType == ResultType::CourseResult;
+  const bool classCourseResults = resultType == ResultType::ClassCourseResult;
 
   if (classCourseResults)
     sortRunners(ClassCourseResult);
@@ -596,5 +600,186 @@ void oEvent::calculateTeamResultAtControl(const set<int> &classId, int leg, int 
     team->tmpResult.runningTime = objs[i].runningTime;
     team->tmpResult.place = objs[i].status == StatusOK ? cPlace : 0;
     team->tmpResult.points = 0; // Not supported
+  }
+}
+
+void oEvent::computePreliminarySplitResults(const set<int> &classes) {
+  bool allClasses = classes.empty();
+  map<pair<int, int>, vector<pRunner>> runnerByClassLeg;
+  for (auto &r : Runners) {
+    r.tOnCourseResults.clear();
+    r.currentControlTime.first = 1;
+    r.currentControlTime.second = 100000;
+
+    if (r.isRemoved() || r.getClassId(false) == 0)
+      continue;
+    int cls = r.getClassId(true);
+    if (!allClasses && classes.count(cls) == 0)
+      continue;
+    int leg = r.getLegNumber();
+    if (r.getClassRef(false)->getQualificationFinal())
+      leg = 0;
+
+    r.setupRunnerStatistics();
+    runnerByClassLeg[make_pair(cls, leg)].push_back(&r);
+  }
+
+  map<pair<int, int>, int> courseCCid2CourseIx;
+  for (auto &c : Courses) {
+    if (c.isRemoved())
+      continue;
+    for (int ix = 0; ix < c.getNumControls(); ix++) {
+      int ccid = c.getCourseControlId(ix);
+      courseCCid2CourseIx[make_pair(c.getId(), ccid)] = ix;
+    }
+    courseCCid2CourseIx[make_pair(c.getId(), oPunch::PunchFinish)] = c.getNumControls();
+  }
+
+  map<pair<int, int>, set<int>> classLeg2ExistingCCId;
+  for (auto &p : punches) {
+    if (p.isRemoved())
+      continue;
+    pRunner r = p.getTiedRunner();
+    if (!r)
+      continue;
+    pClass cls = r->getClassRef(false);
+    if (r->getCourse(false) && cls) {
+      int ccId = p.getCourseControlId();
+      if (ccId <= 0)
+        continue;
+      int crs = r->getCourse(false)->getId();
+      int time = p.getTimeInt() - r->getStartTime(); //XXX Team time
+      r->tOnCourseResults.emplace_back(ccId, courseCCid2CourseIx[make_pair(crs, ccId)], time);
+      int clsId = r->getClassId(true);
+      int leg = r->getLegNumber();
+      if (cls->getQualificationFinal())
+        leg = 0;
+
+      classLeg2ExistingCCId[make_pair(clsId, leg)].insert(ccId);
+    }
+  }
+  // Add missing punches from card
+  for (auto &r : Runners) {
+    if (r.isRemoved() || !r.Card || r.getClassId(false) == 0)
+      continue;
+    int clsId = r.getClassId(true);
+    int leg = r.getLegNumber();
+    if (r.getClassRef(false)->getQualificationFinal())
+      leg = 0;
+
+    const set<int> &expectedCCid = classLeg2ExistingCCId[make_pair(clsId, leg)];
+    size_t nRT = 0;
+    for (auto &radioTimes : r.tOnCourseResults) {
+      if (expectedCCid.count(radioTimes.courseControlId))
+        nRT++;
+    }
+
+    if (nRT < expectedCCid.size()) {
+      pCourse crs = r.getCourse(true);
+      for (auto &p : r.Card->punches) {
+        if (p.tIndex >= 0 && p.tIndex < crs->getNumControls()) {
+          int ccId = crs->getCourseControlId(p.tIndex);
+          if (expectedCCid.count(ccId)) {
+            bool added = false;
+            for (auto &stored : r.tOnCourseResults) {
+              if (stored.courseControlId == ccId) {
+                added = true;
+                break;
+              }
+            }
+            if (!added) {
+              int time = p.getTimeInt() - r.getStartTime(); //XXX Team time
+              r.tOnCourseResults.emplace_back(ccId, p.tIndex, time);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  vector<tuple<int, int, int>> timeRunnerIx;
+  for (auto rList : runnerByClassLeg) {
+    auto &rr = rList.second;
+    pClass cls = getClass(rList.first.first);
+    assert(cls);
+    bool totRes = cls->getNumStages() > 1;
+
+    set<int> &legCCId = classLeg2ExistingCCId[rList.first];
+    legCCId.insert(oPunch::PunchFinish);
+    for (const int ccId : legCCId) {
+      // Leg with negative sign
+      int negLeg = 0;
+      timeRunnerIx.clear();
+      int nRun = rr.size();
+      if (ccId == oPunch::PunchFinish) {
+        negLeg = -1000; //Finish, smallest number
+        for (int j = 0; j < nRun; j++) {
+          pRunner r = rr[j];
+          if (r->prelStatusOK()) {
+            int time;
+            if (!r->tInTeam || !totRes)
+              time = r->getRunningTime();
+            else {
+              time = r->tInTeam->getLegRunningTime(r->tLeg, false);
+            }
+            int ix = -1;
+            int nr = r->tOnCourseResults.size();
+            for (int i = 0; i < nr; i++) {
+              if (r->tOnCourseResults[i].courseControlId == ccId) {
+                ix = i;
+                break;
+              }
+            }
+            if (ix == -1) {
+              ix = r->tOnCourseResults.size();
+              int nc = 0;
+              pCourse crs = r->getCourse(false);
+              if (crs)
+                nc = crs->getNumControls();
+              r->tOnCourseResults.emplace_back(ccId, nc, time);
+            }
+            timeRunnerIx.emplace_back(time, j, ix);
+          }
+        }
+      }
+      else {
+        for (int j = 0; j < nRun; j++) {
+          pRunner r = rr[j];
+          int nr = r->tOnCourseResults.size();
+          for (int i = 0; i < nr; i++) {
+            if (r->tOnCourseResults[i].courseControlId == ccId) {
+              timeRunnerIx.emplace_back(r->tOnCourseResults[i].time, j, i);
+              negLeg = min(negLeg, -r->tOnCourseResults[i].controlIx);
+              break;
+            }
+          }
+        }
+      }
+      sort(timeRunnerIx.begin(), timeRunnerIx.end());
+
+      int place = 0;
+      int time = 0;
+      int leadTime = 0;
+      int numPlace = timeRunnerIx.size();
+      for (int i = 0; i < numPlace; i++) {
+        int ct = get<0>(timeRunnerIx[i]);
+        if (time != ct) {
+          time = ct;
+          place = i + 1;
+          if (leadTime == 0)
+            leadTime = time;
+        }
+        pRunner r = rr[get<1>(timeRunnerIx[i])];
+        int locIx = get<2>(timeRunnerIx[i]);
+        r->tOnCourseResults[locIx].place = place;
+        r->tOnCourseResults[locIx].after = time - leadTime;
+
+        int &legWithTimeIndexNeg = r->currentControlTime.first;
+        if (negLeg < legWithTimeIndexNeg) {
+          legWithTimeIndexNeg = negLeg;
+          r->currentControlTime.second = ct;
+        }
+      }
+    }
   }
 }

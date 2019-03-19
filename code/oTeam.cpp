@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -724,33 +724,25 @@ bool oTeam::compareResult(const oTeam &a, const oTeam &b)
                        b.sName.c_str(), b.sName.length()) == CSTR_LESS_THAN;
 }
 
-bool oTeam::compareStartTime(const oTeam &a, const oTeam &b)
+bool oTeam::compareResultNoSno(const oTeam &a, const oTeam &b)
 {
   if (a.Class != b.Class) {
     if (a.Class) {
-      if (b.Class)
-        return a.Class->tSortIndex<b.Class->tSortIndex || (a.Class->tSortIndex == b.Class->tSortIndex && a.Class->Id < b.Class->Id);
+      if (b.Class) return a.Class->tSortIndex < b.Class->tSortIndex || (a.Class->tSortIndex == b.Class->tSortIndex && a.Class->Id < b.Class->Id);
       else return true;
     }
+    else return false;
   }
-  else if (a.tStartTime != b.tStartTime)
-    return a.tStartTime < b.tStartTime;
-
-  const wstring &as = a.getBib();
-  const wstring &bs = b.getBib();
-  if (as != bs) {
-    return compareBib(as, bs);
-  }
-
-  int aix = a.getDCI().getInt("SortIndex");
-  int bix = b.getDCI().getInt("SortIndex");
-  if (aix != bix)
-    return aix < bix;
+  else if (a._sortStatus != b._sortStatus)
+    return a._sortStatus<b._sortStatus;
+  else if (a._sortTime != b._sortTime)
+    return a._sortTime<b._sortTime;
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
                        a.sName.c_str(), a.sName.length(),
                        b.sName.c_str(), b.sName.length()) == CSTR_LESS_THAN;
 }
+
 
 bool oTeam::compareSNO(const oTeam &a, const oTeam &b) {
   const wstring &as = a.getBib();
@@ -1087,8 +1079,9 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                 int restart=pc->getRestartTime(i);
                 int rope=pc->getRopeTime(i);
 
-                if ((restart>0 && rope>0 && (ft==0 || ft>rope)) || (ft == 0 && restart>0)) {
-                  ft=restart; //Runner in restart
+                if (((restart > 0 && rope > 0 && (ft == 0 || ft > rope)) || (ft == 0 && restart > 0)) &&
+                    !preventRestart() && !Runners[i]->preventRestart()) {
+                  ft = restart; //Runner in restart
                   tNumRestarts++;
                 }
 
@@ -1127,8 +1120,9 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                     lastStartTime = restart;
                   }
 
-                  if (restart>0 && rope>0 && (lastStartTime>rope)) {
-                    lastStartTime=restart; //Runner in restart
+                  if (restart > 0 && rope > 0 && (lastStartTime > rope) &&
+                      !preventRestart() && !Runners[i]->preventRestart()) {
+                    lastStartTime = restart; //Runner in restart
                     tNumRestarts++;
                   }
                   if (!availableStartTimes.empty()) {
@@ -1738,7 +1732,7 @@ RunnerStatus oTeam::getTotalStatus() const {
 
 void oEvent::getTeams(int classId, vector<pTeam> &t, bool sort) {
   if (sort) {
-    synchronizeList(oLTeamId);
+    synchronizeList(oListId::oLTeamId);
     //sortTeams(SortByName);
   }
   t.clear();
@@ -1845,7 +1839,7 @@ void oEvent::generateTeamTableData(Table &table, oTeam *addTeam)
     return;
   }
 
-  synchronizeList(oLTeamId);
+  synchronizeList(oListId::oLTeamId);
   oTeamList::iterator it;
   table.reserve(Teams.size());
   for (it=Teams.begin(); it != Teams.end(); ++it){
@@ -1869,7 +1863,7 @@ void oTeam::addTableRow(Table &table) const {
 
   table.set(row++, it, TID_START, getStartTimeS(), true);
   table.set(row++, it, TID_FINISH, getFinishTimeS(), true);
-  table.set(row++, it, TID_STATUS, getStatusS(), true, cellSelection);
+  table.set(row++, it, TID_STATUS, getStatusS(false), true, cellSelection);
   table.set(row++, it, TID_RUNNINGTIME, getRunningTimeS(), false);
 
   table.set(row++, it, TID_PLACE, getPlaceS(), false);
@@ -1995,7 +1989,7 @@ bool oTeam::inputData(int id, const wstring &input,
       RunnerStatus sOut = getStatus();
       if (sOut != sIn)
         throw meosException("Status matchar inte deltagarnas status.");
-      output = getStatusS();
+      output = getStatusS(false);
     }
     break;
 

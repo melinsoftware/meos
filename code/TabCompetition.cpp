@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,6 +52,8 @@
 #include "recorder.h"
 #include "testmeos.h"
 #include "importformats.h"
+#include "HTMLWriter.h"
+#include "metalist.h"
 
 #include <Shellapi.h>
 #include <algorithm>
@@ -98,6 +100,9 @@ bool TabCompetition::save(gdioutput &gdi, bool write)
   wstring zt = gdi.getText("ZeroTime");
   bool longTimes = gdi.isChecked("LongTimes");
   wstring date = gdi.getText("Date");
+
+  if (!checkValidDate(date))
+    throw meosException(L"Felaktigt datum 'X' (Använd YYYY-MM-DD)#" + date);
 
   if (longTimes)
     zt = L"00:00:00";
@@ -674,9 +679,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       if (club == cmp)
         club = L"";
 
-      csvparser csv;
-      bool clubCsv = !club.empty() && csv.iscsv(club.c_str()) != 0;
-      bool cmpCsv = !cmp.empty() && csv.iscsv(cmp.c_str()) != 0;
+      bool clubCsv = !club.empty() && csvparser::iscsv(club) != csvparser::CSV::NoCSV;
+      bool cmpCsv = !cmp.empty() && csvparser::iscsv(cmp) != csvparser::CSV::NoCSV;
       
       if (cmpCsv) {
         if (!club.empty())
@@ -964,8 +968,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
         vector<pTeam> newEntriesT, notTransferedT, failedTargetT;
         oe->transferResult(nextStage, method, newEntriesT, notTransferedT, failedTargetT);
-
-        nextStage.save();
+        nextStage.transferListsAndSave(*oe);
         oe->updateTabs(true);
         gdi.dropLine();
 
@@ -1549,7 +1552,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
           switch (startType) {
             case SMCommon:
-              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", L"0", false, false, 1);
+              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", L"0", false, oEvent::DrawMethod::Random, 1);
               drawn = true;
               break;
 
@@ -1569,12 +1572,12 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
                   cls += cnf.classWithoutCourse[k];
                 }
                 if (!gdi.ask(L"ask:missingcourse#" + cls)) {
-                  gdi.addString("", 0, "Skipper lottning");
+                  gdi.addString("", 0, "Skippar lottning");
                   skip = true;
                 }
               }
               if (!skip)  
-                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", L"2", true, true, 1);
+                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", L"2", true, oEvent::DrawMethod::MeOS, 1);
               drawn = true;
               break;
           }
@@ -1773,7 +1776,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oe->generateListInfo(par,  gdi.getLineHeight(), li);
         gdioutput tGdi("temp", gdi.getScale());
         oe->generateList(tGdi, true, li, false);
-        tGdi.writeTableHTML(save, oe->getName(), 0);
+        HTMLWriter::writeTableHTML(tGdi, save, oe->getName(), 0, 1.0);
         tGdi.openDoc(save.c_str());
       }
       loadPage(gdi);
@@ -1858,7 +1861,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oe->generateListInfo(par,  gdi.getLineHeight(), li);
         gdioutput tGdi("temp", gdi.getScale());
         oe->generateList(tGdi, true, li, false);
-        tGdi.writeTableHTML(save, oe->getName(), 0);
+        HTMLWriter::writeTableHTML(tGdi, save, oe->getName(), 0, 1.0);
         tGdi.openDoc(save.c_str());
       }
 
@@ -2337,7 +2340,7 @@ int TabCompetition::restoreCB(gdioutput &gdi, int type, void *data) {
 void TabCompetition::listBackups(gdioutput &gdi) {
   wchar_t bf[260];
   getUserFile(bf, L"");
-  int yo = gdi.GetOffsetY();
+  int yo = gdi.getOffsetY();
   gdi.clearPage(false);
   oe->enumerateBackups(bf);
 
@@ -2393,10 +2396,17 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
   gdi.addString("", 0, "se license.txt som levereras med programmet.");
 
   gdi.dropLine();
-  gdi.addString("", 1, "Vi stöder MeOS");
   vector<wstring> supp;
   vector<wstring> developSupp;
   getSupporters(supp, developSupp);
+
+  gdi.addString("", fontMediumPlus, "MeOS utvecklinsstöd");
+  for (size_t k = 0; k<developSupp.size(); k++)
+    gdi.addStringUT(fontMedium, developSupp[k]).setColor(colorDarkGreen);
+  
+  gdi.dropLine();
+
+  gdi.addString("", fontMediumPlus, "Vi stöder MeOS");
   for (size_t k = 0; k<supp.size(); k++)
     gdi.addStringUT(0, supp[k]);
 
@@ -2492,7 +2502,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
     
     copyrightLine(gdi);
 
-    gdi.addButton(gdi.GetPageX()-gdi.scaleLength(180),
+    gdi.addButton(gdi.getPageX()-gdi.scaleLength(180),
                   gdi.getCY()-gdi.getButtonHeight(),
                   "Exit", "Avsluta", CompetitionCB);
     gdi.setInputFocus("CmpSel", true);
@@ -3252,7 +3262,8 @@ void TabCompetition::selectTransferClasses(gdioutput &gdi, bool expand) {
   gdi.addItem("ChangeClassType", lang.tl("Tillåt ny klass, inget totalresultat"), oEvent::TransferNoResult);
   gdi.addItem("ChangeClassType", lang.tl("Tillåt ny klass, behåll resultat från annan klass"), oEvent::TransferAnyway);
   gdi.selectItemByData("ChangeClassType", lastChangeClassType);
-  
+  gdi.autoGrow("ChangeClassType");
+
   if (expand) {
     gdi.fillDown();
     gdi.addListBox("ClassNewEntries", 200, 400, 0, L"Klasser där nyanmälningar ska överföras:", L"", true);
@@ -3429,7 +3440,7 @@ void TabCompetition::entryForm(gdioutput &gdi, bool isGuide) {
   gdi.popX();
 
   gdi.dropLine(2.5);
-  gdi.addInput("FileNameRank", L"", 48, 0, L"Ranking (IOF, xml)");
+  gdi.addInput("FileNameRank", L"", 48, 0, L"Ranking (IOF, xml, csv)");
   gdi.dropLine();
   gdi.addButton("BrowseEntries", "Bläddra...", CompetitionCB).setExtra(L"FileNameRank");
   gdi.popX();
@@ -3445,7 +3456,7 @@ TabCompetition::FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool r
   filename[3] = gdi.getText("FileName");
   filename[4] = gdi.getText("FileNameRank");
 
-  csvparser csv;
+  //csvparser csv;
 
   for (int i = 0; i<5; i++) {
     if (filename[i].empty())
@@ -3453,12 +3464,32 @@ TabCompetition::FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool r
 
     gdi.addString("", 0, L"Behandlar: X#" + filename[i]);
 
-    int type=csv.iscsv(filename[i]);
-
-    if (type) {
+    csvparser::CSV type = csvparser::iscsv(filename[i]);
+    if (i == 4 && (type == csvparser::CSV::OE || type == csvparser::CSV::Unknown)) {
+      // Ranking
       const wchar_t *File = filename[i].c_str();
 
-      if (type==1) {
+      gdi.addString("", 0, "Importerar ranking...");
+      gdi.refresh();
+      gdi.setWaitCursor(true);
+      vector<wstring> problems;
+      csvparser csv;
+      int count = csv.importRanking(*oe, File, problems);
+      if (count > 0) {
+        gdi.addString("", 0, "Klart. X värden tilldelade.#" + itos(count));
+        if (!problems.empty()) {
+          gdi.dropLine();
+          gdi.addString("", 0, "Varning: Följande deltagare har ett osäkert resultat:");
+          for (auto &p : problems)
+            gdi.addStringUT(0, p).setColor(colorDarkRed);
+        }
+      }
+      else gdi.addString("", 0, "Försöket misslyckades.");
+    }
+    else if (type != csvparser::CSV::NoCSV) {
+      const wchar_t *File = filename[i].c_str();
+      csvparser csv;
+      if (type == csvparser::CSV::OE) {
         gdi.addString("", 0, "Importerar OE2003 csv-fil...");
         gdi.refresh();
         gdi.setWaitCursor(true);
@@ -3467,7 +3498,7 @@ TabCompetition::FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool r
         }
         else gdi.addString("", 0, "Försöket misslyckades.");
       }
-      else if (type==2) {
+      else if (type == csvparser::CSV::OS) {
         gdi.addString("", 0, "Importerar OS2003 csv-fil...");
         gdi.refresh();
         gdi.setWaitCursor(true);
@@ -3476,14 +3507,16 @@ TabCompetition::FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool r
         }
         else gdi.addString("", 0, "Försöket misslyckades.");
       }
-      else if (type==3) {
+      else if (type == csvparser::CSV::RAID) {
         gdi.addString("", 0, "Importerar RAID patrull csv-fil...");
         gdi.setWaitCursor(true);
         if (csv.importRAID(*oe, File)) {
           gdi.addString("", 0, "Klart. X patruller importerade.#" + itos(csv.nimport));
         }
         else gdi.addString("", 0, "Försöket misslyckades.");
-
+      }
+      else {
+        gdi.addString("", 0, "Försöket misslyckades.");
       }
     }
     else {

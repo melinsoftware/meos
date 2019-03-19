@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,18 +36,6 @@ struct ClassDrawSpecification {
                          interval(interval), vacances(vacances), ntimes(0) {}
 };
 
-enum DrawMethod {
-  NOMethod = -1,
-
-  DMRandom = 1,
-  DMSOFT = 2,
-  DMClumped = 3,
-  DMSimultaneous = 4,
-  DMSeeded = 5,
-
-  DMPursuit = 11,
-  DMReversePursuit = 12
-};
 
 /** Struct with info to draw a class */
 struct ClassInfo {

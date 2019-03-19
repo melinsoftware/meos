@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -130,6 +130,11 @@ int oPunch::getAdjustedTime() const
 }
 void oPunch::setTime(const wstring &t)
 {
+  if (convertAbsoluteTimeHMS(t, -1) <= 0) {
+    setTimeInt(-1, false);
+    return;
+  }
+ 
   int tt = oe->getRelativeTime(t)-tTimeAdjust;
   if (tt < 0)
     tt = 0;

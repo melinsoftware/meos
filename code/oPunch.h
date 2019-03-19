@@ -2,17 +2,12 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_OPUNCH_H__67B23AF5_5783_4A6A_BB2E_E522B9283A42__INCLUDED_)
-#define AFX_OPUNCH_H__67B23AF5_5783_4A6A_BB2E_E522B9283A42__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 #include "oBase.h"
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +48,7 @@ protected:
   //Adjustment of this punch, loaded from control
   int tTimeAdjust;
 
-  volatile int tCardIndex; // Index into card
+  int tCardIndex = -1; // Index into card
   int tIndex; // Control match index in course
   int tMatchControlId;
   bool hasBeenPlayed;
@@ -63,9 +58,11 @@ protected:
   int getDISize() const {return -1;}
 
   void changedObject();
+  mutable int previousPunchTime; /// Note that this is not valid in general
+
 public:
 
-  virtual int getControlId() {return tMatchControlId;}
+  virtual int getControlId() const {return tMatchControlId;}
 
   bool isUsedInCourse() const {return isUsed;}
   void remove();
@@ -106,8 +103,7 @@ public:
   friend class oRunner;
   friend class oTeam;
   friend class oEvent;
+  friend class oListInfo;
 };
 
 typedef oPunch * pPunch;
-
-#endif // !defined(AFX_OPUNCH_H__67B23AF5_5783_4A6A_BB2E_E522B9283A42__INCLUDED_)

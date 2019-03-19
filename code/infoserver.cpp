@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ InfoTeam::InfoTeam(int id) : InfoBaseCompetitor(id) {
 }
 
 
-bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &includeCls, const set<int> &ctrls) {
+bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &includeCls, const set<int> &ctrls, bool allowDeletion) {
   bool changed = false;
   if (oe.getName() != name) {
     name = oe.getName();
@@ -170,6 +170,8 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   vector<pClass> cls;
   oe.getClasses(cls, false);
   for (size_t k = 0; k < cls.size(); k++) {
+    if (cls[k]->getQualificationFinal())
+      continue;
     int wid = cls[k]->getId();
     if (!includeCls.count(wid))
       continue;
@@ -207,8 +209,13 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   // Check if something was deleted
   for (map<int, InfoOrganization>::iterator it = organizations.begin(); it != organizations.end();) {
     if (!knownId.count(it->first)) {
+      int oid = it->first;
       organizations.erase(it++);
-      forceComplete = true;
+
+      if (allowDeletion)
+        deleteMap.emplace_back("org", oid);
+      else
+        forceComplete = true;
     }
     else
       ++it;
@@ -218,8 +225,12 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   vector<pTeam> t;
   oe.getTeams(0, t, false);
   for (size_t k = 0; k < t.size(); k++) {
-    if (!includeCls.count(t[k]->getClassId(true)))
+    int cid = t[k]->getClassId(true);
+    if (!includeCls.count(cid))
       continue;
+    if (cid != 0 && t[k]->getClassRef(false)->getQualificationFinal() != nullptr)
+      continue;
+
     int wid = t[k]->getId();
     knownId.insert(wid);
     map<int, InfoTeam>::iterator res = teams.find(wid);
@@ -232,8 +243,13 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   // Check if something was deleted
   for (map<int, InfoTeam>::iterator it = teams.begin(); it != teams.end();) {
     if (!knownId.count(it->first)) {
+      int tid = it->first;
       teams.erase(it++);
-      forceComplete = true;
+
+      if (allowDeletion)
+        deleteMap.emplace_back("tm", tid);
+      else
+        forceComplete = true;      
     }
     else
       ++it;
@@ -243,8 +259,12 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   vector<pRunner> r;
   oe.getRunners(0, 0, r, false);
   for (size_t k = 0; k < r.size(); k++) {
-    if (!includeCls.count(r[k]->getClassId(true)))
+    int cid = r[k]->getClassId(true);
+    if (!includeCls.count(cid))
       continue;
+    if (cid != 0 && r[k]->getClassRef(true)->getQualificationFinal() != nullptr)
+      continue;
+
     int wid = r[k]->getId();
     knownId.insert(wid);
     map<int, InfoCompetitor>::iterator res = competitors.find(wid);
@@ -257,15 +277,19 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
   // Check if something was deleted
   for (map<int, InfoCompetitor>::iterator it = competitors.begin(); it != competitors.end();) {
     if (!knownId.count(it->first)) {
+      int rid = it->first;
       competitors.erase(it++);
-      forceComplete = true;
+      if (allowDeletion)
+        deleteMap.emplace_back("cmp", rid);
+      else
+        forceComplete = true;
     }
     else
       ++it;
   }
   knownId.clear();
 
-  return !toCommit.empty() || forceComplete;
+  return !toCommit.empty() || forceComplete || !deleteMap.empty();
 }
 
 void InfoCompetition::needCommit(InfoBase &obj) {
@@ -499,7 +523,8 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
 
 bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &r) {
   bool ch = synchronizeBase(r);
-  changeTotalSt = r.getEvent()->hasPrevStage() || r.getLegNumber()>0; // Always write full attributes
+  bool isQF = r.getClassRef(false) && r.getClassRef(false)->getQualificationFinal() != nullptr;
+  changeTotalSt = r.getEvent()->hasPrevStage() || (r.getLegNumber()>0 && !isQF); // Always write full attributes
   
   int s = StatusOK;
   int legInput = 0;
@@ -521,7 +546,7 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
     legInput = r.getTotalTimeInput() * 10;
     s = r.getTotalStatusInput();
   }
-  else if (t && r.getLegNumber() > 0) {
+  else if (t && !isQF && r.getLegNumber() > 0) {
     legInput = t->getLegRunningTime(r.getLegNumber() - 1, false) * 10;
     s  = t->getLegStatus(r.getLegNumber() - 1, false);
   }
@@ -549,7 +574,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
 
   vector<RadioTime> newRT;
   if (r.getClassId(false) > 0)  {
-    const vector<int> &radios = cmp.getControls(r.getClassId(false), r.getLegNumber());
+    const vector<int> &radios = cmp.getControls(r.getClassId(true), r.getLegNumber());
     for (size_t k = 0; k < radios.size(); k++) {
       RadioTime radioTime;
       RunnerStatus s_split;
@@ -693,12 +718,21 @@ void InfoCompetition::getDiffXML(xmlbuffer &xml) {
     return;
   }
   xml.setComplete(false);
+
+  vector<pair<string, wstring>> prop = { make_pair("id", L""), make_pair("delete", L"true") };
+  for (auto &dm : deleteMap) {
+    prop[0].second = itow(dm.second);
+    xml.startTag(dm.first.c_str(), prop);
+    xml.endTag();
+  }
+
   for (list<InfoBase *>::iterator it = toCommit.begin(); it != toCommit.end(); ++it) {
     (*it)->serialize(xml, true);
   }
 }
 
 void InfoCompetition::commitComplete() {
+  deleteMap.clear();
   toCommit.clear();
   forceComplete = false;
 }
@@ -766,8 +800,6 @@ void xmlbuffer::write(const char *tag,
   blocks.back().prop = prop;
   blocks.back().value = value;
 }
-
-
 
 void xmlbuffer::startXML(xmlparser &xml, const wstring &dest) {
   xml.openOutput(dest.c_str(), false);

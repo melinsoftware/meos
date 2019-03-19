@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@
 #include "liveresult.h"
 #include "animationdata.h"
 #include <algorithm>
+#include "HTMLWriter.h"
 
 const static int CUSTOM_OFFSET = 10;
 const static int NUMTEXTSAMPLE = 13;
@@ -59,6 +60,8 @@ TabList::TabList(oEvent *poe):TabBase(poe)
 {
   listEditor = 0;
   methodEditor = 0;
+
+  lastHtmlTarget = poe->getPropertyString("LastExportTarget", L"");
   clearCompetitionData();
 }
 
@@ -155,8 +158,10 @@ int TabList::baseButtons(gdioutput &gdi, int extraButtons) {
 
   gdi.addButton(gdi.getWidth()+20, 18+gdi.getButtonHeight(), gdi.scaleLength(120),
                 "Print", "Skriv ut...", ListsCB, "Skriv ut listan.", true, false);
-  gdi.addButton(gdi.getWidth()+20, 21+2*gdi.getButtonHeight(), gdi.scaleLength(120),
-                "HTML", "Webb...", ListsCB, "Spara för webben.", true, false);
+  if (!ownWindow) {
+    gdi.addButton(gdi.getWidth() + 20, 21 + 2 * gdi.getButtonHeight(), gdi.scaleLength(120),
+                  "HTMLDesign", "Webb...", ListsCB, "Spara för webben.", true, false);
+  }
   gdi.addButton(gdi.getWidth()+20, 24+3*gdi.getButtonHeight(), gdi.scaleLength(120),
                 "PDF", "PDF...", ListsCB, "Spara som PDF.", true, false);
   gdi.addButton(gdi.getWidth()+20, 27+4*gdi.getButtonHeight(), gdi.scaleLength(120),
@@ -199,8 +204,8 @@ void TabList::generateList(gdioutput &gdi, bool forceUpdate)
     if (!forceUpdate && !currentList.needRegenerate(*oe))
       return;
     gdi.takeShownStringsSnapshot();
-    oX = gdi.GetOffsetX();
-    oY = gdi.GetOffsetY();
+    oX = gdi.getOffsetX();
+    oY = gdi.getOffsetY();
     gdi.getData("GeneralList", storedWidth);
     gdi.restoreNoUpdate("GeneralList");
   }
@@ -256,14 +261,12 @@ void TabList::generateList(gdioutput &gdi, bool forceUpdate)
 
       baseY += 2*(3+gdi.getButtonHeight());
     }
-    /*baseY += 3 + gdi.getButtonHeight();
-    gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(120),
-                  "AutoScroll", "Automatisk skroll", ListsCB, "Rulla upp och ner automatiskt", true, false);
-
-    baseY += 3 + gdi.getButtonHeight();
-    gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(120),
-                  "FullScreen", "Fullskärm", ListsCB, "Visa listan i fullskärm", true, false);
-    */
+    
+    if (currentList.supportUpdateClasses()) {
+      baseY += 3 + gdi.getButtonHeight();
+      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+                    "ClassSelection", "Klassval...", ListsCB, "Välj klasser", true, false);
+    }
     baseY += 3 + gdi.getButtonHeight();
     gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
       "ListDesign", "Utseende...", ListsCB, "Justera visningsinställningar", true, false);
@@ -271,13 +274,13 @@ void TabList::generateList(gdioutput &gdi, bool forceUpdate)
     if (!currentList.getParam().saved && !oe->isReadOnly()) {
       baseY += 3 + gdi.getButtonHeight();
       gdi.addButton(gdi.getWidth()+20, baseY,  gdi.scaleLength(120),
-                    "Remember", "Kom ihåg listan", ListsCB, "Spara den här listan som en favoritlista", true, false);
+                    "Remember", "Kom ihåg listan...", ListsCB, "Spara den här listan som en favoritlista", true, false);
     }
   }
 
   gdi.registerEvent("DataUpdate", ListsEventCB);
   gdi.setData("DataSync", 1);
-  if (currentList.needPunchCheck())
+  if (currentList.needPunchCheck() != oListInfo::PunchMode::NoPunch)
     gdi.setData("PunchSync", 1);
   gdi.registerEvent("GeneralList", ListsCB);
   gdi.setOnClearCb(ListsCB);
@@ -316,34 +319,25 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       if (ownWindow)
         gdi.closeWindow();
       else {
+        gdioutput *gdi_settings = getExtraWindow("html_settings", false);
+        if (gdi_settings) {
+          gdi_settings->closeWindow();
+        }
+        gdi_settings = getExtraWindow("save_list", false);
+        if (gdi_settings) {
+          gdi_settings->closeWindow();
+        }
         SelectedList = "";
         currentListType = EStdNone;
         loadPage(gdi);
       }
     }
     else if (bi.id=="Print") {
-      gdi.print(oe);
-    }
-    else if (bi.id=="HTML") {
-      vector< pair<wstring, wstring> > ext;
-      ext.push_back(make_pair(L"Strukturerat webbdokument (html)", L"*.html;*.htm"));
-      ext.push_back(make_pair(L"Formaterat webbdokument (html)", L"*.html;*.htm"));
-
-      wstring file=gdi.browseForSave(ext, L"html", index);
-
-      if (!file.empty()) {
-        if (index == 1)
-          gdi.writeTableHTML(file, oe->getName(), 0);
-        else {
-          assert(index == 2);
-          gdi.writeHTML(file, oe->getName(), 0);
-        }
-        gdi.openDoc(file.c_str());
-      }
+      gdi.print(oe, 0, true, false, currentList.getParam().pageBreak);
     }
     else if (bi.id=="Copy") {
       ostringstream fout;
-      gdi.writeTableHTML(fout, L"MeOS", true, 0);
+      HTMLWriter::writeTableHTML(gdi, fout, L"MeOS", true, 0, 1.0);
       string res = fout.str();
       gdi.copyToClipboard(res, L"");
     }
@@ -356,17 +350,46 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       if (!file.empty()) {
         pdfwriter pdf;
         pdf.generatePDF(gdi, file, oe->getName() + L", " + currentList.getName(),
-                                   oe->getDCI().getString("Organizer"), gdi.getTL());
+                                   oe->getDCI().getString("Organizer"), gdi.getTL(), 
+                                   currentList.getParam().pageBreak);
         gdi.openDoc(file.c_str());
       }
     }
+    else if (bi.id == "ClassSelection") {
+      gdioutput *gdi_settings = getExtraWindow("list_class", true);
+      if (!gdi_settings) {
+        gdi_settings = createExtraWindow("list_class", lang.tl("Klassval"), gdi.scaleLength(350), gdi.scaleLength(600), true);
+      }
+      if (gdi_settings) {
+        loadClassSettings(*gdi_settings, gdi.getTag());
+      }
+    }
     else if (bi.id == "ListDesign") {
+      gdioutput *html_settings = getExtraWindow("html_settings", false);
+      if (html_settings) {
+        html_settings->closeWindow();
+      }
+
       gdioutput *gdi_settings = getExtraWindow("list_settings", true);
       if (!gdi_settings) {
         gdi_settings = createExtraWindow("list_settings", lang.tl("Inställningar"), gdi.scaleLength(600), gdi.scaleLength(400));
       }
       if (gdi_settings) {
         loadSettings(*gdi_settings, gdi.getTag());
+      }
+    }
+    else if (bi.id == "HTMLDesign") {
+      gdioutput *design_settings = getExtraWindow("list_settings", false);
+      if (design_settings) {
+        design_settings->closeWindow();
+      }
+
+      gdioutput *gdi_settings = getExtraWindow("html_settings", true);
+      if (!gdi_settings) {
+        gdi_settings = createExtraWindow("html_settings", lang.tl("HTML Export"), gdi.scaleLength(600), gdi.scaleLength(500), true);
+      }
+      if (gdi_settings) {
+        htmlSettings(*gdi_settings, gdi.getTag());
       }
     }
     else if (bi.id == "Window" || bi.id == "AutoScroll" ||
@@ -382,6 +405,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       }
       else
         gdi_new = &gdi;
+
+      gdioutput *gdi_settings = getExtraWindow("html_settings", false);
+      if (gdi_settings) {
+        gdi_settings->closeWindow();
+      }
 
       if (gdi_new && bi.id == "AutoScroll" || bi.id == "FullScreen") {
         tl_new->hideButtons = true;
@@ -404,14 +432,13 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       }
     }
     else if (bi.id == "Remember") {
-      oListParam &par = currentList.getParam();
-      wstring baseName = par.getDefaultName();
-      baseName = oe->getListContainer().makeUniqueParamName(baseName);
-      par.setName(baseName);
-      oe->synchronize(false);
-      oe->getListContainer().addListParam(currentList.getParam());
-      oe->synchronize(true);
-      gdi.removeControl(bi.id);
+      gdioutput *gdi_settings = getExtraWindow("save_list", true);
+      if (!gdi_settings) {
+        gdi_settings = createExtraWindow("save_list", lang.tl("Kom ihåg listan"), gdi.scaleLength(450), gdi.scaleLength(500), true);
+      }
+      if (gdi_settings) {
+        loadRememberList(*gdi_settings, gdi.getTag());
+      }
     }
     else if (bi.id == "ShowSaved") {
       ListBoxInfo lbi;
@@ -419,6 +446,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         oListParam &par = oe->getListContainer().getParam(lbi.data);
 
         oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+        currentList.getParam().sourceParam = lbi.data;
         generateList(gdi);
       }
     }
@@ -433,8 +461,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         gdi.fillRight();
         gdi.addInput("Name", par.getName(), 36);
         gdi.setInputFocus("Name", true);
-        gdi.addButton("DoRenameSaved", "Döp om", ListsCB);
-        gdi.addButton("Cancel", "Avbryt", ListsCB);
+        gdi.addButton("DoRenameSaved", "Döp om", ListsCB).setDefault();
+        gdi.addButton("Cancel", "Avbryt", ListsCB).setCancel();
         gdi.dropLine(3);
       }
     }
@@ -460,8 +488,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         gdi.addItem("Merge", cand);
         gdi.addCheckbox("ShowTitle", "Visa rubrik mellan listorna", 0, false);
         gdi.fillRight();
-        gdi.addButton("DoMerge", "Slå ihop", ListsCB);
-        gdi.addButton("Cancel", "Avbryt", ListsCB);
+        gdi.addButton("DoMerge", "Slå ihop", ListsCB).setDefault();
+        gdi.addButton("Cancel", "Avbryt", ListsCB).setCancel();
         gdi.dropLine(3);
       }
     }
@@ -499,9 +527,18 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       return 0;
     }
     else if (bi.id == "Automatic") {
+      gdioutput *gdi_settings = getExtraWindow("html_settings", false);
+      wstring htmlTarget;
+      if (gdi_settings) {
+        htmlTarget = lastHtmlTarget;
+        gdi_settings->closeWindow();
+      }
       PrintResultMachine prm(60*10, currentList);
+      if (!htmlTarget.empty()) {
+        prm.setHTML(htmlTarget, currentList.getParam().timePerPage / 1000);
+      }
       tabAutoAddMachinge(prm);
-      gdi.getTabs().get(TAutoTab)->loadPage(gdi);
+      dynamic_cast<TabAuto *>(gdi.getTabs().get(TAutoTab))->loadPage(gdi, true);
     }
     else if (bi.id == "WideFormat") {
       enableWideFormat(gdi, gdi.isChecked(bi.id));
@@ -589,6 +626,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       lastInputNumber = itow(par.inputNumber);
 
       par.pageBreak = gdi.isChecked("PageBreak");
+      par.showHeader = gdi.isChecked("ShowHeader");
+
       par.listCode = (EStdListType)currentListType;
       par.showInterTimes = gdi.isChecked("ShowInterResults");
       par.showSplitTimes = gdi.isChecked("ShowSplits");
@@ -636,12 +675,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oe->getClassConfigurationInfo(cnf);
       getResultIndividual(par, cnf);
       cnf.getIndividual(par.selection);
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-
-      ListBoxInfo lbi;
-      gdi.getSelectedItem("ClassLimit", lbi);
-      par.filterMaxPer = lbi.data;
+      readSettings(gdi, par, true);
 
       oe->generateListInfo(par, gdi.getLineHeight(), currentList);
       generateList(gdi);
@@ -654,9 +688,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oe->getClassConfigurationInfo(cnf);
       cnf.getIndividual(par.selection);
       par.listCode = EStdResultList;
+      
+      readSettings(gdi, par, true);
       par.showSplitTimes = true;
       par.setLegNumberCoded(-1);
-      par.pageBreak = gdi.isChecked("PageBreak");
+      
       oe->generateListInfo(par, gdi.getLineHeight(), currentList);
       generateList(gdi);
       gdi.refresh();
@@ -667,7 +703,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       getStartIndividual(par, cnf);
-      par.pageBreak = gdi.isChecked("PageBreak");
+      readSettings(gdi, par, false);
+
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -677,7 +714,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oe->sanityCheck(gdi, false);
       oListParam par;
       getStartClub(par);
-      par.pageBreak = gdi.isChecked("PageBreak");
+      readSettings(gdi, par, false);
+
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -690,8 +728,9 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oe->getClassConfigurationInfo(cnf);
       getResultClub(par, cnf);
 
-      par.pageBreak = gdi.isChecked("PageBreak");
+      readSettings(gdi, par, false);
       par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -722,7 +761,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       getStartTeam(par, cnf);
-      par.pageBreak = gdi.isChecked("PageBreak");
+      readSettings(gdi, par, false);
+
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -731,10 +771,11 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="RaceNStart") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      int race = int(bi.getExtra());
+      int race = bi.getExtraInt();
       par.setLegNumberCoded(race);
       par.listCode = EStdIndMultiStartListLeg;
-      par.pageBreak = gdi.isChecked("PageBreak");
+      readSettings(gdi, par, false);
+
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getRaceNStart(race, par.selection);
@@ -746,7 +787,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="LegNStart") {
       oe->sanityCheck(gdi, false);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
+      readSettings(gdi, par, false);
+
       int race = bi.getExtraInt();
       par.setLegNumberCoded(race);
       par.listCode = EStdTeamStartListLeg;
@@ -758,27 +800,13 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       generateList(gdi);
       gdi.refresh();
     }
-    else if (bi.id=="PatrolStartList") {
-      oe->sanityCheck(gdi, false);
-      oListParam par;
-      ClassConfigInfo cnf;
-      oe->getClassConfigurationInfo(cnf);
-      getStartPatrol(par, cnf);
-      par.pageBreak = gdi.isChecked("PageBreak");
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
-      currentList.setCallback(openRunnerTeamCB);
-      generateList(gdi);
-      gdi.refresh();
-    }
     else if (bi.id=="TeamResults") {
       oe->sanityCheck(gdi, true);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       getResultTeam(par, cnf);
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
+      readSettings(gdi, par, true); 
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       generateList(gdi);
       gdi.refresh();
@@ -786,8 +814,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="MultiResults") {
       oe->sanityCheck(gdi, true);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      readSettings(gdi, par, true);
       par.listCode = EStdIndMultiResultListAll;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -799,8 +826,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="RaceNRes") {
       oe->sanityCheck(gdi, true);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      readSettings(gdi, par, true);
+
       int race = bi.getExtraInt();
       par.setLegNumberCoded(race);
       par.listCode = EStdIndMultiResultListLeg;
@@ -815,30 +842,13 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="LegNResult") {
       oe->sanityCheck(gdi, true);
       oListParam par;
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      readSettings(gdi, par, true); 
       int race = bi.getExtraInt();
       par.setLegNumberCoded(race);
-      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
       par.listCode = oe->getListContainer().getType("legresult");
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getLegNRes(race, par.selection);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
-      currentList.setCallback(openRunnerTeamCB);
-      generateList(gdi);
-      gdi.refresh();
-    }
-    else if (bi.id=="PatrolResultList") {
-      oe->sanityCheck(gdi, false);
-      oListParam par;
-      ClassConfigInfo cnf;
-      oe->getClassConfigurationInfo(cnf);
-      getResultPatrol(par, cnf);
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
-
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
@@ -850,9 +860,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       getResultRogaining(par, cnf);
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
-      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
+      readSettings(gdi, par, true);
 
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       currentList.setCallback(openRunnerTeamCB);
@@ -867,15 +875,17 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       vector<oListParam> par;
       
       if (cnf.hasTeamClass()) {
-        par.push_back(oListParam());
-        par.back().pageBreak = gdi.isChecked("PageBreak");
+        par.emplace_back();
+        readSettings(gdi, par.back(), false);
+        
         par.back().listCode = ETeamCourseList;
         cnf.getTeamClass(par.back().selection);
       }
       
       if (cnf.hasIndividual()) {
-        par.push_back(oListParam());
-        par.back().pageBreak = gdi.isChecked("PageBreak");
+        par.emplace_back();
+        readSettings(gdi, par.back(), false);
+
         par.back().listCode = EIndCourseList;
         par.back().showInterTitle = false;
         cnf.getIndividual(par.back().selection);
@@ -885,11 +895,12 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       generateList(gdi);
       gdi.refresh();
     }
-    else if (bi.id=="RentedCards") {
+    else if (bi.id=="HiredCards") {
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       oListParam par;
       par.listCode = EStdRentedCard;
+      par.showHeader = gdi.isChecked("ShowHeader");
       par.setLegNumberCoded(-1);
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       generateList(gdi);
@@ -901,6 +912,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oListParam par;
       cnf.getIndividual(par.selection);
       par.listCode = EIndPriceList;
+      par.showHeader = gdi.isChecked("ShowHeader");
       par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
       oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
       generateList(gdi);
@@ -928,17 +940,19 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       bool isReport = bi.id.substr(0, 7) == "GenLst:";
       bool allClasses = bi.getExtraInt() == 1;
       bool rogaining = bi.getExtraInt() == 2;
+      bool patrol = bi.getExtraInt() == 3;
       oe->sanityCheck(gdi, bi.id.substr(0, 7) == "Result:");
       oListParam par;
       par.listCode = oe->getListContainer().getType(bi.id.substr(7));
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      readSettings(gdi, par, true);
       
-      par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
-
       par.setLegNumberCoded(-1);
-      
-      if (rogaining) {
+      if (patrol) {
+        ClassConfigInfo cnf;
+        oe->getClassConfigurationInfo(cnf);
+        cnf.getPatrol(par.selection);
+      }
+      else if (rogaining) {
         ClassConfigInfo cnf;
         oe->getClassConfigurationInfo(cnf);
         cnf.getRogaining(par.selection);
@@ -955,14 +969,48 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       generateList(gdi);
       gdi.refresh();
     }
+    else if (bi.id == "KnockoutTotal") {
+      oe->sanityCheck(gdi, true);
+      oListParam par;
+      par.listCode = oe->getListContainer().getType("knockout-total");
+      readSettings(gdi, par, true);
+      par.setLegNumberCoded(-1);
+
+      ClassConfigInfo cnf;
+      oe->getClassConfigurationInfo(cnf);
+      par.selection = set<int>(cnf.knockout.begin(), cnf.knockout.end());
+      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      currentList.setCallback(openRunnerTeamCB);
+      generateList(gdi);
+      gdi.refresh();
+    }
+    else if (bi.id == "LapCount" || bi.id == "LapCountExtra") {
+      oe->sanityCheck(gdi, true);
+      bool extra = bi.id == "LapCountExtra";
+      oListParam par;
+      par.listCode = oe->getListContainer().getType(extra ? "lapcountextra" : "lapcount");
+      readSettings(gdi, par, true);
+      par.setLegNumberCoded(-1);
+
+      ClassConfigInfo cnf;
+      oe->getClassConfigurationInfo(cnf);
+      if (extra)
+        par.selection = set<int>(cnf.lapcountextra.begin(), cnf.lapcountextra.end());
+      else
+        par.selection = set<int>(cnf.lapcountsingle.begin(), cnf.lapcountsingle.end());
+
+      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      currentList.setCallback(openRunnerTeamCB);
+      generateList(gdi);
+      gdi.refresh();
+    }
     else if (bi.id == "CustomList") {
       oe->synchronize();
       oe->sanityCheck(gdi, false);
       oListParam par;
       int index = bi.getExtraInt();
       par.listCode = oe->getListContainer().getType(index);
-      par.pageBreak = gdi.isChecked("PageBreak");
-      par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+      readSettings(gdi, par, true);
       par.setLegNumberCoded(-1);
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -1087,6 +1135,9 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "PageBreak") {
       oe->setProperty("pagebreak", gdi.isChecked(bi.id));
     }
+    else if (bi.id == "ShowHeader") {
+      oe->setProperty("showheader", gdi.isChecked(bi.id));
+    }
     else if (bi.id == "ShowInterResults"){
       oe->setProperty("intertime", gdi.isChecked(bi.id));
     }
@@ -1128,8 +1179,8 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     }
   }
   else if (type==GUI_CLEAR) {
-    offsetY=gdi.GetOffsetY();
-    offsetX=gdi.GetOffsetX();
+    offsetY=gdi.getOffsetY();
+    offsetX=gdi.getOffsetX();
     leavingList(gdi.getTag());
     return true;
   }
@@ -1319,6 +1370,7 @@ void TabList::loadGeneralList(gdioutput &gdi)
   gdi.popY();
   gdi.fillDown();
   gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser / klubbar", ListsCB, oe->getPropertyInt("pagebreak", 0)!=0);
+  gdi.addCheckbox("ShowHeader", "Visa rubrik", ListsCB, oe->getPropertyInt("showheader", 0) != 0);
 
   gdi.addCheckbox("ShowInterResults", "Visa mellantider", ListsCB, oe->getPropertyInt("intertime", 1)!=0, "Mellantider visas för namngivna kontroller.");
   gdi.addCheckbox("SplitAnalysis", "Med sträcktidsanalys", ListsCB, oe->getPropertyInt("splitanalysis", 1)!=0);
@@ -1365,8 +1417,8 @@ void TabList::loadGeneralList(gdioutput &gdi)
 
   gdi.dropLine();
   gdi.fillRight();
-  gdi.addButton("Generate", "Generera", ListsCB);
-  gdi.addButton("Cancel", "Avbryt", ListsCB);
+  gdi.addButton("Generate", "Generera", ListsCB).setDefault();
+  gdi.addButton("Cancel", "Avbryt", ListsCB).setCancel();
 
   gdi.refresh();
 }
@@ -1396,8 +1448,8 @@ void TabList::makeFromTo(gdioutput &gdi) {
   gdi.dropLine(3);
 }
 
-class ListSettings : public GuiHandler {
-  void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
+class TargetSettings : public GuiHandler {
+  void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) final {
     string target;
     if (!gdi.getData("target", target))
       return;
@@ -1406,14 +1458,48 @@ class ListSettings : public GuiHandler {
       return;
 
     TabBase *tb = dest_gdi->getTabs().get(TabType::TListTab);
-    if (tb) {
-      TabList *list = dynamic_cast<TabList *>(tb);
-      list->handleListSettings(gdi, info, type, *dest_gdi);
+    TabList *list = dynamic_cast<TabList *>(tb);
+
+    if (list) {
+      handle(list, gdi, info, type, *dest_gdi);
     }
+  }
+public:
+  virtual void handle(TabList *list, gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) = 0;
+  virtual ~TargetSettings() {}
+};
+
+class HTMLSettings : public TargetSettings {
+  void handle(TabList *list, gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) override {
+    list->handleHTMLSettings(gdi, info, type, dest_gdi);
   }
 };
 
+
+class ListSettings : public TargetSettings {
+  void handle(TabList *list, gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) override {
+    list->handleListSettings(gdi, info, type, dest_gdi);
+  }
+};
+
+class ClassSettings : public TargetSettings {
+public:
+  void handle(TabList *list, gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) override {
+    list->handleClassSettings(gdi, info, type, dest_gdi);
+  }
+};
+
+class RememberList : public TargetSettings {
+public:
+  void handle(TabList *list, gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) override {
+    list->handleRememberSettings(gdi, info, type, dest_gdi);
+  }
+};
+
+HTMLSettings htmlClass;
 ListSettings settingsClass;
+ClassSettings settingsClassSelection;
+RememberList settingsRememberList;
 
 void TabList::changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindow) {
   gdioutput *gdi_settings = getExtraWindow("list_settings", true);
@@ -1426,7 +1512,23 @@ void TabList::changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindo
 }
 
 void TabList::leavingList(const string &wnd) {
-  gdioutput *gdi_settings = getExtraWindow("list_settings", true);
+  gdioutput *gdi_settings = getExtraWindow("list_settings", false);
+  if (gdi_settings) {
+    string oldTag;
+    gdi_settings->getData("target", oldTag);
+    if (wnd == oldTag)
+      gdi_settings->closeWindow();
+  }
+
+  gdi_settings = getExtraWindow("html_settings", false);
+  if (gdi_settings) {
+    string oldTag;
+    gdi_settings->getData("target", oldTag);
+    if (wnd == oldTag)
+      gdi_settings->closeWindow();
+  }
+  
+  gdi_settings = getExtraWindow("save_list", false);
   if (gdi_settings) {
     string oldTag;
     gdi_settings->getData("target", oldTag);
@@ -1434,6 +1536,104 @@ void TabList::leavingList(const string &wnd) {
       gdi_settings->closeWindow();
   }
 }
+
+void TabList::loadRememberList(gdioutput &gdi, string targetTag) {
+  gdi.clearPage(false);
+  gdi.setCX(10);
+  gdi.setCY(15);
+  gdi.setColorMode(RGB(242, 240, 250));
+  gdi.setData("target", targetTag);
+  settingsTarget = targetTag;
+  gdi.addString("", fontMediumPlus, L"Spara 'X'#" + currentList.getName());
+  gdi.dropLine(0.5);
+  oListParam &par = currentList.getParam();
+  wstring baseName = par.getDefaultName();
+
+  if (!par.selection.empty()) {
+    vector<pClass> classes;
+    oe->getClasses(classes, false);
+    if (par.selection.size() != classes.size()) {
+      wstring cls;
+      for (pClass c : classes) {
+        if (par.selection.count(c->getId())) {
+          if (cls.length() > 16) {
+            cls += L"...";
+            break;
+          }
+          if (!cls.empty())
+            cls += L", ";
+          cls += c->getName();
+        }
+      }
+      baseName += L"; " + cls;
+    }
+  }
+  if (!par.getLegName().empty())
+    baseName += L"; " + lang.tl(L"Sträcka X#" + par.getLegName());
+  
+  gdi.addInput("Name", baseName, 40, 0, L"Namn:");
+  gdi.dropLine();
+
+  gdi.addCheckbox("DoMerge", "Slå ihop med befintlig lista", nullptr, false).setHandler(&settingsRememberList);
+  gdi.addListBox("Merge", 350, 250);
+  vector < pair<wstring, size_t> > cand;
+  oe->getListContainer().getMergeCandidates(-1, cand);
+  gdi.addItem("Merge", cand);
+  gdi.dropLine(-0.2);
+  gdi.addCheckbox("ShowTitle", "Visa rubrik mellan listorna", 0, false);
+  gdi.dropLine(0.5);
+  gdi.disableInput("Merge");
+  gdi.disableInput("ShowTitle");
+  gdi.fillRight();
+
+  gdi.pushX();
+  gdi.addButton("SaveList", "OK").setDefault().setHandler(&settingsRememberList);
+  gdi.addButton("Cancel", "Avbryt").setCancel().setHandler(&settingsRememberList);
+  gdi.dropLine(3);
+  gdi.popX();
+
+  gdi.refresh();
+}
+
+void TabList::handleRememberSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) {
+  if (type == GUI_BUTTON) {
+    ButtonInfo bi = static_cast<ButtonInfo&>(info);
+    if (bi.id == "Cancel")
+      gdi.closeWindow();
+    else if (bi.id == "SaveList") {
+      oListParam &par = currentList.getParam();
+      //wstring baseName = par.getDefaultName();
+      wstring baseName = gdi.getText("Name");
+      baseName = oe->getListContainer().makeUniqueParamName(baseName);
+      par.setName(baseName);
+      oe->synchronize(false);
+      par.sourceParam = oe->getListContainer().addListParam(par);
+      
+      if (gdi.isChecked("DoMerge")) {
+        ListBoxInfo lbi;
+        if (gdi.getSelectedItem("Merge", lbi)) {
+          int mergeWidth = lbi.data;
+          bool showTitle = gdi.isChecked("ShowTitle");
+          oe->getListContainer().mergeParam(mergeWidth, par.sourceParam, showTitle);
+        }
+      }
+      oe->synchronize(true);
+
+      dest_gdi.removeControl("Remember");
+      gdi.closeWindow();
+    }
+    else if (bi.id == "DoMerge") {
+      bool merge = gdi.isChecked(bi.id);
+      gdi.setInputStatus("Merge", merge);
+      gdi.setInputStatus("ShowTitle", merge);
+    }
+  }
+  else if (type == GUI_LISTBOX) {
+    ListBoxInfo lbi = static_cast<ListBoxInfo&>(info);
+  }
+}
+
+
 
 static void addAnimationSettings(gdioutput &gdi, oListParam &dst) {
   DWORD cx, cy;
@@ -1662,6 +1862,289 @@ void TabList::handleListSettings(gdioutput &gdi, BaseInfo &info, GuiEventType ty
   }
 }
 
+namespace {
+  void htmlDetails(gdioutput &gdi, oListParam &tmpSettingsParam, wstring &info, bool withExtra) {
+    gdi.restoreNoUpdate("htmlDetails");
+    gdi.setRestorePoint("htmlDetails");
+    gdi.pushX();
+    if (withExtra) {
+      gdi.fillDown();
+      gdi.addString("", 0, info);
+      gdi.dropLine(0.3);
+      gdi.fillRight();
+      gdi.addInput("Margin", itow(tmpSettingsParam.margin) + L" %", 5, 0, L"Marginal:");
+      gdi.addInput("Scale", itow(int(tmpSettingsParam.htmlScale*100)) + L" %", 5, 0, L"Skalfaktor:");
+      if (tmpSettingsParam.nColumns <= 0)
+        tmpSettingsParam.nColumns = 1;
+
+      gdi.addInput("Columns", itow(tmpSettingsParam.nColumns), 5, 0, L"Kolumner:");
+      gdi.addInput("Time", itow(tmpSettingsParam.timePerPage) + L"ms", 5, 0, L"Visningstid:");
+
+      gdi.popX();
+      gdi.dropLine(3.4);
+
+      gdi.addCheckbox("UseRows", "Begränsa antal rader per sida", 0, tmpSettingsParam.htmlRows>0).setHandler(&htmlClass);
+      gdi.dropLine(-0.4);
+      gdi.addInput("Rows", itow(tmpSettingsParam.htmlRows), 5);
+      gdi.setInputStatus("Rows", tmpSettingsParam.htmlRows > 0);
+
+      gdi.popX();
+      gdi.dropLine(3.0);
+    }
+    else {
+      gdi.fillRight();
+      gdi.addInput("Scale", itow(int(tmpSettingsParam.htmlScale * 100)) + L" %", 5, 0, L"Skalfaktor:");
+      gdi.popX();
+      gdi.dropLine(3.4);
+
+      gdi.addCheckbox("Reload", "Automatisk omladdning", 0, tmpSettingsParam.timePerPage>999).setHandler(&htmlClass);
+      gdi.dropLine(-0.4);
+      gdi.addInput("ReloadTime", itow(tmpSettingsParam.timePerPage/1000) + L" s", 5);
+      gdi.setInputStatus("Reload", tmpSettingsParam.timePerPage>999);
+
+      gdi.popX();
+      gdi.dropLine(3.0);
+    }
+    gdi.fillRight();
+    gdi.addButton("ApplyList", "Lagra inställningar").setHandler(&htmlClass);
+    gdi.addButton("Automatic", "Automatisera", 0, "Skriv ut eller exportera listan automatiskt.").setHandler(&htmlClass);
+    gdi.addButton("HTML", "Exportera").setHandler(&htmlClass);
+  }
+}
+
+void TabList::htmlSettings(gdioutput &gdi, string targetTag) {
+  gdi.clearPage(false);
+  gdi.setCX(10);
+  gdi.setCY(15);
+  gdi.setColorMode(RGB(242, 240, 250));
+  gdi.setData("target", targetTag);
+  settingsTarget = targetTag;
+  gdi.addString("", fontMediumPlus, L"HTML Export för 'X'#" + currentList.getName());
+  tmpSettingsParam = currentList.getParam();
+
+  vector<HTMLWriter::TemplateInfo> htmlTmpl;
+  HTMLWriter::enumTemplates(HTMLWriter::TemplateType::List, htmlTmpl);
+  vector <pair<wstring, size_t>> items;
+  gdi.dropLine(0.5);
+  gdi.addString("", 10, "htmlhelp");
+
+  items.emplace_back(lang.tl("Strukturerat webbdokument (html)"), 0);
+  items.emplace_back(lang.tl("Formaterat webbdokument (html)"), 1);
+  
+  int id = 10;
+  htmlTemplateTag2Id.clear();
+  html2IdToInfo.clear();
+  htmlTemplateTag2Id["free"] = 1;
+  htmlTemplateTag2Id["table"] = 0;
+  
+  for (auto &t : htmlTmpl) {
+    items.emplace_back(lang.tl(t.name), ++id);
+    htmlTemplateTag2Id[t.tag] = id;
+    html2IdToInfo[id] = t.desc;
+  }
+  gdi.addSelection("Format", 200, 100, 0, L"Format:").setHandler(&htmlClass);
+  if (!htmlTemplateTag2Id.count(tmpSettingsParam.htmlTypeTag))
+    tmpSettingsParam.htmlTypeTag = "free";
+
+  gdi.addItem("Format", items);
+  int tid = htmlTemplateTag2Id[tmpSettingsParam.htmlTypeTag];
+  gdi.selectItemByData("Format", tid);
+  
+  htmlDetails(gdi, tmpSettingsParam, html2IdToInfo[tid], tid > 5);
+  
+  gdi.refresh();
+}
+
+void TabList::handleHTMLSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) {
+  if (type == GUI_BUTTON) {
+    int typeIx = gdi.getSelectedItem("Format").first;
+    string typeTag = "free";
+    for (auto &m : htmlTemplateTag2Id) {
+      if (m.second == typeIx) {
+        typeTag = m.first;
+        break;
+      }
+    }
+    int margin = -1;
+    int rows = 0;
+    int cols = 0;
+    int time_ms = 0;
+    double scale = 0;
+
+    if (gdi.hasField("Margin")) {
+      margin = gdi.getTextNo("Margin");
+      if (gdi.isChecked("UseRows"))
+        rows = gdi.getTextNo("Rows");
+      cols = gdi.getTextNo("Columns");
+      time_ms = gdi.getTextNo("Time");
+      scale = _wtoi(gdi.getText("Scale").c_str())*0.01;
+    }
+    else {
+      scale = _wtoi(gdi.getText("Scale").c_str())*0.01;
+      if (gdi.isChecked("Reload"))
+        time_ms = 1000 * _wtoi(gdi.getText("ReloadTime").c_str());
+    }
+    ButtonInfo bi = static_cast<ButtonInfo&>(info);
+    if (bi.id == "ApplyList" || bi.id =="Automatic") {
+      oListParam &param = currentList.getParam();
+      param.htmlTypeTag = typeTag;
+
+      if (margin > 0) {
+        param.htmlRows = rows;
+        param.htmlScale = scale;
+        param.timePerPage = time_ms;
+        param.margin = margin;
+        param.nColumns = cols;
+      }
+      else {
+        param.htmlScale = scale;
+        param.timePerPage = time_ms;
+      }
+
+      if (bi.id == "ApplyList") {
+        if (param.sourceParam != -1) {
+          auto &dest = oe->getListContainer().getParam(param.sourceParam);
+          if (margin > 0) {
+            dest.htmlRows = rows;
+            dest.htmlScale = scale;
+            dest.timePerPage = time_ms;
+            dest.margin = margin;
+            dest.nColumns = cols;
+          }
+          else {
+            dest.htmlScale = scale;
+            dest.timePerPage = time_ms;
+          }
+
+          dest.htmlTypeTag = typeTag;
+        }
+        else {
+          dest_gdi.sendCtrlMessage("Remember");
+        }
+      }
+      else {
+        if (lastHtmlTarget.empty()) {
+          WCHAR bf[260];
+          bf[0] = 0;
+          GetCurrentDirectory(260, bf);
+          lastHtmlTarget = bf;
+          lastHtmlTarget += L"\\exported.html";
+        }
+        dest_gdi.sendCtrlMessage("Automatic");
+      }
+    }
+    else if (bi.id == "HTML") {
+      oListParam &param = currentList.getParam();
+
+      int index = 0;
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Webbdokument", L"*.html;*.htm"));
+
+      wstring file = gdi.browseForSave(ext, L"html", index);
+
+      if (!file.empty()) {
+        HTMLWriter::reset(); // Force template reload
+        HTMLWriter::write(dest_gdi, file, oe->getName(), 
+                          param.getContentsDescriptor(*oe), 
+                          param.pageBreak,
+                          typeTag, 0, rows, cols, time_ms, margin, scale);
+        gdi.openDoc(file.c_str());
+        lastHtmlTarget = file;
+        oe->setProperty("LastExportTarget", file);
+      }
+    }
+    else if (bi.id == "UseRows") {
+      gdi.setInputStatus("Rows", gdi.isChecked(bi.id));
+    }
+    else if (bi.id == "Reload") {
+      gdi.setInputStatus("ReloadTime", gdi.isChecked(bi.id));
+    }
+  }
+  else if (type == GUI_LISTBOX) {
+    ListBoxInfo lbi = dynamic_cast<ListBoxInfo &>(info);
+    if (lbi.id == "Format") {
+      htmlDetails(gdi, tmpSettingsParam, html2IdToInfo[lbi.data], lbi.data > 5);
+      gdi.refresh();
+    }
+  }
+}
+
+void TabList::loadClassSettings(gdioutput &gdi, string targetTag) {
+  gdi.clearPage(false);
+  gdi.setCX(gdi.scaleLength(10));
+  gdi.setCY(gdi.scaleLength(15));
+  gdi.setColorMode(RGB(242, 240, 250));
+  gdi.setData("target", targetTag);
+  settingsTarget = targetTag;
+  gdi.addString("", fontMediumPlus, L"Klassval för 'X'#" + currentList.getName());
+  gdi.dropLine(0.5);
+  gdi.pushX();
+
+//    int sx = gdi.getCX() - gdi.scaleLength(5);
+//  int sy = gdi.getCY();
+//  gdi.dropLine(0.7);
+  
+  makeClassSelection(gdi);
+
+  oEvent::ClassFilter ct = currentList.isTeamList() ? oEvent::filterOnlyMulti : oEvent::filterNone;
+
+  oe->fillClasses(gdi, "ListSelection", oEvent::extraNone, ct);
+  gdi.setSelection("ListSelection", currentList.getParam().selection);
+  gdi.dropLine(2.5);
+
+  gdi.fillDown();
+  gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser", 0, currentList.getParam().pageBreak).setHandler(&settingsClassSelection);
+  gdi.addCheckbox("ShowHeader", "Visa rubrik", 0, currentList.getParam().showHeader).setHandler(&settingsClassSelection);
+
+  gdi.dropLine(-0.3);
+  gdi.addInput("Heading", currentList.getParam().getCustomTitle(wstring(L"")), 28, 0, L"Egen listrubrik:");
+  gdi.setInputStatus("Heading", currentList.getParam().showHeader);
+  gdi.dropLine(0.5);
+  gdi.fillRight();
+  gdi.addButton("UpdateClass", "Uppdatera").setDefault().setHandler(&settingsClassSelection);
+  gdi.addButton("Cancel", "Avbryt").setCancel().setHandler(&settingsClassSelection);
+  gdi.dropLine(2.5);
+  gdi.popX();
+  //
+ // int ey = gdi.getCY() + gdi.scaleLength(4);
+//  int ex = gdi.getWidth();
+//  RECT rc = { sx, sy, ex, ey };
+//  gdi.addRectangle(rc, colorLightBlue);
+
+  gdi.refresh();
+}
+
+void TabList::handleClassSettings(gdioutput &gdi, BaseInfo &info, GuiEventType type, gdioutput &dest_gdi) {
+  if (type == GUI_BUTTON) {
+    ButtonInfo bi = static_cast<ButtonInfo&>(info);
+    if (bi.id == "Cancel")
+      gdi.closeWindow();
+    else if (bi.id == "UpdateClass") {
+      oListParam &param = currentList.getParam();
+      param.lockUpdate = true;
+      gdi.getSelection("ListSelection", param.selection);
+      bool pb = gdi.isChecked("PageBreak");
+      param.pageBreak = pb;
+      
+      bool sh = gdi.isChecked("ShowHeader");
+      param.showHeader = sh;
+
+      param.setCustomTitle(makeDash(trim(gdi.getText("Heading"))));
+
+      loadPage(dest_gdi);
+      param.lockUpdate = false;
+      gdi.closeWindow();
+    }
+    else if (bi.id == "PageBreak" || bi.id == "ShowHeader") {
+      gdi.setInputStatus("Heading", gdi.isChecked("ShowHeader"));
+    }
+  }
+  else if (type == GUI_LISTBOX) {
+    ListBoxInfo lbi = static_cast<ListBoxInfo&>(info);
+  }
+}
+
+
 void TabList::settingsResultList(gdioutput &gdi)
 {
   lastFilledResultClassType = -1;
@@ -1746,6 +2229,8 @@ void TabList::settingsResultList(gdioutput &gdi)
   gdi.fillDown();
   gdi.pushX();
   gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser", ListsCB, oe->getPropertyInt("pagebreak", 0)!=0);
+  gdi.addCheckbox("ShowHeader", "Visa rubrik", ListsCB, oe->getPropertyInt("showheader", 1) != 0);
+
   gdi.addCheckbox("ShowInterResults", "Visa mellantider", 0, lastInterResult,
             "Mellantider visas för namngivna kontroller.");
   gdi.addCheckbox("ShowSplits", "Lista med sträcktider", 0, lastSplitState);
@@ -1808,7 +2293,7 @@ void checkWidth(gdioutput &gdi) {
   int h,w;
   gdi.getTargetDimension(w, h);
   w = max (w, gdi.scaleLength(300));
-  if (gdi.getCX() + gdi.scaleLength(100) > w) {
+  if (gdi.getCX() + gdi.scaleLength(110) > w) {
     gdi.popX();
     gdi.dropLine(2.5);
   }
@@ -1850,7 +2335,7 @@ bool TabList::loadPage(gdioutput &gdi)
   gdi.pushX();
   if (!cnf.empty()) {
     gdi.dropLine(1);
-    gdi.addString("", 1, "Startlistor");
+    gdi.addString("", fontMediumPlus, "Startlistor").setColor(colorDarkGrey);
     gdi.fillRight();
     if (cnf.hasIndividual()) {
       gdi.addButton("StartIndividual", "Individuell", ListsCB);
@@ -1858,11 +2343,14 @@ bool TabList::loadPage(gdioutput &gdi)
       if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs))
         gdi.addButton("StartClub", "Klubbstartlista", ListsCB);
     }
-
-    for (size_t k = 0; k<cnf.raceNStart.size(); k++) {
+    if (cnf.hasPatrol()) {
+      checkWidth(gdi);
+      gdi.addButton("StartL:patrolstart", "Patrull", ListsCB).setExtra(3);
+    }
+    for (size_t k = 0; k < cnf.raceNStart.size(); k++) {
       if (cnf.raceNStart[k].size() > 0) {
         checkWidth(gdi);
-        gdi.addButton("RaceNStart", "Lopp X#" + itos(k+1), ListsCB,
+        gdi.addButton("RaceNStart", "Lopp X#" + itos(k + 1), ListsCB,
                       "Startlista ett visst lopp.").setExtra(k);
       }
     }
@@ -1870,21 +2358,18 @@ bool TabList::loadPage(gdioutput &gdi)
       checkWidth(gdi);
       gdi.addButton("TeamStartList", "Stafett (sammanställning)", ListsCB);
     }
-    if (cnf.hasPatrol()) {
-      checkWidth(gdi);
-      gdi.addButton("PatrolStartList", "Patrull", ListsCB);
-    }
-    for (size_t k = 0; k<cnf.legNStart.size(); k++) {
+
+    for (size_t k = 0; k < cnf.legNStart.size(); k++) {
       if (cnf.legNStart[k].size() > 0) {
         checkWidth(gdi);
-        gdi.addButton("LegNStart", "Sträcka X#" + itos(k+1), ListsCB).setExtra(k);
+        gdi.addButton("LegNStart", "Sträcka X#" + itos(k + 1), ListsCB).setExtra(k);
       }
     }
 
     checkWidth(gdi);
     gdi.addButton("MinuteStartList", "Minutstartlista", ListsCB);
 
-     if (cnf.isMultiStageEvent()) {
+    if (cnf.isMultiStageEvent()) {
       checkWidth(gdi);
       gdi.addButton("StartL:inputresult", "Input Results", ListsCB);
     }
@@ -1892,21 +2377,34 @@ bool TabList::loadPage(gdioutput &gdi)
     gdi.dropLine(3);
     gdi.fillDown();
     gdi.popX();
-    gdi.addString("", 1, "Resultatlistor");
+    gdi.addString("", fontMediumPlus, "Resultatlistor").setColor(colorDarkGrey);
     gdi.fillRight();
 
     if (cnf.hasIndividual()) {
       gdi.addButton("ResultIndividual", "Individuell", ListsCB);
       checkWidth(gdi);
+    }
+
+    if (cnf.hasPatrol()) {
+      gdi.addButton("Result:patrolresult", "Patrull", ListsCB).setExtra(3);
+      checkWidth(gdi);
+    }
+
+    if (cnf.hasIndividual()) {
+
+      gdi.addButton("Result:liveresultradio", "Liveresultat", ListsCB);
+      checkWidth(gdi);
+
+      gdi.addButton("Result:latestresult", "Latest Results", ListsCB).setExtra(1);
+      checkWidth(gdi);
+
       if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
         gdi.addButton("ResultClub", "Klubbresultat", ListsCB);
-       checkWidth(gdi);
+        checkWidth(gdi);
       }
 
       gdi.addButton("ResultIndSplit", "Sträcktider", ListsCB);
-      
-      checkWidth(gdi);
-      gdi.addButton("Result:latestresult", "Latest Results", ListsCB).setExtra(1);
+
 
       if (cnf.isMultiStageEvent()) {
         checkWidth(gdi);
@@ -1916,11 +2414,28 @@ bool TabList::loadPage(gdioutput &gdi)
         gdi.addButton("Result:finalresult", "Slutresultat", ListsCB);
       }
     }
+
+    if (!cnf.knockout.empty()) {
+      checkWidth(gdi);
+      gdi.addButton("KnockoutTotal", "Knockout sammanställning", ListsCB);
+    }
+
+
+    if (!cnf.lapcountsingle.empty()) {
+      checkWidth(gdi);
+      gdi.addButton("LapCount", "Varvräkning", ListsCB);
+    }
+
+    if (!cnf.lapcountextra.empty()) {
+      checkWidth(gdi);
+      gdi.addButton("LapCountExtra", "Varvräkning med mellantid", ListsCB);
+    }
+
     bool hasMulti = false;
-    for (size_t k = 0; k<cnf.raceNStart.size(); k++) {
+    for (size_t k = 0; k < cnf.raceNStart.size(); k++) {
       if (cnf.raceNRes[k].size() > 0) {
         checkWidth(gdi);
-        gdi.addButton("RaceNRes", "Lopp X#" + itos(k+1), ListsCB,
+        gdi.addButton("RaceNRes", "Lopp X#" + itos(k + 1), ListsCB,
                       "Resultat för ett visst lopp.").setExtra(k);
         hasMulti = true;
       }
@@ -1934,13 +2449,10 @@ bool TabList::loadPage(gdioutput &gdi)
       checkWidth(gdi);
       gdi.addButton("TeamResults", "Stafett (sammanställning)", ListsCB);
     }
-    if (cnf.hasPatrol()) {
-      checkWidth(gdi);
-      gdi.addButton("PatrolResultList", "Patrull", ListsCB);
-    }
+
     for (map<int, vector<int> >::const_iterator it = cnf.legResult.begin(); it != cnf.legResult.end(); ++it) {
       checkWidth(gdi);
-      gdi.addButton("LegNResult", "Sträcka X#" + itos(it->first+1), ListsCB).setExtra(it->first);
+      gdi.addButton("LegNResult", "Sträcka X#" + itos(it->first + 1), ListsCB).setExtra(it->first);
     }
 
     if (cnf.hasRogaining()) {
@@ -1957,10 +2469,9 @@ bool TabList::loadPage(gdioutput &gdi)
     gdi.dropLine(3);
   }
 
-
   MetaListContainer &lc = oe->getListContainer();
   if (lc.getNumLists(MetaListContainer::ExternalList) > 0) {
-    gdi.addString("", 1, "Egna listor");
+    gdi.addString("", fontMediumPlus, "Egna listor").setColor(colorDarkGrey);
 
     gdi.fillRight();
     gdi.pushX();
@@ -1972,16 +2483,16 @@ bool TabList::loadPage(gdioutput &gdi)
         gdi.addButton("CustomList", mc.getListName(), ListsCB).setExtra(k);
       }
     }
-  }
 
-  gdi.popX();
-  gdi.dropLine(3);
-  gdi.fillDown();
+    gdi.popX();
+    gdi.dropLine(3);
+    gdi.fillDown();
+  }
 
   vector< pair<wstring, size_t> > savedParams;
   lc.getListParam(savedParams);
   if (savedParams.size() > 0) {
-    gdi.addString("", 1, "Sparade listval");
+    gdi.addString("", fontMediumPlus, "Sparade listval").setColor(colorDarkGrey);
     gdi.fillRight();
     gdi.pushX();
 
@@ -2003,7 +2514,7 @@ bool TabList::loadPage(gdioutput &gdi)
     gdi.fillDown();
   }
 
-  gdi.addString("", 1, "Rapporter");
+  gdi.addString("", fontMediumPlus, "Rapporter").setColor(colorDarkGrey);
 
   gdi.fillRight();
   gdi.pushX();
@@ -2027,12 +2538,20 @@ bool TabList::loadPage(gdioutput &gdi)
   }
 
   bool hasVac = false;
+  bool hasAPIEntry = false;
   {
     vector<pRunner> rr;
     oe->getRunners(0, 0, rr, false);
-    for (size_t k = 0; k < rr.size(); k++) {
-      if (rr[k]->isVacant()) {
+    for (pRunner r : rr) {
+      if (r->isVacant()) {
         hasVac = true;
+        break;
+      }
+    }
+
+    for (pRunner r : rr) {
+      if (r->hasFlag(oRunner::FlagAddedViaAPI)) {
+        hasAPIEntry = true;
         break;
       }
     }
@@ -2043,26 +2562,42 @@ bool TabList::loadPage(gdioutput &gdi)
     checkWidth(gdi);
   }
 
-  gdi.addButton("GenLst:courseusage", "Bananvändning", ListsCB);
-  checkWidth(gdi);
+  if (hasAPIEntry) {
+    gdi.addButton("GenLst:apientry", "EFilterAPIEntry", ListsCB);
+    checkWidth(gdi);
+  }
 
-  gdi.addButton("GenLst:controloverview", "Kontroller", ListsCB);
-  checkWidth(gdi);
+  if (oe->getMeOSFeatures().withCourses(oe)) {
+    gdi.addButton("GenLst:courseusage", "Bananvändning", ListsCB);
+    checkWidth(gdi);
 
-  gdi.addButton("GenLst:controlstatistics", "Control Statistics", ListsCB);
-  checkWidth(gdi);
+    gdi.addButton("GenLst:controloverview", "Kontroller", ListsCB);
+    checkWidth(gdi);
+
+    gdi.addButton("GenLst:controlstatistics", "Control Statistics", ListsCB);
+    checkWidth(gdi);
+  }
 
   if (cnf.hasRentedCard)
-    gdi.addButton("RentedCards", "Hyrbricksrapport", ListsCB);
+    gdi.addButton("HiredCards", "Hyrbricksrapport", ListsCB);
 
   gdi.popX();
 
   gdi.dropLine(3);
+  RECT rc;
+  rc.left = gdi.getCX();
+  gdi.setCX(rc.left + gdi.scaleLength(10));
+  rc.top = gdi.getCY();
+  gdi.dropLine(0.5);
+  gdi.addString("", fontMediumPlus, "Inställningar").setColor(colorDarkGrey);
+  gdi.setCX(rc.left + gdi.scaleLength(10));
+  gdi.dropLine(2);
+
   gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser / klubbar", ListsCB, oe->getPropertyInt("pagebreak", 0)!=0);
+  gdi.addCheckbox("ShowHeader", "Visa rubrik", ListsCB, oe->getPropertyInt("showheader", 1) != 0);
   gdi.addCheckbox("SplitAnalysis", "Med sträcktidsanalys", ListsCB, oe->getPropertyInt("splitanalysis", 1)!=0);
 
-  gdi.popX();
-  gdi.fillRight();
+  gdi.setCX(rc.left + gdi.scaleLength(10));
   gdi.dropLine(2);
   gdi.addString("", 0, "Begränsning, antal visade per klass: ");
   gdi.dropLine(-0.2);
@@ -2075,11 +2610,13 @@ bool TabList::loadPage(gdioutput &gdi)
     gdi.addItem("ClassLimit", itow(v), v);
   }
   gdi.selectItemByData("ClassLimit", oe->getPropertyInt("classlimit", 0));
-
+  
+  gdi.dropLine(2);
+  rc.bottom = gdi.getCY();
+  rc.right = gdi.getWidth() - gdi.scaleLength(5);
+  gdi.addRectangle(rc, colorLightBlue);
+  gdi.dropLine(1.5);
   gdi.popX();
-
-  gdi.dropLine(3);
-
   gdi.addButton("GeneralList", "Alla listor...", ListsCB);
   gdi.addButton("EditList", "Redigera lista...", ListsCB);
 
@@ -2189,14 +2726,18 @@ void TabList::saveExtraLines(oEvent &oe, const char *dataField, gdioutput &gdi) 
 
 void TabList::customTextLines(oEvent &oe, const char *dataField, gdioutput &gdi) {
   gdi.dropLine(2.5);
-  gdi.addString("", boldText, "Egna textrader");
+  gdi.addString("", fontMediumPlus, "Egna textrader");
+  gdi.dropLine(0.3);
+  gdi.addString("", 10, "help:custom_text_lines");
+  gdi.dropLine(0.8);
+  int yp = gdi.getCY();
 
   vector< pair<wstring, size_t> > fonts;
   vector< pair<wstring, int> > lines;
 
   MetaListPost::getAllFonts(fonts);
   oe.getExtraLines(dataField, lines);
-
+  int xp = gdi.getCX();
   for (int k = 0; k < 5; k++) {
     gdi.fillRight();
     gdi.pushX();
@@ -2211,10 +2752,24 @@ void TabList::customTextLines(oEvent &oe, const char *dataField, gdioutput &gdi)
     }
     else
       gdi.selectFirstItem(key);
+    
+    xp = max(xp, gdi.getCX());
     gdi.popX();
     gdi.fillDown();
     gdi.dropLine(2);
   }
+  gdi.pushX();
+  gdi.pushY();
+
+  gdi.setCX(xp);
+  gdi.setCY(yp);
+  gdi.addListBox("Symbols", 500, 160);
+  gdi.setTabStops("Symbols", 300);
+  vector < pair<wstring, size_t>> symb;
+  MetaList::fillSymbols(symb);
+  gdi.addItem("Symbols", symb);
+  gdi.popX();
+  gdi.popY();
 }
 
 void TabList::liveResult(gdioutput &gdi, oListInfo &li) {
@@ -2231,7 +2786,7 @@ EStdListType TabList::getTypeFromResultIndex(int ix) const {
     case 1:
       return EStdResultList;
     case 2:
-      return EStdPatrolResultList;
+      return oe->getListContainer().getType("patrolresult");
     case 3:
       return EStdTeamResultListAll;
     case 4:
@@ -2392,7 +2947,7 @@ void TabList::clearCompetitionData() {
 void TabList::setAnimationMode(gdioutput &gdi) {
   auto par = currentList.getParam();
   gdi.setAnimationMode(make_shared<AnimationData>(gdi, par.timePerPage, par.nColumns,
-    par.margin, par.animate));
+    par.margin, par.animate, par.pageBreak));
 }
 
 void TabList::getStartIndividual(oListParam &par, ClassConfigInfo &cnf){
@@ -2420,13 +2975,13 @@ void TabList::getResultClub(oListParam &par, ClassConfigInfo &cnf) {
   cnf.getPatrol(par.selection);
 }
 
-void TabList::getStartPatrol(oListParam &par, ClassConfigInfo &cnf) {
-  par.listCode = EStdPatrolStartList;
+void TabList::getStartPatrol(oEvent &oe, oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = oe.getListContainer().getType("patrolstart");
   cnf.getPatrol(par.selection);
 }
 
-void TabList::getResultPatrol(oListParam &par, ClassConfigInfo &cnf) {
-  par.listCode = EStdPatrolResultList;
+void TabList::getResultPatrol(oEvent &oe, oListParam &par, ClassConfigInfo &cnf) {
+  par.listCode = oe.getListContainer().getType("patrolresult");
   cnf.getPatrol(par.selection);
 }
 
@@ -2468,7 +3023,7 @@ void TabList::getPublicLists(oEvent &oe, vector<oListParam> &lists) {
     }
     if (cnf.hasPatrol()) {
       lists.push_back(oListParam());
-      getStartPatrol(lists.back(), cnf);
+      getStartPatrol(oe, lists.back(), cnf);
     }
 
     if (cnf.isMultiStageEvent()) {
@@ -2497,7 +3052,7 @@ void TabList::getPublicLists(oEvent &oe, vector<oListParam> &lists) {
     }
     if (cnf.hasPatrol()) {
       lists.push_back(oListParam());
-      getResultPatrol(lists.back(), cnf);
+      getResultPatrol(oe, lists.back(), cnf);
     }
 
     if (cnf.hasRogaining()) {
@@ -2516,5 +3071,15 @@ void TabList::getPublicLists(oEvent &oe, vector<oListParam> &lists) {
 
   if (cnf.hasIndividual()) {
     //gdi.addButton("PriceList", "Prisutdelningslista", ListsCB);
+  }
+}
+
+void TabList::readSettings(gdioutput &gdi, oListParam &par, bool forResult) {
+  par.pageBreak = gdi.isChecked("PageBreak");
+  par.showHeader = gdi.isChecked("ShowHeader");
+
+  if (forResult) {
+    par.splitAnalysis = gdi.isChecked("SplitAnalysis");
+    par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
   }
 }

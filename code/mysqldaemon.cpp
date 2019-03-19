@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,20 +29,17 @@
 #include "meosdb/sqltypes.h"
 #include <process.h>
 
-MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-daemon"), error(errorIn)
-{
+MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-daemon", Machines::mMySQLReconnect), error(errorIn) {
   timeError = getLocalTime();
   hThread=0;
 }
 
-MySQLReconnect::~MySQLReconnect()
-{
+MySQLReconnect::~MySQLReconnect() {
   CloseHandle(hThread);
   hThread=0;
 }
 
-bool MySQLReconnect::stop()
-{
+bool MySQLReconnect::stop() {
   if (interval==0)
     return true;
 

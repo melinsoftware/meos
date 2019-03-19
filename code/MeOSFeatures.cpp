@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,6 +55,9 @@ MeOSFeatures::MeOSFeatures(void)
   addHead("Rogaining");
   add(Rogaining, L"RO", "Rogaining");
   add(PointAdjust, L"PA", "Manual point reductions and adjustments").require(Rogaining);
+
+  addHead("Timekeeping");
+  add(NoCourses, L"NC", "Without courses");
 }
 
 MeOSFeatures::FeatureDescriptor &MeOSFeatures::add(Feature feat, const wchar_t *code, const char *descr) {
@@ -239,6 +242,8 @@ void MeOSFeatures::loadDefaults(oEvent &oe) {
 
 void MeOSFeatures::useAll(oEvent &oe) {
   for (size_t k = 0; k < desc.size(); k++) {
+    if (desc[k].feat == NoCourses)
+      continue;
     if (desc[k].feat != _Head)
       features.insert(desc[k].feat);
   }

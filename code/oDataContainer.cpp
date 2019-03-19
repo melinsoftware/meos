@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -830,13 +830,25 @@ void oDataContainer::allDataStored(const oBase *ob) {
   }
 }
 
+namespace {
+  char *ensureCapacity(int size, vector<char> &bfData, int &alloc) {
+    assert(alloc > 100);
+    if (size >= alloc) {
+      alloc += size;
+      bfData.resize(alloc);
+    }
+    return &bfData[0];
+  }
+}
 string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
   void *data, *oldData;
   vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   string sql;
-  char bf[1024*8];
+  int alloc = 256;
+  vector<char> bfData(alloc);
+  char *bf = &bfData[0];
 
   for (size_t kk = 0; kk < ordered.size(); kk++) {
     const oDataInfo &di=ordered[kk];
@@ -848,47 +860,49 @@ string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
     if (di.Type==oDTInt) {
       LPBYTE vd=LPBYTE(data)+di.Index;
       if (di.SubType == oIS8U) {
-        sprintf_s(bf, ", `%s`=%u", di.Name, (*((int *)vd))&0xFF);
+        sprintf_s(bf, alloc, ", `%s`=%u", di.Name, (*((int *)vd))&0xFF);
         sql+=bf;
       }
       else if (di.SubType == oIS16U) {
-        sprintf_s(bf, ", `%s`=%u", di.Name, (*((int *)vd))&0xFFFF);
+        sprintf_s(bf, alloc, ", `%s`=%u", di.Name, (*((int *)vd))&0xFFFF);
         sql+=bf;
       }
       else if (di.SubType == oIS8) {
         char r = (*((int *)vd))&0xFF;
-        sprintf_s(bf, ", `%s`=%d", di.Name, (int)r);
+        sprintf_s(bf, alloc, ", `%s`=%d", di.Name, (int)r);
         sql+=bf;
       }
       else if (di.SubType == oIS16) {
         short r = (*((int *)vd))&0xFFFF;
-        sprintf_s(bf, ", `%s`=%d", di.Name, (int)r);
+        sprintf_s(bf, alloc, ", `%s`=%d", di.Name, (int)r);
         sql+=bf;
       }
       else if (di.SubType != oIS64) {
-        sprintf_s(bf, ", `%s`=%d", di.Name, *((int *)vd));
+        sprintf_s(bf, alloc, ", `%s`=%d", di.Name, *((int *)vd));
         sql+=bf;
       }
       else {
         char tmp[32];
         _i64toa_s(*((__int64 *)vd), tmp, 32, 10);
-        sprintf_s(bf, ", `%s`=%s", di.Name, tmp);
+        sprintf_s(bf, alloc, ", `%s`=%s", di.Name, tmp);
         sql+=bf;
       }
     }
     else if (di.Type==oDTString) {
       LPBYTE vd=LPBYTE(data)+di.Index;
-      sprintf_s(bf, ", `%s`='%s'", di.Name, SQL_quote((wchar_t *)vd).c_str());
+      sprintf_s(bf, alloc, ", `%s`='%s'", di.Name, SQL_quote((wchar_t *)vd).c_str());
       sql+=bf;
     }
     else if (di.Type==oDTStringDynamic) {
       const wstring &str = (*strptr)[0][di.Index];
-      sprintf_s(bf, ", `%s`='%s'", di.Name, SQL_quote(str.c_str()).c_str());
+      bf = ensureCapacity(2 * str.length() + 30, bfData, alloc);
+      sprintf_s(bf, alloc, ", `%s`='%s'", di.Name, SQL_quote(str.c_str()).c_str());
       sql+=bf;
     }
     else if (di.Type==oDTStringArray) {
       const wstring str = encodeArray((*strptr)[di.Index]);
-      sprintf_s(bf, ", `%s`='%s'", di.Name, SQL_quote(str.c_str()).c_str());
+      bf = ensureCapacity(2 * str.length() + 30, bfData, alloc);
+      sprintf_s(bf, alloc, ", `%s`='%s'", di.Name, SQL_quote(str.c_str()).c_str());
       sql+=bf;
     }
   }

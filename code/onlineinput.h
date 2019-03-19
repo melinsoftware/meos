@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ protected:
   void fillMappings(gdioutput &gdi) const;
 
   void processCards(gdioutput &gdi, oEvent &oe, const xmlList &cards);
-  void processUpdates(oEvent &oe, const xmlList &updates);
+  void processTeamLineups(oEvent &oe, const xmlList &updates);
   void processEntries(oEvent &oe, const xmlList &entries);
 
   void processPunches(oEvent &oe, const xmlList &punches);
@@ -68,7 +68,7 @@ public:
   OnlineInput *clone() const {return new OnlineInput(*this);}
   void status(gdioutput &gdi);
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  OnlineInput() : AutoMachine("Onlineinput"), cmpId(0), importCounter(1),
+  OnlineInput() : AutoMachine("Onlineinput", Machines::mOnlineInput), cmpId(0), importCounter(1),
                     bytesImported(0), lastSync(0), lastImportedId(0), useROCProtocol(false), useUnitId(false) {}
   ~OnlineInput();
   friend class TabAuto;

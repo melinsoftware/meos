@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ public:
   static int getControlIdFromHash(int hash, bool courseControlId);
 
   // Get the id of the control currently tied to this punch
-  int getControlId() const {return getControlIdFromHash(iHashType, false);}
+  int getControlId() const override { return getControlIdFromHash(iHashType, false); };
 
   // Get the id of the course control currently tied to this punch
   int getCourseControlId() const {return getControlIdFromHash(iHashType, true);}

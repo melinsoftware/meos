@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "Table.h"
 #include "localizer.h"
 #include "pdfwriter.h"
+#include "HTMLWriter.h"
 
 #include "intkeymapimpl.hpp"
 
@@ -272,7 +273,7 @@ const vector< pair<wstring, size_t> > & oEvent::fillClubs(vector< pair<wstring, 
 {
   out.clear();
   //gdi.clearList(name);
-  synchronizeList(oLClubId);
+  synchronizeList(oListId::oLClubId);
   Clubs.sort();
 
   oClubList::iterator it;
@@ -321,7 +322,7 @@ void oEvent::generateClubTableData(Table &table, oClub *addClub)
     addClub->addTableRow(table);
     return;
   }
-  synchronizeList(oLClubId);
+  synchronizeList(oListId::oLClubId);
   oClubList::iterator it;
 
   for (it=Clubs.begin(); it != Clubs.end(); ++it){
@@ -416,7 +417,7 @@ void oEvent::mergeClub(int clubIdPri, int clubIdSec)
 
 void oEvent::getClubs(vector<pClub> &c, bool sort) {
   if (sort) {
-    synchronizeList(oLClubId);
+    synchronizeList(oListId::oLClubId);
     Clubs.sort();
   }
   c.clear();
@@ -521,14 +522,14 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
         ts =  r->getPrintPlaceS(true)+ L" (" + r->getRunningTimeS() + L")";
     }
     else
-      ts =  r->getStatusS();
+      ts =  r->getStatusS(true);
   }
   else {
     if (r->getTotalStatus()==StatusOK) {
       ts =  r->getPrintTotalPlaceS(true) + L" (" + r->getTotalRunningTimeS() + L")";
     }
     else if (r->getTotalStatus()!=StatusNotCompetiting)
-      ts =  r->getStatusS();
+      ts =  r->getStatusS(true);
     else {
       ts = r->getInputStatusS();
     }
@@ -587,7 +588,7 @@ void oClub::addTeamInvoiceLine(const pTeam t, const map<int, wstring> &definedPa
       ts =  t->getPrintPlaceS(true) + L" (" + t->getRunningTimeS() + L")";
     }
     else
-      ts =  t->getStatusS();
+      ts =  t->getStatusS(true);
   }
 
 
@@ -818,7 +819,7 @@ void oEvent::printInvoices(gdioutput &gdi, InvoicePrintType type,
   oClubList::iterator it;
   oe->calculateTeamResults(false);
   oe->sortTeams(ClassStartTime, 0, true);
-  oe->calculateResults(RTClassResult);
+  oe->calculateResults(set<int>(), ResultType::ClassResult);
   oe->sortRunners(ClassStartTime);
   int pay, paid;
   vector<int> fees, vpaid;
@@ -868,10 +869,10 @@ void oEvent::printInvoices(gdioutput &gdi, InvoicePrintType type,
 
         if (type == IPTAllPDF) {
           pdfwriter pdf;
-          pdf.generatePDF(gdi, path + filename, lang.tl("Faktura"), L"", gdi.getTL());
+          pdf.generatePDF(gdi, path + filename, lang.tl("Faktura"), L"", gdi.getTL(), true);
         }
         else
-          gdi.writeHTML(path + filename, lang.tl(L"Faktura"), 0);
+          HTMLWriter::writeHTML(gdi, path + filename, lang.tl(L"Faktura"), 0, 1.0);
 
         clubId.insert(it->getId());
         fees.push_back(pay);
@@ -1091,7 +1092,7 @@ void oClub::clearClubs(oEvent &oe) {
 }
 
 void oClub::assignInvoiceNumber(oEvent &oe, bool reset) {
-  oe.synchronizeList(oLClubId);
+  oe.synchronizeList(oListId::oLClubId);
   oe.Clubs.sort();
   int numberStored = oe.getPropertyInt("FirstInvoice", 100);
   int number = numberStored;
@@ -1124,7 +1125,7 @@ void oClub::assignInvoiceNumber(oEvent &oe, bool reset) {
 }
 
 int oClub::getFirstInvoiceNumber(oEvent &oe) {
-  oe.synchronizeList(oLClubId);
+  oe.synchronizeList(oListId::oLClubId);
   int number = 0;
   for (oClubList::iterator it = oe.Clubs.begin(); it != oe.Clubs.end(); ++it) {
     if (it->isRemoved())

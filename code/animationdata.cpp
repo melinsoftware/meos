@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2018 Melin Software HB
+Copyright (C) 2009-2019 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include "Printer.h"
 
 AnimationData::AnimationData(gdioutput &gdi, int timePerPage, int nCol, 
-                             int marginPercent, bool animate) : 
+                             int marginPercent, bool animate, bool respectPageBreak) :
   nCol(nCol), animate(animate), page(-1), gdiRef(0) {
   
   lastTime = 0;
@@ -56,7 +56,7 @@ AnimationData::AnimationData(gdioutput &gdi, int timePerPage, int nCol,
   pageInfo.yMM2PrintK = 0;
 
   list<RectangleInfo> rectangles;
-  pageInfo.renderPages(gdi.getTL(), rectangles, false, pages);
+  pageInfo.renderPages(gdi.getTL(), rectangles, false, respectPageBreak, pages);
 }
 
 AnimationData::~AnimationData() {
@@ -194,8 +194,8 @@ void AnimationData::threadRender(gdioutput *gdi, size_t sp, int delay) {
 }
 
 void AnimationData::renderSubPage(HDC hDC, gdioutput &gdi, RenderedPage &page, int x, int y, int animateDelay) {
-  int ox = gdi.GetOffsetX();
-  int oy = gdi.GetOffsetY();
+  int ox = gdi.getOffsetX();
+  int oy = gdi.getOffsetY();
   
   int top = 10000;
   for (const auto &text : page.text) {
@@ -203,8 +203,8 @@ void AnimationData::renderSubPage(HDC hDC, gdioutput &gdi, RenderedPage &page, i
       top = min<int>(top, text.ti.yp);
     }
   }
-  gdi.SetOffsetY(-y+top-margin/2);
-  gdi.SetOffsetX(-x);
+  gdi.setOffsetY(-y+top-margin/2);
+  gdi.setOffsetX(-x);
 
   int currentRow = 0;
   for (auto &text : page.text) {
@@ -214,8 +214,8 @@ void AnimationData::renderSubPage(HDC hDC, gdioutput &gdi, RenderedPage &page, i
     }
     gdi.RenderString(text.ti, hDC);
   }
-  gdi.SetOffsetY(ox);
-  gdi.SetOffsetX(oy);
+  gdi.setOffsetY(ox);
+  gdi.setOffsetX(oy);
 }
 
 void AnimationData::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {

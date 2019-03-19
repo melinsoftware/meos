@@ -1,6 +1,6 @@
 ﻿/********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,8 +91,7 @@ void LiveResult::showTimer(gdioutput &gdi, const oListInfo &liIn) {
 
   lastTime = 0;
   vector<const oFreePunch *> pp;
-  oe->synchronizeList(oLRunnerId, true, false);
-  oe->synchronizeList(oLPunchId, false, true);
+  oe->synchronizeList({ oListId::oLRunnerId, oListId::oLPunchId });
   
   oe->getLatestPunches(lastTime, pp);
   processedPunches.clear();

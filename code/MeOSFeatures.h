@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ public:
     DrawStartList,
     Bib,
     RunnerDb,
+    NoCourses,
   };
 
 private:
@@ -96,6 +97,9 @@ public:
   const string &getHead(int featureIx) const;
   const string &getDescription(Feature f) const;
   const wstring &getCode(Feature f) const;
+
+  bool withoutCourses(const oEvent &oe) const { return hasFeature(NoCourses) && oe.getNumCourses() == 0; }
+  bool withCourses(const oEvent *oe) const { return !withoutCourses(*oe); }
 
   wstring serialize() const;
   void deserialize(const wstring &input, oEvent &oe);

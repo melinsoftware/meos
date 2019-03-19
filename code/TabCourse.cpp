@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -179,13 +179,11 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
       gdi.selectItemByData("CommonControl", cc);
     }
 
-    fillOtherCourses(gdi, *pc);
-    pCourse sh = pc->getShorterVersion();
-    gdi.check("Shorten", sh != 0);
-    gdi.setInputStatus("ShortCourse", sh != 0);
-    if (sh) {
-      gdi.selectItemByData("ShortCourse", sh->getId());
-    }
+    fillOtherCourses(gdi, *pc, cc != 0);
+    auto sh = pc->getShorterVersion();
+    gdi.check("Shorten", sh.first);
+    gdi.setInputStatus("ShortCourse", sh.first);
+    gdi.selectItemByData("ShortCourse", sh.second ? sh.second->getId() : 0);
   }
   else {
     gdi.setText("Name", L"");
@@ -283,13 +281,16 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
   if (gdi.isChecked("Shorten")) {
     ListBoxInfo ci;
     if (gdi.getSelectedItem("ShortCourse", ci) && oe->getCourse(ci.data)) {
-      pc->setShorterVersion(oe->getCourse(ci.data));
+      pc->setShorterVersion(true, oe->getCourse(ci.data));
+    }
+    else if (gdi.isChecked("WithLoops")) {
+      pc->setShorterVersion(true, nullptr);
     }
     else
       throw meosException("Ange en avkortad banvariant");
   }
   else
-    pc->setShorterVersion(0);
+    pc->setShorterVersion(false, 0);
 
   if (gdi.hasField("Rogaining")) {
     string t;
@@ -411,7 +412,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
 
       if (!file.empty()) {
         pdfwriter pdf;
-        pdf.generatePDF(gdi, file, L"Report", L"MeOS", gdi.getTL());
+        pdf.generatePDF(gdi, file, L"Report", L"MeOS", gdi.getTL(), true);
         gdi.openDoc(file.c_str());
       }
     }
@@ -420,6 +421,21 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       gdi.setInputStatus("CommonControl", w);
       if (w && gdi.getTextNo("CommonControl") == 0)
         gdi.selectFirstItem("CommonControl");
+
+      pCourse pc = oe->getCourse(courseId);
+      if (pc) {
+        pair<int, bool> sel = gdi.getSelectedItem("ShortCourse");
+        fillOtherCourses(gdi, *pc, w);
+        if (!w && sel.first == 0)
+          sel.second = false;
+
+        if (sel.second) {
+          gdi.selectItemByData("ShortCourse", sel.first);
+        }
+        else if (w) {
+          gdi.selectItemByData("ShortCourse", 0);
+        }
+      }
     }
     else if (bi.id == "Shorten") {
       bool w = gdi.isChecked(bi.id);
@@ -512,10 +528,11 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       gdi.popX();
       gdi.dropLine(3);
       gdi.addSelection("Method", 200, 200, 0, L"Metod:");
-      gdi.addItem("Method", lang.tl("Lottning"), DMRandom);
-      gdi.addItem("Method", lang.tl("SOFT-lottning"), DMSOFT);
+      gdi.addItem("Method", lang.tl("Lottning") + L" (MeOS)", int(oEvent::DrawMethod::MeOS));
+      gdi.addItem("Method", lang.tl("Lottning"), int(oEvent::DrawMethod::Random));
+      gdi.addItem("Method", lang.tl("SOFT-lottning"), int(oEvent::DrawMethod::SOFT));
 
-      gdi.selectItemByData("Method", getDefaultMethod());
+      gdi.selectItemByData("Method", (int)getDefaultMethod());
       gdi.dropLine(0.9);
       gdi.fillRight();
       gdi.addButton("DoDrawCourse", "Lotta", CourseCB).setDefault();
@@ -530,7 +547,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       int vacances = gdi.getTextNo("Vacances");
       int fs = oe->getRelativeTime(firstStart);
       int iv = convertAbsoluteTimeMS(minInterval);
-      DrawMethod method = DrawMethod(gdi.getSelectedItem("Method").first);
+      oEvent::DrawMethod method = oEvent::DrawMethod(gdi.getSelectedItem("Method").first);
       courseDrawClasses[0].firstStart = fs;
       courseDrawClasses[0].vacances = vacances;
       courseDrawClasses[0].interval = iv;
@@ -549,7 +566,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
         courseDrawClasses[k].interval = iv;
       }
 
-      oe->drawList(courseDrawClasses, method == DMSOFT, 1, oEvent::drawAll); 
+      oe->drawList(courseDrawClasses, method, 1, oEvent::DrawType::DrawAll); 
 
       oe->addAutoBib();
 
@@ -852,13 +869,12 @@ bool TabCourse::loadPage(gdioutput &gdi) {
 
 void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
                                 oEvent *oe, bool addClasses) {
-  csvparser csv;
-  if (csv.iscsv(filename)) {
+  if (csvparser::iscsv(filename)  != csvparser::CSV::NoCSV) {
     gdi.fillRight();
     gdi.pushX();
     gdi.addString("", 0, "Importerar OCAD csv-fil...");
     gdi.refreshFast();
-
+    csvparser csv;
     if (csv.importOCAD_CSV(*oe, filename, addClasses)) {
       gdi.addString("", 1, "Klart.").setColor(colorGreen);
     }
@@ -1044,7 +1060,7 @@ void TabCourse::fillCourseControls(gdioutput &gdi, const wstring &ctrl) {
   gdi.addItem("CommonControl", item);
 }
 
-void TabCourse::fillOtherCourses(gdioutput &gdi, oCourse &crs) {
+void TabCourse::fillOtherCourses(gdioutput &gdi, oCourse &crs, bool withLoops) {
   vector< pair<wstring, size_t> > ac;
   oe->fillCourses(ac, true);
   set<int> skipped;
@@ -1057,6 +1073,9 @@ void TabCourse::fillOtherCourses(gdioutput &gdi, oCourse &crs) {
   }
   
   vector< pair<wstring, size_t> > out;
+  if (withLoops)
+    out.emplace_back(lang.tl("Färre slingor"), 0);
+  
   for (size_t k = 0; k < ac.size(); k++) {
     if (!skipped.count(ac[k].second))
       out.push_back(ac[k]);
@@ -1093,12 +1112,14 @@ void TabCourse::saveLegLengths(gdioutput &gdi) {
   pc->synchronize(true);
 }
 
-DrawMethod TabCourse::getDefaultMethod() const {
-  int dm = oe->getPropertyInt("DefaultDrawMethod", DMSOFT);
-  if (dm == DMRandom)
-    return DMRandom;
+oEvent::DrawMethod TabCourse::getDefaultMethod() const {
+  int dm = oe->getPropertyInt("DefaultDrawMethod", int(oEvent::DrawMethod::MeOS));
+  if (dm == (int)oEvent::DrawMethod::Random)
+    return oEvent::DrawMethod::Random;
+  if (dm == (int)oEvent::DrawMethod::MeOS)
+    return oEvent::DrawMethod::MeOS;
   else
-    return DMSOFT;
+    return oEvent::DrawMethod::SOFT;
 }
 
 void TabCourse::clearCompetitionData() {

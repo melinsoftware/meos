@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ void oEvent::fillTeams(gdioutput &gdi, const string &id, int classId)
 
 const vector< pair<wstring, size_t> > &oEvent::fillTeams(vector< pair<wstring, size_t> > &out, int ClassId)
 {
-  synchronizeList(oLTeamId);
+  synchronizeList(oListId::oLTeamId);
   oTeamList::iterator it;
   Teams.sort(oTeam::compareSNO);
 
@@ -289,7 +289,7 @@ bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
         return true;
 
     for(size_t k = 0; k < Runners.size(); k++) {
-      if (Runners[k] && matchNumber(Runners[k]->CardNo, s_lc))
+      if (Runners[k] && matchNumber(Runners[k]->getCardNo(), s_lc))
         return true;
     }
   }
@@ -303,8 +303,6 @@ bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
 
   return false;
 }
-
-
 
 void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
 {

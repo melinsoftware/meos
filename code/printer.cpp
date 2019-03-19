@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2018 Melin Software HB
+    Copyright (C) 2009-2019 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -198,8 +198,7 @@ void gdioutput::printSetup(PrinterObject &po)
   }
 }
 
-void gdioutput::print(pEvent oe, Table *t, bool printMeOSHeader, bool noMargin)
-{
+void gdioutput::print(pEvent oe, Table *t, bool printMeOSHeader, bool noMargin, bool respectPageBreak) {
   PageInfo pageInfo;
   pageInfo.printHeader = printMeOSHeader;
   pageInfo.noPrintMargin = noMargin;
@@ -207,7 +206,7 @@ void gdioutput::print(pEvent oe, Table *t, bool printMeOSHeader, bool noMargin)
   setWaitCursor(true);
   PRINTDLG pd;
 
-  PrinterObject &po=*po_default;
+  PrinterObject &po = *po_default;
   po.printedPages.clear();//Don't remember
 
   pd.lStructSize = sizeof(PRINTDLG);
@@ -215,26 +214,26 @@ void gdioutput::print(pEvent oe, Table *t, bool printMeOSHeader, bool noMargin)
   pd.hDevNames = po.hDevNames;
   pd.Flags = PD_RETURNDC;
   pd.hwndOwner = hWndAppMain;
-  pd.hDC = (HDC) NULL;
+  pd.hDC = (HDC)NULL;
   pd.nFromPage = 1;
   pd.nToPage = 1;
   pd.nMinPage = 1;
   pd.nMaxPage = 1;
   pd.nCopies = 1;
-  pd.hInstance = (HINSTANCE) NULL;
+  pd.hInstance = (HINSTANCE)NULL;
   pd.lCustData = 0L;
-  pd.lpfnPrintHook = (LPPRINTHOOKPROC) NULL;
-  pd.lpfnSetupHook = (LPSETUPHOOKPROC) NULL;
-  pd.lpPrintTemplateName = (LPCWSTR) NULL;
-  pd.lpSetupTemplateName = (LPCWSTR)  NULL;
-  pd.hPrintTemplate = (HANDLE) NULL;
-  pd.hSetupTemplate = (HANDLE) NULL;
+  pd.lpfnPrintHook = (LPPRINTHOOKPROC)NULL;
+  pd.lpfnSetupHook = (LPSETUPHOOKPROC)NULL;
+  pd.lpPrintTemplateName = (LPCWSTR)NULL;
+  pd.lpSetupTemplateName = (LPCWSTR)NULL;
+  pd.hPrintTemplate = (HANDLE)NULL;
+  pd.hSetupTemplate = (HANDLE)NULL;
 
-  int iret=PrintDlg(&pd);
+  int iret = PrintDlg(&pd);
 
-  if (iret==false) {
-    int error=CommDlgExtendedError();
-    if (error!=0) {
+  if (iret == false) {
+    int error = CommDlgExtendedError();
+    if (error != 0) {
       char sb[128];
       sprintf_s(sb, "Printing Error Code=%d", error);
       alert(sb);
@@ -254,28 +253,37 @@ void gdioutput::print(pEvent oe, Table *t, bool printMeOSHeader, bool noMargin)
   if (t)
     t->print(*this, po.hDC, 20, 0);
 
-  DEVNAMES *dn=(LPDEVNAMES)GlobalLock(pd.hDevNames);
+  DEVNAMES *dn = (LPDEVNAMES)GlobalLock(pd.hDevNames);
   if (dn) {
-    DEVMODE *dm=(LPDEVMODE)GlobalLock(pd.hDevMode);
+    DEVMODE *dm = (LPDEVMODE)GlobalLock(pd.hDevMode);
     if (dm) {
-      po.DevMode=*dm;
-      po.DevMode.dmSize=sizeof(po.DevMode);
+      po.DevMode = *dm;
+      po.DevMode.dmSize = sizeof(po.DevMode);
     }
-    po.Driver=(wchar_t *)(dn)+dn->wDriverOffset;//XXX WCS
-    po.Device=(wchar_t *)(dn)+dn->wDeviceOffset;
+    po.Driver = (wchar_t *)(dn)+dn->wDriverOffset;//XXX WCS
+    po.Device = (wchar_t *)(dn)+dn->wDeviceOffset;
     //GlobalUnlock(pd.hDevMode);
     //GlobalUnlock(pd.hDevNames);
   }
 
-  doPrint(po, pageInfo, oe);
+  doPrint(po, pageInfo, oe, respectPageBreak);
 
   // Delete the printer DC.
   DeleteDC(pd.hDC);
-  po.hDC=0;
+  po.hDC = 0;
 }
 
-void gdioutput::print(PrinterObject &po, pEvent oe, bool printMeOSHeader, bool noMargin)
+void gdioutput::print(PrinterObject &po, pEvent oe, bool printMeOSHeader, bool noMargin, bool respectPageBreak)
 {
+  if (isTestMode) {
+    if (!cmdAnswers.empty()) {
+      string ans = cmdAnswers.front();
+      cmdAnswers.pop_front();
+      if (ans == "print")
+        return;
+    }
+    throw std::exception("Printing error");
+  }
   PageInfo pageInfo;
   pageInfo.printHeader = printMeOSHeader;
   pageInfo.noPrintMargin = noMargin;
@@ -338,7 +346,7 @@ void gdioutput::print(PrinterObject &po, pEvent oe, bool printMeOSHeader, bool n
   else if (po.hDC==0) {
     po.hDC = CreateDC(po.Driver.c_str(), po.Device.c_str(), NULL, &po.DevMode);
   }
-  doPrint(po, pageInfo, oe);
+  doPrint(po, pageInfo, oe, respectPageBreak);
 }
 
 void gdioutput::destroyPrinterDC(PrinterObject &po)
@@ -384,7 +392,7 @@ bool gdioutput::startDoc(PrinterObject &po)
   return true;
 }
 
-bool gdioutput::doPrint(PrinterObject &po, PageInfo &pageInfo, pEvent oe)
+bool gdioutput::doPrint(PrinterObject &po, PageInfo &pageInfo, pEvent oe, bool respectPageBreak)
 {
   setWaitCursor(true);
 
@@ -447,7 +455,7 @@ bool gdioutput::doPrint(PrinterObject &po, PageInfo &pageInfo, pEvent oe)
   pageInfo.pageY = float(PageYMax);
 
   vector<RenderedPage> pages;
-  pageInfo.renderPages(TL, Rectangles, false, pages);
+  pageInfo.renderPages(TL, Rectangles, false, respectPageBreak, pages);
 
   vector<int> toPrint;
   for (size_t k = 0; k < pages.size(); k++) {
@@ -621,7 +629,12 @@ struct PrintItemInfo {
 
   bool isNewPage() const {
     const TextInfo *ti = dynamic_cast<const TextInfo *>(obj);
-    return ti && ti->format == pageNewPage;
+    return ti && (ti->format == pageNewPage || ti->format == pageNewChapter);
+  }
+
+  bool isNewChapter() const {
+    const TextInfo *ti = dynamic_cast<const TextInfo *>(obj);
+    return ti && ti->format == pageNewChapter;
   }
 
   bool isNoPrint() const {
@@ -633,6 +646,7 @@ struct PrintItemInfo {
 void PageInfo::renderPages(const list<TextInfo> &tl,
                            const list<RectangleInfo> &rects,
                            bool invertHeightY,
+                           bool respectPageBreak,
                            vector<RenderedPage> &pages) {
   const PageInfo &pi = *this;
   TIList::const_iterator it;
@@ -672,9 +686,11 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
   if (needSort)
     stable_sort(indexedTL.begin(), indexedTL.end());
 
+  bool startChapter = true;
   bool addPage = true;
   bool wasOrphan = false;
   int offsetY = 0;
+  int desiredChapterStartY = 0;
   wstring infoText;
   int extraLimit = 0;
   for (size_t k = 0; k < indexedTL.size(); k++) {
@@ -711,11 +727,20 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
       pages.push_back(RenderedPage());
       pages.back().nPage = pages.size();
       pages.back().info = infoText;
-      if (k == 0)
+      pages.back().startChapter = startChapter;
+      
+      if (k == 0) {
         offsetY = 0;
+        desiredChapterStartY = tlp->yp;
+      }
+      else if (startChapter) {
+        offsetY = desiredChapterStartY - tlp->yp + extraLimit;
+      }
       else
         offsetY =  -tlp->yp + extraLimit;
+
       extraLimit = 0;
+      startChapter = false;
     }
 
     if (gdioutput::skipTextRender(tlp->format))
@@ -742,6 +767,12 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
     }
 
     pages.back().calculateCS(text.ti);
+#ifdef _DEBUG
+    static wchar_t breakbuff[8] = L"1429586";
+    if (text.ti.text == breakbuff) {
+      text.ti.text.empty(); // Break when hitting symbol
+    }
+#endif
 
     if (k + 1 < indexedTL.size() && tlp->yp != indexedTL[k+1].yp) {
       size_t j = k + 1;
@@ -751,15 +782,18 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
       // Required new page
       if (indexedTL[j].isNewPage()) {
         k++;
-        addPage = true;
-        extraLimit = indexedTL[j].obj->getExtraInt();
-        infoText.clear();
-        continue;
+        if (respectPageBreak) {
+          addPage = true;
+          startChapter = indexedTL[j].isNewChapter();
+          extraLimit = indexedTL[j].obj->getExtraInt();
+          infoText.clear();
+          continue;
+        }
       }
 
       map<int, int> forwardyp;
       while ( j < indexedTL.size() && forwardyp.size() < 3) {
-        if (!indexedTL[j].isNewPage()) {
+        if (!indexedTL[j].isNewPage() && !indexedTL[j].isNoPrint()) {
           if (forwardyp.count(indexedTL[j].yp) == 0 || indexedTL[j].isNewPage())
             forwardyp[indexedTL[j].yp] = j;
         }
