@@ -2918,6 +2918,8 @@ void IOF30Interface::writeClub(xmlparser &xml, const oClub &c, bool writeExtende
   __int64 id = c.getExtIdentifier();
   if (id != 0)
     xml.write("Id", c.getExtIdentifierString());
+  else
+    xml.write("Id", c.getId());
 
   xml.write("Name", c.getName());
   wstring sname = c.getDCI().getString("ShortName");
