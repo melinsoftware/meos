@@ -1040,7 +1040,7 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
         auto pc = r->getCourse(false);
         if (radio < 10 || pc->hasControlCode(radio)) {
           pp.clear();
-          oe->getPunchesForRunner(r->getId(), pp);
+          oe->getPunchesForRunner(r->getId(), false, pp);
           bool hit = false;
           for (auto p : pp) {
             if (p->getTypeCode() == radio)

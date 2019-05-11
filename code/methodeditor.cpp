@@ -536,7 +536,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring str;
           try {
             st = currentResult->deduceStatus(*rr[k]);
-            str = oe->formatStatus(st);
+            str = oe->formatStatus(st, false);
           }
           catch (meosException &ex) {
             err = ex.wwhat();
@@ -638,7 +638,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring str;
           try {
             st = currentResult->deduceStatus(*tr[k]);
-            str = oe->formatStatus(st);
+            str = oe->formatStatus(st, false);
           }
           catch (meosException &ex) {
             err = ex.wwhat();
@@ -964,7 +964,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       st = currentResult->deduceStatus(r);
       currentResult->debugDumpVariables(gdi, true);
 
-      gdi.addStringUT(1, L"ComputedStatus: " + oe->formatStatus(st)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedStatus: " + oe->formatStatus(st, false)).setColor(colorGreen);
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
@@ -1018,7 +1018,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       st = currentResult->deduceStatus(t);
       currentResult->debugDumpVariables(gdi, true);
 
-      gdi.addStringUT(1, L"ComputedStatus: " + oe->formatStatus(st)).setColor(colorGreen);
+      gdi.addStringUT(1, L"ComputedStatus: " + oe->formatStatus(st, false)).setColor(colorGreen);
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);

@@ -317,12 +317,13 @@ Table *oEvent::getClubsTB()//Table mode
 
 void oEvent::generateClubTableData(Table &table, oClub *addClub)
 {
-  oe->setupClubInfoData();
   if (addClub) {
     addClub->addTableRow(table);
     return;
   }
   synchronizeList(oListId::oLClubId);
+  oe->setupClubInfoData();
+
   oClubList::iterator it;
 
   for (it=Clubs.begin(); it != Clubs.end(); ++it){
@@ -919,7 +920,9 @@ void oEvent::printInvoices(gdioutput &gdi, InvoicePrintType type,
     if (!it->isRemoved() && clubId.count(it->getId()) > 0) {
 
       gdi.addStringUT(yp, 50, fontMedium, itos(it->getDCI().getInt("InvoiceNo")));
-      gdi.addStringUT(yp, 240, textRight|fontMedium, itos(it->getId()));
+      if (it->getExtIdentifier() != 0)
+        gdi.addStringUT(yp, 240, textRight|fontMedium, it->getExtIdentifierString());
+      
       gdi.addStringUT(yp, 250, fontMedium, it->getName());
       gdi.addStringUT(yp, 550, fontMedium|textRight, oe->formatCurrency(fees[k]));
       gdi.addStringUT(yp, 620, fontMedium|textRight, oe->formatCurrency(vpaid[k]));

@@ -383,6 +383,9 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       wstring url = ti.text;
       ShellExecute(NULL, L"open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
     }
+    else if (ti.id == "fnpath") {
+      ShellExecute(NULL, L"open", ti.text.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    }
   }
   else if (type==GUI_BUTTON) {
     ButtonInfo bi=*(ButtonInfo *)data;
@@ -558,17 +561,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       gdi.refresh();
     }
     else if (bi.id=="Test") {
-      vector< pair<wstring, wstring> > cpp;
-      cpp.push_back(make_pair(L"Source", L"*.cpp"));
-      int ix = 0;
-      wstring fn = gdi.browseForSave(cpp, L".cpp", ix);
-      if (!fn.empty())
-        gdi.getRecorder().saveRecordings(gdi.narrow(fn));
-      else {
-        TestMeOS tm(oe, "base");
-        tm.runAll();
-        tm.publish(gdi);
-      }
+      checkRentCards(gdi);
     }
     else if (bi.id=="Report") {
       gdi.clearPage(true);
@@ -2076,7 +2069,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       // Construct runner from database
       oRunner sRunner(oe, 0);
-      sRunner.init(*dbr);
+      sRunner.init(*dbr, false);
       pRunner added = oe->addRunnerFromDB(&sRunner, classId, true);
       if (added)
         added->synchronize();
@@ -2375,8 +2368,25 @@ void TabCompetition::copyrightLine(gdioutput &gdi) const
 void TabCompetition::loadAboutPage(gdioutput &gdi) const
 {
   gdi.clearPage(false);
-  gdi.addString("", 2, makeDash(L"Om MeOS - ett Mycket Enkelt OrienteringsSystem")).setColor(colorDarkBlue);
-  gdi.dropLine(2);
+  gdi.addString("", textImage, "513");
+
+  gdi.addString("", fontMediumPlus, makeDash(L"Om MeOS - ett Mycket Enkelt OrienteringsSystem")).setColor(colorDarkBlue);
+  gdi.dropLine(1);
+
+  wchar_t FileNamePath[260];
+  getUserFile(FileNamePath, L"");
+  gdi.pushX();
+  gdi.fillRight();
+  gdi.addString("", 0, "MeOS lokala datakatalog är: ");
+  gdi.fillDown();
+  gdi.addString("fnpath", 0, FileNamePath, CompetitionCB);
+  gdi.popX();
+  gdi.dropLine(0.5);
+  RECT rc = { gdi.getCX(), gdi.getCY(), gdi.getPageX(), gdi.getCY() + 2 };
+  gdi.addRectangle(rc, colorBlack);
+  gdi.dropLine(1.5);
+  gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
+
   gdi.addStringUT(1, makeDash(L"Copyright © 2007-2019 Melin Software HB"));
   gdi.dropLine();
   gdi.addStringUT(10, "The database connection used is MySQL++\nCopyright "
@@ -4115,3 +4125,34 @@ void TabCompetition::checkReadyForResultExport(gdioutput &gdi, const set<int> &c
   }
 }
 
+void TabCompetition::checkRentCards(gdioutput &gdi) {  
+  gdi.clearPage(false);
+
+  wstring fn = gdi.browseForOpen({ make_pair(L"csv", L"*.csv") }, L"csv");
+  if (!fn.empty()) {
+    csvparser csv;
+    list<vector<wstring>> data;
+    csv.parse(fn, data);
+    set<int> rentCards;
+    for (auto &c : data) {
+      if (c.size() > 0) {
+        int cn = _wtoi(c[0].c_str());
+        rentCards.insert(cn);
+      }
+    }
+
+    vector<pRunner> runners;
+    oe->getRunners(0, 0, runners);
+    int bcf = oe->getBaseCardFee();
+    for (pRunner r : runners) {
+      if (rentCards.count(r->getCardNo()) && r->getDCI().getInt("CardFee") == 0) {
+        gdi.addStringUT(0, r->getCompleteIdentification());
+        r->getDI().setInt("CardFee", bcf);
+      }
+    }
+  }
+
+  gdi.dropLine();
+  gdi.addButton("Cancel", "OK", CompetitionCB);
+  gdi.refresh();
+}

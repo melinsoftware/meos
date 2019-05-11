@@ -442,7 +442,6 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                   r->setName(name, true);
                 }
                 r->setCardNo(cardNo, true);
-
                 if (gdi.isChecked("RENT" + itos(i)))
                   r->getDI().setInt("CardFee", oe->getBaseCardFee());
                 else
@@ -460,11 +459,16 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                                 cardNo, 0, false);
               }
             }
-            else
-              r=oe->addRunner(name, t->getClubId(), t->getClassId(false), cardNo, 0, false);
+            else 
+              r = oe->addRunner(name, t->getClubId(), t->getClassId(false), cardNo, 0, false);
 
             r->setName(name, true);
             r->setCardNo(cardNo, true);
+            if (gdi.isChecked("RENT" + itos(i)))
+              r->getDI().setInt("CardFee", oe->getBaseCardFee());
+            else
+              r->getDI().setInt("CardFee", 0);
+
             r->synchronize();
             t->setRunner(i, r, true);
           }
@@ -1065,8 +1069,11 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
     }
 
     if (ii.id == "DirName" || ii.id == "DirCard") {
-      gdi.setInputStatus("DirOK", !gdi.getText("DirName").empty() &&
-                                  gdi.getTextNo("DirCard") > 0);
+      int cno = gdi.getTextNo("DirCard");
+      if (cno > 0 && oe->hasHiredCardData()) {
+        gdi.check("DirRent", oe->isHiredCard(cno));
+      }
+      gdi.setInputStatus("DirOK", !gdi.getText("DirName").empty() && cno > 0);
 
     }
 
@@ -1135,12 +1142,16 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
     }
     pClass pc=oe->getClass(classId);
     if (pc) {
-      for(unsigned i=0;i<pc->getNumStages();i++){
+      for (unsigned i = 0; i < pc->getNumStages(); i++) {
         if (ii.id == "SI" + itos(i)) {
           int cardNo = _wtoi(ii.text.c_str());
           pTeam t = oe->getTeam(teamId);
           if (t) {
-            warnDuplicateCard(gdi, ii.id, cardNo, t->getRunner(i));
+            pRunner r = t->getRunner(i);
+            if (ii.changedInput() && oe->hasHiredCardData()) {
+              gdi.check("RENT" + itos(i), oe->isHiredCard(cardNo));
+            }
+            warnDuplicateCard(gdi, ii.id, cardNo, r);
           }
           break;
         }

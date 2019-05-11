@@ -68,8 +68,8 @@ protected:
   vector<int> legLengths;
 
   int tMapsRemaining;
-  mutable int tMapsUsed;
-  mutable int tMapsUsedNoVacant;
+  mutable int tMapsUsed = -1;
+  mutable int tMapsUsedNoVacant = -1;
 
   // Get an identity sum based on controls
   int getIdSum(int nControls);

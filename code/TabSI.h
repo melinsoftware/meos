@@ -35,9 +35,10 @@ public:
   enum SIMode {
     ModeReadOut,
     ModeAssignCards,
-    ModeCheckCards,
+    ModeCheckCards,    
     ModeEntry,
-    ModeCardData
+    ModeCardData,
+    ModeRegisterCards,
   };
  
   void setMode(SIMode m) { mode = m; }
@@ -72,7 +73,10 @@ private:
   vector<wstring> filterDate;
 
   set<int> warnedClassOutOfMaps;
-    
+  
+  shared_ptr<GuiHandler> resetHiredCardHandler;
+  GuiHandler *getResetHiredCardHandler();
+
   int runnerMatchedId;
   bool printErrorShown;
   void printProtected(gdioutput &gdi, gdioutput &gdiprint);
@@ -94,7 +98,8 @@ private:
   int inputId;
 
   void showCheckCardStatus(gdioutput &gdi, const string &cmd);
-  
+  void showRegisterHiredCards(gdioutput &gdi);
+
   wstring getCardInfo(bool param, vector<int> &count) const;
   // Formatting for card tick off
   bool checkHeader;
@@ -119,6 +124,7 @@ private:
 
   map<int, CardNumberFlags> checkedCardFlags;
   void checkCard(gdioutput &gdi, const SICard &sic, bool updateAll);
+  void registerHiredCard(gdioutput &gdi, const SICard &sic);
 
   void showReadPunches(gdioutput &gdi, vector<PunchInfo> &punches, set<string> &dates);
   void showReadCards(gdioutput &gdi, vector<SICard> &cards);

@@ -139,6 +139,10 @@ class TabCompetition :
   void createCompetition(gdioutput &gdi);
 
   void listBackups(gdioutput &gdi);
+
+  
+  void checkRentCards(gdioutput &gdi);
+
 protected:
   void clearCompetitionData();
 

@@ -645,7 +645,7 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
           else {
             pControl ctrl = getControl(punch->getControlId());
             if (!ctrl)
-              ctrl = getControl(punch->Type);
+              ctrl = getControlByType(punch->Type);
 
             if (ctrl && ctrl->hasName()) {
               swprintf_s(bfw, L"%s", ctrl->getName().c_str());
@@ -654,7 +654,7 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
         }
         break;
   case lPunchTimeSinceLast:
-    if (punch && punch->previousPunchTime && r && r->Card && !invalidClass) {
+    if (punch && punch->previousPunchTime && r && !invalidClass) {
       int time = punch->Time;
       int pTime = punch->previousPunchTime;
       if (pTime > 0 && time > pTime) {
@@ -673,7 +673,7 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
   case lPunchSplitTime:
   case lPunchTotalTime:
   case lPunchAbsTime:
-    if (punch && r && r->Card && !invalidClass) {
+    if (punch && r && !invalidClass) {
       if (punch->tIndex >= 0) {
         // Punch in course
         counter.level3 = punch->tIndex;
@@ -1074,6 +1074,23 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         return formatSpecialStringAux(pp, par, t, 0, crs, 0, counter);
       }
     break;
+
+    case lClassAvailableMaps:
+      if (pc) {
+        int n = pc->getNumRemainingMaps(false);
+        if (n != numeric_limits<int>::min())
+          wsptr = &itow(n);
+      }
+      break;
+
+    case lClassTotalMaps:
+      if (pc) {
+        int n = pc->getNumberMaps();
+        if (n > 0)
+          wsptr = &itow(n);
+      }
+      break;
+    
     case lCourseClimb:
       if (r) {
         pCourse crs = r->getCourse(false);
@@ -1119,7 +1136,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
           }
         }
         if (r->getStatus() == StatusCANCEL) {
-          wsptr = &oEvent::formatStatus(StatusCANCEL);
+          wsptr = &oEvent::formatStatus(StatusCANCEL, true);
         }
         else if (r->startTimeAvailable()) {
           if (pp.type != lRunnerStartZero) 
@@ -1233,7 +1250,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
           }
           else {
             if (ok)
-              wsptr = &formatStatus(StatusOK);
+              wsptr = &formatStatus(StatusOK, true);
             else
               wsptr = &r->getStatusS(true);
           }
@@ -1269,7 +1286,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
                 swap(vts, timeStatus);
               }
               else {
-                wstring vts = formatStatus(ts) + L" (" + timeStatus + L")";
+                wstring vts = formatStatus(ts, true) + L" (" + timeStatus + L")";
                 swap(vts, timeStatus);
               }
             }
@@ -1400,7 +1417,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         if (r->tempStatus==StatusOK && pc && !pc->getNoTiming())
           wcscpy_s(wbf, formatTime(r->tempRT).c_str());
         else
-          wcscpy_s(wbf, formatStatus(r->tempStatus).c_str() );
+          wcscpy_s(wbf, formatStatus(r->tempStatus, true).c_str() );
       }
       break;
     case lRunnerPlace:
@@ -1683,6 +1700,12 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         wcscpy_s(wbf, s.c_str());
       }
     break;
+    case lRunnerExpectedFee:
+      if (r) {
+        wstring s = formatCurrency(r->getDefaultFee());
+        wcscpy_s(wbf, s.c_str());
+      }
+      break;
     case lRunnerPaid:
       if (r) {
         wstring s = formatCurrency(r->getDCI().getInt("Paid"));
@@ -2465,7 +2488,7 @@ void oEvent::listGeneratePunches(const oListInfo &listInfo, gdioutput &gdi,
       ppi.counter.level3++;
     }
   }
-  else if(type == oListInfo::EBaseType::EBaseTypeAllPunches && r->Card) {
+  else if(type == oListInfo::EBaseType::EBaseTypeAllPunches) {
     int startType = -1;
     int finishType = -1;
     const pCourse pcrs = r->getCourse(false);
@@ -2475,9 +2498,22 @@ void oEvent::listGeneratePunches(const oListInfo &listInfo, gdioutput &gdi,
       finishType = pcrs->getFinishPunchType();
     }
     int prevPunchTime = r->getStartTime();
-    for (auto &punch : r->Card->punches) {
+    vector<pPunch> punches;
+    if (r->Card) {
+      for (auto &punch : r->Card->punches)
+        punches.push_back(&punch);
+    }
+    else {
+      vector<pFreePunch> fPunches;
+      oe->getPunchesForRunner(r->getId(), true, fPunches);
+      for (auto punch : fPunches)
+        punches.push_back(punch);
+    }
+
+    for (auto &pPunch : punches) {
+      const oPunch &punch = *pPunch;
       punch.previousPunchTime = prevPunchTime;
-      
+
       if (punch.isCheck() || punch.isStart(startType))
         continue;
       if (filterFinish && punch.isFinish(finishType))
@@ -2605,12 +2641,17 @@ bool oListInfo::filterRunner(const oRunner &r) const {
   }
 
   if (filter(EFilterAnyResult)) {
-    if (r.tOnCourseResults.empty())
+    if (!r.hasOnCourseResult())
       return true;
   }
 
   if (filter(EFilterAPIEntry)) {
     if (!r.hasFlag(oRunner::FlagAddedViaAPI))
+      return true;
+  }
+
+  if (filter(EFilterWrongFee)) {
+    if (r.getEntryFee() == r.getDefaultFee())
       return true;
   }
 
@@ -2734,27 +2775,24 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
       }
 
       calculateTeamResults(true);
+      sortRunners(li.sortOrder);
       calculateResults(li.lp.selection, ResultType::TotalResult);
-
-      if (li.sortOrder != ClassTotalResult)
-        sortRunners(li.sortOrder);
     }
     else if (li.calcResults) {
       if (li.rogainingResults) {
+        sortRunners(li.sortOrder);
         calculateRogainingResults(li.lp.selection);
-        if (li.sortOrder != ClassPoints)
-          sortRunners(li.sortOrder);
       }
       else if (li.lp.useControlIdResultTo > 0 || li.lp.useControlIdResultFrom > 0)
         calculateSplitResults(li.lp.useControlIdResultFrom, li.lp.useControlIdResultTo);
       else if (li.sortOrder == CourseResult) {
+        sortRunners(li.sortOrder);
         calculateResults(li.lp.selection, ResultType::CourseResult);
       }
       else {
         calculateTeamResults(false);
+        sortRunners(li.sortOrder);
         calculateResults(li.lp.selection, ResultType::ClassResult);
-        if (li.sortOrder != ClassResult)
-          sortRunners(li.sortOrder);
       }
     }
     else
@@ -3051,8 +3089,10 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     if (li.calcResults) {
       if (li.lp.useControlIdResultTo > 0 || li.lp.useControlIdResultFrom > 0)
         calculateSplitResults(li.lp.useControlIdResultFrom, li.lp.useControlIdResultTo);
-      else
+      else {
+        sortRunners(li.sortOrder);
         calculateResults(li.lp.selection, ResultType::ClassResult);
+      }
     }
     else sortRunners(li.sortOrder);
 

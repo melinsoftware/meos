@@ -70,6 +70,7 @@ public:
 
   wstring getInfo() const;
 
+  bool isHiredCard() const { return Type == HiredCard; }
   bool isStart() const {return Type==PunchStart;}
   bool isStart(int startType) const {return Type==PunchStart || Type == startType;}
   bool isFinish() const {return Type==PunchFinish;}
@@ -93,7 +94,7 @@ public:
 
   wstring getRunningTime(int startTime) const;
 
-  enum SpecialPunch {PunchStart=1, PunchFinish=2, PunchCheck=3};
+  enum SpecialPunch {PunchStart=1, PunchFinish=2, PunchCheck=3, HiredCard=11111};
   void decodeString(const string &s);
   string codeString() const;
   oPunch(oEvent *poe);

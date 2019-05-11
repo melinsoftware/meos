@@ -118,7 +118,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
     return false;
 
   calculateResults({}, ResultType::ClassResult);
-
+  sortRunners(SortOrder::ClassResult);
   oRunnerList::iterator it;
   string maleString;
   string femaleString;
@@ -269,7 +269,7 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
       // Extra punches
       vector<pFreePunch> punches;
 
-      oe->getPunchesForRunner(it->getId(), punches);
+      oe->getPunchesForRunner(it->getId(), true, punches);
       for (vector<pFreePunch>::iterator punchIt = punches.begin(); punchIt != punches.end(); ++punchIt) {
         pPunch punch = *punchIt;
         if (!punch->isUsed && !(punch->isFinish() && !pc->useLastAsFinish()) && !(punch->isStart() && !pc->useFirstAsStart()) && !punch->isCheck())
@@ -321,6 +321,10 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
       IOF30Interface reader(this, false);
       reader.setPreferredIdType(preferredIdType);
       reader.readEntryList(gdi, xo, removeNonexisting, filter, ent, fail, removed);
+
+      for (auto &c : Clubs) {
+        c.updateFromDB();
+      }
     }
     else {
       xmlList xl;
@@ -602,6 +606,24 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
         }
       }
     }
+  }
+
+
+  xo = xml.getObject("ServiceRequestList");
+
+  if (xo) {
+    gdi.addString("", 0, "Importerar tävlingsdata (IOF, xml)");
+    gdi.refreshFast();
+
+    if (xo.getAttrib("iofVersion")) {
+      IOF30Interface reader(this, false);
+      int imp = 0, fail = 0;
+
+      reader.readServiceRequestList(gdi, xo, imp, fail);      
+      gdi.dropLine();
+      gdi.refreshFast();
+    }
+    
   }
 
   vector<int> toRemove;
@@ -1194,7 +1216,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     xmlparser xml_club;
     xml_club.setProgress(gdibase.getHWNDTarget());
 
-    if (clear)
+    if (clear && !competitorfile.empty())
       runnerDB->clearClubs();
 
     gdibase.addString("",0,"Läser klubbar...");
@@ -1567,17 +1589,17 @@ bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses, set<wstring> &
           }
           else {
             for (size_t i = 0; i<pCls->getNumStages(); i++)
-              pCls->addStageCourse(i, courses[0]->getId());
+              pCls->addStageCourse(i, courses[0]->getId(), -1);
           }
         }
         else {
           if (courses.size() == pCls->getNumStages()) {
             for (size_t i = 0; i<courses.size(); i++)
-              pCls->addStageCourse(i, courses[i]->getId());
+              pCls->addStageCourse(i, courses[i]->getId(), -1);
           }
           else {
             for (size_t i = 0; i<courses.size(); i++)
-              pCls->addStageCourse(0, courses[i]->getId());
+              pCls->addStageCourse(0, courses[i]->getId(), -1);
           }
         }
       }
@@ -2605,6 +2627,9 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
   calculateResults(set<int>(), ResultType::ClassResult);
   calculateTeamResults(true);
   calculateTeamResults(false);
+  sortRunners(SortOrder::ClassResult);
+  sortTeams(SortOrder::ClassResult, -1, false);
+
   set<int> rgClasses;
   for (int clz : classes) {
     pClass pc = getClass(clz);

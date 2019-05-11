@@ -642,7 +642,7 @@ bool csvparser::importOCAD_CSV(oEvent &event, const wstring &file, bool addClass
           }
           else {
             for (size_t i = 0; i<cls->getNumStages(); i++)
-              cls->addStageCourse(i, pc->getId());
+              cls->addStageCourse(i, pc->getId(), -1);
           }
 
           cls->synchronize();

@@ -209,11 +209,11 @@ void Table::addRow(int rowId, oBase *object)
 
       Data[0].cells[i].canEdit=false;
       Data[0].cells[i].type=cellEdit;
-      Data[0].cells[i].owner=0;
+      Data[0].cells[i].ownerRef.reset();
 
       Data[1].cells[i].canEdit=false;
       Data[1].cells[i].type=cellEdit;
-      Data[1].cells[i].owner=0;
+      Data[1].cells[i].ownerRef.reset();
     }
   }
   else {
@@ -236,7 +236,7 @@ void Table::set(int column, oBase &owner, int id, const wstring &data, bool canE
   TableRow &row=Data[dataPointer];
   TableCell &cell=row.cells[column];
   cell.contents=data;
-  cell.owner=&owner;
+  cell.ownerRef = owner.getReference();
   cell.id=id;
   cell.canEdit=canEdit;
   cell.type=type;
@@ -725,7 +725,8 @@ void Table::selection(gdioutput &gdi, const wstring &text, int data) {
 
  TableCell &cell = Data[selectionRow].cells[selectionCol];
  int id = Data[selectionRow].id;
- cell.owner->inputData(cell.id, text, data, cell.contents, false);
+ if (cell.hasOwner())
+   cell.getOwner()->inputData(cell.id, text, data, cell.contents, false);
  reloadRow(id);
  RECT rc;
  getRowRect(selectionRow, rc);
@@ -913,7 +914,7 @@ bool Table::editCell(gdioutput &gdi, int row, int col) {
 
   if (cell.type == cellAction) {
     ReleaseCapture();
-    gdi.makeEvent("CellAction", internalName, cell.id, cell.owner ? cell.owner->getId() : 0, false);
+    gdi.makeEvent("CellAction", internalName, cell.id, cell.hasOwner() ? cell.getOwner()->getId() : 0, false);
     return true;
   }
 
@@ -934,7 +935,8 @@ bool Table::editCell(gdioutput &gdi, int row, int col) {
 
     vector< pair<wstring, size_t> > out;
     size_t selected = 0;
-    cell.owner->fillInput(cell.id, out, selected);
+    if (cell.hasOwner())
+      cell.getOwner()->fillInput(cell.id, out, selected);
 
     int width = 40;
     for (size_t k = 0; k<out.size(); k++)
@@ -1593,7 +1595,8 @@ void Table::setTableText(gdioutput &gdi, int editRow, int editCol, const wstring
 
   wstring output;
   TableCell &cell=Data[editRow].cells[editCol];
-  cell.owner->inputData(cell.id, bf, 0, output, false);
+  if (cell.hasOwner())
+    cell.getOwner()->inputData(cell.id, bf, 0, output, false);
   cell.contents = output;
   if (hEdit != 0)
     DestroyWindow(hEdit);
@@ -2108,7 +2111,8 @@ void Table::importClipboard(gdioutput &gdi)
         if (cell.type==cellSelection || cell.type==cellCombo) {
           vector< pair<wstring, size_t> > out;
           size_t selected = 0;
-          cell.owner->fillInput(cell.id, out, selected);
+          if (cell.hasOwner())
+            cell.getOwner()->fillInput(cell.id, out, selected);
           index = -1;
           for (size_t i = 0; i<out.size() && index == -1; i++) {
             if (_wcsicmp(out[i].first.c_str(), table[k][j].c_str()) == 0)
@@ -2117,11 +2121,13 @@ void Table::importClipboard(gdioutput &gdi)
         }
         try {
           if (index != -1) {
-            cell.owner->inputData(cell.id, table[k][j], index, output, false);
+            if (cell.hasOwner())
+              cell.getOwner()->inputData(cell.id, table[k][j], index, output, false);
             cell.contents = output;
           }
           else if (cell.type == cellCombo) {
-            cell.owner->inputData(cell.id, table[k][j], index, output, false);
+            if (cell.hasOwner())
+             cell.getOwner()->inputData(cell.id, table[k][j], index, output, false);
             cell.contents = output;
           }
         }
@@ -2158,13 +2164,13 @@ int Table::deleteRows(int row1, int row2)
     if ( k >= sortIndex.size())
       throw std::exception("Index out of range");
     const TableRow &tr = Data[sortIndex[k].index];
-    oBase *ob = tr.cells[0].owner;
-    if (!ob)
-      throw std::exception("Null pointer exception");
-    if (ob->canRemove())
-      ob->remove();
-    else
-      failed++;
+    oBase *ob = tr.cells[0].getOwner();
+    if (ob) {
+      if (ob->canRemove())
+        ob->remove();
+      else
+        failed++;
+    }
   }
 
   clearCellSelection(0);
@@ -2323,8 +2329,8 @@ int Table::getNumDataRows() const {
 void TableRow::setObject(oBase &obj) {
   ob = &obj;
   for (size_t k = 0; k < cells.size(); k++) {
-    if (cells[k].owner != 0)
-      cells[k].owner = &obj;
+    if (cells[k].hasOwner())
+      cells[k].ownerRef = obj.getReference();
   }
 }
 

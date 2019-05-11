@@ -178,7 +178,7 @@ void oEvent::generatePunchTableData(Table &table, oFreePunch *addPunch)
   oFreePunchList::iterator it;
   table.reserve(punches.size());
   for (it = punches.begin(); it != punches.end(); ++it){
-    if (!it->isRemoved()){
+    if (!it->isRemoved() && !it->isHiredCard()){
       it->addTableRow(table);
     }
   }
@@ -292,7 +292,7 @@ void oFreePunch::rehashPunches(oEvent &oe, int cardNo, pFreePunch newPunch) {
     // Rehash all punches. Ignore cardNo and newPunch (will be included automatically)
     fp.reserve(oe.punches.size());
     for (oFreePunchList::iterator pit = oe.punches.begin(); pit != oe.punches.end(); ++pit) {
-      if (pit->isRemoved())
+      if (pit->isRemoved() || pit->isHiredCard())
         continue;
       fp.push_back(&(*pit));
     }
@@ -335,7 +335,7 @@ void oFreePunch::rehashPunches(oEvent &oe, int cardNo, pFreePunch newPunch) {
     it->second.erase(res.first, res.second);
   }
 
-  if (newPunch)
+  if (newPunch && !newPunch->isHiredCard())
     fp.push_back(newPunch);
 
   sort(fp.begin(), fp.end(), FreePunchComp());
@@ -614,12 +614,12 @@ pFreePunch oEvent::getPunch(int runnerId, int courseControlId, int card) const
   return 0;
 }
 
-void oEvent::getPunchesForRunner(int runnerId, vector<pFreePunch> &runnerPunches) const {
+void oEvent::getPunchesForRunner(int runnerId, bool doSort, vector<pFreePunch> &runnerPunches) const {
   runnerPunches.clear();
   pRunner r = getRunner(runnerId, 0);
   if (r == 0)
     return;
-
+  /*
   // Get times for when other runners used this card
   vector< pair<int, int> > times;
   int refCno = r->getCardNo();
@@ -641,6 +641,9 @@ void oEvent::getPunchesForRunner(int runnerId, vector<pFreePunch> &runnerPunches
 
   for (oFreePunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
     if (it->CardNo == refCno) {
+      if (it->isRemoved() || it->isHiredCard())
+        continue;
+
       bool other = false;
       int t = it->Time;
       for (size_t k = 0; k<times.size(); k++) {
@@ -652,8 +655,33 @@ void oEvent::getPunchesForRunner(int runnerId, vector<pFreePunch> &runnerPunches
         runnerPunches.push_back(pFreePunch(&*it));
     }
   }
+  */
 
-  // XXX Advance punches...
+  //Lazy setup
+  oFreePunch::rehashPunches(*oe, 0, 0);
+
+  int card = r->getCardNo();
+  if (card == 0)
+    return;
+
+  for (auto &it1 :punchIndex) {
+    const oEvent::PunchIndexType &cIndex = it1.second;
+    pair<oEvent::PunchConstIterator, oEvent::PunchConstIterator> res = cIndex.equal_range(card);
+    oEvent::PunchConstIterator pIter = res.first;
+    while (pIter != res.second) {
+      pFreePunch punch = pIter->second;
+      if (!punch->isRemoved()) {
+        assert(punch && punch->CardNo == card);
+        if (punch->tRunnerId == runnerId || runnerId == 0)
+          runnerPunches.push_back(punch);
+        ++pIter;
+      }
+    }
+  }
+  
+  if (doSort) {
+    sort(runnerPunches.begin(), runnerPunches.end(), [](const oPunch *p1, const oPunch *p2)->bool {return p1->Time < p2->Time; });
+  }
 }
 
 
@@ -731,4 +759,76 @@ void oFreePunch::changedObject() {
   pRunner r = getTiedRunner();
   if (r && tMatchControlId>0)
     r->markClassChanged(tMatchControlId);
+}
+
+bool oEvent::hasHiredCardData() {
+  synchronizeList(oListId::oLPunchId);
+  isHiredCard(0); 
+  return !hiredCardHash.empty(); 
+}
+
+bool oEvent::isHiredCard(int cardNo) const {
+  if (tHiredCardHashDataRevision != dataRevision) {
+    hiredCardHash.clear();
+    for (auto &p : punches) {
+      if (!p.isRemoved() && p.isHiredCard())
+        hiredCardHash.insert(p.getCardNo());
+    }
+    tHiredCardHashDataRevision = dataRevision;
+  }
+  return hiredCardHash.count(cardNo) > 0;
+}
+
+void oEvent::setHiredCard(int cardNo, bool flag) {
+  if (cardNo <= 0)
+    return;
+
+  if (isHiredCard(cardNo) != flag) {
+    if (flag) {
+      addFreePunch(0, oPunch::HiredCard, cardNo, false);
+      hiredCardHash.insert(cardNo);
+      tHiredCardHashDataRevision = dataRevision;
+    }
+    else {
+      hiredCardHash.erase(cardNo);
+      for (auto it = punches.begin(); it != punches.end();) {
+        if (!it->isRemoved() && it->isHiredCard() && it->CardNo == cardNo) {
+          if (HasDBConnection)
+            msRemove(&*it);
+
+          auto toErase = it;
+          ++it;
+          punches.erase(toErase);
+        }
+        else {
+          ++it;
+        }
+      }
+      tHiredCardHashDataRevision = dataRevision;
+    }
+  }
+}
+
+vector<int> oEvent::getHiredCards() const {
+  isHiredCard(0); // Update hash
+  vector<int> r(hiredCardHash.begin(), hiredCardHash.end());
+  return r;
+}
+
+void oEvent::clearHiredCards() {
+  vector<int> toRemove;
+  for (auto it = punches.begin(); it != punches.end();) {
+    if (!it->isRemoved() && it->isHiredCard()) {
+      if (HasDBConnection)
+        msRemove(&*it);
+
+      auto toErase = it;
+      ++it;
+      punches.erase(toErase);
+    }
+    else {
+      ++it;
+    }
+  }
+  hiredCardHash.clear();
 }

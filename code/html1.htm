@@ -272,6 +272,196 @@ When and only when the type is <b>CourseIndividual</b>, the attribute <i>course<
 */person>
 </pre>    
 
+
+<h2>Status</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=status">/meos?get=status</a></pre>
+
+<b>Returns:</b>
+<p>MeOS Status Data. Includes MeOS version and competition name id, which also is the name of the database used, if any.</p>
+
+<b>Example:</b>
+<pre>
+*MOPComplete>
+ *status version="3.6.1029" eventNameId="meos_20190223_212818_2FD" onDatabase="1"/>
+*/MOPComplete>
+</pre>
+
+<h2>Entry Classes</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?get=entryclass">/meos?get=entryclass</a></pre>
+
+<b>Returns:</b>
+<p>Classes where entry is allowed via the API.</p>
+
+<pre>
+*EntryClasses>
+  *Class id="5">
+    *Name>U1*Name>
+    *Fee>70 kr*/Fee>
+    *MaxAge>16*/MaxAge>
+    *Start>Start 1*/Start>
+    *AvailableStarts>30*/AvailableStarts>
+  */Class>
+*/EntryClasses>
+</pre>
+
+<h2>Lookup competitor</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?lookup=competitor&id=%runnerid%">/meos?lookup=competitor&id=*id></a></pre>
+<pre><a href="/meos?lookup=competitor&card=%card%">/meos?lookup=competitor&card=*card></a></pre>
+<pre><a href="/meos?lookup=competitor&bib=%bib%">/meos?lookup=competitor&bib=*bib></a></pre>
+<pre><a href="/meos?lookup=competitor&name=%name%&club=%club%">/meos?lookup=competitor&name=*name>&club=*club></a></pre>
+
+<b>Returns:</b>
+<p>Competitor including individual result.</p>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>id</i> Competitor id. MeOS internal id.</li>
+  <li><i>card</i> Card number.</li>
+  <li><i>bib</i> Bib or start number.</li>
+  <li><i>name</i> Name of competitor.</li>
+  <li><i>club</i> Name of club.</li>
+</ul>
+
+<pre>
+*Competitors>
+  *Competitor id="85">
+    *Name>Nils Bor*/Name>
+    *ExternalId>1234*/ExternalId>
+    *Club id="84">OK Linn&eacute;*/Club>
+    *Class id="204">Men*/Class>
+    *Card>16733*/Card>
+    *Status code="1">OK*/Status>
+    *Start>17:38:00*/Start>
+    *Finish>18:22:21*/Finish>
+    *RunningTime>44:21*/RunningTime>
+    *Place>7*/Place>
+    *TimeAfter>13:04*/TimeAfter>
+    *Team id="26">OK Linn&eacute; 2*/Team>
+    *Leg>1*/Leg>
+    *Splits>
+      *Control number="1">
+        *Name>[31]*/Name>
+        *Time>6:25*/Time>
+        *Analysis lost="1:11" behind="1:11" mistake="" leg="5" total="3"/>
+      */Control>
+      *Control number="2">
+        *Name>Radio*/Name>
+        *Time>12:50*/Time>
+        *Analysis lost="1:10" behind="2:21" mistake="1:20" leg="3" total="3"/>
+      */Control>
+      ...
+    */Splits>
+  */Competitor>
+*/Competitors>
+</pre>
+
+
+<h2>Lookup Database Competitor</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?lookup=dbcompetitor&id=%runnerextid%">/meos?lookup=dbcompetitor&id=*id></a></pre>
+<pre><a href="/meos?lookup=dbcompetitor&card=%card%">/meos?lookup=dbcompetitor&card=*card></a></pre>
+<pre><a href="/meos?lookup=dbcompetitor&name=%dbname%&club=%dbclub%">/meos?lookup=dbcompetitor&name=*name>&club=*club></a></pre>
+
+<b>Returns:</b>
+<p>Competitor from runner database. Note that a partial name may be submitted, and that several matching result may be returned, sorted by relevance. 
+This query is suitable for auto complete functionality.</p>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>id</i> External id from runner database.</li>
+  <li><i>card</i> Card number.</li>
+  <li><i>name</i> Name of competitor. Possibly a partial name.</li>
+  <li><i>club</i> Name of club.</li>
+</ul>
+
+
+<pre>
+*DatabaseCompetitors>
+  *Competitor id="15393">
+    *Name>Anskar Dahl*/Name>
+    *Club id="575">IFK Mora OK*/Club>
+    *Card>79709*/Card>
+    *Nationality>SWE*/Nationality>
+    *Sex>M*/Sex>
+    *BirthYear>1957*/BirthYear>
+  */Competitor>
+*/DatabaseCompetitors>
+</pre>
+
+
+<h2>Lookup Database Club</h2>
+<b>Syntax:</b>
+<pre><a href="/meos?lookup=dbclub&id=%clubid%">/meos?lookup=dbclub&id=*id></a></pre>
+<pre><a href="/meos?lookup=dbclub&name=%club%">/meos?lookup=dbclub&name=*name></a></pre>
+
+<b>Returns:</b>
+<p>Club from club database. Note that a partial name may be submitted, and that several matching result may be returned, sorted by relevance. 
+This query is suitable for auto complete functionality.</p>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>id</i> External id from club database.</li>
+  <li><i>name</i> Name of club. Possibly a partial name.</li>
+</ul>
+
+<pre>
+*DatabaseClubs>
+  *Club id="134">
+  *Name>OK Enen*/Name>
+  */Club>
+*/DatabaseClubs>
+</pre>
+
+<h2>API New Entry</h2>
+<b>Syntax:</b>
+<pre>/meos?entry&id=*id>&class=*classid>&card=*card></pre>
+<pre>/meos?entry&name=*name>&club=*club>&class=*classid>&card=*card></pre>
+
+<b>Arguments:</b>
+<ul>
+  <li><i>id</i> External id of runner from runner database.</li>
+  <li><i>name</i> Name of runner.</li>
+  <li><i>club</i> Name of runner's club.</li>
+  <li><i>class</i> Id of class.</li>
+  <li><i>card</i> Card number.</li>
+</ul>
+
+<b>Returns:</b>
+Status.
+
+<pre>
+*Answer>
+  *Status>OK*/Status>
+  *Fee>130*/Fee>
+  *Info>Open Long, Rudolf Minowski (OK Tisaren)*/Info>
+*/Answer>
+</pre>
+
+<pre>
+*Answer>
+  *Status>Failed*/Status>
+  *Info>Out of maps.*/Info>
+*/Answer>
+</pre>
+
+<h2>Page template</h2>
+<b>Syntax:</b>
+<pre>/meos?page=*page></pre>
+
+<b>Returns:</b>
+Installed template file with the specified tag.
+
+
+<h2>Image</h2>
+<b>Syntax:</b>
+<pre>/meos?image=*image></pre>
+
+<b>Returns:</b>
+Image, *image>.png, if installed in MeOS datafolder. MeOS logo if *image> is meos.
+
 <h2>IOF XML Results</h2>
 
 <b>Syntax:</b>

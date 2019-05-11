@@ -933,12 +933,14 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       gdi.restore("EntryLine");
 
       wchar_t bf[256];
+      wstring cno = r->getCardNo() > 0 ? L"(" + itow(r->getCardNo()) + L"), " : L"";
+
       if (r->getClubId() != 0) {
-        swprintf_s(bf, L"(%d), %s, %s", r->getCardNo(), r->getClub().c_str(),
+        swprintf_s(bf, L"%s%s, %s", cno.c_str(), r->getClub().c_str(),
                    r->getClass(true).c_str());
       }
       else {
-        swprintf_s(bf, L"(%d), %s", r->getCardNo(), r->getClass(true).c_str());
+        swprintf_s(bf, L"%s%s", cno.c_str(), r->getClass(true).c_str());
       }
 
       wstring info(bf);
@@ -1034,6 +1036,84 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       bool dnf = gdi.isChecked(bi.id);
       gdi.setInputStatus("StatusOK", !dnf);
       gdi.check("StatusOK", !dnf);
+    }
+    else if (bi.id == "RHCClear") {
+      if (gdi.ask(L"Vill du tömma listan med hyrbrickor?")) {
+        oe->clearHiredCards();
+        loadPage(gdi);
+      }
+    }
+    else if (bi.id == "RHCImport") {
+      wstring fn = gdi.browseForOpen({ make_pair(L"Semikolonseparerad (csv)", L"*.csv") }, L"csv");
+      if (!fn.empty()) {
+        csvparser csv;
+        list<vector<wstring>> data;
+        csv.parse(fn, data);
+        set<int> rentCards;
+        for (auto &c : data) {
+          for (wstring wc : c) {
+            int cn = _wtoi(wc.c_str());
+            if (cn > 0) {
+              oe->setHiredCard(cn, true);
+              gdi.addStringUT(0, itos(cn)).setHandler(getResetHiredCardHandler());
+            }
+          }
+        }
+        gdi.scrollToBottom();
+        gdi.refresh();
+        vector<pRunner> runners;
+        oe->getRunners(0, 0, runners);
+        if (!runners.empty() && gdi.ask(L"Vill du sätta hyrbricka på befintliga löpare med dessa brickor?")) {
+          int bcf = oe->getBaseCardFee();
+          for (pRunner r : runners) {
+            if (rentCards.count(r->getCardNo()) && r->getDCI().getInt("CardFee") == 0) {
+              gdi.addStringUT(0, r->getCompleteIdentification());
+              r->getDI().setInt("CardFee", bcf);
+            }
+          }
+        }
+        loadPage(gdi);
+      }
+    }
+    else if (bi.id == "RHCExport") {
+      int ix = 0;
+      wstring fn = gdi.browseForSave({ make_pair(L"Semikolonseparerad (csv)", L"*.csv") }, L"csv", ix);
+      if (!fn.empty()) {
+        oe->synchronizeList(oListId::oLPunchId);
+
+        auto hc = oe->getHiredCards();
+        csvparser csv;
+        csv.openOutput(fn);
+        for (int c : hc)
+          csv.outputRow(itos(c));
+        csv.closeOutput();
+      }
+    }
+    else if (bi.id == "RHCPrint") {
+      gdioutput gdiPrint("print", gdi.getScale());
+      gdiPrint.clearPage(false);
+
+      gdiPrint.addString("", boldLarge, "Hyrbricksrapport");
+
+      oe->synchronizeList(oListId::oLPunchId);
+      auto hc = oe->getHiredCards();
+      int dc = gdiPrint.scaleLength(70);
+      int col = 0;
+      gdiPrint.dropLine(2);
+      int cx = gdiPrint.getCX();
+      int cy = gdiPrint.getCY();
+
+      for (int h : hc) {
+        if (col >= 8) {
+          col = 0;
+          cy += gdiPrint.getLineHeight() * 2;
+        }
+        gdiPrint.addStringUT(cy, cx + col * dc, 0, itow(h));
+        col++;
+      }
+
+      gdiPrint.refresh();
+      gdiPrint.print(oe);
     }
     else if (bi.id == "CCSClear") {
       if (gdi.ask(L"Vill du göra om avbockningen från början igen?")) {
@@ -1137,6 +1217,9 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       }
       else if (mode == ModeCheckCards) {
         showCheckCardStatus(gdi, "init");
+      }
+      else if (mode == ModeRegisterCards) {
+        showRegisterHiredCards(gdi);
       }
       gdi.refresh();
     }
@@ -1385,12 +1468,17 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         if (runnerMatchedId != -1 && gdi.isChecked("AutoTie") && cardNo>0)
           gdi.addTimeoutMilli(50, "TieCard", SportIdentCB).setExtra(runnerMatchedId);
       }
-      else if (cardNo>0 && gdi.getText("Name").empty()) {
-        SICard sic(ConvertedTimeStatus::Hour24);
-        sic.clear(0);
-        sic.CardNumber = cardNo;
+      else if (cardNo>0) {
+        if (ii.changedInput() && oe->hasHiredCardData())
+          gdi.check("RentCard", oe->isHiredCard(cardNo));
 
-        entryCard(gdi, sic);
+        if (gdi.getText("Name").empty()) {
+          SICard sic(ConvertedTimeStatus::Hour24);
+          sic.clear(0);
+          sic.CardNumber = cardNo;
+
+          entryCard(gdi, sic);
+        }
       }
     }
     else if (ii.id[0]=='*') {
@@ -1644,6 +1732,7 @@ bool TabSI::loadPage(gdioutput &gdi) {
     gdi.addItem("ReadType", lang.tl("Avläsning/radiotider"), ModeReadOut);
     gdi.addItem("ReadType", lang.tl("Tilldela hyrbrickor"), ModeAssignCards);
     gdi.addItem("ReadType", lang.tl("Avstämning hyrbrickor"), ModeCheckCards);
+    gdi.addItem("ReadType", lang.tl("Registrera hyrbrickor"), ModeRegisterCards);
     gdi.addItem("ReadType", lang.tl("Anmälningsläge"), ModeEntry);
     gdi.addItem("ReadType", lang.tl("Print card data"), ModeCardData);
 
@@ -1709,7 +1798,9 @@ bool TabSI::loadPage(gdioutput &gdi) {
   else if (mode == ModeCheckCards) {
     showCheckCardStatus(gdi, "init");
   }
-
+  else if (mode == ModeRegisterCards) {
+    showRegisterHiredCards(gdi);
+  }
 
   // Unconditional clear
   activeSIC.clear(0);
@@ -1783,7 +1874,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
   DWORD loaded;
   bool pageLoaded=gdi.getData("SIPageLoaded", loaded);
 
-  if (pageLoaded && manualInput)
+  if (pageLoaded && manualInput && mode == ModeReadOut)
     gdi.restore("ManualInput");
 
   if (!pageLoaded && !insertCardNumberField.empty()) {
@@ -1814,6 +1905,16 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
     }
     else 
       checkCard(gdi, sic, true);
+    return;
+  }
+  else if (mode == ModeRegisterCards) {
+    if (!pageLoaded) {
+      CardQueue.push_back(sic);
+      gdi.addInfoBox("SIREAD", L"Inläst bricka ställd i kö");
+    }
+    else {
+      registerHiredCard(gdi, sic);
+    }
     return;
   }
   else if (mode == ModeCardData) {
@@ -2549,6 +2650,9 @@ void TabSI::entryCard(gdioutput &gdi, const SICard &sic)
 {
   gdi.setText("CardNo", sic.CardNumber);
 
+  if (oe->hasHiredCardData())
+    gdi.check("RentCard", oe->isHiredCard(sic.CardNumber));
+
   wstring name;
   wstring club;
   int age = 0;
@@ -2581,6 +2685,9 @@ void TabSI::entryCard(gdioutput &gdi, const SICard &sic)
   pClass cls = oe->getClass(clsId);
   if (cls && age > 0) {
     directEntryGUI.updateFees(gdi, cls, age);
+  }
+  else {
+    updateEntryInfo(gdi);
   }
 }
 
@@ -2690,7 +2797,7 @@ void TabSI::generateEntryLine(gdioutput &gdi, pRunner r) {
 
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
     gdi.addCombo("Fee", 60, 150, SportIdentCB, L"Anm. avgift:");
-    oe->fillFees(gdi, "Fee", false);
+    oe->fillFees(gdi, "Fee", true, false);
     
     if (!storedInfo.storedFee.empty() && storedInfo.storedFee != L"@")
       gdi.setText("Fee", storedInfo.storedFee);
@@ -3503,6 +3610,35 @@ wstring TabSI::getCardInfo(bool param, vector<int> &count) const {
   return msg;
 }
 
+void TabSI::showRegisterHiredCards(gdioutput &gdi) {
+  gdi.disableInput("Interactive");
+  gdi.disableInput("Database");
+  gdi.disableInput("PrintSplits");
+  gdi.disableInput("UseManualInput");
+
+  gdi.fillDown();
+  gdi.addString("", 10, "help:registerhiredcards");
+
+  gdi.dropLine();
+  gdi.fillRight();
+  gdi.pushX();
+  gdi.addButton("RHCClear", "Nollställ", SportIdentCB);
+  gdi.addButton("RHCImport", "Importera...", SportIdentCB);
+  gdi.addButton("RHCExport", "Exportera...", SportIdentCB);
+  gdi.addButton("RHCPrint", "Skriv ut...", SportIdentCB);
+  gdi.popX();
+  gdi.dropLine(3);
+  gdi.fillDown();
+
+  oe->synchronizeList(oListId::oLPunchId);
+  auto &hiredCards = oe->getHiredCards();
+  for (int i : hiredCards) {
+    gdi.addStringUT(0, itos(i)).setExtra(i).setHandler(getResetHiredCardHandler());
+  }
+
+  gdi.refresh();
+}
+
 void TabSI::showCheckCardStatus(gdioutput &gdi, const string &cmd) {
   vector<pRunner> r;
   const int cx = gdi.getCX();
@@ -3514,6 +3650,7 @@ void TabSI::showCheckCardStatus(gdioutput &gdi, const string &cmd) {
     gdi.disableInput("Database");
     gdi.disableInput("PrintSplits");
     gdi.disableInput("UseManualInput");
+    
     gdi.fillDown();   
     gdi.addString("", 10, "help:checkcards");
 
@@ -3638,6 +3775,42 @@ void TabSI::showCheckCardStatus(gdioutput &gdi, const string &cmd) {
   }
   checkHeader = false;
   gdi.dropLine();
+}
+
+
+class ResetHiredCard : public GuiHandler {
+  oEvent *oe;
+  
+public:
+  void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
+    if (type == GuiEventType::GUI_LINK) {
+      TextInfo &ti = dynamic_cast<TextInfo &>(info);
+      int c = _wtoi(ti.text.c_str());
+      if (gdi.ask(L"Vill du ta bort brickan från hyrbrickslistan?")) {
+        oe->setHiredCard(c, false);
+        ti.text = L"-";
+        ti.setHandler(nullptr);
+        gdi.refreshFast();
+      }
+    }
+  }
+
+  ResetHiredCard(oEvent *oe) : oe(oe) {}
+};
+
+GuiHandler *TabSI::getResetHiredCardHandler() {
+  if (!resetHiredCardHandler)
+    resetHiredCardHandler = make_shared<ResetHiredCard>(oe);
+  
+  return resetHiredCardHandler.get();  
+}
+
+void TabSI::registerHiredCard(gdioutput &gdi, const SICard &sic) {
+  if (!oe->isHiredCard(sic.CardNumber))
+    oe->setHiredCard(sic.CardNumber, true);
+  gdi.addStringUT(0, itos(sic.CardNumber)).setHandler(getResetHiredCardHandler());
+  gdi.scrollToBottom();
+  gdi.refresh();
 }
 
 void TabSI::checkCard(gdioutput &gdi, const SICard &card, bool updateAll) {

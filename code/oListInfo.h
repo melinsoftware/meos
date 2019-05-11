@@ -51,6 +51,8 @@ enum EPostType
   lClassStartTimeRange,
   lClassLength,
   lClassResultFraction,
+  lClassAvailableMaps,
+  lClassTotalMaps,
   lCourseLength,
   lCourseName,
   lCourseClimb,
@@ -114,6 +116,7 @@ enum EPostType
   lRunnerNationality,
   lRunnerPhone,
   lRunnerFee,
+  lRunnerExpectedFee,
   lRunnerPaid,
   lRunnerPayMethod,
   lRunnerEntryDate,
@@ -255,9 +258,10 @@ enum EFilterList
   EFilterExcludeDNS,
   EFilterExcludeCANCEL,
   EFilterVacant,
-  EFilterOnlyVacant,
+  EFilterOnlyVacant,  
   EFilterAnyResult, // With any (radio) punch on a leg
   EFilterAPIEntry, // Entry via API
+  EFilterWrongFee,
   _EFilterMax
 };
 

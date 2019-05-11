@@ -52,7 +52,10 @@ class TableCell
   RECT absPos;
 
   DWORD id;
-  oBase *owner;
+
+  bool hasOwner() const { return ownerRef && ownerRef->get() != nullptr; };
+  oBase *getOwner() const { return ownerRef ? ownerRef->get() : nullptr; }
+  shared_ptr<oBase::oBaseReference> ownerRef;
   bool canEdit;
   CellType type;
 

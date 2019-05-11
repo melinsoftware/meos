@@ -31,7 +31,7 @@ class RestService :
 {
   int port;
   shared_ptr<RestServer> server;
-
+  string rootMap;
 public:
   
   void save(oEvent &oe, gdioutput &gdi) override;

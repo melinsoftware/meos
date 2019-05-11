@@ -354,7 +354,7 @@ int QualificationFinal::getLevel(int instance) const {
 }
 
 bool QualificationFinal::isFinalClass(int instance) const {
-  return sourcePlaceToFinalOrder.count(make_pair(instance, 1)) == 0;
+  return instance > 0 && sourcePlaceToFinalOrder.count(make_pair(instance, 1)) == 0;
 }
 
 int QualificationFinal::getNumLevels() const {

@@ -938,12 +938,13 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
       throw std::exception("Det går endast att sätta in vakanser på sträcka 1.");
 
     if (size_t(spec[k].leg) < pc->legInfo.size()) {
-      pc->legInfo[spec[k].leg].startMethod = STDrawn; //Automatically change start method
+      pc->setStartType(spec[k].leg, STDrawn, true); //Automatically change start method
     }
     else if (spec[k].leg == -1) {
       for (size_t j = 0; j < pc->legInfo.size(); j++)
-        pc->legInfo[j].startMethod = STDrawn; //Automatically change start method
+        pc->setStartType(j, STDrawn, true); //Automatically change start method
     }
+    pc->synchronize(true);
     clsId2Ix[spec[k].classID] = k;
     if (!multiDay && spec[k].leg == 0 && pc->getParentClass() == 0)
       clsIdClearVac.insert(spec[k].classID);
@@ -1080,20 +1081,26 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   }
 
   int minStartNo = Runners.size();
+  vector<pair<int, int>> newStartNo;
   for(unsigned k=0;k<stimes.size(); k++) {
     runners[k]->setStartTime(stimes[k], true, false, false);
+    runners[k]->synchronize();
     minStartNo = min(minStartNo, runners[k]->getStartNo());
+    newStartNo.emplace_back(stimes[k], k);
   }
 
-  CurrentSortOrder = SortByStartTime;
-  sort(runners.begin(), runners.end());
+  sort(newStartNo.begin(), newStartNo.end());
+  //CurrentSortOrder = SortByStartTime;
+  //sort(runners.begin(), runners.end());
 
   if (minStartNo == 0)
     minStartNo = nextFreeStartNo + 1;
 
   for(size_t k=0; k<runners.size(); k++) {
-    runners[k]->setStartNo(k+minStartNo, false);
-    runners[k]->synchronize();
+    pClass pCls = runners[k]->getClassRef(true);
+    if (pCls && pCls->lockedForking() || runners[k]->getLegNumber() > 0)
+      continue;
+    runners[k]->updateStartNo(newStartNo[k].second + minStartNo);
   }
 
   nextFreeStartNo = max<int>(nextFreeStartNo, minStartNo + stimes.size());

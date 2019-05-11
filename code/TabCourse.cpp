@@ -914,7 +914,7 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
           }
           else {
             for (size_t i = 0; i<cls[k]->getNumStages(); i++)
-              cls[k]->addStageCourse(i, res->second->getId());
+              cls[k]->addStageCourse(i, res->second->getId(), -1);
           }
         }
         else {
@@ -939,7 +939,7 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
           }
           else {
             for (size_t i = 0; i<bestClass->getNumStages(); i++)
-              bestClass->addStageCourse(i, crs[k]->getId());
+              bestClass->addStageCourse(i, crs[k]->getId(), -1);
           }
         }
       }

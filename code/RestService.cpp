@@ -46,11 +46,19 @@ void RestService::save(oEvent &oe, gdioutput &gdi) {
 
     int xport = gdi.getTextNo("Port");
     if (xport > 0 && xport < 65536) {
+      oe.setProperty("ServicePort", xport);
+      
       port = xport;
       server->startService(port);
     }
     else
       throw meosException("Invalid port number");
+  }
+
+  if (gdi.isChecked("MapRoot")) {
+    rootMap = gdi.recodeToNarrow(gdi.getText("RootMap"));
+    server->setRootMap(rootMap);
+    oe.setProperty("ServiceRootMap", gdi.getText("RootMap"));
   }
 
   if (gdi.isChecked("AllowEntry")) {
@@ -66,10 +74,11 @@ void RestService::save(oEvent &oe, gdioutput &gdi) {
 
 void ListIpAddresses(vector<string>& ip);
 
-void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {  
-  if (port == -1)
-    port = oe.getPropertyInt("ServicePort", 2009);
-
+void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
+  if (port == -1) {
+    port = oe.getPropertyInt("ServicePort", 2009);    
+    rootMap = oe.getPropertyString("ServiceRootMap", "");
+  }
   settingsTitle(gdi, "MeOS Informationsserver REST-API");
 
   //gdi.fillRight();
@@ -87,10 +96,15 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
   bool disablePermisson = true;
   gdi.popX();
 
-  startCancelInterval(gdi, "Save", created, IntervalNone, L"");
+  gdi.addCheckbox("MapRoot", "Mappa rootadresssen (http:///localhost:port/) till funktion:", nullptr, !rootMap.empty()).setHandler(this);
+  gdi.addInput("RootMap", gdi.recodeToWide(rootMap));
+  gdi.setInputStatus("RootMap", !rootMap.empty());
 
-  if (!server)
+  startCancelInterval(gdi, "Save", created, IntervalNone, L"");
+  
+  if (!server) {
     gdi.addInput("Port", itow(port), 10, 0, L"Port:", L"#http://localhost:[PORT]/meos");
+  }
   else {
     gdi.addString("", 0, "Server startad på X#" + itos(port));
     auto per = server->getEntryPermission();
@@ -179,6 +193,9 @@ void RestService::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
     else if (bi.id == "AllowEntry") {
       gdi.setInputStatus("PermissionPerson", gdi.isChecked(bi.id));
       gdi.setInputStatus("PermissionClass", gdi.isChecked(bi.id));
+    }
+    else if (bi.id == "MapRoot") {
+      gdi.setInputStatus("RootMap", gdi.isChecked(bi.id));
     }
   }
   else if (type == GUI_LINK) {

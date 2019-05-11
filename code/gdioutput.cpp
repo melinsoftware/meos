@@ -1016,14 +1016,11 @@ ButtonInfo &gdioutput::addButton(int x, int y, const string &id, const wstring &
   HANDLE bm = 0;
   int width = 0;
   if (text[0] == '@') {
-    HINSTANCE hInst = GetModuleHandle(0);//(HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE);
-    int ir = _wtoi(text.c_str() + 1);
-   // bm = LoadImage(hInst, MAKEINTRESOURCE(ir), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
-    bm = LoadBitmap(hInst, MAKEINTRESOURCE(ir));// , IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
+    HINSTANCE hInst = GetModuleHandle(0);    int ir = _wtoi(text.c_str() + 1);
+    bm = LoadBitmap(hInst, MAKEINTRESOURCE(ir));
 
     SIZE size;
     size.cx = 24;
-    //GetBitmapDimensionEx(bm, &size);
     width = size.cx+4;
   }
   else {
@@ -1031,6 +1028,13 @@ ButtonInfo &gdioutput::addButton(int x, int y, const string &id, const wstring &
     HDC hDC = GetDC(hWndTarget);
     SelectObject(hDC, getGUIFont());
     wstring ttext = lang.tl(text);
+    int tts = ttext.size();
+    if (tts > 2 && ttext[0] == '<' && ttext[1] == '<') {
+      ttext = L"◀" + ttext.substr(2);
+    }
+    else if (tts > 2 && ttext[tts-1] == '>' && ttext[tts-2] == '>') {
+      ttext = ttext.substr(0, tts-2) + L"▶";
+    }
     if (lang.capitalizeWords())
       capitalizeWords(ttext);
     GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
@@ -1100,6 +1104,13 @@ ButtonInfo &gdioutput::addButton(int x, int y, int w, const string &id,
 
   ButtonInfo bi;
   wstring ttext = lang.tl(text);
+  int tts = ttext.size();
+  if (tts > 2 && ttext[0] == '<' && ttext[1] == '<') {
+    ttext = L"◀" + ttext.substr(2);
+  }
+  else if (tts > 2 && ttext[tts - 1] == '>' && ttext[tts - 2] == '>') {
+    ttext = ttext.substr(0, tts - 2) + L"▶";
+  }
   if (lang.capitalizeWords())
     capitalizeWords(ttext);
   int height = getButtonHeight();
@@ -1779,6 +1790,26 @@ bool gdioutput::getSelectedItem(ListBoxInfo &lbi) {
   return true;
 }
 
+int gdioutput::getNumItems(const char *id) {
+  for (auto &lbi : LBI) {
+    if (lbi.id == id) {
+      if (lbi.IsCombo) {
+        return SendMessage(lbi.hWnd, CB_GETCOUNT, 0, 0);
+      }
+      else {
+        return SendMessage(lbi.hWnd, LB_GETCOUNT, 0, 0);
+      }
+    }
+  }
+
+#ifdef _DEBUG
+  string err = string("Internal Error, identifier not found: X#") + id;
+  throw std::exception(err.c_str());
+#endif
+
+  return 0;
+}
+
 int gdioutput::getItemDataByName(const char *id, const char *name) const{
   wstring wname = recodeToWide(name);
   list<ListBoxInfo>::const_iterator it;
@@ -1864,6 +1895,61 @@ bool gdioutput::selectItemByData(const char *id, int data)
               return true;
             }
           }
+        }
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
+bool gdioutput::selectItemByIndex(const char *id, int index) {
+  for (auto it = LBI.begin(); it != LBI.end(); ++it) {
+    if (it->id == id) {
+      if (it->IsCombo) {
+        if (index == -1) {
+          SendMessage(it->hWnd, CB_SETCURSEL, -1, 0);
+          it->data = 0;
+          it->text = L"";
+          it->original = L"";
+          it->originalIdx = -1;
+          return true;
+        }
+        else {
+          SendMessage(it->hWnd, CB_SETCURSEL, index, 0);
+          int data = SendMessage(it->hWnd, CB_GETITEMDATA, index, 0);
+          it->data = data;
+          it->originalIdx = data;
+          TCHAR bf[1024];
+          if (SendMessage(it->hWnd, CB_GETLBTEXT, index, LPARAM(bf)) != CB_ERR) {
+            it->text = bf;
+            it->original = bf;
+          }
+          return true;
+        }
+        return false;
+      }
+      else {
+        if (index == -1) {
+          SendMessage(it->hWnd, LB_SETCURSEL, -1, 0);
+          it->data = 0;
+          it->text = L"";
+          it->original = L"";
+          it->originalIdx = -1;
+          return true;
+        }
+        else {
+          SendMessage(it->hWnd, LB_SETCURSEL, index, 0);
+          int data = SendMessage(it->hWnd, LB_GETITEMDATA, index, 0);
+
+          it->data = data;
+          it->originalIdx = data;
+          TCHAR bf[1024];
+          if (SendMessage(it->hWnd, LB_GETTEXT, index, LPARAM(bf)) != LB_ERR) {
+            it->text = bf;
+            it->original = bf;
+          }
+          return true;
         }
         return false;
       }

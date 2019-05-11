@@ -351,7 +351,7 @@ protected:
   void updateFreeId();
   void updateFreeId(oBase *ob);
 
-  SortOrder CurrentSortOrder;
+  mutable SortOrder CurrentSortOrder;
 
   list<CompetitionInfo> cinfo;
   list<BackupInfo> backupInfo;
@@ -433,7 +433,7 @@ protected:
   void exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldStylePatrol);
 
   /** Set up transient data in classes */
-  void reinitializeClasses();
+  void reinitializeClasses() const;
 
   /** Analyze the result status of each class*/
   void analyzeClassResultStatus() const;
@@ -656,7 +656,7 @@ public:
   pTeam findTeam(const wstring &s, int lastId, unordered_set<int> &filter) const;
   pRunner findRunner(const wstring &s, int lastId, const unordered_set<int> &inputFilter, unordered_set<int> &filter) const;
 
-  static const wstring &formatStatus(RunnerStatus status);
+  static const wstring &formatStatus(RunnerStatus status, bool forPrint);
 
   inline bool useStartSeconds() const {return tUseStartSeconds;}
   void calcUseStartSeconds();
@@ -808,7 +808,14 @@ public:
   void getResultEvents(const set<int> &classFilter, const set<int> &controlFilter, vector<ResultEvent> &results) const;
 
   /** Compute results for split times while runners are on course.*/
-  void computePreliminarySplitResults(const set<int> &classes);
+  void computePreliminarySplitResults(const set<int> &classes) const;
+
+  /** Synchronizes to server and checks if there are hired card data*/
+  bool hasHiredCardData();
+  bool isHiredCard(int cardNo) const;
+  void setHiredCard(int cardNo, bool flag);
+  vector<int> getHiredCards() const;
+  void clearHiredCards();
 
 protected:
   // Returns hash key for punch based on control id, and leg. Class is marked as changed if oldHashKey != newHashKey.
@@ -821,6 +828,9 @@ protected:
   mutable shared_ptr<unordered_multimap<int, pRunner>> cardToRunnerHash;
   unordered_multimap<int, pRunner> &getCardToRunner() const;
 
+  mutable set<int>  hiredCardHash;
+  mutable int tHiredCardHashDataRevision = -1;
+  
   int tClubDataRevision;
   int tCalcNumMapsDataRevision = -1;
 
@@ -872,7 +882,7 @@ public:
   void removeFreePunch(int id);
   pFreePunch getPunch(int id) const;
   pFreePunch getPunch(int runnerId, int courseControlId, int card) const;
-  void getPunchesForRunner(int runnerId, vector<pFreePunch> &punches) const;
+  void getPunchesForRunner(int runnerId, bool sort, vector<pFreePunch> &punches) const;
 
   //Returns true if data is changed.
   bool autoSynchronizeLists(bool syncPunches);
@@ -1011,8 +1021,8 @@ public:
 
   enum class ResultType {ClassResult, TotalResult, CourseResult, 
                          ClassCourseResult, PreliminarySplitResults};
-  void calculateResults(const set<int> &classes, ResultType result, bool includePreliminary = false);
-  void calculateRogainingResults(const set<int> &classSelection);
+  void calculateResults(const set<int> &classes, ResultType result, bool includePreliminary = false) const;
+  void calculateRogainingResults(const set<int> &classSelection) const;
 
   void calculateResults(list<oSpeakerObject> &rl);
   void calculateTeamResults(bool totalMultiday);
@@ -1021,8 +1031,14 @@ public:
   void calculateTeamResultAtControl(const set<int> &classId, int leg, int controlId, bool totalResults);
 
   bool sortRunners(SortOrder so);
+  
+  bool sortRunners(SortOrder so, vector<const oRunner *> &runners) const;
+
   /** If linear leg is true, leg is interpreted as actual leg numer, otherwise w.r.t to parallel legs. */
   bool sortTeams(SortOrder so, int leg, bool linearLeg);
+
+  bool sortTeams(SortOrder so, int leg, bool linearLeg, vector<const oTeam *> &teams) const;
+
 
   pCard allocateCard(pRunner owner);
 
@@ -1153,7 +1169,7 @@ public:
   void updateClubsFromDB();
   void updateRunnersFromDB();
 
-  void fillFees(gdioutput &gdi, const string &name, bool withAuto) const;
+  void fillFees(gdioutput &gdi, const string &name, bool onlyDirect, bool withAuto) const;
   wstring getAutoClassName() const;
   pClass addClass(const wstring &pname, int CourseId = 0, int classId = 0);
   pClass addClass(oClass &c);
@@ -1214,6 +1230,7 @@ public:
   void calculateNumRemainingMaps(bool forceRecalculate);
 
   pControl getControl(int Id) const;
+  pControl getControlByType(int type) const;
   pControl getControl(int Id, bool create);
   enum ControlType {CTAll, CTRealControl, CTCourseControl};
 

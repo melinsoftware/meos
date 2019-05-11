@@ -108,6 +108,9 @@ private:
   void computeInternal(oEvent &ref, shared_ptr<RestServer::EventRequest> &rq);
 
   map<int, pair<oListParam, shared_ptr<oListInfo> > > listCache;
+
+  string root;
+  multimap<string, string> rootMap;
 public:
 
   ~RestServer();
@@ -120,6 +123,9 @@ public:
   static void computeRequested(oEvent &ref);
 
   void setEntryPermission(EntryPermissionClass epClass, EntryPermissionType epType);
+
+  void setRootMap(const string &rootMap);
+  const string &getRootMap() const { return root; }
 
   tuple<EntryPermissionClass, EntryPermissionType> getEntryPermission() const {
     return make_tuple(epClass, epType);

@@ -1214,6 +1214,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       if (autoTask)
         autoTask->synchronize(gdi_extra);
       break;
+    
+    case WM_USER + 5:
+      if (gdi_main)
+        gdi_main->addInfoBox("ainfo", L"info:advanceinfo", 10000);
+
+      break;
+    
     case WM_COMMAND:
       wmId    = LOWORD(wParam);
       wmEvent = HIWORD(wParam);

@@ -549,6 +549,8 @@ public:
 
   int getItemDataByName(const char *id, const char *name) const;
   bool selectItemByData(const char *id, int data);
+  bool selectItemByIndex(const char *id, int index);
+
   void removeSelected(const char *id);
 
   bool selectItemByData(const string &id, int data) {
@@ -578,6 +580,9 @@ public:
 
   /** Return a selected item*/
   bool getSelectedItem(const string &id, ListBoxInfo &lbi);
+
+  /** Get number of items in a list box.'*/
+  int getNumItems(const char *id);
 
   /** Return the selected data in first, second indicates if data was available*/
   pair<int, bool> getSelectedItem(const string &id);

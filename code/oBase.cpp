@@ -44,8 +44,7 @@ static char THIS_FILE[]=__FILE__;
 
 char RunnerStatusOrderMap[100];
 
-oBase::oBase(oEvent *poe)
-{
+oBase::oBase(oEvent *poe) {
   Removed = false;
   oe = poe;
   Id = 0;
@@ -57,8 +56,14 @@ oBase::oBase(oEvent *poe)
   localObject = false;
 }
 
-oBase::~oBase()
-{
+oBase::~oBase(){
+  if (myReference)
+    myReference->ref = nullptr;
+}
+
+void oBase::remove() {
+  if (myReference)
+    myReference->ref = nullptr;
 }
 
 bool oBase::synchronize(bool writeOnly)

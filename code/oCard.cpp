@@ -706,16 +706,10 @@ void oCard::getPunches(vector<pPunch> &punchesOut) const {
   }
 }
 
-bool oCard::comparePunchTime(oPunch *p1, oPunch *p2) {
-  return p1->Time < p2->Time;
-}
-
 void oCard::setupFromRadioPunches(oRunner &r) {
   oe->synchronizeList(oListId::oLPunchId);
   vector<pFreePunch> p;
-  oe->getPunchesForRunner(r.getId(), p);
-
-  sort(p.begin(), p.end(), comparePunchTime);
+  oe->getPunchesForRunner(r.getId(), true, p);
 
   for (size_t k = 0; k < p.size(); k++)
     addPunch(p[k]->Type, p[k]->Time, 0);

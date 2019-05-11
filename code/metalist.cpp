@@ -1654,6 +1654,8 @@ void MetaList::initSymbols() {
     typeToSymbol[lClassStartTimeRange] = L"StartTimeForClassRange";
     typeToSymbol[lClassLength] = L"ClassLength";
     typeToSymbol[lClassResultFraction] = L"ClassResultFraction";
+    typeToSymbol[lClassAvailableMaps] = L"ClassAvailableMaps";
+    typeToSymbol[lClassTotalMaps] = L"ClassTotalMaps";
     typeToSymbol[lCourseLength] = L"CourseLength";
     typeToSymbol[lCourseName] = L"CourseName";
     typeToSymbol[lCourseClimb] = L"CourseClimb";
@@ -1712,6 +1714,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerNationality] = L"RunnerNationality";
     typeToSymbol[lRunnerPhone] = L"RunnerPhone";
     typeToSymbol[lRunnerFee] = L"RunnerFee";
+    typeToSymbol[lRunnerExpectedFee] = L"RunnerExpectedFee";
     typeToSymbol[lRunnerPaid] = L"RunnerPaid";
     typeToSymbol[lRunnerPayMethod] = L"RunnerPayMethod";
     typeToSymbol[lRunnerEntryDate] = L"RunnerEntryDate";
@@ -1881,6 +1884,7 @@ void MetaList::initSymbols() {
     filterToSymbol[EFilterHasNoCard] = "FilterNoCard";
     filterToSymbol[EFilterAnyResult] = "FilterAnyResult";
     filterToSymbol[EFilterAPIEntry] = "EFilterAPIEntry";
+    filterToSymbol[EFilterWrongFee] = "EFilterWrongFee";
 
     for (map<EFilterList, string>::iterator it = filterToSymbol.begin();
       it != filterToSymbol.end(); ++it) {

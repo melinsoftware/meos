@@ -49,6 +49,16 @@
 
 oRunner::RaceIdFormatter oRunner::raceIdFormatter;
 
+bool oAbstractRunner::DynamicValue::isOld(const oEvent &oe) const {
+  return oe.dataRevision != dataRevision;
+}
+
+void oAbstractRunner::DynamicValue::update(const oEvent &oe, int v) {
+  value = v;
+  dataRevision = oe.dataRevision;
+}
+
+
 const wstring &oRunner::RaceIdFormatter::formatData(const oBase *ob) const {
   return itow(dynamic_cast<const oRunner &>(*ob).getRaceIdentifier());
 }
@@ -317,6 +327,20 @@ int oRunner::getBirthAge() const {
   return 0;
 }
 
+int oAbstractRunner::getDefaultFee() const {
+  int age = getBirthAge();
+  wstring date = getEntryDate();
+  if (Class) {
+    int fee = Class->getEntryFee(date, age);
+    return fee;
+  }
+  return 0;
+}
+
+int oAbstractRunner::getEntryFee() const {
+  return getDCI().getInt("Fee");
+}
+
 void oAbstractRunner::addClassDefaultFee(bool resetFees) {
   if (Class) {
     oDataInterface di = getDI();
@@ -343,8 +367,7 @@ void oAbstractRunner::addClassDefaultFee(bool resetFees) {
     }
 
     if ((currentFee == 0 && !hasFlag(FlagFeeSpecified)) || resetFees) {
-      int age = getBirthAge();
-      int fee = Class->getEntryFee(date, age);
+      int fee = getDefaultFee();
       di.setInt("Fee", fee);
     }
   }
@@ -657,17 +680,13 @@ int oRunner::getTotalRunningTime() const {
 
 const wstring &oAbstractRunner::getStatusS(bool formatForPrint) const
 {
-  if (formatForPrint && tStatus == StatusUnknown)
-    return formatTime(-1);
-  return oEvent::formatStatus(tStatus);
+  return oEvent::formatStatus(tStatus, formatForPrint);
 }
 
 const wstring &oAbstractRunner::getTotalStatusS(bool formatForPrint) const
 {
-  auto ts = getTotalStatus();
-  if (formatForPrint && ts == StatusUnknown)
-    return formatTime(-1);
-  return oEvent::formatStatus(ts);
+  auto ts = getTotalStatus();  
+  return oEvent::formatStatus(ts, formatForPrint);
 }
 
 /*
@@ -2138,6 +2157,14 @@ void oAbstractRunner::setStartNo(int no, bool tmpOnly) {
 
 void oRunner::setStartNo(int no, bool tmpOnly)
 {
+  if (tInTeam) {
+    if (tInTeam->getStartNo() == 0)
+      tInTeam->setStartNo(no, tmpOnly);
+    else {
+      // Do not allow different from team
+      no = tInTeam->getStartNo();
+    }
+  }
   if (tParentRunner)
     tParentRunner->setStartNo(no, tmpOnly);
   else {
@@ -2149,16 +2176,50 @@ void oRunner::setStartNo(int no, bool tmpOnly)
   }
 }
 
-int oRunner::getPlace() const
-{
-  return tPlace;
+void oRunner::updateStartNo(int no) {
+  if (tInTeam) {
+    tInTeam->synchronize(false);
+    for (pRunner r : tInTeam->Runners) {
+      if (r) {
+        r->synchronize(false);
+      }
+    }
+
+    tInTeam->setStartNo(no, false);
+    for (pRunner r : tInTeam->Runners) {
+      if (r) {
+        r->setStartNo(no, false);
+      }
+    }
+
+    tInTeam->synchronize(true);
+    for (pRunner r : tInTeam->Runners) {
+      r->synchronize(true);
+    }
+  }
+  else {
+    setStartNo(no, false);
+    synchronize(true);
+  }
 }
 
-int oRunner::getCoursePlace() const
-{
+
+int oRunner::getPlace() const {
+  if (tPlace.isOld(*oe)) {
+    if (Class) {
+      oEvent::ResultType rt = oEvent::ResultType::ClassResult;
+      if (Class->isRogaining())
+        oe->calculateRogainingResults({ getClassId(true) });
+      else
+        oe->calculateResults({ getClassId(true) }, rt, false);
+    }
+  }
+  return tPlace.value;
+}
+
+int oRunner::getCoursePlace() const {
   return tCoursePlace;
 }
-
 
 int oRunner::getTotalPlace() const
 {
@@ -3873,7 +3934,8 @@ void oEvent::analyseDNS(vector<pRunner> &unknown_dns, vector<pRunner> &known_dns
 
   typedef multimap<int, pFreePunch>::const_iterator TPunchIter;
   for (oFreePunchList::iterator it = punches.begin(); it != punches.end(); ++it) {
-    punchHash.insert(make_pair(it->getCardNo(), &*it));
+    if (!it->isRemoved() && !it->isHiredCard())
+      punchHash.insert(make_pair(it->getCardNo(), &*it));
   }
 
   set<int> knownCards;
@@ -5015,7 +5077,7 @@ int oRunner::getLegTimeAfter(int ctrlNo) const {
 }
 
 int oRunner::getLegPlaceAcc(int ctrlNo) const {
-  for (auto &res : tOnCourseResults) {
+  for (auto &res : tOnCourseResults.res) {
     if (res.controlIx == ctrlNo)
       return res.place;
   }
@@ -5030,7 +5092,7 @@ int oRunner::getLegPlaceAcc(int ctrlNo) const {
 }
 
 int oRunner::getLegTimeAfterAcc(int ctrlNo) const {
-  for (auto &res : tOnCourseResults) {
+  for (auto &res : tOnCourseResults.res) {
     if (res.controlIx == ctrlNo)
       return res.after;
   }
@@ -5265,7 +5327,7 @@ void oAbstractRunner::setInputStatus(RunnerStatus s) {
 }
 
 wstring oAbstractRunner::getInputStatusS() const {
-  return oe->formatStatus(inputStatus);
+  return oe->formatStatus(inputStatus, true);
 }
 
 void oAbstractRunner::setInputPoints(int p)
@@ -5341,16 +5403,26 @@ void oEvent::getDBRunnersInEvent(intkeymap<pClass, __int64> &runners) const {
   }
 }
 
-void oRunner::init(const RunnerWDBEntry &dbr) {
-  setTemporary();
-  dbr.getName(sName);
-  getRealName(sName, tRealName);
-  cardNumber = dbr.dbe().cardNo;
-  Club = oe->getRunnerDatabase().getClub(dbr.dbe().clubNo);
-  getDI().setString("Nationality", dbr.getNationality());
-  getDI().setInt("BirthYear", dbr.getBirthYear());
-  getDI().setString("Sex", dbr.getSex());
-  setExtIdentifier(dbr.getExtId());
+void oRunner::init(const RunnerWDBEntry &dbr, bool updateOnlyExt) {
+  if (updateOnlyExt) {
+    dbr.getName(sName);
+    getRealName(sName, tRealName);
+    getDI().setString("Nationality", dbr.getNationality());
+    getDI().setInt("BirthYear", dbr.getBirthYear());
+    getDI().setString("Sex", dbr.getSex());
+    setExtIdentifier(dbr.getExtId());
+  }
+  else {
+    setTemporary();
+    dbr.getName(sName);
+    getRealName(sName, tRealName);
+    cardNumber = dbr.dbe().cardNo;
+    Club = oe->getRunnerDatabase().getClub(dbr.dbe().clubNo);
+    getDI().setString("Nationality", dbr.getNationality());
+    getDI().setInt("BirthYear", dbr.getBirthYear());
+    getDI().setString("Sex", dbr.getSex());
+    setExtIdentifier(dbr.getExtId());
+  }
 }
 
 void oEvent::selectRunners(const wstring &classType, int lowAge,
@@ -5605,11 +5677,11 @@ void oAbstractRunner::setTempResultZero(const TempResult &tr)  {
 
 const wstring &oAbstractRunner::TempResult::getStatusS(RunnerStatus inputStatus) const {
   if (inputStatus == StatusOK)
-    return oEvent::formatStatus(getStatus());
+    return oEvent::formatStatus(getStatus(), true);
   else if (inputStatus == StatusUnknown)
     return formatTime(-1);
   else
-    return oEvent::formatStatus(max(inputStatus, getStatus()));
+    return oEvent::formatStatus(max(inputStatus, getStatus()), true);
 }
 
 const wstring &oAbstractRunner::TempResult::getPrintPlaceS(bool withDot) const {

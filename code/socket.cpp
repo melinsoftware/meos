@@ -126,6 +126,8 @@ void DirectSocket::listenDirectSocket() {
   closesocket(clientSocket);
 }
 
+extern HWND hWndMain;
+
 void startListeningDirectSocket(void *p) {
   wstring error;
   try {
@@ -142,8 +144,9 @@ void startListeningDirectSocket(void *p) {
     error = L"Unknown error";
   }
   if (!error.empty()) {
-    error = L"Setting up advance information service for punches failed. Punches will be recieved with some seconds delay. Is the network port blocked by an other MeOS session?\n\n" + error;
-    MessageBox(NULL, error.c_str(), L"MeOS", MB_OK|MB_ICONSTOP);
+    PostMessage(hWndMain, WM_USER + 5, 0, 0);
+    //error = L"Setting up advance information service for punches failed. Punches will be recieved with some seconds delay. Is the network port blocked by an other MeOS session?\n\n" + error;
+    //MessageBox(NULL, error.c_str(), L"MeOS", MB_OK|MB_ICONSTOP);
   }
 }
 

@@ -88,12 +88,18 @@ static void method_handler(const shared_ptr< restbed::Session > session) {
 
 void RestServer::handleRequest(const shared_ptr<restbed::Session> &session) {
   const auto request = session->get_request();
-  size_t content_length = request->get_header("Content-Length", 0);
-
+  string path = request->get_path();
+  
+  size_t content_length = request->get_header("Content-Length", 0);  
   chrono::time_point<chrono::system_clock> start, end;
   start = chrono::system_clock::now();
   
   auto param = request->get_query_parameters();
+
+  if (path == "/" && !root.empty()) {
+    param = rootMap;
+  }
+
   auto answer = RestServer::addRequest(param);
   {
     unique_lock<mutex> mlock(lock);
@@ -131,7 +137,28 @@ void RestServer::startThread(int port) {
   resource->set_method_handler("GET", method_handler);
   restService->publish(resource);
   
+
+  auto resourceRoot = make_shared<MeOSResource>(this);
+  resourceRoot->set_path("/");
+  resourceRoot->set_method_handler("GET", method_handler);
+  restService->publish(resourceRoot);
+  
   restService->start(settings);
+}
+
+void RestServer::setRootMap(const string &rmap) {
+  root = rmap;
+  vector<string> sp;
+  rootMap.clear();
+  split(rmap, "&", sp);
+  for (string arg : sp) {
+    vector<string> sp2;
+    split(arg, "=", sp2);
+    if (sp2.size() == 1)
+      rootMap.emplace(sp2[0], "");
+    else if (sp2.size() == 2)
+      rootMap.emplace(sp2[0], sp2[1]);
+  }
 }
 
 void RestServer::startService(int port) {
@@ -243,6 +270,40 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
 
     rq->answer += entryLinks;
 
+    vector<pRunner> runners;
+    ref.getRunners(-1, -1, runners, false);
+    string sRunnerId, sRunnerBib, sRunnerCard, sRunnerName, sRunnerClub, sRunnerClubId;
+    for (pRunner r : runners) {
+      if (sRunnerId.empty())
+        sRunnerId = itos(r->getId());
+
+      if (sRunnerClub.empty()) {
+        sRunnerName = gdioutput::toUTF8(r->getName());
+        sRunnerClub = gdioutput::toUTF8(r->getClub());
+        if (r->getClubId())
+          sRunnerClubId = gdioutput::toUTF8(r->getClubRef()->getExtIdentifierString());
+      }
+
+      if (sRunnerCard.empty() && r->getCardNo() > 0)
+        sRunnerCard = itos(r->getCardNo());
+
+      if (sRunnerBib.empty() && !r->getBib().empty())
+        sRunnerBib = gdioutput::recodeToNarrow(r->getBib());
+    }
+    if (sRunnerId.empty())
+      sRunnerId = "1";
+    if (sRunnerCard.empty())
+      sRunnerCard = "12345";
+    if (sRunnerBib.empty())
+      sRunnerBib = "100";
+    if (sRunnerClub.empty())
+      sRunnerClub = "Lost and Found";
+    if (sRunnerName.empty())
+      sRunnerName = "Charles Kinsley";
+
+
+    string sRunnerDbName, sRunnerDbId, sRunnerDbClub;
+    //oe.getRunnerDatabase().
 
     HINSTANCE hInst = GetModuleHandle(0);
     HRSRC hRes = FindResource(hInst, MAKEINTRESOURCE(132), RT_HTML);
@@ -257,8 +318,44 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
           htmlS += "&lt;";
         else if (*html == '#')
           htmlS += "&amp;";
+        else if (*html == '%') {
+          string key;
+          char *pKey = html + 1;
+          resSize--;
+          while (*pKey != '%' && resSize > 0) {
+            key += *pKey;
+            ++pKey;
+            resSize--;
+          }
+          if (key == "runnerid") {
+            htmlS += sRunnerId;
+          }
+          else if (key == "card") {
+            htmlS += sRunnerCard;
+          }
+          else if (key == "bib") {
+            htmlS += sRunnerBib;
+          }
+          else if (key == "name") {
+            htmlS += sRunnerName;
+          }
+          else if (key == "club") {
+            htmlS += sRunnerClub;
+          }
+          else if (key == "dbname") {
+            htmlS += sRunnerName.substr(0, sRunnerName.size() / 2);
+          }
+          else if (key == "dbclub") {
+            htmlS += sRunnerClub;
+          }
+          else if (key == "clubid") {
+            htmlS += sRunnerClubId;
+          }
+          html = pKey;
+        }
         else
           htmlS += *html;
+
         ++html;
         resSize--;
       }
@@ -959,17 +1056,13 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
     if (param.count("card") > 0) {
       int card = atoi(param.find("card")->second.c_str());
       int time = 0;
-      if (param.count("running") && param.find("card")->second == "true") {
+      if (param.count("running") && param.find("running")->second == "true") {
         time = oe.getRelativeTime(getLocalTime());
         if (time < 0)
           time = 0;
       }
-      pRunner r = oe.getRunnerByCardNo(card, time, oEvent::CardLookupProperty::CardInUse);
-      if (!r)
-        r = oe.getRunnerByCardNo(card, time, oEvent::CardLookupProperty::Any);
-
-      if (r)
-        runners.push_back(r);
+      
+      oe.getRunnersByCardNo(card, false, oEvent::CardLookupProperty::Any, runners);
     }
     if (param.count("name") > 0) {
       wstring club;
@@ -986,7 +1079,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
         runners.push_back(r);
     }
     if (param.count("bib") > 0) {
-      pRunner r = oe.getRunnerByBibOrStartNo(wideParam(param.find("bib")->second), false);
+      pRunner r = oe.getRunnerByBibOrStartNo(wideParam(param.find("bib")->second), true);
       if (r)
         runners.push_back(r);
     }
@@ -1012,7 +1105,9 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       }
       if (r->getTeam()) {
         xml.write("Team", { make_pair("id", itow(r->getTeam()->getId())) }, r->getTeam()->getName());
-        xml.write("Leg", r->getLegNumber());
+        pClass cls = r->getClassRef(false);
+        if (cls)
+          xml.write("Leg", cls->getLegNumber(r->getLegNumber()));
       }
       if ((r->getFinishTime() > 0 || r->getCard() != nullptr) && r->getCourse(false)) {
         auto &sd = r->getSplitTimes(false);
@@ -1193,14 +1288,23 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
     else if(param.count("name"))
       name = wideParam(param.find("name")->second);
 
-    if (param.count("club"))
+    if (param.count("club")) 
       club = wideParam(param.find("club")->second);
 
     pClub existingClub = oe.getClub(club);
 
     if (epType != EntryPermissionType::Any) {
       if (extId == 0) {
-        dbr = oe.getRunnerDatabase().getRunnerByName(name, clubId, 0);
+        int clubExtId = 0;
+        if (existingClub)
+          clubExtId = (int)existingClub->getExtIdentifier();
+        else if (!club.empty()) {
+          pClub dbClub = oe.getRunnerDatabase().getClub(club);
+          if (dbClub) {
+            clubExtId = dbClub->getId();
+          }
+        }
+        dbr = oe.getRunnerDatabase().getRunnerByName(name, clubExtId, 0);
         if (dbr)
           extId = dbr->getExtId();
       }
@@ -1219,6 +1323,12 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
     }
     else if (epClass != EntryPermissionClass::Any && !cls->getAllowQuickEntry()) {
       permissionDenied = true;
+    }
+    else {
+      int nm = cls->getNumRemainingMaps(false);
+      if (nm != numeric_limits<int>::min() && nm<=0) {
+        error = L"Klassen är full";
+      }
     }
 
     if (epType != EntryPermissionType::Any && extId == 0) {
@@ -1249,7 +1359,7 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
     if (!permissionDenied && error.empty()) {
       pRunner r = oe.addRunner(name, club, classId, cardNo, 0, true);
       if (r && dbr) {
-        r->init(*dbr);
+        r->init(*dbr, true);
       }
       
       if (r) {

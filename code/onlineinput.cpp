@@ -471,6 +471,9 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
       r->setCardNo(cardNo, false, false);
     }
 
+    if (fee == 0)
+      fee = r->getDefaultFee();
+
     r->getDI().setInt("Fee", fee);
     int toPay = fee;
     int cf = 0;
@@ -479,6 +482,7 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
       if (cf > 0)
         toPay += cf;
     }
+    r->setFlag(oRunner::FlagAddedViaAPI, true);
     r->getDI().setInt("CardFee", cf);
     r->getDI().setInt("Paid", paid ? toPay : 0);
 

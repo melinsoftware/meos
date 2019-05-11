@@ -344,7 +344,7 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
   if (r.finishStatus<=1 || r.finishStatus==r.status)
     row.push_back(SpeakerString(normalText, names));
   else
-    row.push_back(SpeakerString(normalText, names + L" ("+ oEvent::formatStatus(r.finishStatus) +L")"));
+    row.push_back(SpeakerString(normalText, names + L" ("+ oEvent::formatStatus(r.finishStatus, true) +L")"));
 
   row.push_back(SpeakerString(normalText, r.club));
 
@@ -410,7 +410,7 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
   else{
     //gdi.addStringUT(y, x+dx[4], textRight, oEvent::formatStatus(r.status)).setColor(colorDarkRed);
     row.push_back(SpeakerString());
-    row.push_back(SpeakerString(textRight, oEvent::formatStatus(r.status)));
+    row.push_back(SpeakerString(textRight, oEvent::formatStatus(r.status, true)));
     row.back().color = colorDarkRed;
     row.push_back(SpeakerString());
   }
@@ -1742,7 +1742,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
 
   for (oFreePunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
     const oFreePunch &fp = *it;
-    if (fp.isRemoved() || fp.tRunnerId == 0 || fp.Type == oPunch::PunchCheck || fp.Type == oPunch::PunchStart)
+    if (fp.isRemoved() || fp.tRunnerId == 0 || fp.Type == oPunch::PunchCheck || fp.Type == oPunch::PunchStart || fp.Type == oPunch::HiredCard)
       continue;
 
     pRunner r = getRunner(fp.tRunnerId, 0);

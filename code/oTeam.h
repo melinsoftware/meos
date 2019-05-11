@@ -76,9 +76,9 @@ protected:
 
   TeamPlace _places[maxRunnersTeam];
   
-  int _sortTime;
-  int _sortStatus;
-  RunnerStatus _cachedStatus;
+  mutable int _sortTime;
+  mutable int _sortStatus;
+  mutable RunnerStatus _cachedStatus;
 
   mutable vector< vector< vector<int> > > resultCalculationCache;
   

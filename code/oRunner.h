@@ -198,6 +198,12 @@ public:
   // a non-zero fee is changed only if resetFee is true
   void addClassDefaultFee(bool resetFees);
 
+  /** Returns fee from the class. */
+  int getDefaultFee() const;
+
+  /** Returns the currently assigned fee. */
+  int getEntryFee() const;
+
   /** Returns true if the entry fee is a late fee. */
   bool hasLateEntryFee() const;
 
@@ -362,6 +368,13 @@ public:
   oAbstractRunner(oEvent *poe, bool loading);
   virtual ~oAbstractRunner() {};
 
+  struct DynamicValue {
+    int dataRevision;
+    int value;
+    bool isOld(const oEvent &oe) const;
+    void update(const oEvent &oe, int v);
+  };
+
   friend class oListInfo;
   friend class GeneralResult;
 };
@@ -413,7 +426,7 @@ protected:
   wstring tRealName;
 
   //Can be changed by apply
-  mutable int tPlace;
+  mutable DynamicValue tPlace;
   mutable int tCoursePlace;
   mutable int tTotalPlace;
   mutable int tLeg;
@@ -499,8 +512,22 @@ protected:
     int place;
     int after;
   };
-  pair<int, int> currentControlTime;
-  mutable vector<OnCourseResult> tOnCourseResults;
+  mutable pair<int, int> currentControlTime;
+
+  struct OnCourseResultCollection {
+    bool hasAnyRes = false;
+    vector<OnCourseResult> res;
+    void clear() { hasAnyRes = false; res.clear(); }
+    void emplace_back(int courseControlId,
+                      int controlIx,
+                      int time) {
+      res.emplace_back(courseControlId, controlIx, time);
+      hasAnyRes = true;
+    }
+    bool empty() const { return hasAnyRes == false; }
+  };
+
+  mutable OnCourseResultCollection tOnCourseResults;
 
   // Rogainig results. Control and punch time
   vector< pair<pControl, int> > tRogaining;
@@ -538,7 +565,7 @@ protected:
 
 public:
   // Returns true if there are radio control results, provided result calculation oEvent::ResultType::PreliminarySplitResults was invoked.
-  bool hasOnCourseResult() const { return tOnCourseResults.size() > 0 || getFinishTime() > 0; }
+  bool hasOnCourseResult() const { return !tOnCourseResults.empty() || getFinishTime() > 0 || getStatus() != RunnerStatus::StatusUnknown; }
   
   /** Get a runner reference (drawing) */
   pRunner getReference() const;
@@ -656,7 +683,7 @@ public:
   void setTemporary() {isTemporaryObject=true;}
 
   /** Init from dbrunner */
-  void init(const RunnerWDBEntry &entry);
+  void init(const RunnerWDBEntry &entry, bool updateOnlyExt);
 
   /** Use db to pdate runner */
   bool updateFromDB(const wstring &name, int clubId, int classId,
@@ -686,6 +713,8 @@ public:
   // which should be more stable.
   void setBib(const wstring &bib, int bibNumerical, bool updateStartNo, bool setTmpOnly);
   void setStartNo(int no, bool setTmpOnly);
+  // Update and synch start number for runner and team.
+  void updateStartNo(int no);
 
   pRunner nextNeedReadout() const;
 

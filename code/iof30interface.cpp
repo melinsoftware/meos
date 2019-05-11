@@ -269,7 +269,7 @@ void IOF30Interface::classCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
       if (pc->hasMultiCourse()) {
         for (size_t k = 0; k < pc->getNumStages(); k++) {
           for (size_t j = 0; j < pCrs.size(); j++)
-            pc->addStageCourse(k, pCrs[j]);
+            pc->addStageCourse(k, pCrs[j], -1);
         }
       }
       else
@@ -277,7 +277,7 @@ void IOF30Interface::classCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
     }
     else if (leg == 0 && pCrs.size() == 1) {
       if (pc->hasMultiCourse())
-        pc->addStageCourse(0, pCrs[0]);
+        pc->addStageCourse(0, pCrs[0], -1);
       else
         pc->setCourse(pCrs[0]);
     }
@@ -286,7 +286,7 @@ void IOF30Interface::classCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
         pc->setNumStages(leg+1);
 
       for (size_t j = 0; j < pCrs.size(); j++)
-        pc->addStageCourse(leg, pCrs[j]);
+        pc->addStageCourse(leg, pCrs[j], -1);
     }
   }
 }
@@ -620,7 +620,7 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
               c[k]->setNumStages(1);
               c[k]->clearStageCourses(0);
               for (size_t j = 0; j < crsFam.size(); j++)
-                c[k]->addStageCourse(0, crsFam[j]->getId());
+                c[k]->addStageCourse(0, crsFam[j]->getId(), -1);
             }
           }
           else {
@@ -628,7 +628,7 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
             for (int i = 0; i < nl; i++) {
               c[k]->clearStageCourses(i);
               for (int j = 0; j < nFam; j++)
-                c[k]->addStageCourse(i, crsFam[(j + i)%nFam]->getId());
+                c[k]->addStageCourse(i, crsFam[(j + i)%nFam]->getId(), -1);
             }
           }
           assigned = true;
@@ -648,7 +648,7 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
             const vector<pCourse> &crsFam = coursesFamilies.find(*fit)->second;
             int nFam = crsFam.size();
             for (int j = 0; j < nFam; j++)
-              c[k]->addStageCourse(i, crsFam[j]->getId());
+              c[k]->addStageCourse(i, crsFam[j]->getId(), -1);
           }
 
           assigned = true;
@@ -667,7 +667,7 @@ void IOF30Interface::classAssignmentObsolete(gdioutput &gdi, xmlList &xAssignmen
           for (int i = 0; i < nl; i++) {
             c[k]->clearStageCourses(i);
             for (int j = 0; j < nCrs; j++)
-              c[k]->addStageCourse(i, crs[(j + i)%nCrs]->getId());
+              c[k]->addStageCourse(i, crs[(j + i)%nCrs]->getId(), -1);
           }
         }
       }
@@ -739,6 +739,8 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
                                    int &entRead, int &entFail, int &entRemoved) {
   string ver;
   entRemoved = 0;
+  bool wasEmpty = oe.getNumRunners() == 0;
+
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
     gdi.addString("", 0, "Varning, okänd XML-version X#" + ver);
@@ -962,8 +964,95 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
     if (!rids.empty())
       oe.removeRunner(rids);
   }
+
+  if (wasEmpty) {
+    vector<pClass> allCls;
+    oe.getClasses(allCls, false);
+    set<int> fees;
+    set<int> redFees;
+    set<double> factor;    
+    for (pClass cls : allCls) {      
+      int cf = cls->getDCI().getInt("ClassFee");
+      int cfRed = cls->getDCI().getInt("ClassFeeRed");
+      if (cf > 0)
+        fees.insert(cf);
+
+      if (cfRed != 0 && cfRed != cf)
+        redFees.insert(cfRed);
+
+      int cfLate = cls->getDCI().getInt("HighClassFee");
+
+      if (cfLate > cf && cf > 0) {
+        factor.insert(double(cfLate) / double(cf));
+      }
+    }
+
+    int youthFee = numeric_limits<int>::max();
+    if (!fees.empty())
+      youthFee = min(youthFee, *fees.begin());
+    if (!redFees.empty())
+      youthFee = min(youthFee, *redFees.begin());
+
+    int eliteFee = numeric_limits<int>::max();
+    if (!fees.empty())
+      eliteFee = *fees.rbegin();
+
+    int normalFee = eliteFee;
+    for (int f : fees) {
+      if (f != youthFee && f != eliteFee) {
+        normalFee = f;
+      }
+    }
+   
+    if (youthFee != numeric_limits<int>::max()) {
+      oe.getDI().setInt("YouthFee", youthFee);
+    }
+
+    if (eliteFee != numeric_limits<int>::max()) {
+      oe.getDI().setInt("EliteFee", eliteFee);
+    }
+
+    if (normalFee != numeric_limits<int>::max()) {
+      oe.getDI().setInt("EntryFee", normalFee);
+    }
+
+    if (factor.size() > 0) {
+      double f = *factor.rbegin();
+      wstring fs = std::to_wstring(int((f - 1.0) * 100.0)) + L" %";
+      oe.getDI().setString("LateEntryFactor", fs);
+    }
+  }
 }
 
+void IOF30Interface::readServiceRequestList(gdioutput &gdi, xmlobject &xo, int &entRead, int &entFail) {
+  string ver;
+  xo.getObjectString("iofVersion", ver);
+  if (!ver.empty() && ver > "3.0")
+    gdi.addString("", 0, "Varning, okänd XML-version X#" + ver);
+
+  xmlList req;
+  xo.getObjects("PersonServiceRequest", req);
+  entrySourceId = 0;
+
+  for (auto &rx : req) {
+    xmlobject xPers = rx.getObject("Person");
+    pRunner r = 0;
+    if (xPers)
+      r = readPerson(gdi, xPers);
+
+    if (r) {
+      auto xreq = rx.getObject("ServiceRequest");
+      if (xreq) {
+        auto xServ = xreq.getObject("Service");
+        string type;
+        if (xServ && xServ.getObjectString("type", type)=="StartGroup") {
+          int id = xServ.getObjectInt("Id");
+          r->getDI().setInt("Heat", id);
+        }
+      }
+    }
+  }
+}
 
 void IOF30Interface::readStartList(gdioutput &gdi, xmlobject &xo, int &entRead, int &entFail) {
   string ver;
@@ -1149,10 +1238,13 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
   if (date) {
     wstring dateStr;
     date.getObjectString("Date", dateStr);
-    oe.setDate(dateStr);
     wstring timeStr;
     date.getObjectString("Time", timeStr);
     if (!timeStr.empty()) {
+      wstring tDate, tTime;
+      getLocalDateTime(dateStr, timeStr, tDate, tTime);
+      dateStr.swap(tDate);
+      timeStr.swap(tTime);
       int t = convertAbsoluteTimeISO(timeStr);
       if (t >= 0 && oe.getNumRunners() == 0) {
         int zt = t - 3600;
@@ -1161,6 +1253,9 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
         oe.setZeroTime(formatTimeHMS(zt));
       }
     }
+
+    oe.setDate(dateStr);
+
     //oe.setZeroTime(...);
   }
 
@@ -1346,12 +1441,12 @@ pTeam IOF30Interface::readTeamEntry(gdioutput &gdi, xmlobject &xTeam,
   if (newTeam) {
     wstring entryTime;
     xTeam.getObjectString("EntryTime", entryTime);
-    di.setDate("EntryDate", entryTime);
 
-    size_t tpos = entryTime.find_first_of(L"T");
-    if (tpos != -1) {
-      wstring timeString = entryTime.substr(tpos+1);
-      int t = convertAbsoluteTimeISO(timeString);
+    wstring date, time;
+    getLocalDateTime(entryTime, date, time);
+    di.setDate("EntryDate", date);
+    if (time.length() > 0) {
+      int t = convertAbsoluteTimeISO(time);
       if (t >= 0)
         di.setInt("EntryTime", t);
     }
@@ -1450,7 +1545,8 @@ pTeam IOF30Interface::getCreateTeam(gdioutput &gdi, const xmlobject &xTeam, bool
   if (!t)
     return 0;
 
-  t->setEntrySource(entrySourceId);
+  if (entrySourceId > 0)
+    t->setEntrySource(entrySourceId);
   t->flagEntryTouched(true);  
   if (t->getName().empty() || !t->hasFlag(oAbstractRunner::FlagUpdateName))
     t->setName(name, false);
@@ -1608,16 +1704,16 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
 
   wstring entryTime;
   xo.getObjectString("EntryTime", entryTime);
-  di.setDate("EntryDate", entryTime);
-  size_t tpos = entryTime.find_first_of(L"T");
-  if (tpos != -1) {
-    wstring timeString = entryTime.substr(tpos+1);
-    int t = convertAbsoluteTimeISO(timeString);
+  
+  wstring date, time;
+  getLocalDateTime(entryTime, date, time);
+  di.setDate("EntryDate", date);
+  if (time.length() > 0) {
+    int t = convertAbsoluteTimeISO(time);
     if (t >= 0)
       di.setInt("EntryTime", t);
   }
-
-
+ 
   double fee = 0, paid = 0, taxable = 0, percentage = 0;
   wstring currency;
   xmlList xAssigned;
@@ -1836,7 +1932,8 @@ pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
     }
   }
 
-  r->setEntrySource(entrySourceId);
+  if (entrySourceId > 0)
+    r->setEntrySource(entrySourceId);
   r->flagEntryTouched(true);
  
   if (!r->hasFlag(oAbstractRunner::FlagUpdateName)) {
@@ -2115,16 +2212,20 @@ void IOF30Interface::getAgeLevels(const vector<FeeInfo> &fees, const vector<int>
         redIx = ix[k];
       if (fees[normalIx] < fees[ix[k]])
         normalIx = ix[k];
+    }
 
+    for (size_t k = 0; k < ix.size(); k++) {
       const wstring &to = fees[ix[k]].toBirthDate;
       const wstring &from = fees[ix[k]].fromBirthDate;
 
-      if (!from.empty() && (youthLimit.empty() || youthLimit > from))
+      if (!from.empty() && (youthLimit.empty() || youthLimit > from) && fees[ix[k]].fee == fees[redIx].fee)
         youthLimit = from;
 
-      if (!to.empty() && (seniorLimit.empty() || seniorLimit > to))
+      if (!to.empty() && (seniorLimit.empty() || seniorLimit > to) && fees[ix[k]].fee == fees[redIx].fee)
         seniorLimit = to;
     }
+
+    
   }
 }
 
@@ -2394,6 +2495,123 @@ int IOF30Interface::parseISO8601Time(const xmlobject &xo) {
 
   return oe.getRelativeTime(date, time, zone);
 }
+
+void IOF30Interface::getLocalDateTime(const string &date, const string &time,
+                                      string &dateOut, string &timeOut) {
+  int zIx = -1;
+  for (size_t k = 0; k < time.length(); k++) {
+    if (time[k] == '+' || time[k] == '-' || time[k] == 'Z') {
+      if (zIx == -1)
+        zIx = k;
+      else;
+      // Bad format
+    }
+  }
+
+  if (zIx == -1) {
+    dateOut = date;
+    timeOut = time;
+    return;
+  }
+
+  string timePart = time.substr(0, zIx);
+  string zone =  time.substr(zIx);
+  wstring wTime(timePart.begin(), timePart.end());
+
+  SYSTEMTIME st;
+  memset(&st, 0, sizeof(SYSTEMTIME));
+
+  int atime = convertAbsoluteTimeISO(wTime);
+  int idate = convertDateYMS(date, st, true);
+  if (idate != -1) {
+    if (zone == "Z" || zone == "z") {
+      st.wHour = atime / 3600;
+      st.wMinute = (atime / 60) % 60;
+      st.wSecond = atime % 60;
+
+      SYSTEMTIME localTime;
+      memset(&localTime, 0, sizeof(SYSTEMTIME));
+      SystemTimeToTzSpecificLocalTime(0, &st, &localTime);
+
+      char bf[64];
+      sprintf(bf, "%02d:%02d:%02d", localTime.wHour, localTime.wMinute, localTime.wSecond);
+      timeOut = bf;
+      sprintf(bf, "%d-%02d-%02d", localTime.wYear, localTime.wMonth, localTime.wDay);
+      dateOut = bf;
+    }
+    else {
+      dateOut = date;
+      timeOut = time;
+    }
+  }
+}
+
+void IOF30Interface::getLocalDateTime(const wstring &datetime, wstring &dateOut, wstring &timeOut) {
+  size_t t = datetime.find_first_of('T');
+  if (t != dateOut.npos) {
+    wstring date = datetime.substr(0, t);
+    wstring time = datetime.substr(t + 1);
+    getLocalDateTime(date, time, dateOut, timeOut);
+  }
+  else {
+    dateOut = datetime;
+    timeOut = L"";
+  }
+}
+
+void IOF30Interface::getLocalDateTime(const wstring &date, const wstring &time,
+                                      wstring &dateOut, wstring &timeOut) {
+  int zIx = -1;
+  for (size_t k = 0; k < time.length(); k++) {
+    if (time[k] == '+' || time[k] == '-' || time[k] == 'Z') {
+      if (zIx == -1)
+        zIx = k;
+      else;
+      // Bad format
+    }
+  }
+
+  if (zIx == -1) {
+    dateOut = date;
+    timeOut = time;
+    return;
+  }
+
+  wstring timePart = time.substr(0, zIx);
+  wstring zone = time.substr(zIx);
+  wstring wTime(timePart.begin(), timePart.end());
+
+  SYSTEMTIME st;
+  memset(&st, 0, sizeof(SYSTEMTIME));
+
+  int atime = convertAbsoluteTimeISO(wTime);
+  int idate = convertDateYMS(date, st, true);
+  if (idate != -1) {
+    if (zone == L"Z" || zone == L"z") {
+      st.wHour = atime / 3600;
+      st.wMinute = (atime / 60) % 60;
+      st.wSecond = atime % 60;
+
+      SYSTEMTIME localTime;
+      memset(&localTime, 0, sizeof(SYSTEMTIME));
+      SystemTimeToTzSpecificLocalTime(0, &st, &localTime);
+
+      atime = localTime.wHour * 3600 + localTime.wMinute * 60 + localTime.wSecond;
+      wchar_t bf[64];
+      wsprintf(bf, L"%02d:%02d:%02d", localTime.wHour, localTime.wMinute, localTime.wSecond);
+      timeOut = bf;
+      wsprintf(bf, L"%d-%02d-%02d", localTime.wYear, localTime.wMonth, localTime.wDay);
+      dateOut = bf;
+      //dateOut = itow(localTime.wYear) + L"-" + itow(localTime.wMonth) + L"-" + itow(localTime.wDay);
+      //timeOut = itow(localTime.wHour) + L":" + itow(localTime.wMinute) + L":" + itow(localTime.wSecond);
+    }
+    else {
+      dateOut = date;
+      timeOut = time;
+    }
+  }
+}
+
 
 void IOF30Interface::getProps(vector<wstring> &props) const {
   props.push_back(L"xmlns");
@@ -3601,7 +3819,7 @@ void IOF30Interface::bindClassCourse(oClass &pc, const vector< vector<pCourse> >
     for (size_t k = 0; k < crs.size(); k++) {
       pc.clearStageCourses(k);
       for (size_t j = 0; j < crs[k].size(); j++) {
-        pc.addStageCourse(k, crs[k][j]->getId());
+        pc.addStageCourse(k, crs[k][j]->getId(), -1);
       }
     }
   }

@@ -34,6 +34,7 @@
 #include "TimeStamp.h"
 #include "stdafx.h"
 #include <vector>
+#include <memory>
 
 class oEvent;
 class gdioutput;
@@ -72,8 +73,18 @@ enum SortOrder {ClassStartTime,
                 Custom,
                 SortEnumLastItem};
 
-class oBase
-{
+class oBase {
+public:
+  class oBaseReference {
+  private:
+    oBase * ref = nullptr;
+  public:
+    oBase * get() {
+      return ref;
+    }
+
+    friend class oBase;
+  };
 private:
   void storeChangeStatus() {reChanged = changed;}
   void resetChangeStatus() {changed &= reChanged;}
@@ -83,6 +94,7 @@ private:
   const static unsigned long long BaseGenStringFlag = 1ull << 63;
   const static unsigned long long Base36StringFlag = 1ull << 62;
   const static unsigned long long ExtStringMask = ~(BaseGenStringFlag|Base36StringFlag);
+  shared_ptr<oBaseReference> myReference;
 
 protected:
   int Id;
@@ -117,6 +129,15 @@ protected:
   void setLocalObject() { localObject = true; }
 
 public:
+
+  // Get a safe reference to this object
+  const shared_ptr<oBaseReference> &getReference() {
+    if (!myReference) {
+      myReference = make_shared<oBaseReference>();
+      myReference->ref = this;
+    }
+    return myReference;
+  }
 
   // Returns true if the object is local, not stored in DB/On disc
   bool isLocalObject() { return localObject; }

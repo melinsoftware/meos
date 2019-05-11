@@ -979,15 +979,15 @@ bool TabSpeaker::loadPage(gdioutput &gdi) {
   int h,w;
   gdi.getTargetDimension(w, h);
 
-  int bw=gdi.scaleLength(100);
-  int nbtn=max((w-80)/bw, 1);
-  bw=(w-80)/nbtn;
+  int bw = gdi.scaleLength(100);
+  int numBtn = max((w - gdi.scaleLength(80)) / bw, 1);
+  bw = (w - 80) / numBtn;
   int basex = SPEAKER_BASE_X;
   int basey=gdi.getCY();
 
   int cx=basex;
   int cy=basey;
-  int cb=1;
+  
   vector<pClass> clsToWatch;
   for (int cid : classesToWatch) {
     pClass pc = oe->getClass(cid);
@@ -998,18 +998,29 @@ bool TabSpeaker::loadPage(gdioutput &gdi) {
 
   sort(clsToWatch.begin(), clsToWatch.end(), [](const pClass &a, const pClass &b) {return *a < *b; });
 
+  int bwCls = bw;
+  TextInfo ti;
+  for (auto pc : clsToWatch) {
+    ti.xp = 0;
+    ti.yp = 0;
+    ti.format = 0;
+    ti.text = pc->getName();
+    gdi.calcStringSize(ti);
+    bwCls = max(bwCls, ti.realWidth+ gdi.scaleLength(10));
+  }
+  int limitX = w - bw / 3;
+
   for (auto pc : clsToWatch) {
     char classid[32];
     sprintf_s(classid, "cid%d", pc->getId());
-    gdi.addButton(cx, cy, bw, classid, L"#" + pc->getName(), tabSpeakerCB, L"", false, false);
-    cx+=bw;
-    cb++;
 
-    if (cb>nbtn) {
-      cb=1;
-      cx=basex;
-      cy+=gdi.getButtonHeight()+4;
+    if (cx > basex && (cx + bwCls) >= limitX) {
+      cx = basex; 
+      cy += gdi.getButtonHeight() + 4;
     }
+
+    gdi.addButton(cx, cy, bwCls-2, classid, L"#" + pc->getName(), tabSpeakerCB, L"", false, false);
+    cx += bwCls;
   }
 
   bool pm = false;
@@ -1021,20 +1032,21 @@ bool TabSpeaker::loadPage(gdioutput &gdi) {
     cx=gdi.getCX();
   }
   else {
+    if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+      cx = basex; db = 0;
+      cy += gdi.getButtonHeight() + 4;
+    }
     gdi.addButton(cx+db, cy, bw-2, "Events", "Händelser", tabSpeakerCB, "Löpande information om viktiga händelser i tävlingen", false, false);
-    if (++cb>nbtn) {
-      cb = 1, cx = basex, db = 0;
-      cy += gdi.getButtonHeight()+4;
-    } else db += bw;
+    db += bw;
     pm = true;
   }
 
-  gdi.addButton(cx + db, cy, bw - 2, "Report", "Rapportläge", tabSpeakerCB, "Visa detaljerad rapport för viss deltagare", false, false);
-  if (++cb>nbtn) {
-    cb = 1, cx = basex, db = 0;
+  if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+    cx = basex; db = 0;
     cy += gdi.getButtonHeight() + 4;
   }
-  else db += bw;
+  gdi.addButton(cx + db, cy, bw - 2, "Report", "Rapportläge", tabSpeakerCB, "Visa detaljerad rapport för viss deltagare", false, false);
+  db += bw;
 
   if (pm) {
     gdi.addButton(cx + db, cy, bw / 5, "ZoomIn", "+", tabSpeakerCB, "Zooma in (Ctrl + '+')", false, false);
@@ -1043,62 +1055,69 @@ bool TabSpeaker::loadPage(gdioutput &gdi) {
     db += bw / 5 + 2;
   }
 
+  if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+    cx = basex; db = 0;
+    cy += gdi.getButtonHeight() + 4;
+  }
   gdi.addButton(cx+db, cy, bw-2, "Settings", "Inställningar...", tabSpeakerCB, "Välj vilka klasser och kontroller som bevakas", false, false);
-  if (++cb>nbtn) {
-    cb = 1, cx = basex, db = 0;
-    cy += gdi.getButtonHeight()+4;
-  } else db += bw;
+  db += bw;
+  
+  if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+    cx = basex; db = 0;
+    cy += gdi.getButtonHeight() + 4;
+  }
   gdi.addButton(cx+db, cy, bw-2, "Manual", "Tidsinmatning", tabSpeakerCB, "Mata in radiotider manuellt", false, false);
-  if (++cb>nbtn) {
-    cb = 1, cx = basex, db = 0;
-    cy += gdi.getButtonHeight()+4;
-  } else db += bw;
+  db += bw;
 
+  if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+    cx = basex; db = 0;
+    cy += gdi.getButtonHeight() + 4;
+  }
   gdi.addButton(cx+db, cy, bw-2, "PunchTable", "Stämplingar", tabSpeakerCB, "Visa en tabell över alla stämplingar", false, false);
-  if (++cb>nbtn) {
-    cb = 1, cx = basex, db = 0;
-    cy += gdi.getButtonHeight()+4;
-  } else db += bw;
+  db += bw;
 
+  if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+    cx = basex; db = 0;
+    cy += gdi.getButtonHeight() + 4;
+  }
   gdi.addButton(cx+db, cy, bw-2, "LiveResult", "Direkt tidtagning", tabSpeakerCB, "Visa rullande tider mellan kontroller i helskärmsläge", false, false);
-  if (++cb>nbtn) {
-    cb = 1, cx = basex, db = 0;
-    cy += gdi.getButtonHeight()+4;
-  } else db += bw;
+  db += bw;
 
   if (!ownWindow) {
+    if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+      cx = basex; db = 0;
+      cy += gdi.getButtonHeight() + 4;
+    }
     gdi.addButton(cx+db, cy, bw-2, "Priority", "Prioritering", tabSpeakerCB, "Välj löpare att prioritera bevakning för", false, false);
-    if (++cb>nbtn) {
-      cb = 1, cx = basex, db = 0;
-      cy += gdi.getButtonHeight()+4;
-    } else db += bw;
+    db += bw;
 
 
+    if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+      cx = basex; db = 0;
+      cy += gdi.getButtonHeight() + 4;
+    }
     gdi.addButton(cx+db, cy, bw-2, "Window", "Nytt fönster", tabSpeakerCB, "", false, false);
-    if (++cb>nbtn) {
-      cb = 1, cx = basex, db = 0;
-      cy += gdi.getButtonHeight()+4;
-    } else db += bw;
+    db += bw;
 
 
     if (getExtraWindows().size() == 1) {
       wstring sf = getSpeakerSettingsFile();
       if (fileExist(sf.c_str())) {
-        gdi.addButton(cx + db, cy, bw - 2, "LoadWindows", "Återskapa", tabSpeakerCB, "Återskapa tidigare sparade fönster- och speakerinställningar", false, false);
-        if (++cb > nbtn) {
-          cb = 1, cx = basex, db = 0;
+        if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+          cx = basex; db = 0;
           cy += gdi.getButtonHeight() + 4;
         }
-        else db += bw;
+        gdi.addButton(cx + db, cy, bw - 2, "LoadWindows", "Återskapa", tabSpeakerCB, "Återskapa tidigare sparade fönster- och speakerinställningar", false, false);
+        db += bw;
       }
     }
     else {
-      gdi.addButton(cx + db, cy, bw - 2, "SaveWindows", "Spara", tabSpeakerCB, "Spara fönster- och speakerinställningar på datorn", false, false);
-      if (++cb > nbtn) {
-        cb = 1, cx = basex, db = 0;
+      if ((cx + db) > basex && (cx + db + bw) >= limitX) {
+        cx = basex; db = 0;
         cy += gdi.getButtonHeight() + 4;
       }
-      else db += bw;
+      gdi.addButton(cx + db, cy, bw - 2, "SaveWindows", "Spara", tabSpeakerCB, "Spara fönster- och speakerinställningar på datorn", false, false);
+      db += bw;
     }
   }
 

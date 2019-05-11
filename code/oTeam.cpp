@@ -653,7 +653,7 @@ RunnerStatus oTeam::getLegStatus(int leg, bool multidayTotal) const
 
 const wstring &oTeam::getLegStatusS(int leg, bool multidayTotal) const
 {
-  return oe->formatStatus(getLegStatus(leg, multidayTotal));
+  return oe->formatStatus(getLegStatus(leg, multidayTotal), true);
 }
 
 int oTeam::getLegPlace(int leg, bool multidayTotal) const {

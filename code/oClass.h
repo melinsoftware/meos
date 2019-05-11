@@ -200,8 +200,10 @@ protected:
   mutable int tIgnoreStartPunch;
 
   // Sort classes for this index
-  int tSortIndex;
-  int tMaxTime;
+  mutable int tSortIndex;
+  mutable int tMaxTime;
+
+  mutable bool isInitialized = false;
 
   // True when courses was changed on this client. Used to update course pool  bindings
   bool tCoursesChanged;
@@ -244,7 +246,7 @@ protected:
   void exportIOFStart(xmlparser &xml);
 
   /** Setup transient data */
-  void reinitialize();
+  void reinitialize(bool force) const;
 
   /** Recalculate derived data */
   void apply();
@@ -264,7 +266,7 @@ protected:
   mutable vector<ClassResultInfo> tResultInfo;
 
   /** Get/calculate sort index from candidate */
-  int getSortIndex(int candidate);
+  int getSortIndex(int candidate) const;
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -276,7 +278,7 @@ protected:
   mutable vector<pClass> virtualClasses;
   pClass parentClass;
 
-  shared_ptr<QualificationFinal> qualificatonFinal;
+  mutable shared_ptr<QualificationFinal> qualificatonFinal;
 
   int tMapsRemaining;
   mutable int tMapsUsed;
@@ -288,9 +290,12 @@ public:
   /** The master class in a qualification/final scheme. */
   const pClass getParentClass() const { return parentClass; }
 
-  const QualificationFinal *getQualificationFinal() const { return qualificatonFinal.get(); }
+  const QualificationFinal *getQualificationFinal() const {
+    reinitialize(false);
+    return qualificatonFinal.get();
+  }
 
-  void clearQualificationFinal();
+  void clearQualificationFinal() const;
 
   bool isQualificationFinalClass() const {
     return parentClass && parentClass->isQualificationFinalBaseClass();
@@ -565,9 +570,10 @@ public:
   int getCourseId() const {if (Course) return Course->getId(); else return 0;}
   void setCourse(pCourse c);
 
-  bool addStageCourse(int stage, int courseId);
-  bool addStageCourse(int stage, pCourse pc);
+  bool addStageCourse(int stage, int courseId, int index);
+  bool addStageCourse(int stage, pCourse pc,  int index);
   void clearStageCourses(int stage);
+  bool moveStageCourse(int stage, int index, int offset);
 
   bool removeStageCourse(int stage, int courseId, int position);
 

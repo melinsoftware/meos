@@ -422,7 +422,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setCoursePool(type == PPool);
 
       if (crs) {
-        cls.addStageCourse(0, crsId);
+        cls.addStageCourse(0, crsId, -1);
       }
 
       break;
@@ -437,7 +437,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setCoursePool(true);
 
       if (crs) {
-        cls.addStageCourse(0, crsId);
+        cls.addStageCourse(0, crsId, -1);
       }
       break;
 
@@ -456,8 +456,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setRopeTime(1, L"-");
 
       if (crs) {
-        cls.addStageCourse(0, crsId);
-        cls.addStageCourse(1, crsId);
+        cls.addStageCourse(0, crsId, -1);
+        cls.addStageCourse(1, crsId, -1);
       }
       cls.setCoursePool(false);
       break;
@@ -477,8 +477,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setRopeTime(1, L"-");
 
       if (crs) {
-        cls.addStageCourse(0, crsId);
-        cls.addStageCourse(1, crsId);
+        cls.addStageCourse(0, crsId, -1);
+        cls.addStageCourse(1, crsId, -1);
       }
       cls.setCoursePool(false);
       break;
@@ -498,8 +498,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setRopeTime(1, L"-");
 
       if (crs) {
-        cls.addStageCourse(0, crsId);
-        cls.addStageCourse(1, crsId);
+        cls.addStageCourse(0, crsId, -1);
+        cls.addStageCourse(1, crsId, -1);
       }
 
       cls.setCoursePool(false);

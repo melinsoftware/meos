@@ -644,21 +644,44 @@ bool oClass::fillStageCourses(gdioutput &gdi, int stage,
   return true;
 }
 
-bool oClass::addStageCourse(int iStage, int courseId)
+bool oClass::addStageCourse(int iStage, int courseId, int index)
 {
-  return addStageCourse(iStage, oe->getCourse(courseId));
+  return addStageCourse(iStage, oe->getCourse(courseId), index);
 }
 
-bool oClass::addStageCourse(int iStage, pCourse pc)
+bool oClass::addStageCourse(int iStage, pCourse pc, int index)
 {
   if (unsigned(iStage)>=MultiCourse.size())
     return false;
 
-  vector<pCourse> &Stage=MultiCourse[iStage];
+  vector<pCourse> &stage=MultiCourse[iStage];
 
   if (pc) {
     tCoursesChanged = true;
-    Stage.push_back(pc);
+    if (index == -1 || size_t(index) >= stage.size())
+      stage.push_back(pc);
+    else {
+      stage.insert(stage.begin() + index, pc);
+    }
+    updateChanged();
+    return true;
+  }
+  return false;
+}
+
+bool oClass::moveStageCourse(int stage, int index, int offset) {
+  if (unsigned(stage) >= MultiCourse.size())
+    return false;
+
+  vector<pCourse> &stages = MultiCourse[stage];
+
+  if (offset == -1 && size_t(index) < stages.size() && index > 0) {
+    swap(stages[index - 1], stages[index]);
+    updateChanged();
+    return true;
+  }
+  else if (offset == 1 && size_t(index + 1) < stages.size() && index >= 0) {
+    swap(stages[index + 1], stages[index]);
     updateChanged();
     return true;
   }
@@ -2622,11 +2645,8 @@ int oClass::getNumRemainingMaps(bool forceRecalculate) const {
       numMaps = Course->tMapsRemaining;
     else
       numMaps = min(numMaps, Course->tMapsRemaining);
-
-    return numMaps;
-  }
-  else
-    return numMaps;
+  }  
+  return numMaps;
 }
 
 void oClass::setNumberMaps(int nm) {
@@ -2648,39 +2668,19 @@ int oClass::getNumberMaps(bool rawAttribute) const {
 void oEvent::getStartBlocks(vector<int> &blocks, vector<wstring> &starts) const
 {
   oClassList::const_iterator it;
-  map<int, wstring> bs;
+  set<pair<wstring, int>> bs;
   for (it = Classes.begin(); it != Classes.end(); ++it) {
     if (it->isRemoved())
       continue;
-    map<int, wstring>::iterator v = bs.find(it->getBlock());
-
-    if (v!=bs.end() && v->first!=0 && v->second!=it->getStart()) {
-      wstring msg = L"Ett startblock spänner över flera starter: X/Y#" + it->getStart() + L"#" + v->second;
-      throw meosException(msg.c_str());
-    }
-    bs[it->getBlock()] = it->getStart();
+    
+    bs.emplace(it->getStart(), it->getBlock());
   }
-
   blocks.clear();
   starts.clear();
 
-  if (bs.size() > 1) {
-    for (map<int, wstring>::iterator v = bs.begin(); v != bs.end(); ++v) {
-      blocks.push_back(v->first);
-      starts.push_back(v->second);
-    }
-  }
-  else if (bs.size() == 1) {
-    set<wstring> s;
-    for (it = Classes.begin(); it != Classes.end(); ++it) {
-      if (it->isRemoved())
-        continue;
-      s.insert(it->getStart());
-    }
-    for (set<wstring>::iterator v = s.begin(); v != s.end(); ++v) {
-      blocks.push_back(bs.begin()->first);
-      starts.push_back(*v);
-    }
+  for (auto &v : bs) {
+    blocks.push_back(v.second);
+    starts.push_back(v.first);
   }
 }
 
@@ -2861,20 +2861,24 @@ void oClass::addClassDefaultFee(bool resetFee) {
   }
 }
 
-void oClass::reinitialize() {
-  int ix = getDI().getInt("SortIndex");
+void oClass::reinitialize(bool force) const {
+  if (!force && isInitialized)
+    return;
+  isInitialized = true; // Prevent recursion
+
+  int ix = getDCI().getInt("SortIndex");
   if (ix == 0) {
     ix = getSortIndex(getId()*10);
-    getDI().setInt("SortIndex", ix);
+    const_cast<oClass*>(this)->getDI().setInt("SortIndex", ix);
   }
   tSortIndex = ix;
 
-  tMaxTime = getDI().getInt("MaxTime");
+  tMaxTime = getDCI().getInt("MaxTime");
   if (tMaxTime == 0 && oe) {
     tMaxTime = oe->getMaximalTime();
   }
 
-  wstring wInfo = getDI().getString("Qualification");
+  wstring wInfo = getDCI().getString("Qualification");
   if (!wInfo.empty()) {
     if (qualificatonFinal && !qualificatonFinal->matchSerialization(wInfo))
       clearQualificationFinal();
@@ -2897,7 +2901,7 @@ void oClass::reinitialize() {
   tIgnoreStartPunch = -1;
 }
 
-void oClass::clearQualificationFinal() {
+void oClass::clearQualificationFinal() const {
   if (!qualificatonFinal)
     return;
 
@@ -2911,15 +2915,12 @@ void oClass::clearQualificationFinal() {
   qualificatonFinal.reset(); 
 }
 
-
-void oEvent::reinitializeClasses()
-{
-  for (oClassList::iterator it = Classes.begin(); it != Classes.end(); ++it)
-    it->reinitialize();
+void oEvent::reinitializeClasses() const {
+  for (auto &c : Classes)
+    c.reinitialize(true);
 }
 
-int oClass::getSortIndex(int candidate)
-{
+int oClass::getSortIndex(int candidate) const {
   int major = numeric_limits<int>::max();
   int minor = 0;
 
@@ -3340,6 +3341,7 @@ bool oClass::canRemove() const
 }
 
 int oClass::getMaximumRunnerTime() const {
+  reinitialize(false);
   return tMaxTime;
 }
 
@@ -3821,10 +3823,10 @@ pair<int, int> oClass::autoForking(const vector< vector<int> > &inputCourses) {
       lastSet = j;
       for (size_t k = 0; k < courseMatrix[j].size(); k++) {
         if (k < fperm.size()) {
-          addStageCourse(j, courseMatrix[j][fperm[k]]);
+          addStageCourse(j, courseMatrix[j][fperm[k]], -1);
         }
         else {
-          addStageCourse(j, courseMatrix[j][k]);
+          addStageCourse(j, courseMatrix[j][k], -1);
         }
       }
     }
@@ -4402,6 +4404,7 @@ void oClass::configureInstance(int instance, bool allowCreation) const {
 }
 
 int oClass::getNumQualificationFinalClasses() const {
+  reinitialize(false);
   if (qualificatonFinal)
     return qualificatonFinal->getNumClasses()+1;
   return 0;

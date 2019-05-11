@@ -30,7 +30,7 @@
 //V35: abcdef
 //V36: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 859 $");
+  string revision("$Rev: 895 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -42,12 +42,12 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2019-03-19 21:52:12 +0100 (ti, 19 mar 2019) $");
+  wstring date(L"$Date: 2019-05-11 07:26:35 +0200 (lö, 11 maj 2019) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC1"; // No parantheses (...)
+  return L""; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -128,5 +128,7 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Ligue PACA");
   supp.emplace_back(L"SC vebr-sport");
   supp.emplace_back(L"IP Skogen Göteborg");
+  supp.emplace_back(L"Smedjebackens Orientering");
+  supp.emplace_back(L"Gudhems IF");
   reverse(supp.begin(), supp.end());
 }

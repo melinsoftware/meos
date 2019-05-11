@@ -342,8 +342,10 @@ void OnlineResults::status(gdioutput &gdi)
   }
 
   if (sendToFile || sendToURL) {
-    gdi.addString("", 0, "Exporterar om: ");
-    gdi.addTimer(gdi.getCY(),  gdi.getCX(), timerIgnoreSign, (GetTickCount()-timeout)/1000);
+    if (interval > 0) {
+      gdi.addString("", 0, "Exporterar om: ");
+      gdi.addTimer(gdi.getCY(), gdi.getCX(), timerIgnoreSign, (GetTickCount() - timeout) / 1000);
+    }
     gdi.addString("", 0, "Antal skickade uppdateringar X (Y kb)#" +
                           itos(exportCounter-1) + "#" + itos(bytesExported/1024));
   }
@@ -515,7 +517,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       if (ast == SyncNone)
         throw;
       else
-        gdi.addInfoBox("", L"Online Results Error X#" + ex.wwhat(), 5000);
+        gdi.addInfoBox("", L"Online Results Error X#" + lang.tl(ex.wwhat()), 5000);
     }
     catch(std::exception &ex) {
       if (ast == SyncNone)

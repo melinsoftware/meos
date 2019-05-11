@@ -251,7 +251,9 @@ public:
   InputInfo &setFont(gdioutput &gdi, gdiFonts font);
   GDICOLOR getBgColor() const {return bgColor;}
   GDICOLOR getFgColor() const {return fgColor;}
-
+  /** Return the previously stored text */
+  const wstring &getPreviousText() const { return focusText; }
+  bool changedInput() const { return text != focusText; }
   InputInfo &setPassword(bool pwd);
   
   HWND getControlWindow() const {return hWnd;}
@@ -276,7 +278,7 @@ private:
   bool isEditControl;
   bool writeLock;
   wstring original;
-  wstring focusText; // Test when got focus
+  wstring focusText; // Text when got focus
   bool ignoreCheck; // True if changed-state should be ignored
   friend class gdioutput;
 };

@@ -904,6 +904,7 @@ void oCourse::clearCache() const {
   cachedHasRogaining = 0;
   cachedControlOrdinal.clear();
   cacheDataRevision = oe->dataRevision;
+  oe->tCalcNumMapsDataRevision = -1;
   tMapsUsed = -1;
   tMapsUsedNoVacant = -1;
 }
