@@ -61,7 +61,6 @@ oFreePunch::~oFreePunch(void)
 bool oFreePunch::Write(xmlparser &xml)
 {
   if (Removed) return true;
-
   xml.startTag("Punch");
   xml.write("CardNo", CardNo);
   xml.write("Time", Time);

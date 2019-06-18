@@ -59,6 +59,7 @@ const int timeSeconds = 1<<14;
 const int timerIgnoreSign = 1<<15;
 const int Capitalize = 1<<16;
 const int absolutePosition = 1 << 17;
+const int skipBoundingBox = 1 << 18;
 
 enum GDICOLOR {colorBlack = RGB(0,0,0),
               colorRed = RGB(128,0,0),

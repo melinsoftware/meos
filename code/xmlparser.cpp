@@ -98,9 +98,20 @@ const string &xmlparser::encodeXML(const string &input) {
 void xmlparser::write(const char *tag, const wstring &Value)
 {
   if (!cutMode || !Value.empty()) {
-    fOut() << "<" << tag << ">"
+    auto &valEnc = encodeXML(Value);
+    if (valEnc.length() > 400) {
+      fOut() << "<" << tag << ">"
+        << valEnc
+        << "</" << tag << ">" << endl;
+    }
+    else {
+      char bf[512];
+      sprintf_s(bf, "<%s>%s</%s>\n", tag, valEnc.c_str(), tag);
+      fOut() << bf;
+    }
+    /*fOut() << "<" << tag << ">"
            << encodeXML(Value)
-           << "</" << tag << ">" << endl;
+           << "</" << tag << ">" << endl;*/
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -109,17 +120,49 @@ void xmlparser::write(const char *tag, const wstring &Value)
 void xmlparser::write(const char *tag, const string &Value)
 {
   if (!cutMode || Value!="") {
-    fOut() << "<" << tag << ">"
-           << encodeXML(Value)
-           << "</" << tag << ">" << endl;
+    auto &valEnc = encodeXML(Value);
+    if (valEnc.length() > 400) {
+      fOut() << "<" << tag << ">"
+        << valEnc
+        << "</" << tag << ">" << endl;
+    }
+    else {
+      char bf[512];
+      sprintf_s(bf, "<%s>%s</%s>\n", tag, valEnc.c_str(), tag);
+      fOut() << bf;
+    }
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
 }
 
+void xmlparser::write(const char *tag, const char *Value)
+{
+  if (!cutMode || Value != "") {
+    auto &valEnc = encodeXML(Value);
+    if (valEnc.length() > 400) {
+      fOut() << "<" << tag << ">"
+        << valEnc
+        << "</" << tag << ">" << endl;
+    }
+    else {
+      char bf[512];
+      sprintf_s(bf, "<%s>%s</%s>\n", tag, valEnc.c_str(), tag);
+      fOut() << bf;
+    }
+  }
+  if (!fOut().good())
+    throw meosException("Writing to XML file failed.");
+}
+
+
 void xmlparser::write(const char *tag)
 {
-  fOut() << "<" << tag << "/>" << endl;
+  char bf[128];
+  sprintf_s(bf, "<%s/>\n", tag);
+  fOut() << bf;
+
+  //fOut() << "<" << tag << "/>" << endl;
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
 }
@@ -128,7 +171,7 @@ void xmlparser::write(const char *tag, const char *Property, const string &Value
 {
   if (!cutMode || Value!="") {
     fOut() << "<" << tag << " " << Property << "=\""
-           << encodeXML(Value) << "\"/>" << endl;
+           << encodeXML(Value) << "\"/>\n";
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -138,7 +181,7 @@ void xmlparser::write(const char *tag, const char *Property, const wstring &Valu
 {
   if (!cutMode || !Value.empty()) {
     fOut() << "<" << tag << " " << Property << "=\""
-           << encodeXML(Value) << "\"/>" << endl;
+           << encodeXML(Value) << "\"/>\n";
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -146,7 +189,8 @@ void xmlparser::write(const char *tag, const char *Property, const wstring &Valu
 
 void xmlparser::write(const char *tag, const char *prop, const wchar_t *value)
 {
-  write(tag, prop, wstring(value));
+  encodeString = value;
+  write(tag, prop, encodeString);
 }
 
 void xmlparser::writeBool(const char *tag, const char *prop, bool value)
@@ -173,7 +217,7 @@ void xmlparser::write(const char *tag, const char *Property, const wstring &Prop
   if (!cutMode || Value != L"" || PropValue != L"") {
     fOut() << "<" << tag << " " << Property << "=\""
            << encodeXML(PropValue) << "\">" << encodeXML(Value)
-           << "</" << tag << ">" << endl;
+           << "</" << tag << ">\n";
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -222,10 +266,10 @@ void xmlparser::write(const char *tag, const vector< pair<string, wstring> > &pr
     }
     if (!value.empty()) {
       fOut() << ">" << encodeXML(value)
-             << "</" << tag << ">" << endl;
+             << "</" << tag << ">\n";
     }
     else
-      fOut() << "/>" << endl;
+      fOut() << "/>\n";
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -239,7 +283,10 @@ void xmlparser::write(const char *tag, const char *prop,
 
 void xmlparser::writeBool(const char *tag, const char *prop,
                       bool propValue, const wstring &value) {
-  write(tag, prop, propValue ? L"true" : L"false", value);
+  static const wstring wTrue = L"true";
+  static const wstring wFalse = L"false";
+
+  write(tag, prop, propValue ? wTrue : wFalse, value);
 }
 /*
 void xmlparser::write(const char *tag, const char *prop,
@@ -255,9 +302,12 @@ void xmlparser::write(const char *tag, const char *prop,
 void xmlparser::write(const char *tag, int Value)
 {
   if (!cutMode || Value!=0) {
-    fOut() << "<" << tag << ">"
-           << Value
-           << "</" << tag << ">" << endl;
+    char bf[256];
+    sprintf_s(bf, "<%s>%d</%s>\n", tag, Value, tag);
+    fOut() << bf;
+    //fOut() << "<" << tag << ">"
+    //       << Value
+    //       << "</" << tag << ">" << endl;
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -266,9 +316,16 @@ void xmlparser::write(const char *tag, int Value)
 void xmlparser::writeBool(const char *tag, bool value)
 {
   if (!cutMode || value) {
-    fOut() << "<" << tag << ">"
-           << (value ? "true" : "false")
-           << "</" << tag << ">" << endl;
+    if (value) {
+      char bf[256];
+      sprintf_s(bf, "<%s>true</%s>\n", tag, tag);
+      fOut() << bf;
+    }
+    else {
+      char bf[256];
+      sprintf_s(bf, "<%s>false</%s>\n", tag, tag);
+      fOut() << bf;
+    }
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -280,7 +337,7 @@ void xmlparser::write64(const char *tag, __int64 Value)
   if (!cutMode || Value!=0) {
     fOut() << "<" << tag << ">"
            << Value
-           << "</" << tag << ">" << endl;
+           << "</" << tag << ">\n";
   }
   if (!fOut().good())
     throw meosException("Writing to XML file failed.");
@@ -289,7 +346,16 @@ void xmlparser::write64(const char *tag, __int64 Value)
 void xmlparser::startTag(const char *tag, const char *prop, const wstring &Value)
 {
   if (tagStackPointer<32) {
-    fOut() << "<" << tag << " " << prop << "=\"" << encodeXML(Value) << "\">" << endl;
+    const string &valEnc = encodeXML(Value);
+    if (valEnc.length() < 128) {
+      char bf[256];
+      sprintf_s(bf, "<%s %s=\"%s\">\n", tag, prop, valEnc.c_str());
+      fOut() << bf;
+    }
+    else {
+      fOut() << "<" << tag << " " << prop << "=\"" << encodeXML(Value) << "\">" << endl;
+    }
+
     tagStack[tagStackPointer++]=tag;
     if (!fOut().good())
       throw meosException("Writing to XML file failed.");
@@ -302,7 +368,16 @@ void xmlparser::startTag(const char *tag, const char *prop, const wstring &Value
 void xmlparser::startTag(const char *tag, const char *prop, const string &Value)
 {
   if (tagStackPointer<32) {
-    fOut() << "<" << tag << " " << prop << "=\"" << encodeXML(Value) << "\">" << endl;
+    const string &valEnc = encodeXML(Value);
+    if (valEnc.length() < 128) {
+      char bf[256];
+      sprintf_s(bf, "<%s %s=\"%s\">\n", tag, prop, valEnc.c_str());
+      fOut() << bf;
+    }
+    else {
+      fOut() << "<" << tag << " " << prop << "=\"" << encodeXML(Value) << "\">" << endl;
+    }
+
     tagStack[tagStackPointer++]=tag;
     if (!fOut().good())
       throw meosException("Writing to XML file failed.");
@@ -318,7 +393,7 @@ void xmlparser::startTag(const char *tag, const vector<string> &propvalue)
     for (size_t k=0;k<propvalue.size(); k+=2) {
       fOut() << propvalue[k] << "=\"" << encodeXML(propvalue[k+1]) << "\" ";
     }
-    fOut() << ">" << endl;
+    fOut() << ">\n";
     tagStack[tagStackPointer++]=tag;
     if (!fOut().good())
       throw meosException("Writing to XML file failed.");
@@ -330,11 +405,11 @@ void xmlparser::startTag(const char *tag, const vector<string> &propvalue)
 void xmlparser::startTag(const char *tag, const vector<wstring> &propvalue)
 {
   if (tagStackPointer<32) {
-    fOut() << "<" << tag << " ";
+    fOut() << "<" << tag ;
     for (size_t k=0;k<propvalue.size(); k+=2) {
-      fOut() << encodeXML(propvalue[k]) << "=\"" << encodeXML(propvalue[k+1]) << "\" ";
+      fOut() << " " << encodeXML(propvalue[k]) << "=\"" << encodeXML(propvalue[k+1]) << "\"";
     }
-    fOut() << ">" << endl;
+    fOut() << ">\n";
     tagStack[tagStackPointer++]=tag;
     if (!fOut().good())
       throw meosException("Writing to XML file failed.");
@@ -346,7 +421,9 @@ void xmlparser::startTag(const char *tag, const vector<wstring> &propvalue)
 void xmlparser::startTag(const char *tag)
 {
   if (tagStackPointer<32) {
-    fOut() << "<" << tag << ">" << endl;
+    char bf[128];
+    sprintf_s(bf, "<%s>\n", tag);
+    fOut() << bf;
     tagStack[tagStackPointer++]=tag;
     if (!fOut().good())
       throw meosException("Writing to XML file failed.");
@@ -358,7 +435,11 @@ void xmlparser::startTag(const char *tag)
 void xmlparser::endTag()
 {
   if (tagStackPointer>0) {
-    fOut() << "</" << tagStack[--tagStackPointer] << ">" << endl;
+    char bf[128];
+    const char *tag = tagStack[--tagStackPointer].c_str();
+    sprintf_s(bf, "</%s>\n", tag);
+    fOut() << bf;
+
     if (!fOut().good())
       throw meosException("Writing to XML file failed.");
   }

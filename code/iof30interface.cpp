@@ -106,6 +106,13 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
       failed++;
   }
 
+  vector<pCourse> allC;
+  oe.getCourses(allC);
+  for (pCourse pc : allC) {
+    if (!courses.count(pc->getName()))
+      courses[pc->getName()] = pc;
+  }
+
   if (!updateClass)
     return;
 
@@ -399,6 +406,13 @@ void IOF30Interface::teamCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
     if (!bib.empty()) {
       teamText = bib;
       t = bib2Team[bib];
+      if (t == nullptr) {
+        int ibib = _wtoi(bib.c_str()); 
+        if (ibib > 0) {
+          wstring bib2 = itow(ibib);
+          t = bib2Team[bib2];
+        }
+      }
     }
 
     if (t == 0) {
@@ -2534,9 +2548,9 @@ void IOF30Interface::getLocalDateTime(const string &date, const string &time,
       SystemTimeToTzSpecificLocalTime(0, &st, &localTime);
 
       char bf[64];
-      sprintf(bf, "%02d:%02d:%02d", localTime.wHour, localTime.wMinute, localTime.wSecond);
+      sprintf_s(bf, "%02d:%02d:%02d", localTime.wHour, localTime.wMinute, localTime.wSecond);
       timeOut = bf;
-      sprintf(bf, "%d-%02d-%02d", localTime.wYear, localTime.wMonth, localTime.wDay);
+      sprintf_s(bf, "%d-%02d-%02d", localTime.wYear, localTime.wMonth, localTime.wDay);
       dateOut = bf;
     }
     else {
@@ -3529,7 +3543,8 @@ bool IOF30Interface::readXMLCompetitorDB(const xmlobject &xCompetitor) {
   return true;
 }
 
-void IOF30Interface::writeXMLCompetitorDB(xmlparser &xml, const RunnerWDBEntry &rde) const {
+void IOF30Interface::writeXMLCompetitorDB(xmlparser &xml, const RunnerDB &db, 
+                                          const RunnerWDBEntry &rde) const {
   wstring s = rde.getSex();
 
   xml.startTag("Competitor");
@@ -3566,9 +3581,18 @@ void IOF30Interface::writeXMLCompetitorDB(xmlparser &xml, const RunnerWDBEntry &
 
 
   if (rde.dbe().clubNo > 0) {
-    xml.startTag("Organisation");
-    xml.write("Id", rde.dbe().clubNo);
-    xml.endTag();
+    pClub clb = db.getClub(rde.dbe().clubNo);
+    if (clb) {
+      uint64_t extId = clb->getExtIdentifier();
+      if (extId != 0) {
+        xml.startTag("Organisation");
+        xml.write("Id", int(extId));
+        xml.endTag();
+      }
+      else {
+        writeClub(xml, *clb, false);
+      }
+    }
   }
 
   xml.endTag(); // Competitor
@@ -3926,7 +3950,7 @@ void IOF30Interface::writeRunnerDB(const RunnerDB &db, xmlparser &xml) const {
   const vector<RunnerWDBEntry> &rdb = db.getRunnerDB();
   for (size_t k = 0; k < rdb.size(); k++) {
     if (!rdb[k].isRemoved())
-      writeXMLCompetitorDB(xml, rdb[k]);
+      writeXMLCompetitorDB(xml, db, rdb[k]);
   }
 
   xml.endTag();

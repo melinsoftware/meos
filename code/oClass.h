@@ -284,6 +284,19 @@ protected:
   mutable int tMapsUsed;
   mutable int tMapsUsedNoVacant;
 
+  // First is data revision, second is key
+  mutable pair<int, map<string, int>> tTypeKeyToRunnerCount;
+
+  enum CountKeyType {
+    All,
+    Finished,
+    ExpectedStarting,
+    DNS,
+    IncludeNotCompeting
+  };
+
+  static string getCountTypeKey(int leg, CountKeyType type, bool countVacant);
+
   void configureInstance(int instance, bool allowCreation) const;
 public:
 
@@ -543,6 +556,7 @@ public:
   // Get total number of runners running this class.
   // Use checkFirstLeg to only check the number of runners running leg 1.
   int getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNotCompeting) const;
+  void getNumResults(int leg, int &total, int &finished, int &dns) const;
 
   //Get remaining maps for class (or int::minvalue)
   int getNumRemainingMaps(bool forceRecalculate) const;

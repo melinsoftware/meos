@@ -963,6 +963,7 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
     parser.declareSymbol("LegPlace", "Place on course leg", true);
     parser.declareSymbol("Leg", "Leg number in team, zero indexed", false);
     parser.declareSymbol("BirthYear", "Year of birth", false);
+    parser.declareSymbol("CheckTime", "Runner check time", false);
   }
   else {
     parser.declareSymbol("RunnerStatus", "Status for each team member", true);
@@ -1276,6 +1277,7 @@ void DynamicResult::prepareCalculations(oRunner &runner) const {
   parser.addSymbol("LegPlace", place);
   parser.addSymbol("Leg", runner.getLegNumber());
   parser.addSymbol("BirthYear", runner.getBirthYear());
+  parser.addSymbol("CheckTime", runner.getCheckTime());
 }
 
 void DynamicResult::storeOutput(vector<int> &times, vector<int> &numbers) const {

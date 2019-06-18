@@ -115,6 +115,7 @@ protected:
 
   gdioutput *utfConverter;
 
+  mutable wstring encodeString;
 public:
   void access(int index);
 
@@ -158,6 +159,8 @@ public:
   void write(const char *tag, const vector< pair<string, wstring> > &propValue, const wstring &value);
 
   void write(const char *tag, const string &value);
+  void write(const char *tag, const char *value);
+
   void write(const char *tag, const wstring &value);
   
   void write(const char *tag, int value);

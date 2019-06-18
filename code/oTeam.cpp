@@ -65,7 +65,7 @@ void oTeam::prepareRemove()
 bool oTeam::write(xmlparser &xml)
 {
   if (Removed) return true;
-
+  
   xml.startTag("Team");
   xml.write("Id", Id);
   xml.write("StartNo", StartNo);

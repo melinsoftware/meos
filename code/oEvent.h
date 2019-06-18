@@ -650,9 +650,7 @@ public:
 
 
   void calculateSplitResults(int controlIdFrom, int controlIdTo);
-  // Get total number of completed runner for given class and leg.
-  void getNumClassRunners(int id, int leg, int &total, int &finished, int &dns) const;
-
+  
   pTeam findTeam(const wstring &s, int lastId, unordered_set<int> &filter) const;
   pRunner findRunner(const wstring &s, int lastId, const unordered_set<int> &inputFilter, unordered_set<int> &filter) const;
 
@@ -826,7 +824,7 @@ protected:
   mutable multimap<int, oAbstractRunner*> bibStartNoToRunnerTeam;
 
   mutable shared_ptr<unordered_multimap<int, pRunner>> cardToRunnerHash;
-  unordered_multimap<int, pRunner> &getCardToRunner() const;
+  vector<pRunner> getCardToRunner(int cardNo) const;
 
   mutable set<int>  hiredCardHash;
   mutable int tHiredCardHashDataRevision = -1;

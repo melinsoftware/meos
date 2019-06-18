@@ -211,7 +211,9 @@ public:
   pControl addControl(int Id);
   void Set(const xmlobject *xo);
 
-  void getControls(vector<pControl> &pc);
+  void getControls(vector<pControl> &pc) const;
+  vector<int> getControlNumbers() const;
+
   string getControls() const;
   string getLegLengths() const;
 

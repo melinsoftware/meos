@@ -2390,15 +2390,16 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
   gdi.addStringUT(1, makeDash(L"Copyright © 2007-2019 Melin Software HB"));
   gdi.dropLine();
   gdi.addStringUT(10, "The database connection used is MySQL++\nCopyright "
-                        "(c) 1998 by Kevin Atkinson, (c) 1999, 2000 and 2001 by MySQL AB,"
-                        "\nand (c) 2004-2007 by Educational Technology Resources, Inc.\n"
-                        "The database used is MySQL, Copyright (c) 2008-2017 Oracle, Inc."
-                        "\n\nGerman Translation by Erik Nilsson-Simkovics"
-                        "\n\nDanish Translation by Michael Leth Jess and Chris Bagge"
-                        "\n\nRussian Translation by Paul A. Kazakov and Albert Salihov"
-                        "\n\nOriginal French Translation by Jerome Monclard"
-                        "\n\nAdaption to French conditions and extended translation by Pierre Gaufillet"
-                        "\n\nCzech Translation by Marek Kustka");
+				  "(c) 1998 by Kevin Atkinson, (c) 1999, 2000 and 2001 by MySQL AB,"
+				  "\nand (c) 2004-2007 by Educational Technology Resources, Inc.\n"
+				  "The database used is MySQL, Copyright (c) 2008-2017 Oracle, Inc."
+				  "\n\nGerman Translation by Erik Nilsson-Simkovics"
+				  "\n\nDanish Translation by Michael Leth Jess and Chris Bagge"
+				  "\n\nRussian Translation by Paul A. Kazakov and Albert Salihov"
+				  "\n\nOriginal French Translation by Jerome Monclard"
+				  "\n\nAdaption to French conditions and extended translation by Pierre Gaufillet"
+				  "\n\nCzech Translation by Marek Kustka"
+				  "\n\nHelp with English documentation: Torbjörn Wikström");
 
   gdi.dropLine();
   gdi.addString("", 0, "Det här programmet levereras utan någon som helst garanti. Programmet är ");

@@ -65,7 +65,6 @@ oCard::~oCard()
 bool oCard::Write(xmlparser &xml)
 {
   if (Removed) return true;
-
   xml.startTag("Card");
   xml.write("CardNo", cardNo);
   xml.write("Punches", getPunchString());
@@ -137,17 +136,13 @@ void oCard::addPunch(int type, int time, int matchControlId)
   updateChanged();
 }
 
-string oCard::getPunchString()
-{
-  oPunchList::iterator it;
-
-  string pstring;
-
-  for(it=punches.begin(); it != punches.end(); ++it){
-    pstring += it->codeString();
+const string &oCard::getPunchString() const {
+  punchString.clear();
+  punchString.reserve(punches.size() * 16);
+  for(auto &p : punches) {
+    p.appendCodeString(punchString);
   }
-
-  return pstring;
+  return punchString;
 }
 
 void oCard::importPunches(const string &s) {

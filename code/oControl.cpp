@@ -97,7 +97,7 @@ int oControl::getCourseControlIdFromIdIndex(int controlId, int index) {
 bool oControl::write(xmlparser &xml)
 {
   if (Removed) return true;
-
+  
   xml.startTag("Control");
 
   xml.write("Id", Id);

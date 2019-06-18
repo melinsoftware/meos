@@ -184,6 +184,8 @@ protected:
 
   HBRUSH Background;
 
+  mutable map<pair<int, wstring>, int> fontHeightCache;
+
   map<wstring, GDIImplFontSet> fonts;
   const GDIImplFontSet &getCurrentFont() const;
   const GDIImplFontSet &getFont(const wstring &font) const;
@@ -596,9 +598,7 @@ public:
   bool clearList(const string &id);
 
   bool hasField(const string &id) const;
-  /*const wstring &getText(const wchar_t *id, bool acceptMissing = false) const {
-    return getText(toNarrow(id).c_str(), acceptMissing); 
-  }*/
+  
   const wstring &getText(const char *id, bool acceptMissing = false) const;
   
   BaseInfo &getBaseInfo(const char *id) const;
@@ -615,6 +615,8 @@ public:
 
     // Insert text and notify "focusList"
   bool insertText(const string &id, const wstring &text);
+
+  int getFontHeight(int format, const wstring &fontFace) const;
 
   // The html version should be UTF-8.
   void copyToClipboard(const string &html,

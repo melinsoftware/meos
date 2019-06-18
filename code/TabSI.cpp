@@ -48,6 +48,8 @@
 #include "recorder.h"
 #include "autocomplete.h"
 
+constexpr bool addTestPort = false;
+
 TabSI::TabSI(oEvent *poe):TabBase(poe), activeSIC(ConvertedTimeStatus::Unknown) {
   editCardData.tabSI = this;
   directEntryGUI.tabSI = this;
@@ -184,6 +186,8 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
 
         if (lbi.text.substr(0, 3) == L"TCP")
           port = L"TCP";
+        else if (lbi.text == L"TEST")
+          port = L"TEST";
 
         if (gSI->isPortOpen(port)) {
           gSI->closeCom(port.c_str());
@@ -210,6 +214,20 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
             gdi.scrollToBottom();
             gdi.refresh();
             return 0;
+          }
+          else if (port == L"TEST") {
+            vector<pRunner> runners;
+            oe->getRunners(0, 0, runners, false);
+            for (pRunner r : runners) {
+              if (r->getCard() || r->getCardNo() == 0)
+                continue;
+              vector<int> pl;
+              auto c = r->getCourse(true);
+              if (c) {
+                pl = c->getControlNumbers();
+                gSI->addTestCard(r->getCardNo(), pl);
+              }
+            }
           }
 
           gdi.addStringUT(0, lang.tl(L"Startar SI på ") + port + L"...");
@@ -1566,6 +1584,9 @@ void TabSI::refillComPorts(gdioutput &gdi)
     gdi.addItem("ComPort", L"TCP [OK]");
   else
     gdi.addItem("ComPort", L"TCP");
+
+  if (addTestPort)
+    gdi.addItem("ComPort", L"TEST");
 
   if (active){
     gdi.selectItemByData("ComPort", active);

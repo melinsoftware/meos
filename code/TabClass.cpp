@@ -406,7 +406,7 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
         throw std::exception("Klassen finns ej.");
 
       int total, finished, dns;
-      oe->getNumClassRunners(pc->getId(), 0, total, finished, dns);
+      pc->getNumResults(0, total, finished, dns);
 
       oEvent::PredefinedTypes newType = oEvent::PredefinedTypes(gdi.getSelectedItem("Predefined").first);
       int nstages = gdi.getTextNo("NStage");
@@ -1865,14 +1865,14 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.addString("", boldLarge, L"Dela klass: X#" + pc->getName());
       gdi.dropLine();
       int tot, fin, dns;
-      oe->getNumClassRunners(pc->getId(), 0, tot, fin, dns);
+      pc->getNumResults(0, tot, fin, dns);
       if (pc->isQualificationFinalBaseClass()) {
         set<int> base;
         pc->getQualificationFinal()->getBaseClassInstances(base);
         for (int i : base) {
           if (pc->getVirtualClass(i)) {
             int tot2 = 0;
-            oe->getNumClassRunners(pc->getVirtualClass(i)->getId(), 0, tot2, fin, dns);
+            pc->getVirtualClass(i)->getNumResults(0, tot2, fin, dns);
             tot += tot2;
           }
         }
@@ -2849,10 +2849,10 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
       }
       if (hasRelay) {
         headXPos[5]=gdi.getCX();
-        gdi.addInput(string("RestartRope")+legno, L"", 5, MultiCB);
+        gdi.addInput(string("RestartRope")+legno, L"", 7, MultiCB);
 
         headXPos[6]=gdi.getCX();
-        gdi.addInput(string("Restart")+legno, L"", 5, MultiCB);
+        gdi.addInput(string("Restart")+legno, L"", 7, MultiCB);
       }
 
       gdi.dropLine(-0.1);

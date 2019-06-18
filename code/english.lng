@@ -2428,3 +2428,7 @@ Lagändringblankett = Team Change Form
 Mappa rootadresssen (http:///localhost:port/) till funktion = Map root address (http:///localhost:port/) to function
 ClassAvailableMaps = Available maps for class
 ClassTotalMaps = Total number of maps for class
+Kunde inte öppna databasen (X) = Could not connect to database (X)
+Kunde inte ladda upp löpardatabasen (X) = Could not upload runner database (X)
+Runner check time = Runner check time
+ClassNumEntries = Number of entries in class

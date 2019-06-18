@@ -311,6 +311,7 @@ void gdioutput::initCommon(double _scale, const wstring &font)
 
   Background=CreateSolidBrush(GetSysColor(COLOR_WINDOW));
 
+  fontHeightCache.clear();
   fonts[currentFont].init(scale, currentFont, L"");
 }
 
@@ -846,10 +847,37 @@ TextInfo &gdioutput::addStringUT(int yp, int xp, int format, const string &text,
   return addStringUT(yp, xp, format, widen(text), xlimit, cb, fontFace);
 }
 
+int gdioutput::getFontHeight(int format, const wstring &fontFace) const {
+  format = format & 0xFF;
+  auto res = fontHeightCache.find(make_pair(format, fontFace));
+
+  if (res != fontHeightCache.end())
+    return res->second;
+
+  TextInfo TI;
+  TI.format = format;
+  TI.xp = 0;
+  TI.yp = 0;
+  TI.text = L"M1y|";
+  TI.xlimit = 100;
+  TI.callBack = 0;
+  TI.font = fontFace;
+  calcStringSize(TI);
+  int h = TI.textRect.bottom - TI.textRect.top;
+  fontHeightCache.emplace(make_pair(format, fontFace), h);
+  return h;
+}
+
 TextInfo &gdioutput::addStringUT(int yp, int xp, int format, const wstring &text,
                                  int xlimit, GUICALLBACK cb, const wchar_t *fontFace)
 {
-  TextInfo TI;
+  bool skipBBCalc = (format & skipBoundingBox) == skipBoundingBox;
+  format &= ~skipBoundingBox;
+
+  TL.emplace_back();
+  TextInfo &TI = TL.back();
+  itTL = TL.begin();
+
   TI.format=format;
   TI.xp=xp;
   TI.yp=yp;
@@ -859,24 +887,38 @@ TextInfo &gdioutput::addStringUT(int yp, int xp, int format, const wstring &text
   if (fontFace)
     TI.font = fontFace;
   if (!skipTextRender(format)) {
-    HDC hDC=GetDC(hWndTarget);
+    
+    if (skipBBCalc) {
+      assert(xlimit > 0);
+      int h = getFontHeight(format, fontFace);
+      TI.textRect.left = xp;
+      TI.textRect.top = yp;
+      TI.textRect.right = xp + xlimit;
+      TI.textRect.bottom = yp + h;
+      TI.realWidth = xlimit;
 
-    if (hWndTarget && !manualUpdate)
-      RenderString(TI, hDC);
-    else
-      calcStringSize(TI, hDC);
-
-    if (xlimit == 0 || (format & (textRight|textCenter)) == 0) {
-      updatePos(TI.textRect.right+OffsetX, TI.yp, scaleLength(10),
-                            TI.textRect.bottom - TI.textRect.top + scaleLength(2));
+      updatePos(TI.textRect.right + OffsetX, TI.yp, scaleLength(10),
+                TI.textRect.bottom - TI.textRect.top + scaleLength(2));
     }
     else {
-      updatePos(TI.xp, TI.yp, TI.realWidth + scaleLength(10),
-                            TI.textRect.bottom - TI.textRect.top + scaleLength(2));
+      HDC hDC = GetDC(hWndTarget);
+
+      if (hWndTarget && !manualUpdate)
+        RenderString(TI, hDC);
+      else
+        calcStringSize(TI, hDC);
+
+      if (xlimit == 0 || (format & (textRight | textCenter)) == 0) {
+        updatePos(TI.textRect.right + OffsetX, TI.yp, scaleLength(10),
+                  TI.textRect.bottom - TI.textRect.top + scaleLength(2));
+      }
+      else {
+        updatePos(TI.xp, TI.yp, TI.realWidth + scaleLength(10),
+                  TI.textRect.bottom - TI.textRect.top + scaleLength(2));
+      }
+      ReleaseDC(hWndTarget, hDC);
     }
-
-    ReleaseDC(hWndTarget, hDC);
-
+  
     if (renderOptimize && !TL.empty()) {
       if (TL.back().yp > TI.yp)
         renderOptimize=false;
@@ -888,9 +930,6 @@ TextInfo &gdioutput::addStringUT(int yp, int xp, int format, const wstring &text
     TI.textRect.bottom = yp;
     TI.textRect.top = yp;
   }
-
-  TL.push_back(TI);
-  itTL=TL.begin();
 
   return TL.back();
 }
@@ -6076,15 +6115,13 @@ void gdioutput::liftCommandLock() const {
 }
 
 int gdioutput::getLineHeight(gdiFonts font, const wchar_t *face) const {
-  TextInfo ti;
-  ti.xp = 0;
-  ti.yp = 0;
-  ti.format = font;
-  ti.text = L"&abc_M|!I";
-  if (face)
-    ti.font = face;
-  calcStringSize(ti);
-  return (11*(ti.textRect.bottom - ti.textRect.top))/10;
+  int h;
+  if (face == nullptr)
+    h = getFontHeight(font, _EmptyWString);
+  else
+    h = getFontHeight(font, face);
+
+  return (11*h)/10;
 }
 
 GDIImplFontSet::GDIImplFontSet() {

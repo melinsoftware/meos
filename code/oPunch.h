@@ -97,6 +97,8 @@ public:
   enum SpecialPunch {PunchStart=1, PunchFinish=2, PunchCheck=3, HiredCard=11111};
   void decodeString(const string &s);
   string codeString() const;
+  void appendCodeString(string &dst) const;
+
   oPunch(oEvent *poe);
   virtual ~oPunch();
 

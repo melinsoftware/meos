@@ -79,7 +79,7 @@ wstring oCourse::getInfo() const
 bool oCourse::Write(xmlparser &xml)
 {
   if (Removed) return true;
-
+  
   xml.startTag("Course");
 
   xml.write("Id", Id);
@@ -415,13 +415,20 @@ bool oCourse::fillCourse(gdioutput &gdi, const string &name)
   return true;
 }
 
-void oCourse::getControls(vector<pControl> &pc)
-{
+void oCourse::getControls(vector<pControl> &pc) const {
   pc.clear();
   pc.reserve(nControls);
   for(int k=0;k<nControls;k++){
     pc.push_back(Controls[k]);
   }
+}
+
+vector<int> oCourse::getControlNumbers() const {
+  vector<int> ret;
+  for (int k = 0; k<nControls; k++) {
+    ret.push_back(Controls[k]->getFirstNumber());
+  }
+  return ret;
 }
 
 int oCourse::distance(const SICard &card)

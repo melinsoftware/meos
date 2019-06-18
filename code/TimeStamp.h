@@ -30,12 +30,14 @@
 
 ************************************************************************/
 
-class TimeStamp
-{
+class TimeStamp {
   unsigned int Time;
+  mutable string stampCode;
+  mutable int stampCodeTime = 0;
 public:
-  void setStamp(string s);
-  string getStamp() const;
+  void setStamp(const string &s);
+  const string &getStamp() const;
+  
   wstring getStampString() const;
   int getAge() const;
   unsigned int getModificationTime() const {return Time;}

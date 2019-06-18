@@ -69,6 +69,8 @@ protected:
 
   void changedObject();
 
+  mutable string punchString;
+
 public:
 
   // Returns true if the card was constructed from punches.
@@ -126,7 +128,7 @@ public:
   const wstring &getCardNoString() const;
   void setCardNo(int c);
   void importPunches(const string &s);
-  string getPunchString();
+  const string &getPunchString() const;
 
   void Set(const xmlobject &xo);
   bool Write(xmlparser &xml);

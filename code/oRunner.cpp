@@ -215,7 +215,7 @@ oRunner::~oRunner()
 bool oRunner::Write(xmlparser &xml)
 {
   if (Removed) return true;
-
+  
   xml.startTag("Runner");
   xml.write("Id", Id);
   xml.write("Updated", Modified.getStamp());
@@ -1916,6 +1916,12 @@ bool oRunner::operator<(const oRunner &c) const {
       return true;
     else  if (tStartTime > c.tStartTime)
       return false;
+
+    const wstring &b1 = getBib();
+    const wstring &b2 = c.getBib();
+    if (b1 != b2) {
+      return compareBib(b1, b2);
+    }
   }
   else if (oe->CurrentSortOrder == SortByStartTimeClass) {
     if (tStartTime < c.tStartTime)
@@ -2558,7 +2564,7 @@ pRunner oRunner::nextNeedReadout() const {
   return nullptr;
 }
 
-unordered_multimap<int, pRunner> &oEvent::getCardToRunner() const {
+vector<pRunner> oEvent::getCardToRunner(int cardNo) const {
   if (!cardToRunnerHash || cardToRunnerHash->size() > Runners.size() * 2) {
     cardToRunnerHash = make_shared<unordered_multimap<int, pRunner>>();
     for (auto &rc : Runners) {
@@ -2570,16 +2576,33 @@ unordered_multimap<int, pRunner> &oEvent::getCardToRunner() const {
       cardToRunnerHash->emplace(cno, r); // The cache is "to large" -> filter is needed when looking into it.
     }
   }
-  return *cardToRunnerHash;
+  vector<pRunner> res;
+  set<int> ids;
+  auto rng = cardToRunnerHash->equal_range(cardNo);
+  for (auto it = rng.first; it != rng.second; ++it) {
+    pRunner r = it->second;
+    if (!r->isRemoved() && r->getCardNo() == cardNo) {
+      if (ids.insert(r->getId()).second)
+        res.push_back(r);
+      
+      for (pRunner r2 : r->multiRunner) {
+        if (r2 && r2->getCardNo() == cardNo) {
+          if (ids.insert(r2->getId()).second)
+            res.push_back(r2);
+        }
+      }
+    }
+  }
+  return res;
 }
 
 pRunner oEvent::getRunnerByCardNo(int cardNo, int time, CardLookupProperty prop) const {
-  auto range = getCardToRunner().equal_range(cardNo);
+  auto range = getCardToRunner(cardNo);
   bool skipDNS = (prop == CardLookupProperty::SkipNoStart || prop == CardLookupProperty::CardInUse);
 
-  if (range.first != range.second && std::distance(range.first, range.second) == 1) {
+  if (range.size() == 1) {
     // Single hit
-    pRunner r = range.first->second;
+    pRunner r = range[0];
     if (r->isRemoved() || r->getCardNo() != cardNo)
       return nullptr;
     if (skipDNS && (r->getStatus() == StatusDNS || r->getStatus() == StatusCANCEL))
@@ -2594,11 +2617,7 @@ pRunner oEvent::getRunnerByCardNo(int cardNo, int time, CardLookupProperty prop)
   vector<pRunner> cand;
   bool forceRet = false;
 
-  for (auto it = range.first; it != range.second; ++it) {
-    pRunner r = it->second;
-    if (r->isRemoved() || r->getCardNo() != cardNo)
-      continue;
-
+  for (auto r : range) {
     if (skipDNS && (r->getStatus() == StatusDNS || r->getStatus() == StatusCANCEL))
       continue;
 
@@ -2700,11 +2719,8 @@ void oEvent::getRunnersByCardNo(int cardNo, bool sortUpdate, CardLookupProperty 
     const_cast<oEvent *>(this)->synchronizeList(oListId::oLRunnerId);
     
   if (cardNo != 0) {
-    auto range = getCardToRunner().equal_range(cardNo);
-    for (auto it = range.first; it != range.second; ++it) {
-      pRunner r = it->second;
-      if (r->isRemoved() || r->getCardNo() != cardNo)
-        continue;
+    auto range = getCardToRunner(cardNo);
+    for (auto r : range) {
       if (skipDNS && (r->getStatus() == StatusDNS || r->getStatus() == StatusCANCEL))
         continue;
       if (prop == CardLookupProperty::OnlyMainInstance && r->getRaceNo() != 0)
@@ -4657,6 +4673,7 @@ bool oRunner::matchName(const wstring &pname) const
 
   split(tRealName, L" ", myNames);
   split(pname, L" ", inNames);
+  int numInNames = inNames.size();
 
   for (size_t k = 0; k < myNames.size(); k++)
     myNames[k] = canonizeName(myNames[k].c_str());
@@ -4677,7 +4694,7 @@ bool oRunner::matchName(const wstring &pname) const
     }
   }
 
-  return nMatched >= min<int>(myNames.size(), 2);
+  return nMatched >= min<int>(max<int>(numInNames, myNames.size()), 2);
 }
 
 oRunner::BibAssignResult oRunner::autoAssignBib() {
@@ -5998,4 +6015,18 @@ void oAbstractRunner::preventRestart(bool state) {
   getDI().setInt("NoRestart", state);
   tPreventRestartCache.first = state;
   tPreventRestartCache.second = oe->dataRevision;
+}
+
+int oRunner::getCheckTime() const {
+  oPunch *p = nullptr;
+  if (Card) {
+    p = Card->getPunchByType(oPunch::PunchCheck);
+  }
+  else {
+    p = oe->getPunch(Id, oPunch::PunchCheck, getCardNo());
+  }
+  if (p && p->Time > 0)
+    return p->Time;
+
+  return 0;
 }

@@ -103,7 +103,6 @@ oClass::~oClass()
 bool oClass::Write(xmlparser &xml)
 {
   if (Removed) return true;
-
   xml.startTag("Class");
 
   xml.write("Id", Id);
@@ -359,26 +358,145 @@ void oClass::importLegMethod(const string &legMethods)
   apply();
 }
 
-int oClass::getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNotCompeting) const {
-  int nRunners=0;
-  oRunnerList::iterator it;
-
-  for (it=oe->Runners.begin(); it != oe->Runners.end(); ++it) {
-    if (it->getClassId(true)==Id) {
-      if (it->skip())
-        continue;
-      if (checkFirstLeg && it->tLeg > 0)
-        continue;
-      if (noCountVacant && it->isVacant())
-        continue;
-      if (noCountNotCompeting && it->getStatus() == StatusNotCompetiting)
-        continue;
-      nRunners++;
-    }
-  }
-  return nRunners;
+string oClass::getCountTypeKey(int leg, CountKeyType type, bool countVacant) {
+  return itos(leg) + ":" + itos(type) + (countVacant ? "V" : "");
 }
 
+int oClass::getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNotCompeting) const {
+  if (tTypeKeyToRunnerCount.first != oe->dataRevision) {
+    for (auto &c : oe->Classes) {
+      c.tTypeKeyToRunnerCount.second.clear();
+      c.tTypeKeyToRunnerCount.first = oe->dataRevision;
+    }
+  }
+  string key = getCountTypeKey(checkFirstLeg ? 0 : -1, 
+                               noCountNotCompeting ? CountKeyType::All : CountKeyType::IncludeNotCompeting,
+                               !noCountVacant);
+
+  auto res = tTypeKeyToRunnerCount.second.find(key);
+  if (res != tTypeKeyToRunnerCount.second.end())
+    return res->second;
+
+  unordered_map<int, int> nRunners;
+  for (auto &r : oe->Runners) {
+    if (r.isRemoved() || !r.Class)
+      continue;
+    if (checkFirstLeg && (r.tLeg > 0 && !r.Class->isQualificationFinalBaseClass()))
+      continue;
+    if (noCountVacant && r.isVacant())
+      continue;
+    if (noCountNotCompeting && r.getStatus() == StatusNotCompetiting)
+      continue;
+
+    int id = r.getClassId(true);
+    ++nRunners[id];
+  }
+  
+  for (auto &c : oe->Classes) {
+    if (!c.isRemoved())
+      c.tTypeKeyToRunnerCount.second[key] = nRunners[c.Id];
+  }
+  return nRunners[Id];
+}
+
+void oClass::getNumResults(int leg, int &total, int &finished, int &dns) const {
+  if (tTypeKeyToRunnerCount.first != oe->dataRevision) {
+    for (auto &c : oe->Classes) {
+      c.tTypeKeyToRunnerCount.second.clear();
+      c.tTypeKeyToRunnerCount.first = oe->dataRevision;
+    }
+  }
+  string keyTot = getCountTypeKey(leg, CountKeyType::ExpectedStarting, false);
+  string keyFinished = getCountTypeKey(leg, CountKeyType::Finished, false);
+  string keyDNS = getCountTypeKey(leg, CountKeyType::DNS, false);
+
+  auto rTot = tTypeKeyToRunnerCount.second.find(keyTot);
+  auto rFinished = tTypeKeyToRunnerCount.second.find(keyFinished);
+  auto rDNS = tTypeKeyToRunnerCount.second.find(keyDNS);
+
+  if (rTot != tTypeKeyToRunnerCount.second.end() &&
+      rFinished != tTypeKeyToRunnerCount.second.end() &&
+      rDNS != tTypeKeyToRunnerCount.second.end()) {
+    total = rTot->second;
+    finished = rFinished->second;
+    dns = rDNS->second;
+    return;
+  }
+
+  struct Cnt {
+    bool team = false;
+    bool singleClass = false;
+    int maxleg = 0;
+    int total = 0;
+    int finished = 0;
+    int dns = 0;
+  };
+
+  //Search runners
+  unordered_map<int, Cnt> cnt;
+
+  for (auto &c : oe->Classes) {
+    if (c.isRemoved())
+      continue;
+
+    ClassType ct = c.getClassType();
+    auto &cc = cnt[c.Id];
+    cc.maxleg = c.getLastStageIndex();
+    if (ct == oClassKnockout)
+      cc.singleClass = true || cc.maxleg == 1;
+
+    if (!(ct == oClassIndividual || ct == oClassIndividRelay || ct == oClassKnockout))
+      cnt[c.Id].team = true;
+  }
+
+  for (auto &r : oe->Runners) {
+    if (r.isRemoved() || !r.Class || r.tStatus == StatusNotCompetiting || r.tStatus == StatusCANCEL)
+      continue;
+
+    auto &c = cnt[r.getClassId(true)];
+    if (c.team)
+      continue;
+
+    int tleg = leg > 0 ? leg : c.maxleg;
+
+    if (r.tLeg == tleg || c.singleClass) {
+      c.total++;
+
+      if (r.tStatus != StatusUnknown)
+        c.finished++;
+      
+      if (r.tStatus == StatusDNS)
+        c.dns++;
+    }
+  }
+
+  for (auto &t : oe->Teams) {
+    if (t.isRemoved() || !t.Class || t.tStatus == StatusNotCompetiting || t.tStatus == StatusCANCEL)
+      continue;
+
+    auto &c = cnt[t.getClassId(true)];
+    if (!c.team)
+      continue;
+
+    c.total++;
+
+    if (t.tStatus != StatusUnknown || t.getLegStatus(leg, false) != StatusUnknown)
+      c.finished++;
+  }
+
+  for (auto &c : oe->Classes) {
+    auto &cc = cnt[c.Id];
+
+    c.tTypeKeyToRunnerCount.second[keyDNS] = cc.dns;
+    c.tTypeKeyToRunnerCount.second[keyFinished] = cc.finished;
+    c.tTypeKeyToRunnerCount.second[keyTot] = cc.total;
+  }
+  auto &cc = cnt[Id];
+
+  dns = cc.dns;
+  total = cc.total;
+  finished = cc.finished;
+}
 
 void oClass::setCourse(pCourse c)
 {
@@ -1530,62 +1648,6 @@ ClassType oClass::getClassType() const
   }
   else
     return oClassIndividual;
-}
-
-void oEvent::getNumClassRunners(int id, int leg, int &total, int &finished, int &dns) const
-{
-  total=0;
-  finished=0;
-  dns = 0;
-  //Search runners
-
-  const oClass *pc = getClass(id);
-
-  if (!pc)
-    return;
-
-  ClassType ct=pc->getClassType();
-  if (ct == oClassIndividual || ct == oClassIndividRelay || ct == oClassKnockout) {
-    oRunnerList::const_iterator it;
-    int maxleg = pc->getLastStageIndex();
-
-    for (it = Runners.begin(); it != Runners.end(); ++it) {
-      if (!it->skip() && it->getClassId(true) == id && it->getStatus() != StatusNotCompetiting) {
-        if (leg == 0) {
-          total++;
-
-          if (it->tStatus != StatusUnknown)
-            finished++;
-          else if (it->tStatus == StatusDNS || it->tStatus == StatusCANCEL)
-            dns++;
-        }
-        else {
-          int tleg = leg > 0 ? leg : maxleg;
-          const pRunner r = it->getMultiRunner(tleg);
-          if (r) {
-            total++;
-            if (r->tStatus != StatusUnknown)
-              finished++;
-            else if (it->tStatus == StatusDNS || it->tStatus == StatusCANCEL)
-              dns++;
-          }
-        }
-      }
-    }
-  }
-  else {
-    oTeamList::const_iterator it;
-
-    for (it=Teams.begin(); it != Teams.end(); ++it) {
-      if (it->getClassId(true)==id) {
-        total++;
-
-        if (it->tStatus!=StatusUnknown ||
-          it->getLegStatus(leg, false)!=StatusUnknown)
-          finished++;
-      }
-    }
-  }
 }
 
 int oClass::getNumMultiRunners(int leg) const
@@ -3130,6 +3192,20 @@ void oClass::calculateSplits() {
 
   LegResult legRes;
   LegResult legBestTime;
+  vector<pRunner> rCls;
+
+  if (isQualificationFinalBaseClass() || isQualificationFinalBaseClass()) {
+    for (auto &r : oe->Runners) {
+      if (!r.isRemoved() && r.getClassRef(true) == this)
+        rCls.push_back(&r);
+    }
+  }
+  else {
+    for (auto &r : oe->Runners) {
+      if (!r.isRemoved() && r.Class == this)
+        rCls.push_back(&r);
+    }
+  }
 
   for (set<pCourse>::iterator cit = cSet.begin(); cit!= cSet.end(); ++cit)  {
     pCourse pc = *cit;
@@ -3142,9 +3218,7 @@ void oClass::calculateSplits() {
     vector< vector<int> > splitsAcc(nc+1);
     vector<bool> acceptMissingPunch(nc+1, true);
 
-    for (oRunnerList::iterator it = oe->Runners.begin(); it != oe->Runners.end(); ++it) {
-      if (it->isRemoved() || it->getClassRef(true) != this)
-        continue;
+    for (pRunner it : rCls) {
       pCourse tpc = it->getCourse(false);
       if (tpc != pc || tpc == 0)
         continue;
@@ -3161,10 +3235,8 @@ void oClass::calculateSplits() {
         }
       }
     }
-    for (oRunnerList::iterator it = oe->Runners.begin(); it != oe->Runners.end(); ++it) {
-      if (it->isRemoved() || it->getClassRef(true) != this)
-        continue;
 
+    for (pRunner it : rCls) {
       pCourse tpc = it->getCourse(false);
 
       if (tpc != pc)

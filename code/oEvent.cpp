@@ -1134,10 +1134,18 @@ bool oEvent::open(const xmlparser &xml) {
   ZeroTime = 0;
 
   xo = xml.getObject("Date");
-  if (xo) Date=xo.getw();
-
+  if (xo) {
+    wstring fDate = xo.getw();
+    if (convertDateYMS(fDate, true) > 0)
+      Date = fDate;
+  }
+  Name.clear();
   xo = xml.getObject("Name");
   if (xo)  Name=xo.getw();
+
+  if (Name.empty()) {
+    Name = lang.tl("Ny tävling");
+  }
 
   xo = xml.getObject("Annotation");
   if (xo) Annotation = xo.getw();
@@ -1719,9 +1727,10 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
   Runners.push_back(r);
   pRunner pr=&Runners.back();
   
+  //cardToRunnerHash.reset();
   if (cardToRunnerHash && r.getCardNo() != 0) {
     cardToRunnerHash->emplace(r.getCardNo(), pr);
-  }  
+  } 
   
   if (pr->StartNo == 0 && updateStartNo) {
     pr->StartNo = ++nextFreeStartNo; // Need not be unique
@@ -2637,13 +2646,12 @@ void oEvent::removeRunner(const vector<int> &ids)
       continue; //Already found.
 
     //Remove a singe runner team
-    autoRemoveTeam(r);
-
-    for (size_t k=0;k<r->multiRunner.size();k++)
+    for (size_t k = 0; k < r->multiRunner.size(); k++) {
       if (r->multiRunner[k])
         toRemove.insert(r->multiRunner[k]->getId());
-
-    toRemove.insert(Id);
+    }
+    autoRemoveTeam(r);
+    toRemove.insert(r->Id);
   }
 
   if (toRemove.empty())
@@ -4797,8 +4805,7 @@ wstring oEvent::getPropertyStringDecrypt(const char *name, const string &def)
   return prop2;
 }
 
-void oEvent::setPropertyEncrypt(const char *name, const string &prop)
-{
+void oEvent::setPropertyEncrypt(const char *name, const string &prop) {
   wchar_t bf[MAX_COMPUTERNAME_LENGTH + 1];
   DWORD len = MAX_COMPUTERNAME_LENGTH + 1;
   GetComputerName(bf, &len);
@@ -4822,18 +4829,11 @@ void oEvent::setPropertyEncrypt(const char *name, const string &prop)
   setProperty(name, gdibase.widen(prop2));
 }
 
-void oEvent::setProperty(const char *name, int prop)
-{
+void oEvent::setProperty(const char *name, int prop) {
   eventProperties[name]=itow(prop);
 }
-/*
-void oEvent::setProperty(const char *name, const string &prop)
-{
-  eventProperties[name]=gdibase.toWide(prop);
-}*/
 
-void oEvent::setProperty(const char *name, const wstring &prop)
-{
+void oEvent::setProperty(const char *name, const wstring &prop) {
   eventProperties[name] = prop;
 }
 
@@ -5762,10 +5762,11 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
 
     if (!it->tInTeam) {
       ClassType type = it->Class->getClassType();
+      int cid = it->Class->getId();
       if (type == oClassIndividRelay) {
         it->setClassId(0, true);
-        it->setClassId(it->Class->getId(), true);
-        it->synchronize();
+        it->setClassId(cid, true);
+        it->synchronizeAll();
       }
       else if (type == oClassRelay) {
         if (!warnNoTeam) {

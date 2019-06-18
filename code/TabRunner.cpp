@@ -1568,13 +1568,15 @@ void TabRunner::showRunnerReport(gdioutput &gdi) {
 }
 
  void TabRunner::generateRunnerReport(oEvent &oe, gdioutput &gdi, vector<pair<int, bool>> &runnersToReport) {
-
+   oe.synchronizeList({ oListId::oLRunnerId, oListId::oLTeamId, oListId::oLPunchId });
   gdi.fillDown();
 
   cTeam t = 0;
   set<int> clsSet;
   for (size_t k = 0; k < runnersToReport.size(); k++) {
     pRunner r = oe.getRunner(runnersToReport[k].first, 0);
+    if (!r)
+      continue;
     clsSet.insert(r->getClassId(true));
     if (r && r->getTeam()) {
       pClass cls = r->getClassRef(true);
@@ -1676,7 +1678,7 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
 
   if (r->statusOK()) {
     int total, finished,  dns;
-    oe.getNumClassRunners(r->getClassId(true), r->getLegNumber(), total, finished, dns);
+    r->getClassRef(true)->getNumResults(r->getLegNumber(), total, finished, dns);
 
     if (r->getTeam() == 0) {
       gdi.addString("", fontMediumPlus, L"Tid: X, nuvarande placering Y/Z.#" + str + L"#" + r->getPlaceS() + L"#" + itow(finished));

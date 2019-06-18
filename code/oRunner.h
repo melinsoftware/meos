@@ -567,6 +567,9 @@ public:
   // Returns true if there are radio control results, provided result calculation oEvent::ResultType::PreliminarySplitResults was invoked.
   bool hasOnCourseResult() const { return !tOnCourseResults.empty() || getFinishTime() > 0 || getStatus() != RunnerStatus::StatusUnknown; }
   
+  /** Returns a check time (or zero for no time). */
+  int getCheckTime() const;
+
   /** Get a runner reference (drawing) */
   pRunner getReference() const;
   

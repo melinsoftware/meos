@@ -2436,3 +2436,7 @@ Patrol score, rogaining = Patrullpoäng, rogaining
 Rogaining points before automatic reduction = Rogainingpoäng före automatisk reduktion
 Runner's course id = Deltagares banans id
 Status code for cancelled entry = Statuskod för återbud
+Kunde inte öppna databasen (X) = Kunde inte öppna databasen (X)
+Kunde inte ladda upp löpardatabasen (X) = Kunde inte ladda upp löpardatabasen (X)
+Runner check time = Checktid
+ClassNumEntries = Antal anmälda i klassen

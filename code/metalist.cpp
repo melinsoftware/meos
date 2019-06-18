@@ -549,6 +549,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   oPrintPost *last = 0;
   oPrintPost *base = 0;
 
+  auto indexPosToWidthSrc = indexPosToWidth;
+
   int totalWidth = pos.getWidth();
   for (map<pair<int, int>, int>::iterator it = linePostCount.begin(); it != linePostCount.end(); ++it) {
     if (it->second == 1) {
@@ -606,7 +608,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
         added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
         setFixedWidth(added, indexPosToWidth, MLHead, j, k);
-
+        added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLHead, j, k)];
         added.color = mp.color;
         if (!mp.mergeWithPrevious)
           base = &added;
@@ -657,7 +659,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
       setFixedWidth(added, indexPosToWidth, MLSubHead, j, k);
-        
+      added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLSubHead, j, k)];
       added.color = mp.color;
       if (!mp.mergeWithPrevious)
         base = &added;
@@ -703,6 +705,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
       setFixedWidth(added, indexPosToWidth, MLList, j, k);
+      added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLList, j, k)];
 
       added.color = mp.color;
       if (!mp.mergeWithPrevious)
@@ -756,6 +759,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
       setFixedWidth(added, indexPosToWidth, MLSubList, j, k);
+      added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLSubList, j, k)];
 
       if (last && mp.mergeWithPrevious) {
         last->doMergeNext = true;
@@ -1656,6 +1660,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lClassResultFraction] = L"ClassResultFraction";
     typeToSymbol[lClassAvailableMaps] = L"ClassAvailableMaps";
     typeToSymbol[lClassTotalMaps] = L"ClassTotalMaps";
+    typeToSymbol[lClassNumEntries] = L"ClassNumEntries";
     typeToSymbol[lCourseLength] = L"CourseLength";
     typeToSymbol[lCourseName] = L"CourseName";
     typeToSymbol[lCourseClimb] = L"CourseClimb";

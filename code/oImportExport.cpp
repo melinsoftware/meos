@@ -2255,7 +2255,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
   xml.startTag("ResultList");
 
   xml.write("IOFVersion", "version", L"2.0.3");
-
+  wstring hhmmss = L"HH:MM:SS";
   exportIOFEvent(xml);
 
   bool ClassStarted=false;
@@ -2304,13 +2304,13 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
 
           xml.startTag("Result");
             xml.startTag("StartTime");
-              xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
+              xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getStartTime(), ZeroTime));
             xml.endTag();
             xml.startTag("FinishTime");
-              xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getLegFinishTime(-1), ZeroTime));
+              xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getLegFinishTime(-1), ZeroTime));
             xml.endTag();
 
-            xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(it->getLegRunningTime(-1, false), 0));
+            xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getLegRunningTime(-1, false), 0));
             xml.write("ResultPosition", it->getLegPlaceS(-1, false));
 
             xml.write("CompetitorStatus", "value", it->Runners[0]->getIOFStatusS());
@@ -2333,7 +2333,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
                 xml.startTag("SplitTime", "sequence", itos(no++));
                 xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
                 if (unsigned(k)<sp.size() && sp[k].time>0)
-                  xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(sp[k].time-it->tStartTime, 0));
+                  xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(sp[k].time-it->tStartTime, 0));
                 else
                   xml.write("Time", L"--:--:--");
 
@@ -2410,13 +2410,13 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
           xml.write("CCardId", it->getCardNo());
         xml.endTag();
         xml.startTag("StartTime");
-        xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
+        xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getStartTime(), ZeroTime));
         xml.endTag();
         xml.startTag("FinishTime");
-        xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
+        xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
         xml.endTag();
 
-        xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(it->getRunningTime(),0));
+        xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getRunningTime(),0));
         xml.write("ResultPosition", it->getPlaceS());
 
         xml.write("CompetitorStatus", "value", it->getIOFStatusS());
@@ -2438,7 +2438,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             xml.startTag("SplitTime", "sequence", itos(no++));
             xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
             if (unsigned(k)<sp.size() && sp[k].time>0)
-              xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(sp[k].time - it->tStartTime, 0));
+              xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(sp[k].time - it->tStartTime, 0));
             else
               xml.write("Time", L"--:--:--");
 
@@ -2459,6 +2459,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
 
 void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldStylePatrol)
 {
+  wstring hhmmss = L"HH:MM:SS";
   vector<SplitData> dummy;
   bool ClassStarted=false;
   int Id=-1;
@@ -2531,13 +2532,13 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
       xml.write("BibNumber", it->getStartNo());
 
       xml.startTag("StartTime");
-        xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getStartTime(), ZeroTime));
+        xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getStartTime(), ZeroTime));
       xml.endTag();
       xml.startTag("FinishTime");
-      xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
+      xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
       xml.endTag();
 
-      xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(it->getRunningTime(), 0));
+      xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getRunningTime(), 0));
       xml.write("ResultPosition", it->getPlaceS());
       xml.write("TeamStatus", "value", it->getIOFStatusS());
 
@@ -2556,13 +2557,13 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
           xml.startTag("Result"); {
             xml.write("TeamSequence", k+1);
             xml.startTag("StartTime");
-              xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(r->getStartTime(), ZeroTime));
+              xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(r->getStartTime(), ZeroTime));
             xml.endTag();
             xml.startTag("FinishTime");
-            xml.write("Clock", "clockFormat", L"HH:MM:SS", formatTimeIOF(r->getFinishTimeAdjusted(), ZeroTime));
+            xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(r->getFinishTimeAdjusted(), ZeroTime));
             xml.endTag();
 
-            xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(r->getRunningTime(), 0));
+            xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(r->getRunningTime(), 0));
             xml.write("ResultPosition", r->getPlaceS());
 
             xml.write("CompetitorStatus", "value", r->getIOFStatusS());
@@ -2590,7 +2591,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
                 xml.startTag("SplitTime", "sequence", itos(no++));
                 xml.write("ControlCode", pcourse->Controls[k]->getFirstNumber());
                 if (unsigned(k)<sp.size() && sp[k].time>0)
-                  xml.write("Time", "timeFormat", L"HH:MM:SS", formatTimeIOF(sp[k].time - it->tStartTime, 0));
+                  xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(sp[k].time - it->tStartTime, 0));
                 else
                   xml.write("Time", L"--:--:--");
 

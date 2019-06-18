@@ -83,17 +83,21 @@ int TimeStamp::getAge() const
   return CTime-Time;
 }
 
-string TimeStamp::getStamp() const
+const string &TimeStamp::getStamp() const
 {
+  if (stampCodeTime == Time)
+    return stampCode;
+  
+  stampCodeTime = Time;
   __int64 ft64=(__int64(Time)+minYearConstant*365*24*3600)*10000000;
   FILETIME &ft=*(FILETIME*)&ft64;
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
+  char bf[64];
+  sprintf_s(bf, 32, "%d%02d%02d%02d%02d%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+  stampCode = bf;
 
-  char bf[32];
-  sprintf_s(bf, "%d%02d%02d%02d%02d%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-
-  return bf;
+  return stampCode;
 }
 
 wstring TimeStamp::getStampString() const
@@ -109,7 +113,7 @@ wstring TimeStamp::getStampString() const
   return bf;
 }
 
-void TimeStamp::setStamp(string s)
+void TimeStamp::setStamp(const string &s)
 {
   if (s.size()<14)
     return;

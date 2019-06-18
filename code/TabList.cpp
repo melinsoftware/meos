@@ -939,7 +939,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       gdi.registerEvent("DataUpdate", ListsEventCB);
       gdi.setData("DataSync", 1);
       gdi.registerEvent(bi.id, ListsCB);
-
+      currentList.getParam().pageBreak = true;
       oe->generateMinuteStartlist(gdi);
       baseButtons(gdi, 0);
       gdi.refresh();

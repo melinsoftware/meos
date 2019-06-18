@@ -232,7 +232,7 @@ class IOF30Interface {
   int getStageNumber();
 
   bool readXMLCompetitorDB(const xmlobject &xCompetitor);
-  void writeXMLCompetitorDB(xmlparser &xml, const RunnerWDBEntry &rde) const;
+  void writeXMLCompetitorDB(xmlparser &xml, const RunnerDB &db, const RunnerWDBEntry &rde) const;
 
   int getStartIndex(const wstring &startId);
 

@@ -812,6 +812,7 @@ void xmlbuffer::startXML(xmlparser &xml, const wstring &dest) {
 }
 
 bool xmlbuffer::commit(xmlparser &xml, int count) {
+  vector<wstring> p2;
   while (count>0 && !blocks.empty()) {
     block &block = blocks.front();
 
@@ -819,12 +820,20 @@ bool xmlbuffer::commit(xmlparser &xml, int count) {
       xml.write(block.tag.c_str(), block.prop, block.value);
     }
     else {
-      vector<wstring> p2;
-      for (size_t k = 0; k< block.prop.size(); k++) {
-        p2.push_back(gdi_main->widen(block.prop[k].first));
-        p2.push_back(block.prop[k].second);
+      if (block.prop.size() > 1) {
+        p2.resize(block.prop.size() * 2);
+        for (size_t k = 0; k < block.prop.size(); k++) {
+          p2[k * 2] = gdi_main->widen(block.prop[k].first);
+          p2[k * 2 + 1] = std::move(block.prop[k].second);
+        }
+        xml.startTag(block.tag.c_str(), p2);
       }
-      xml.startTag(block.tag.c_str(), p2);
+      else if (block.prop.size() == 1) {
+        xml.startTag(block.tag.c_str(), block.prop[0].first.c_str(), block.prop[0].second);
+      }
+      else if (block.prop.empty()) {
+        xml.startTag(block.tag.c_str());
+      }
 
       for (size_t k = 0; k < block.subValues.size(); k++)
         block.subValues[k].commit(xml, numeric_limits<int>::max());

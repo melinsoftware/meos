@@ -53,6 +53,7 @@ enum EPostType
   lClassResultFraction,
   lClassAvailableMaps,
   lClassTotalMaps,
+  lClassNumEntries,
   lCourseLength,
   lCourseName,
   lCourseClimb,
@@ -297,6 +298,7 @@ struct oPrintPost {
   GDICOLOR color;
   int dx;
   int dy;
+  mutable int xlimit = 0;
   int legIndex;
   bool linearLegIndex;
   gdiFonts getFont() const {return gdiFonts(format & 0xFF);}
@@ -573,7 +575,7 @@ public:
                       gdiFonts font,
                       const wchar_t *fontFace = 0,
                       bool large = false, 
-                      int minSize = 0);
+                      int minSize = 0) const;
 
 
   int getMaxCharWidth(const oEvent *oe, 
@@ -583,7 +585,7 @@ public:
                       gdiFonts font,
                       const wchar_t *fontFace = 0,
                       bool large = false, 
-                      int minSize = 0) {
+                      int minSize = 0) const {
     vector< pair<EPostType, wstring> > typeFormats(1, make_pair(type, formats));
     return getMaxCharWidth(oe, oe->gdiBase(), clsSel, typeFormats, font, fontFace, largeSize, minSize);
   }

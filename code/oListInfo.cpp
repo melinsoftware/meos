@@ -284,7 +284,7 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
                                const vector< pair<EPostType, wstring> > &typeFormats,
                                gdiFonts font,
                                const wchar_t *fontFace,
-                               bool large, int minSize) {
+                               bool large, int minSize) const {
   vector<oPrintPost> pps;
   for (size_t k = 0; k < typeFormats.size(); k++) {
     pps.push_back(oPrintPost());
@@ -1057,7 +1057,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
     case lClassResultFraction:
       if (pc && !invalidClass) {
         int total, finished,  dns;
-        oe->getNumClassRunners(pc->getId(), par.getLegNumber(pc), total, finished, dns);
+        pc->getNumResults(par.getLegNumber(pc), total, finished, dns);
         swprintf_s(wbf, L"(%d / %d)", finished, total);
       }
       break;
@@ -1091,6 +1091,13 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       }
       break;
     
+    case lClassNumEntries:
+      if (pc) {
+        int n = pc->getNumRunners(true, true, true);
+        wsptr = &itow(n);
+      }
+      break;
+
     case lCourseClimb:
       if (r) {
         pCourse crs = r->getCourse(false);
@@ -1658,7 +1665,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
     case lRunnerUMMasterPoint:
       if (r) {
         int total, finished, dns;
-        oe->getNumClassRunners(pc->getId(), par.getLegNumber(pc), total, finished, dns);
+        pc->getNumResults(par.getLegNumber(pc), total, finished, dns);
         int percent = int(floor(0.5+double((100*(total-dns-r->getPlace()))/double(total-dns))));
         if (r->getStatus()==StatusOK)
           swprintf_s(wbf, L"%d",  percent);
@@ -2296,7 +2303,7 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
       continue;
     }
 
-    int limit = 0;
+    int limit = ppit->xlimit;
 
     bool keepNext = false;
     //Skip merged entities
@@ -2337,20 +2344,20 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
       if ((pp.type == lRunnerName || pp.type == lRunnerCompleteName ||
           pp.type == lRunnerFamilyName || pp.type == lRunnerGivenName ||
           pp.type == lTeamRunner || (pp.type == lPatrolNameNames && !t)) && rr) {
-        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format, text,
+        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format | skipBoundingBox, text,
                                   ppi.gdi.scaleLength(limit), ppi.par.cb, pp.fontFace.c_str());
         ti->setExtra(rr->getId());
         ti->id = "R";
       }
       else if ((pp.type == lTeamName || pp.type == lPatrolNameNames) && t) {
-        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format, text,
+        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format | skipBoundingBox, text,
                                   ppi.gdi.scaleLength(limit), ppi.par.cb, pp.fontFace.c_str());
         ti->setExtra(t->getId());
         ti->id = "T";
       }
       else {
         ti = &ppi.gdi.addStringUT(y + pdy, x + pdx,
-                                  pp.format, text, ppi.gdi.scaleLength(limit), 0, pp.fontFace.c_str());
+                                  pp.format | skipBoundingBox, text, ppi.gdi.scaleLength(limit), 0, pp.fontFace.c_str());
       }
       if (ti && ppi.keepToghether)
         ti->lineBreakPrioity = -1;
@@ -2733,11 +2740,26 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
   PrintPostInfo printPostInfo(gdi, li.lp);
   //oCounter counter;
   //Render header
+  vector< pair<EPostType, wstring> > v;
+  for (auto &listPostList : { &li.Head, &li.subHead, &li.listPost, &li.subListPost }) {
+    for (auto &lp : *listPostList) {
+      if (lp.xlimit == 0) {
+        v.clear();
+        v.emplace_back(lp.type, lp.text);
+        gdiFonts font = lp.getFont();
+        lp.xlimit = li.getMaxCharWidth(this, gdi, li.getParam().selection, v, font, lp.fontFace.c_str());
+      }
+    }
+  }
 
   if (formatHead && li.getParam().showHeader) {
     for (auto &h : li.Head) {
       if (h.type == lCmpName || h.type == lString) {
+        v.clear();
         const_cast<wstring&>(h.text) = li.lp.getCustomTitle(h.text);
+        v.emplace_back(h.type, h.text);
+        gdiFonts font = h.getFont();
+        h.xlimit = li.getMaxCharWidth(this, gdi, li.getParam().selection, v, font, h.fontFace.c_str());
         break;
       }
     }
@@ -2748,7 +2770,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     generateFixedList(gdi, li);
     return;
   }
-
+     
   // Apply for all teams (calculate start times etc.)
   for (oTeamList::iterator it = Teams.begin(); it != Teams.end(); ++it) {
     if (it->isRemoved() || it->tStatus == StatusNotCompetiting)

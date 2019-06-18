@@ -63,6 +63,12 @@ string oPunch::codeString() const
   return bf;
 }
 
+void oPunch::appendCodeString(string &dst) const {
+  char bf[32];
+  sprintf_s(bf, 32, "%d-%d;", Type, Time);
+  dst.append(bf);
+}
+
 void oPunch::decodeString(const string &s)
 {
   Type=atoi(s.c_str());

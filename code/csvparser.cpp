@@ -723,13 +723,13 @@ int csvparser::selectPunchIndex(const wstring &competitionDate, const vector<wst
   for (size_t k = 0; k < sp.size(); k++) {
     processGeneralTime(sp[k], pt, date);
     if (!pt.empty()) {
-      if (ti == -1) {
+      //if (ti == -1) {
         ti = k;
         pt.swap(processedTime);
-      }
-      else {
-        return -1; // Not a unique time
-      }
+     // }
+     // else {
+    //    return -1; // Not a unique time
+    //  }
       if (!date.empty()) {
         date.swap(processedDate);
         di = k;
@@ -913,13 +913,13 @@ const wchar_t *csvparser::getSIC(SIConfigFields sic, const vector<wstring> &sp) 
 bool csvparser::checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, SICard &card) {
   if (siconfigmap.empty())
     return false;
-  
+
   int startIx = siconfigmap[sicRecordStart];
   if (startIx == 0)
     return false;
 
   int cardNo = wtoi(getSIC(sicSIID, sp));
-  
+
   if (cardNo < 1000 || cardNo > 99999999)
     return false;
   bool is12Hour = false;
@@ -934,14 +934,14 @@ bool csvparser::checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, S
   
   vector< pair<int, int> > punches;
   int np = wtoi(getSIC(sicNumPunch, sp));
-  
 
-  for (int k=0; k < np; k++) {
-    size_t ix = startIx + k*3;
-    if (ix+2 >= sp.size())
+
+  for (int k = 0; k < np; k++) {
+    size_t ix = startIx + k * 3;
+    if (ix + 2 >= sp.size())
       return false;
     int code = wtoi(sp[ix]);
-    int time = analyseSITime(sp[ix+1].c_str(), sp[ix+2].c_str(), is12Hour);
+    int time = analyseSITime(sp[ix + 1].c_str(), sp[ix + 2].c_str(), is12Hour);
     if (code > 0) {
       punches.push_back(make_pair(code, time));
     }
@@ -949,7 +949,7 @@ bool csvparser::checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, S
       return false;
     }
   }
-
+ 
   if ( (finish > 0 && finish != NOTIME) || punches.size() > 2) {
     card.clear(0);
     card.CardNumber = cardNo;
