@@ -464,13 +464,15 @@ void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) co
   if (!bib.empty()) {
     prop.emplace_back("bib", bib);
   }
+  prop.emplace_back("flag", nationality);
 
   xml.write("base", prop, name);
 }
 
 bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
+    bool ch = false;
+
   const wstring &n = bc.getName();
-  bool ch = false;
   if (n != name) {
     name = n;
     ch = true;
@@ -516,6 +518,16 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
   if (bib != newBib) {
     bib = newBib;
     ch = true;
+  }
+
+  oRunner *or = dynamic_cast<oRunner*>(&bc);
+  if (or != NULL)
+  {
+    wstring newNationality = or->getNationality();
+    if (nationality != newNationality) {
+      nationality = newNationality;
+      ch = true;
+    }
   }
 
   return ch;

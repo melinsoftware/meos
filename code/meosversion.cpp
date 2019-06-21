@@ -42,7 +42,7 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2019-06-16 10:37:59 +0200 (sö, 16 jun 2019) $");
+  wstring date(L"$Date: 2019-06-21 10:37:59 +0200 (JM patch) $");
   return date.substr(7,10);
 }
 
