@@ -57,6 +57,7 @@ protected:
   wstring sName;
   pClub Club;
   pClass Class;
+  wstring sNationality;
 
   int startTime;
   int tStartTime;
