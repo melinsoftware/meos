@@ -716,6 +716,7 @@ pClass oEvent::addClass(const wstring &pname, int CourseId, int classId)
     c.Course=getCourse(CourseId);
 
   Classes.push_back(c);
+  Classes.back().addToEvent();
   Classes.back().synchronize();
   updateTabs();
   return &Classes.back();
@@ -732,8 +733,9 @@ pClass oEvent::addClass(oClass &c)
   }
 
   Classes.push_back(c);
+  Classes.back().addToEvent();
 
-  if (!Classes.back().existInDB()) {
+  if (!Classes.back().existInDB() && !c.isImplicitlyCreated()) {
     Classes.back().changed = true;
     Classes.back().synchronize();
   }

@@ -159,7 +159,7 @@ string oTeam::getRunners() const
 
   for(m=0;m<Runners.size();m++){
     if (Runners[m]){
-      sprintf_s(bf, 16, "%d;", Runners[m]->Id);
+      sprintf_s(bf, 16, "%d;", Runners[m]->getId());
       str+=bf;
     }
     else str+="0;";
@@ -185,39 +185,42 @@ void oTeam::decodeRunners(const string &rns, vector<int> &rid)
   }
 }
 
-void oTeam::importRunners(const vector<int> &rns)
-{
+void oTeam::importRunners(const vector<int> &rns) {
   Runners.resize(rns.size());
   for (size_t n=0;n<rns.size(); n++) {
-    if (rns[n]>0)
+    if (rns[n] > 0)
       Runners[n] = oe->getRunner(rns[n], 0);
     else
-      Runners[n] = 0;
+      Runners[n] = nullptr;
+
+    pRunner r = Runners[n];
+    if (r) {
+      r->tInTeam = this;
+      r->tLeg = n;
+    }
   }
 }
 
 void oTeam::importRunners(const vector<pRunner> &rns)
 {
   // Unlink old runners
-  for (size_t k = rns.size(); k<Runners.size(); k++) {
-    if (Runners[k] && Runners[k]->tInTeam == this) {
-      Runners[k]->tInTeam = 0;
-      Runners[k]->tLeg = 0;
+  for (size_t k = 0; k<Runners.size(); k++) {
+    pRunner r = Runners[k];
+    if (r && r->tInTeam == this) {
+      r->tInTeam = 0;
+      r->tLeg = 0;
     }
   }
 
   Runners.resize(rns.size());
-  for (size_t n=0;n<rns.size(); n++) {
-    if (Runners[n] && rns[n] != Runners[n]) {
-      if (Runners[n]->tInTeam == this) {
-        Runners[n]->tInTeam = 0;
-        Runners[n]->tLeg = 0;
-      }
-    }
+  for (size_t n = 0; n < rns.size(); n++) {
     Runners[n] = rns[n];
+    if (rns[n] && isAddedToEvent()) {
+      rns[n]->tInTeam = this;
+      rns[n]->tLeg = n;
+    }
   }
 }
-
 
 void oEvent::removeTeam(int Id)
 {
@@ -245,13 +248,14 @@ void oTeam::setRunner(unsigned i, pRunner r, bool sync)
       throw std::exception("Bad runner index");
   }
 
-  if (Runners[i]==r)
+  if (Runners[i] == r)
     return;
 
   int oldRaceId = 0;
-  if (Runners[i]) {
-    oldRaceId = Runners[i]->getDCI().getInt("RaceId");
-    Runners[i]->getDI().setInt("RaceId", 0);
+  pRunner tr = Runners[i];
+  if (tr) {
+    oldRaceId = tr->getDCI().getInt("RaceId");
+    tr->getDI().setInt("RaceId", 0);
   }
   setRunnerInternal(i, r);
 
@@ -285,7 +289,7 @@ void oTeam::setRunner(unsigned i, pRunner r, bool sync)
 
 void oTeam::setRunnerInternal(int k, pRunner r)
 {
-  if (r==Runners[k]) {
+  if (r == Runners[k]) {
     if (r) {
       r->tInTeam = this;
       r->tLeg = k;
@@ -293,29 +297,30 @@ void oTeam::setRunnerInternal(int k, pRunner r)
     return;
   }
 
-  if (Runners[k]) {
-    assert(Runners[k]->tInTeam == 0 || Runners[k]->tInTeam == this);
-    Runners[k]->tInTeam = 0;
-    Runners[k]->tLeg = 0;
+  pRunner rOld = Runners[k];
+  if (rOld) {
+    assert(rOld->tInTeam == 0 || rOld->tInTeam == this);
+    rOld->tInTeam = 0;
+    rOld->tLeg = 0;
   }
 
   // Reset old team
   if (r && r->tInTeam) {
-    if (r->tInTeam->Runners[r->tLeg] != 0) {
-      r->tInTeam->Runners[r->tLeg] = 0;
+    if (r->tInTeam->Runners[r->tLeg]) {
+      r->tInTeam->Runners[r->tLeg] = nullptr;
       r->tInTeam->updateChanged();
       if (r->tInTeam != this)
         r->tInTeam->synchronize(true);
     }
   }
 
-  Runners[k]=r;
+  Runners[k] = r;
 
-  if (Runners[k]) {
-    Runners[k]->tInTeam = this;
-    Runners[k]->tLeg = k;
-    if (Class && (Runners[k]->Class==nullptr || Class->getLegType(k) != LTGroup))
-      Runners[k]->setClassId(getClassId(false), false);
+  if (r) {
+    r->tInTeam = this;
+    r->tLeg = k;
+    if (Class && (r->Class==nullptr || Class->getLegType(k) != LTGroup))
+      r->setClassId(getClassId(false), false);
   }
   updateChanged();
 }
@@ -764,11 +769,9 @@ bool oTeam::compareSNO(const oTeam &a, const oTeam &b) {
                        b.sName.c_str(), b.sName.length()) == CSTR_LESS_THAN;
 }
 
-
-bool oTeam::isRunnerUsed(int Id) const
-{
+bool oTeam::isRunnerUsed(int rId) const {
   for(unsigned i=0;i<Runners.size(); i++) {
-    if (Runners[i] && Runners[i]->Id==Id)
+    if (Runners[i] && Runners[i]->getId() == rId)
       return true;
   }
   return false;
@@ -830,13 +833,14 @@ void oTeam::quickApply() {
   
   if (Class && Runners.size()!=size_t(Class->getNumStages())) {
     for (size_t k = Class->getNumStages(); k < Runners.size(); k++) {
-      if (Runners[k] && Runners[k]->tInTeam) {
-        Runners[k]->tInTeam = 0;
-        Runners[k]->tLeg = 0;
-        Runners[k]->tLegEquClass = 0;
-        if (Runners[k]->Class == Class)
-          Runners[k]->Class = 0;
-        Runners[k]->updateChanged();
+      pRunner tr = Runners[k];
+      if (tr && tr->tInTeam) {
+        tr->tInTeam = 0;
+        tr->tLeg = 0;
+        tr->tLegEquClass = 0;
+        if (tr->Class == Class)
+          tr->Class = 0;
+        tr->updateChanged();
       }
     }
     Runners.resize(Class->getNumStages()); 
@@ -844,16 +848,22 @@ void oTeam::quickApply() {
 
   for (size_t i = 0; i < Runners.size(); i++) {
     if (Runners[i]) {
-      if (Runners[i]->tInTeam && Runners[i]->tInTeam!=this) {
-        Runners[i]->tInTeam->correctRemove(Runners[i]);
+      if (Runners[i]->isRemoved()) {
+        // Could happen for database not in sync / invalid manual modification
+        Runners[i]->tInTeam = nullptr;
+        Runners[i]->tLeg = 0;
+        Runners[i] = nullptr;
+      }
+
+      auto tit = Runners[i]->tInTeam;
+      if (tit && tit!=this) {
+        tit->correctRemove(Runners[i]);
       }
       Runners[i]->tInTeam=this;
       Runners[i]->tLeg=i;
     }
   }
 }
-
-
 
 bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
   if (unsigned(status) >= 100)
@@ -866,13 +876,14 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
 
   if (Class && Runners.size()!=size_t(Class->getNumStages())) {
     for (size_t k = Class->getNumStages(); k < Runners.size(); k++) {
-      if (Runners[k] && Runners[k]->tInTeam) {
-        Runners[k]->tInTeam = 0;
-        Runners[k]->tLeg = 0;
-        Runners[k]->tLegEquClass = 0;
-        if (Runners[k]->Class == Class)
-          Runners[k]->Class = 0;
-        Runners[k]->updateChanged();
+      auto tr = Runners[k];
+      if (tr && tr->tInTeam) {
+        tr->tInTeam = nullptr;
+        tr->tLeg = 0;
+        tr->tLegEquClass = 0;
+        if (tr->Class == Class)
+          tr->Class = 0;
+        tr->updateChanged();
       }
     }
     Runners.resize(Class->getNumStages());
@@ -881,7 +892,15 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
   BibMode bibMode = (BibMode)-1;
   tNumRestarts = 0;
   vector<int> availableStartTimes;
-  for (size_t i=0;i<Runners.size(); i++) {
+  for (size_t i_c=0;i_c<Runners.size(); i_c++) {
+    const size_t i = i_c;
+    if (Runners[i] && Runners[i]->isRemoved()) {
+      // Could happen for database not in sync / invalid manual modification
+      Runners[i]->tInTeam = nullptr;
+      Runners[i]->tLeg = 0;
+      Runners[i] = nullptr;
+    }
+    
     if (!sync && i>0 && source!=0 && Runners[i-1] == source)
       return true;
     if (!Runners[i] && Class) {
@@ -890,7 +909,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
        if (lr<i && Runners[lr]) {
          Runners[lr]->createMultiRunner(false, sync);
          int dup=Class->getLegRunnerIndex(i);
-         Runners[i]=Runners[lr]->getMultiRunner(dup);
+         Runners[i] = Runners[lr]->getMultiRunner(dup);
        }
     }
 
@@ -899,14 +918,15 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
       if (lr == i && Runners[i]->tParentRunner) {
         pRunner parent = Runners[i]->tParentRunner;
         for (size_t kk = 0; kk<parent->multiRunner.size(); ++kk) {
-          if (parent->multiRunner[kk] == Runners[i]) {
+          if (Runners[i] == parent->multiRunner[kk]) {
+            pRunner tr = Runners[i];
             parent->multiRunner.erase(parent->multiRunner.begin() + kk);
-            Runners[i]->tParentRunner = 0;
-            Runners[i]->tDuplicateLeg = 0;
+            tr->tParentRunner = 0;
+            tr->tDuplicateLeg = 0;
             parent->markForCorrection();
             parent->updateChanged();
-            Runners[i]->markForCorrection();
-            Runners[i]->updateChanged();
+            tr->markForCorrection();
+            tr->updateChanged();
             break;
           }
         }
@@ -918,65 +938,66 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
     if (Runners[i]) {
       for (size_t k=0;k<i; k++)
         if (Runners[i] == Runners[k])
-          Runners[i] = 0;
+          Runners[i] = nullptr;
     }
 
     if (Runners[i]) {
-      pClass actualClass = Runners[i]->getClassRef(true);
+      pRunner tr = Runners[i];
+      pClass actualClass = tr->getClassRef(true);
       if (actualClass == nullptr)
         actualClass = Class;
-      if (Runners[i]->tInTeam && Runners[i]->tInTeam!=this) {
-        Runners[i]->tInTeam->correctRemove(Runners[i]);
+      if (tr->tInTeam && tr->tInTeam!=this) {
+        tr->tInTeam->correctRemove(tr);
       }
       //assert(Runners[i]->tInTeam==0 || Runners[i]->tInTeam==this);
-      Runners[i]->tInTeam = this;
-      Runners[i]->tLeg = i;
+      tr->tInTeam = this;
+      tr->tLeg = i;
       if (Class) {
         int unused;
-        Class->splitLegNumberParallel(i, Runners[i]->tLegEquClass, unused);
+        Class->splitLegNumberParallel(i, tr->tLegEquClass, unused);
       }
       else {
-        Runners[i]->tLegEquClass = i;
+        tr->tLegEquClass = i;
       }
 
       if (actualClass == Class)
-        Runners[i]->setStartNo(StartNo, setTmpOnly);
-      if (!bib.empty() && Runners[i]->isChanged()) {
+        tr->setStartNo(StartNo, setTmpOnly);
+      if (!bib.empty() && tr->isChanged()) {
         if (bibMode == -1 && Class)
           bibMode = Class->getBibMode();
         if (bibMode == BibSame)
-          Runners[i]->setBib(bib, 0, false, setTmpOnly);
+          tr->setBib(bib, 0, false, setTmpOnly);
         else if (bibMode == BibAdd) {
           wchar_t pattern[32], bf[32];
           int ibib = oClass::extractBibPattern(bib, pattern) + i;
           swprintf_s(bf, pattern, ibib);
-          Runners[i]->setBib(bf, 0, false, setTmpOnly);
+          tr->setBib(bf, 0, false, setTmpOnly);
         }
         else if (bibMode == BibLeg) {
           wstring rbib = bib + L"-" + Class->getLegNumber(i);
-          Runners[i]->setBib(rbib, 0, false, setTmpOnly);
+          tr->setBib(rbib, 0, false, setTmpOnly);
         }
       }
       LegTypes legType = Class ? Class->getLegType(i) : LTIgnore;
 
-      if (Runners[i]->Class!=Class && legType != LTGroup) {
-        Runners[i]->Class=Class;
-        Runners[i]->updateChanged();
+      if (tr->Class!=Class && legType != LTGroup) {
+        tr->Class=Class;
+        tr->updateChanged();
       }
 
-      Runners[i]->tNeedNoCard=false;
+      tr->tNeedNoCard=false;
       if (Class) {
         pClass pc=Class;
 
         //Ignored runners need no SI-card (used by SI assign function)
         if (legType == LTIgnore) {
-          Runners[i]->tNeedNoCard=true;
+          tr->tNeedNoCard=true;
           if (lastStatus != StatusUnknown) {
-            Runners[i]->setStatus(max(Runners[i]->tStatus, lastStatus), false, setTmpOnly);
+            tr->setStatus(max(tr->tStatus, lastStatus), false, setTmpOnly);
           }
         }
         else
-          lastStatus = Runners[i]->getStatus();
+          lastStatus = tr->getStatus();
 
         StartTypes st = actualClass == pc ? pc->getStartType(i) : actualClass->getStartType(0);
         LegTypes lt = legType;
@@ -987,27 +1008,27 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
         }
         if (lt==LTIgnore || lt==LTExtra) {
           if (st != STDrawn)
-            Runners[i]->setStartTime(lastStartTime, false, setTmpOnly);
-          Runners[i]->tUseStartPunch = (st == STDrawn);
+            tr->setStartTime(lastStartTime, false, setTmpOnly);
+          tr->tUseStartPunch = (st == STDrawn);
         }
         else { //Calculate start time.
           switch (st) {
             case STDrawn: //Do nothing
               if (lt==LTParallel || lt==LTParallelOptional) {
-                Runners[i]->setStartTime(lastStartTime, false, setTmpOnly);
-                Runners[i]->tUseStartPunch=false;
+                tr->setStartTime(lastStartTime, false, setTmpOnly);
+                tr->tUseStartPunch=false;
               }
               else
-                lastStartTime = Runners[i]->getStartTime();
+                lastStartTime = tr->getStartTime();
 
               break;
 
             case STTime: {
               bool prs = false;
-              if (Runners[i] && Runners[i]->Card && freeStart) {
-                pCourse crs = Runners[i]->getCourse(false);
+              if (tr && tr->Card && freeStart) {
+                pCourse crs = tr->getCourse(false);
                 int startType = crs ? crs->getStartPunchType() : oPunch::PunchStart;
-                oPunch *pnc = Runners[i]->Card->getPunchByType(startType);
+                oPunch *pnc = tr->Card->getPunchByType(startType);
                 if (pnc && pnc->getAdjustedTime() > 0) {
                   prs = true;
                   lastStartTime = pnc->getAdjustedTime();
@@ -1020,8 +1041,8 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                   else
                     lastStartTime = actualClass->getStartData(0); // Qualification/final classes
                 }
-                Runners[i]->setStartTime(lastStartTime, false, setTmpOnly);
-                Runners[i]->tUseStartPunch=false;
+                tr->setStartTime(lastStartTime, false, setTmpOnly);
+                tr->tUseStartPunch=false;
               }
             }
             break;
@@ -1080,19 +1101,19 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                 int rope=pc->getRopeTime(i);
 
                 if (((restart > 0 && rope > 0 && (ft == 0 || ft > rope)) || (ft == 0 && restart > 0)) &&
-                    !preventRestart() && !Runners[i]->preventRestart()) {
+                    !preventRestart() && !tr->preventRestart()) {
                   ft = restart; //Runner in restart
                   tNumRestarts++;
                 }
 
                 if (ft > 0)
-                  Runners[i]->setStartTime(ft, false, setTmpOnly);
-                Runners[i]->tUseStartPunch=false;
+                  tr->setStartTime(ft, false, setTmpOnly);
+                tr->tUseStartPunch=false;
                 lastStartTime=ft;
               }
               else {//The else below should only be run by mistake (for an incomplete team)
-                Runners[i]->setStartTime(Class->getRestartTime(i), false, setTmpOnly);
-                Runners[i]->tUseStartPunch=false;
+                tr->setStartTime(Class->getRestartTime(i), false, setTmpOnly);
+                tr->tUseStartPunch=false;
               }
             }
             break;
@@ -1121,7 +1142,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                   }
 
                   if (restart > 0 && rope > 0 && (lastStartTime > rope) &&
-                      !preventRestart() && !Runners[i]->preventRestart()) {
+                      !preventRestart() && !tr->preventRestart()) {
                     lastStartTime = restart; //Runner in restart
                     tNumRestarts++;
                   }
@@ -1140,7 +1161,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
                   setStart = true;
                 }
 
-                if (Runners[i]->getFinishTime()>0) {
+                if (tr->getFinishTime()>0) {
                   setStart = true;
                   if (lastStartTime == 0)
                     lastStartTime = pc->getRestartTime(i);
@@ -1151,15 +1172,15 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
               else
                 lastStartTime=0;
 
-              Runners[i]->tUseStartPunch=false;
-              Runners[i]->setStartTime(lastStartTime, false, setTmpOnly);
+              tr->tUseStartPunch=false;
+              tr->setStartTime(lastStartTime, false, setTmpOnly);
             }
             break;
           }
         }
 
         size_t nextNonPar = i+1;
-        while (nextNonPar < Runners.size() && pc->isOptional(nextNonPar) && Runners[nextNonPar] == 0)
+        while (nextNonPar < Runners.size() && pc->isOptional(nextNonPar) && !Runners[nextNonPar])
           nextNonPar++;
         
         int nextBaseLeg = nextNonPar;
@@ -1168,11 +1189,11 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
 
         // Extra finish time is used to split extra legs to parallel legs
         if (lt == LTExtra || pc->getLegType(i+1) == LTExtra) {
-          if (Runners[i]->getFinishTime()>0) {
+          if (tr->getFinishTime()>0) {
             if (extraFinishTime <= 0)
-              extraFinishTime =  Runners[i]->getFinishTime();
+              extraFinishTime =  tr->getFinishTime();
             else
-              extraFinishTime = min(extraFinishTime, Runners[i]->getFinishTime());
+              extraFinishTime = min(extraFinishTime, tr->getFinishTime());
           }
         }
         else
@@ -1181,7 +1202,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
         //Add available start times for parallel
         if (nextNonPar < Runners.size()) {
           st=pc->getStartType(nextNonPar);
-          int finishTime = Runners[i]->getFinishTime();
+          int finishTime = tr->getFinishTime();
           if (lt == LTExtra)
             finishTime = extraFinishTime;
 
@@ -1207,7 +1228,7 @@ bool oTeam::apply(bool sync, pRunner source, bool setTmpOnly) {
         }
       }
       if (sync)
-        Runners[i]->synchronize(true);
+        tr->synchronize(true);
     }
   }
 
@@ -1258,9 +1279,9 @@ void oTeam::evaluate(bool sync)
 
 void oTeam::correctRemove(pRunner r) {
   for(unsigned i=0;i<Runners.size(); i++)
-    if (r!=0 && Runners[i]==r) {
-      Runners[i] = 0;
-      r->tInTeam = 0;
+    if (r != 0 && Runners[i] == r) {
+      Runners[i] = nullptr;
+      r->tInTeam = nullptr;
       r->tLeg = 0;
       r->tLegEquClass = 0;
       correctionNeeded = true;
@@ -1454,11 +1475,11 @@ void oTeam::fillSpeakerObject(int leg, int courseControlId, int previousControlC
     }
   }
   
-  map<int, int>::iterator mapit=Runners[leg]->priority.find(courseControlId);
-  if (mapit!=Runners[leg]->priority.end())
-    spk.priority=mapit->second;
+  auto mapit = Runners[leg]->priority.find(courseControlId);
+  if (mapit != Runners[leg]->priority.end())
+    spk.priority = mapit->second;
   else
-    spk.priority=0;
+    spk.priority = 0;
 
   spk.runningTimeLeg.preliminary = 0;
   for (int i = leg; i <= requestedLeg; i++) {
@@ -1502,10 +1523,9 @@ void oTeam::fillSpeakerObject(int leg, int courseControlId, int previousControlC
     spk.status = spk.finishStatus;
 }
 
-int oTeam::getTimeAfter(int leg) const
-{
-  if (leg==-1)
-    leg=Runners.size()-1;
+int oTeam::getTimeAfter(int leg) const {
+  if (leg == -1)
+    leg = Runners.size() - 1;
 
   if (!Class || Class->tLeaderTime.size()<=unsigned(leg))
     return -1;
@@ -1576,12 +1596,11 @@ oDataContainer &oTeam::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &s
   return *oe->oTeamData;
 }
 
-pRunner oTeam::getRunner(unsigned leg) const
-{
+pRunner oTeam::getRunner(unsigned leg) const {
   if (leg==-1)
     leg=Runners.size()-1;
 
-  return leg<Runners.size() ? Runners[leg]: 0;
+  return leg<Runners.size() ? Runners[leg] : 0;
 }
 
 int oTeam::getRogainingPoints(bool multidayTotal) const {
@@ -1927,7 +1946,6 @@ bool oTeam::inputData(int id, const wstring &input,
           setRunner(ix, r, true);
           output = r->getName();
         }
-
       }
     }
   }
@@ -2137,8 +2155,8 @@ bool oTeam::checkValdParSetup() {
         if (Runners[m+k]) {
           // Move to where a runner is needed
           Runners[k] = Runners[k+m];
-          Runners[k]->tLeg = k;          
-          Runners[k+m] = 0;
+          Runners[k]->tLeg = k;
+          Runners[k+m] = nullptr;
           updateChanged();
           cor = true;
           k+=m;

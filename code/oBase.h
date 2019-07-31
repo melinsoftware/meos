@@ -101,17 +101,20 @@ protected:
   TimeStamp Modified;
   string sqlUpdated; //SQL TIMESTAMP
   int counter;
+  oEvent *oe;
+  bool Removed;
 
   // True if the object is incorrect and needs correction
   // An example is if id changed as we wrote. Then owner
   // needs to be updated.
-  bool correctionNeeded;
+  bool correctionNeeded = false;
 
-  oEvent *oe;
-  bool Removed;
+private:
+  
+  bool implicitlyAdded = false;
+  bool addedToEvent = false;
 
-  //Used for selections, etc.
-  int _objectmarker;
+protected:
 
   /// Mark the object as changed (on client) and that it needs synchronize to server
   virtual void updateChanged();
@@ -164,6 +167,11 @@ public:
   wstring getTimeStamp() const;
 
   bool existInDB() const { return !sqlUpdated.empty(); }
+
+  void setImplicitlyCreated() { implicitlyAdded = true; }
+  bool isImplicitlyCreated() const { return implicitlyAdded; }
+  bool isAddedToEvent() const { return addedToEvent; }
+  void addToEvent() { addedToEvent = true; }
 
   oDataInterface getDI();
 

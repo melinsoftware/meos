@@ -191,21 +191,21 @@ oRunner::~oRunner()
 {
   if (tInTeam){
     for(unsigned i=0;i<tInTeam->Runners.size(); i++)
-      if (tInTeam->Runners[i] && tInTeam->Runners[i]==this)
-        tInTeam->Runners[i]=0;
+      if (tInTeam->Runners[i] && tInTeam->Runners[i]->getId() == Id)
+        tInTeam->Runners[i] = nullptr;
 
     tInTeam=0;
   }
 
   for (size_t k=0;k<multiRunner.size(); k++) {
-    if (multiRunner[k])
-      multiRunner[k]->tParentRunner=0;
+    if (multiRunner[k] && multiRunner[k]->tParentRunner == this)
+      multiRunner[k]->tParentRunner = nullptr;
   }
 
   if (tParentRunner) {
     for (size_t k=0;k<tParentRunner->multiRunner.size(); k++)
       if (tParentRunner->multiRunner[k] == this)
-        tParentRunner->multiRunner[k]=0;
+        tParentRunner->multiRunner[k] = nullptr;
   }
 
   delete tAdaptedCourse;
@@ -2200,7 +2200,8 @@ void oRunner::updateStartNo(int no) {
 
     tInTeam->synchronize(true);
     for (pRunner r : tInTeam->Runners) {
-      r->synchronize(true);
+      if (r)
+        r->synchronize(true);
     }
   }
   else {
@@ -2302,12 +2303,14 @@ void oRunner::setCardNo(int cno, bool matchCard, bool updateFromDatabase)
     int oldNo = getCardNo();
     cardNumber = cno;
 
-    if (oe->cardToRunnerHash && cno != 0 && !isTemporaryObject) {
+    if (oe->cardToRunnerHash && cno != 0 && isAddedToEvent() && !isTemporaryObject) {
       oe->cardToRunnerHash->emplace(cno, this);
     }
 
-    oFreePunch::rehashPunches(*oe, oldNo, 0);
-    oFreePunch::rehashPunches(*oe, cardNumber, 0);
+    if (isAddedToEvent()) {
+      oFreePunch::rehashPunches(*oe, oldNo, 0);
+      oFreePunch::rehashPunches(*oe, cardNumber, 0);
+    }
 
     if (matchCard && !Card) {
       pCard c = oe->getCardByNumber(cno);
@@ -2862,21 +2865,23 @@ pRunner oEvent::getRunnerByBibOrStartNo(const wstring &bib, bool findWithoutCard
         if (t.getStartNo()==sno || stringMatch(t.getBib(), bib)) {
           if (!findWithoutCardNo) {
             for (int leg=0; leg<t.getNumRunners(); leg++) {
-              if (t.Runners[leg] && t.Runners[leg]->getCardNo() > 0 && t.Runners[leg]->getStatus()==StatusUnknown)
-                return t.Runners[leg];
+              pRunner r = t.Runners[leg];
+              if (r && r->getCardNo() > 0 && r->getStatus()==StatusUnknown)
+                return r;
             }
           }
           else {
             for (int leg=0; leg<t.getNumRunners(); leg++) {
-              if (t.Runners[leg] && t.Runners[leg]->getCardNo() == 0 && t.Runners[leg]->needNoCard() == false)
-                return t.Runners[leg];
+              pRunner r = t.Runners[leg];
+              if (r && r->getCardNo() == 0 && r->needNoCard() == false)
+                return r;
             }
           }
         }
       }
     }
   }
-  return 0;
+  return nullptr;
 }
 
 pRunner oEvent::getRunnerByName(const wstring &pname, const wstring &pclub) const
@@ -3027,7 +3032,7 @@ void oRunner::createMultiRunner(bool createMaster, bool sync)
 {
   if (tDuplicateLeg)
     return; //Never allow chains.
-
+  bool allowCreate = true;
   if (multiRunnerId.size()>0) {
     multiRunner.resize(multiRunnerId.size() - 1);
     for (size_t k=0;k<multiRunner.size();k++) {
@@ -3044,8 +3049,10 @@ void oRunner::createMultiRunner(bool createMaster, bool sync)
         if (multiRunner[k]->Id != multiRunnerId[k])
           markForCorrection();
       }
-      else if (multiRunnerId[k]>0)
+      else if (multiRunnerId[k] > 0) {
         markForCorrection();
+        allowCreate = false;
+      }
 
       assert(multiRunner[k]);
     }
@@ -3071,24 +3078,25 @@ void oRunner::createMultiRunner(bool createMaster, bool sync)
       toRemove.push_back(multiRunner[k]->getId());
       multiRunner[k]->tParentRunner = 0;
       if (multiRunner[k]->tInTeam && size_t(multiRunner[k]->tLeg)<multiRunner[k]->tInTeam->Runners.size()) {
-        if (multiRunner[k]->tInTeam->Runners[multiRunner[k]->tLeg]==multiRunner[k])
-          multiRunner[k]->tInTeam->Runners[multiRunner[k]->tLeg] = 0;
+        if (multiRunner[k]->tInTeam->Runners[multiRunner[k]->tLeg] == multiRunner[k])
+          multiRunner[k]->tInTeam->Runners[multiRunner[k]->tLeg] = nullptr;
       }
     }
   }
 
   multiRunner.resize(ndup-1);
-  for(int k=1;k<ndup; k++) {
-    if (!multiRunner[k-1]) {
-      update = true;
-      multiRunner[k-1]=oe->addRunner(sName, getClubId(),
-                                     getClassId(false), 0, 0, false);
-      multiRunner[k-1]->tDuplicateLeg=k;
-      multiRunner[k-1]->tParentRunner=this;
+  for (int k = 1; k < ndup; k++) {
+	  if (!multiRunner[k - 1] && allowCreate) {
+		  update = true;
+		  multiRunner[k - 1] = oe->addRunner(sName, getClubId(),
+											 getClassId(false), 0, 0, false);
+		  multiRunner[k - 1]->tDuplicateLeg = k;
+		  multiRunner[k - 1]->tParentRunner = this;
+		  multiRunner[k - 1]->cardNumber = 0;
 
-      if (sync)
-        multiRunner[k-1]->synchronize();
-    }
+		  if (sync)
+			  multiRunner[k - 1]->synchronize();
+	  }
   }
   if (update)
     updateChanged();
@@ -3111,6 +3119,13 @@ pRunner oRunner::getPredecessor() const
 }
 
 bool oRunner::apply(bool sync, pRunner src, bool setTmpOnly) {
+  for (size_t k = 0; k < multiRunner.size(); k++) {
+    if (multiRunner[k] && multiRunner[k]->isRemoved()) {
+      multiRunner[k]->tParentRunner = nullptr;
+      multiRunner[k] = nullptr;
+    } 
+  }
+
   createMultiRunner(false, sync);
   if (sync) {
     for (size_t k = 0; k < multiRunner.size(); k++) {

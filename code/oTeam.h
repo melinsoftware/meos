@@ -54,7 +54,7 @@ private:
   void propagateClub();
 
 protected:
-  //pRunner Runners[maxRunnersTeam];
+
   vector<pRunner> Runners;
   void setRunnerInternal(int k, pRunner r);
 

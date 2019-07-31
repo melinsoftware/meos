@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
+# Visual Studio Express 14 for Windows Desktop
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "meos", "meosvc15.vcxproj", "{B854EF2A-2BB7-4D62-B08B-96BD64B347E8}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "meosvc15", "meosvc15.vcxproj", "{B854EF2A-2BB7-4D62-B08B-96BD64B347E8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

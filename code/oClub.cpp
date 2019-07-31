@@ -233,7 +233,7 @@ pClub oEvent::addClub(const wstring &pname, int createId) {
     oClub c(this, createId);
     c = *dbClub;
     c.Id = createId;
-    Clubs.push_back(c);
+    return addClub(c);
   }
   else {
     if (createId==0)
@@ -241,11 +241,8 @@ pClub oEvent::addClub(const wstring &pname, int createId) {
 
     oClub c(this, createId);
     c.setName(pname);
-    Clubs.push_back(c);
+    return addClub(c);
   }
-  Clubs.back().synchronize();
-  clubIdIndex[Clubs.back().Id]=&Clubs.back();
-  return &Clubs.back();
 }
 
 pClub oEvent::addClub(const oClub &oc)
@@ -254,6 +251,8 @@ pClub oEvent::addClub(const oClub &oc)
     return clubIdIndex[oc.Id];
 
   Clubs.push_back(oc);
+  Clubs.back().addToEvent();
+
   if (!oc.existInDB())
     Clubs.back().synchronize();
 

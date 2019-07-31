@@ -629,7 +629,7 @@ public:
 
   enum PredefinedTypes {PNoSettings, PPool, PForking, PPoolDrawn, PHunting,
                  PPatrol, PPatrolOptional, PPatrolOneSI, PRelay, PTwinRelay,
-                 PYouthRelay, PNoMulti};
+                 PYouthRelay, PTwoRacesNoOrder, PNoMulti};
 
   void fillPredefinedCmp(gdioutput &gdi, const string &name) const;
 
