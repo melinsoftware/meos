@@ -160,15 +160,17 @@ pTeam oEvent::addTeam(const wstring &pname, int ClubId, int ClassId)
 
   bibStartNoToRunnerTeam.clear();
   Teams.push_back(t);
-  teamById[t.Id] = &Teams.back();
+  pTeam pt = &Teams.back();
+  pt->addToEvent();
+  teamById[t.Id] = pt;
 
   oe->updateTabs();
 
-  Teams.back().StartNo = ++nextFreeStartNo; // Need not be unique
-  Teams.back().getEntryDate(false);// Store entry time
-  Teams.back().apply(false, 0, false);
-  Teams.back().updateChanged();
-  return &Teams.back();
+  pt->StartNo = ++nextFreeStartNo; // Need not be unique
+  pt->getEntryDate(false);// Store entry time
+  pt->apply(false, 0, false);
+  pt->updateChanged();
+  return pt;
 }
 
 pTeam oEvent::addTeam(const oTeam &t, bool autoAssignStartNo) {
@@ -181,6 +183,15 @@ pTeam oEvent::addTeam(const oTeam &t, bool autoAssignStartNo) {
   Teams.push_back(t);
 
   pTeam pt = &Teams.back();
+  pt->addToEvent();
+
+  for (size_t i = 0; i < pt->Runners.size(); i++) {
+    if (pt->Runners[i]) {
+      assert(pt->Runners[i]->tInTeam == nullptr || pt->Runners[i]->tInTeam == &t);
+      pt->Runners[i]->tInTeam = pt;
+    }
+  }
+  
   teamById[pt->Id] = pt;
 
   if (pt->StartNo == 0 && autoAssignStartNo) {
@@ -306,10 +317,10 @@ bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
 
 void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
 {
-  bool hasPatrol = getMeOSFeatures().hasFeature(MeOSFeatures::Patrol);
-  bool hasMulti = getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces);
-  bool hasRelay = getMeOSFeatures().hasFeature(MeOSFeatures::Relay);
-  bool hasForked = getMeOSFeatures().hasFeature(MeOSFeatures::ForkedIndividual);
+  bool hasPatrol = true;// getMeOSFeatures().hasFeature(MeOSFeatures::Patrol);
+  bool hasMulti = true;//getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces);
+  bool hasRelay = true;//getMeOSFeatures().hasFeature(MeOSFeatures::Relay);
+  bool hasForked = true;//getMeOSFeatures().hasFeature(MeOSFeatures::ForkedIndividual);
 
   gdi.clearList(name);
   gdi.addItem(name, lang.tl("Endast en bana"), PNoMulti);
@@ -328,8 +339,10 @@ void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
   }
   if (hasRelay)
     gdi.addItem(name, lang.tl("Stafett"), PRelay);
-  if (hasMulti)
+  if (hasMulti) {
     gdi.addItem(name, lang.tl("Tvåmannastafett"), PTwinRelay);
+    gdi.addItem(name, lang.tl("Flera lopp i valfri ordning"), PTwoRacesNoOrder);
+  }
   if (hasRelay)
     gdi.addItem(name, lang.tl("Extralöparstafett"), PYouthRelay);
 }
@@ -386,6 +399,11 @@ void oEvent::setupRelayInfo(PredefinedTypes type, bool &useNLeg, bool &useStart)
       useStart = true;
       break;
 
+    case PTwoRacesNoOrder:
+      useStart = false;
+      useNLeg = true;
+      break;
+
     default:
       throw std::exception("Bad setup number");
   }
@@ -424,7 +442,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       if (crs) {
         cls.addStageCourse(0, crsId, -1);
       }
-
+      getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *this);
+      oe->synchronize(true);
       break;
 
     case PPoolDrawn:
@@ -439,6 +458,9 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       if (crs) {
         cls.addStageCourse(0, crsId, -1);
       }
+
+      getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *this);
+      oe->synchronize(true);
       break;
 
     case PPatrol:
@@ -460,6 +482,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.addStageCourse(1, crsId, -1);
       }
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+      oe->synchronize(true);
       break;
 
     case PPatrolOptional:
@@ -481,6 +505,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.addStageCourse(1, crsId, -1);
       }
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+      oe->synchronize(true);
       break;
 
     case PPatrolOneSI:
@@ -503,6 +529,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       }
 
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+      oe->synchronize(true);
       break;
 
     case PRelay:
@@ -521,6 +549,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.setRopeTime(k, L"-");
       }
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      oe->synchronize(true);
       break;
 
     case PTwinRelay:
@@ -543,6 +573,27 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       }
 
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *this);
+      oe->synchronize(true);
+      oe->synchronize(true);
+      break;
+
+    case PTwoRacesNoOrder:
+      cls.setNumStages(nleg);
+
+      for (int k = 0; k<nleg; k++) {
+        cls.setLegType(k, LTSum);
+        cls.setStartType(k, STDrawn, false);
+        cls.setStartData(k, L"-");
+        cls.setRestartTime(k, L"-");
+        cls.setRopeTime(k, L"-");
+        if (k > 0)
+          cls.setLegRunner(k, 0);
+      }
+      cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *this);
+      oe->synchronize(true);
       break;
 
     case PYouthRelay:
@@ -577,6 +628,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         }
       }
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      oe->synchronize(true);
       break;
 
     case PHunting: {
@@ -595,6 +648,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setRopeTime(1, formatTimeHMS(t+1800));
       cls.setLegRunner(1, 0);
       cls.setCoursePool(false);
+      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      oe->synchronize(true);
       break;
     }
     default:
@@ -653,7 +708,7 @@ bool oTeam::adjustMultiRunners(bool sync)
   if (!Class)
     return false;
 
-  for (size_t k = Class->getNumStages(); k<Runners.size(); k++) {
+  for (size_t k = Class->getNumStages(); k < Runners.size(); k++) {
     setRunnerInternal(k, 0);
   }
 
@@ -663,15 +718,15 @@ bool oTeam::adjustMultiRunners(bool sync)
   }
 
   // Create multi runners.
-  for (size_t i=0;i<Runners.size(); i++) {
+  for (size_t i = 0; i < Runners.size(); i++) {
     if (!Runners[i] && Class) {
-       unsigned lr = Class->getLegRunner(i);
+      unsigned lr = Class->getLegRunner(i);
 
-       if (lr<i && Runners[lr]) {
-         Runners[lr]->createMultiRunner(true, sync);
-         int dup=Class->getLegRunnerIndex(i);
-         Runners[i]=Runners[lr]->getMultiRunner(dup);
-       }
+      if (lr < i && Runners[lr]) {
+        Runners[lr]->createMultiRunner(true, sync);
+        int dup = Class->getLegRunnerIndex(i);
+        Runners[i] = Runners[lr]->getMultiRunner(dup);
+      }
     }
   }
 

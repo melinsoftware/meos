@@ -487,7 +487,7 @@ bool oCard::setPunchTime(const pPunch punch, const wstring &time)
 
 
 pCard oEvent::getCard(int Id) const
-{
+{  // Do allow removed cards
   if (Id < int(Cards.size() / 2)) {
     for (oCardList::const_iterator it = Cards.begin(); it != Cards.end(); ++it){
       if (it->Id==Id)
@@ -514,17 +514,16 @@ void oEvent::getCards(vector<pCard> &c) {
   }
 }
 
-
 pCard oEvent::addCard(const oCard &oc)
 {
   if (oc.Id<=0)
     return 0;
 
   Cards.push_back(oc);
+  Cards.back().addToEvent();
 
   return &Cards.back();
 }
-
 
 pCard oEvent::getCardByNumber(int cno) const
 {

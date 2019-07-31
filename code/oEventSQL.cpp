@@ -651,7 +651,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
       pRunner r = it->Runners[i];
       if (r != 0) {
         if (usedInTeam[r->Id]) {
-          it->Runners[i] = 0; // Reset duplicate runners
+          it->Runners[i] = nullptr; // Reset duplicate runners
           it->updateChanged();
           teamCorrected = true;
           if (r->tInTeam == &*it)

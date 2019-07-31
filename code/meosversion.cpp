@@ -30,7 +30,7 @@
 //V35: abcdef
 //V36: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 912 $");
+  string revision("$Rev: 915 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -42,12 +42,12 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2019-06-16 10:37:59 +0200 (sö, 16 jun 2019) $");
+  wstring date(L"$Date: 2019-07-30 07:05:51 +0200 (ti, 30 jul 2019) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Update 1"; // No parantheses (...)
+  return L"Update 2"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -60,7 +60,7 @@ wstring getMeosFullVersion() {
   if (getBuildType().empty())
     swprintf_s(bf, L"Version X#%s.%d, %s", maj.c_str(), getMeosBuild(), getMeosDate().c_str());
   else
-    swprintf_s(bf, L"Version X#%s.%d, %s %s", maj.c_str(), getMeosBuild(), getBuildType().c_str(), getMeosDate().c_str());
+    swprintf_s(bf, L"Version X#%s.%d, %s, %s", maj.c_str(), getMeosBuild(), getBuildType().c_str(), getMeosDate().c_str());
   return bf;
 }
 
@@ -133,5 +133,8 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Kexholm SK");
   supp.emplace_back(L"Utby IK");
   supp.emplace_back(L"JWOC 2019");
+  developSupp.emplace_back(L"OK Nackhe");
+  supp.emplace_back(L"OK Rodhen");
+
   reverse(supp.begin(), supp.end());
 }

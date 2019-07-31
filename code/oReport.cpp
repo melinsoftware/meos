@@ -582,10 +582,8 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     }
   }
 
-  // Clear markers
-  for (r_it=Runners.begin(); r_it != Runners.end(); ++r_it)
-    r_it->_objectmarker=0;
-
+  map<int, int> objectMarkers;
+  
   //List all competitors not in a team.
   if (oe->hasTeam()) {
     for (t_it=Teams.begin(); t_it != Teams.end(); ++t_it) {
@@ -596,7 +594,9 @@ void oEvent::generatePreReport(gdioutput &gdi) {
       if (pc){
         for(unsigned i=0;i<pc->getNumStages();i++){
           pRunner r=t_it->getRunner(i);
-          if (r) r->_objectmarker++;
+          if (r) {
+            ++objectMarkers[r->getId()];
+          }
         }
       }
     }
@@ -605,11 +605,11 @@ void oEvent::generatePreReport(gdioutput &gdi) {
     gdi.addString("", 1, "Löpare som förekommer i mer än ett lag:");
     bool any = false;
     for (r_it=Runners.begin(); r_it != Runners.end(); ++r_it){
-      if (r_it->_objectmarker>1) {
+      if (objectMarkers[r_it->getId()] > 1) {
         wstring name = r_it->getClass(true) + L": " + r_it->getName();
         if (!r_it->getClub().empty())
           name += L" (" + r_it->getClub() + L")";
-    
+
         gdi.addStringUT(0, name);
         any = true;
       }
@@ -627,7 +627,7 @@ void oEvent::generatePreReport(gdioutput &gdi) {
   for (r_it=Runners.begin(); r_it != Runners.end(); ++r_it) {
     if (r_it->isRemoved())
       continue;
-    if (r_it->_objectmarker==0){ //Only consider runners not in a team.
+    if (objectMarkers.count(r_it->getId()) == 0){ //Only consider runners not in a team.
       gdi.addStringUT(y, x+tab[0], 0, r_it->getClass(true), tab[1]-tab[0]);
       wstring name = r_it->getName();
       if (!r_it->getClub().empty())

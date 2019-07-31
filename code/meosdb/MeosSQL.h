@@ -58,6 +58,8 @@ protected:
   string CmpDataBase;
   void alert(const string &s);
 
+  vector<oBase *> missingObjects;
+
   string errorMessage;
 
   string serverName;
@@ -94,16 +96,19 @@ protected:
   void storePunch(const mysqlpp::Row &row, oFreePunch &p, bool rehash);
 
   OpFailStatus storeTeam(const mysqlpp::Row &row, oTeam &t,
-                         bool readRecursive);
+                         bool readRecursive, bool allowSubRead);
 
   OpFailStatus storeRunner(const mysqlpp::Row &row, oRunner &r,
                            bool readCourseCard,
                            bool readClassClub,
-                           bool readRunners);
+                           bool readRunners,
+                           bool allowSubRead);
   OpFailStatus storeCourse(const mysqlpp::Row &row, oCourse &c,
-                           set<int> &readControls);
+                           set<int> &readControls,
+                           bool allowSubRead);
   OpFailStatus storeClass(const mysqlpp::Row &row, oClass &c,
-                           bool readCourses);
+                          bool readCourses,
+                          bool allowSubRead);
 
   void getColumns(const string &table, set<string> &output);
 
@@ -120,9 +125,13 @@ protected:
   mysqlpp::ResNSel updateCounter(const char *oTable, int id, mysqlpp::Query *updateqry);
   string selectUpdated(const char *oTable, const string &updated, int counter);
 
+  void addedFromDatabase(oBase *object);
+
+  
 public:
   bool dropDatabase(oEvent *oe);
   bool checkConnection(oEvent *oe);
+  void processMissingObjects();
 
   bool repairTables(const string &db, vector<string> &output);
 
@@ -178,6 +187,10 @@ public:
 
   OpFailStatus syncUpdate(oTeam *t, bool forceWriteAll);
   OpFailStatus syncRead(bool forceRead, oTeam *t);
+
+  /** General interface. TypeId lookup */
+  OpFailStatus syncRead(bool forceRead, oBase *c);
+
 
   int getModifiedMask(oEvent &oe);
 

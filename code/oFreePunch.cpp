@@ -442,7 +442,6 @@ bool oEvent::isInPunchHash(int card, int code, int time) {
   return readPunchHash.count(make_pair(p1, p2)) > 0;
 }
 
-
 pFreePunch oEvent::addFreePunch(int time, int type, int card, bool updateStartFinish) {
   if (time > 0 && isInPunchHash(card, type, time))
     return 0;
@@ -450,6 +449,7 @@ pFreePunch oEvent::addFreePunch(int time, int type, int card, bool updateStartFi
 
   punches.push_back(ofp);
   pFreePunch fp=&punches.back();
+  fp->addToEvent();
   oFreePunch::rehashPunches(*this, card, fp);
   insertIntoPunchHash(card, type, time);
 
@@ -519,6 +519,7 @@ pFreePunch oEvent::addFreePunch(oFreePunch &fp) {
   insertIntoPunchHash(fp.CardNo, fp.Type, fp.Time);
   punches.push_back(fp);
   pFreePunch fpz=&punches.back();
+  fpz->addToEvent();
   oFreePunch::rehashPunches(*this, fp.CardNo, fpz);
 
   if (!fpz->existInDB() && HasDBConnection) {
@@ -618,44 +619,7 @@ void oEvent::getPunchesForRunner(int runnerId, bool doSort, vector<pFreePunch> &
   pRunner r = getRunner(runnerId, 0);
   if (r == 0)
     return;
-  /*
-  // Get times for when other runners used this card
-  vector< pair<int, int> > times;
-  int refCno = r->getCardNo();
-
-  for (auto it = Runners.begin(); it != Runners.end(); ++it) {
-    if (it->Id == runnerId)
-      continue;
-    if (it->Card && it->getCardNo() == refCno) {
-      pair<int, int> t = it->Card->getTimeRange();
-      if (it->getStartTime() > 0)
-        t.first = min(it->getStartTime(), t.first);
-
-      if (it->getFinishTime() > 0)
-        t.second = max(it->getFinishTime(), t.second);
-
-      times.push_back(t);
-    }
-  }
-
-  for (oFreePunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
-    if (it->CardNo == refCno) {
-      if (it->isRemoved() || it->isHiredCard())
-        continue;
-
-      bool other = false;
-      int t = it->Time;
-      for (size_t k = 0; k<times.size(); k++) {
-        if (t >= times[k].first && t <= times[k].second)
-          other = true;
-      }
-
-      if (!other)
-        runnerPunches.push_back(pFreePunch(&*it));
-    }
-  }
-  */
-
+  
   //Lazy setup
   oFreePunch::rehashPunches(*oe, 0, 0);
 

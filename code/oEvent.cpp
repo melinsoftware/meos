@@ -64,7 +64,7 @@
 #include "Table.h"
 
 //Version of database
-int oEvent::dbVersion = 82;
+int oEvent::dbVersion = 83;
 
 class RelativeTimeFormatter : public oDataDefiner {
   string name;
@@ -610,7 +610,7 @@ pControl oEvent::addControl(int Id, int Number, const wstring &Name)
 
   oControl c(this);
   c.set(Id, Number, Name);
-  Controls.push_back(c);
+  addControl(c);
 
   oe->updateTabs();
   return &Controls.back();
@@ -636,6 +636,8 @@ pControl oEvent::addControl(const oControl &oc)
   qFreeControlId = max (qFreeControlId, Id);
 
   Controls.push_back(oc);
+  oe->Controls.back().addToEvent();
+
   return &Controls.back();
 }
 
@@ -1181,9 +1183,8 @@ bool oEvent::open(const xmlparser &xml) {
         oControl c(this);
         c.set(&*it);
 
-        if (c.Id>0 && knownControls.count(c.Id) == 0) {
-          Controls.push_back(c);
-          knownControls.insert(c.Id);
+        if (c.Id>0 && knownControls.insert(c.Id).second) {
+          addControl(c);
         }
       }
     }
@@ -1227,6 +1228,7 @@ bool oEvent::open(const xmlparser &xml) {
         c.Set(&*it);
         if (c.Id>0 && knownClass.count(c.Id) == 0) {
           Classes.push_back(c);
+          Classes.back().addToEvent();
           knownClass.insert(c.Id);
         }
       }
@@ -1249,7 +1251,7 @@ bool oEvent::open(const xmlparser &xml) {
         oClub c(this);
         c.set(*it);
         if (c.Id>0)
-          addClub(c);//Clubs.push_back(c);
+          addClub(c);
       }
     }
   }
@@ -1341,7 +1343,7 @@ bool oEvent::open(const xmlparser &xml) {
         oCard c(this);
         c.Set(*it);
         assert(c.Id>=0);
-        Cards.push_back(c);
+        addCard(c);
       }
     }
   }
@@ -1576,8 +1578,9 @@ pCourse oEvent::addCourse(const oCourse &oc)
   qFreeCourseId=max(qFreeCourseId, oc.getId());
 
   pCourse pc = &Courses.back();
+  pc->addToEvent();
 
-  if (!pc->existInDB()) {
+  if (!pc->existInDB() && !pc->isImplicitlyCreated()) {
     pc->updateChanged();
     pc->synchronize();
   }
@@ -1609,7 +1612,7 @@ void oEvent::autoRemoveTeam(pRunner pr)
       if (pr->tInTeam) {
         // A team may have more than this runner -> do not remove
         bool canRemove = true;
-        const vector<pRunner> &runners = pr->tInTeam->Runners;
+        const auto &runners = pr->tInTeam->Runners;
         for (size_t k = 0; k<runners.size(); k++) {
           if (runners[k] && runners[k]->sName != pr->sName)
             canRemove = false;
@@ -1726,7 +1729,15 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
   
   Runners.push_back(r);
   pRunner pr=&Runners.back();
-  
+  pr->addToEvent();
+
+  for (size_t i = 0; i < pr->multiRunner.size(); i++) {
+    if (pr->multiRunner[i]) {
+      assert(pr->multiRunner[i]->tParentRunner == nullptr || pr->multiRunner[i]->tParentRunner == &r);
+      pr->multiRunner[i]->tParentRunner = pr;
+    }
+  }
+
   //cardToRunnerHash.reset();
   if (cardToRunnerHash && r.getCardNo() != 0) {
     cardToRunnerHash->emplace(r.getCardNo(), pr);
@@ -1743,7 +1754,7 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
     pr->Card->tOwner = pr;
 
   if (HasDBConnection) {
-    if (!pr->existInDB())
+    if (!pr->existInDB() && !pr->isImplicitlyCreated())
       pr->synchronize();
   }
   if (needUpdate)
@@ -2041,6 +2052,7 @@ pCard oEvent::allocateCard(pRunner owner)
   c.tOwner = owner;
   Cards.push_back(c);
   pCard newCard = &Cards.back();
+  newCard->addToEvent();
   return newCard;
 }
 
@@ -2152,7 +2164,7 @@ bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg) {
       // Count number of races with results
       int numResult = 0;
       int lastClassHeat = 0;
-      for (pRunner r : it->Runners) {
+      for (auto &r : it->Runners) {
         if (r && (r->prelStatusOK() ||
                  (r->tStatus != StatusUnknown && r->tStatus != StatusDNS && r->tStatus != StatusCANCEL))) {
           
@@ -2266,7 +2278,7 @@ bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg, vector<const oTeam
       // Count number of races with results
       int numResult = 0;
       int lastClassHeat = 0;
-      for (pRunner r : it->Runners) {
+      for (auto &r : it->Runners) {
         if (r && (r->prelStatusOK() ||
           (r->tStatus != StatusUnknown && r->tStatus != StatusDNS && r->tStatus != StatusCANCEL))) {
 
@@ -2675,7 +2687,7 @@ void oEvent::removeRunner(const vector<int> &ids)
       // Reset team runner (this should not happen)
       if (it->tInTeam) {
         if (it->tInTeam->Runners[it->tLeg]==&*it)
-          it->tInTeam->Runners[it->tLeg] = 0;
+          it->tInTeam->Runners[it->tLeg] = nullptr;
       }
 
       oRunnerList::iterator next = it;
@@ -4451,10 +4463,10 @@ void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
    
     if (!firstNumber.empty()) {
       // Clear out start number temporarily, to not use it for sorting
-      for (it=Teams.begin(); it != Teams.end(); ++it) {
+      for (it = Teams.begin(); it != Teams.end(); ++it) {
         if (it->isRemoved())
           continue;
-        if (ClassId==0 || it->getClassId(false)==ClassId) {
+        if (ClassId == 0 || it->getClassId(false) == ClassId) {
           if (it->getClassRef(false) && it->getClassRef(false)->getBibMode() != BibFree) {
             for (size_t i = 0; i < it->Runners.size(); i++) {
               if (it->Runners[i]) {
