@@ -1686,7 +1686,7 @@ bool Table::inputChange(gdioutput &gdi, HWND hdt)
 
 int Table::getColumn(int x, bool limit) const
 {
-  if (columns.empty())
+  if (columns.empty() || xpos.empty())
     return -1;
 
   if (x<xpos[0]) {

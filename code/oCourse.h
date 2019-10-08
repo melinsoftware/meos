@@ -71,9 +71,7 @@ protected:
   mutable int tMapsUsed = -1;
   mutable int tMapsUsedNoVacant = -1;
 
-  // Get an identity sum based on controls
-  int getIdSum(int nControls);
-
+  
   /// Add an control without update
   pControl doAddControl(int Id);
 
@@ -94,6 +92,9 @@ protected:
   void changedObject();
 
 public:
+
+  // Get an identity sum based on controls
+  int getIdSum(int nControls);
 
   void getClasses(vector<pClass> &usageClass) const;
   

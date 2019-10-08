@@ -421,6 +421,328 @@ namespace {
   }
 }
 
+
+class DrawOptimAlgo {
+private:
+  oEvent * oe;
+  vector<pClass> Classes;
+  vector<pRunner> Runners;
+
+  int maxNRunner = 0;
+  int maxGroup = 0;
+  int maxCourse = 0;
+  int bestEndPos = 0;
+  
+  map<int, ClassInfo> otherClasses;
+
+  int bestEndPosGlobal = 0;
+
+  static int optimalLayout(int interval, vector< pair<int, int> > &classes) {
+    sort(classes.begin(), classes.end());
+
+    vector<int> chaining(interval, 0);
+
+    for (int k = int(classes.size()) - 1; k >= 0; k--) {
+      int ix = 0;
+      // Find free position
+      for (int i = 1; i<interval; i++) {
+        if (chaining[i] < chaining[ix])
+          ix = i;
+      }
+      int nr = classes[k].first;
+      if (chaining[ix] > 0)
+        nr += classes[k].second;
+
+      chaining[ix] += 1 + interval * (nr - 1);
+    }
+
+    int last = chaining[0];
+    for (int i = 1; i<interval; i++) {
+      last = max(chaining[i], last);
+    }
+    return last;
+  }
+
+
+  void computeBestStartDepth(DrawInfo &di, vector<ClassInfo> &cInfo, int useNControls, int alteration) {
+    //OutputDebugString((L"Use NC:" + itow(useNControls)).c_str());
+    if (di.firstStart <= 0)
+      di.firstStart = 0;
+
+    otherClasses.clear();
+    cInfo.clear();
+    map<int, int> runnerPerGroup;
+    map<int, int> runnerPerCourse;
+    int nRunnersTot = 0;
+    for (auto c_it : Classes) {
+      bool drawClass = di.classes.count(c_it->getId()) > 0;
+      ClassInfo *cPtr = 0;
+
+      if (!drawClass) {
+        otherClasses[c_it->getId()] = ClassInfo(&*c_it);
+        cPtr = &otherClasses[c_it->getId()];
+      }
+      else
+        cPtr = &di.classes[c_it->getId()];
+
+      ClassInfo &ci = *cPtr;
+      pCourse pc = c_it->getCourse();
+
+      if (pc && useNControls < 1000) {
+        if (useNControls > 0 && pc->getNumControls() > 0)
+          ci.unique = 1000000 + pc->getIdSum(useNControls);
+        else
+          ci.unique = 10000 + pc->getId();
+
+        ci.courseId = pc->getId();
+      }
+      else
+        ci.unique = ci.classId;
+
+      if (!drawClass)
+        continue;
+
+      int nr = c_it->getNumRunners(true, true, true);
+      if (ci.nVacant == -1 || !ci.nVacantSpecified || di.changedVacancyInfo) {
+        // Auto initialize
+        int nVacancies = int(nr * di.vacancyFactor + 0.5);
+        nVacancies = max(nVacancies, di.minVacancy);
+        nVacancies = min(nVacancies, di.maxVacancy);
+        nVacancies = max(nVacancies, 0);
+
+        if (di.vacancyFactor == 0)
+          nVacancies = 0;
+
+        ci.nVacant = nVacancies;
+        ci.nVacantSpecified = false;
+      }
+
+      if (!ci.nExtraSpecified || di.changedExtraInfo) {
+        // Auto initialize
+        ci.nExtra = max(int(nr * di.extraFactor + 0.5), 1);
+
+        if (di.extraFactor == 0)
+          ci.nExtra = 0;
+        ci.nExtraSpecified = false;
+      }
+
+      ci.nRunners = nr + ci.nVacant;
+
+      if (ci.nRunners > 0) {
+        nRunnersTot += ci.nRunners + ci.nExtra;
+        cInfo.push_back(ci);
+        runnerPerGroup[ci.unique] += ci.nRunners + ci.nExtra;
+        runnerPerCourse[ci.courseId] += ci.nRunners + ci.nExtra;
+      }
+    }
+
+    maxGroup = 0;
+    maxCourse = 0;
+    maxNRunner = 0;
+    int a = 1 + (alteration % 7);
+    int b = (alteration % 3);
+    int c = alteration % 5;
+
+    for (size_t k = 0; k < cInfo.size(); k++) {
+      maxNRunner = max(maxNRunner, cInfo[k].nRunners);
+      cInfo[k].nRunnersGroup = runnerPerGroup[cInfo[k].unique];
+      cInfo[k].nRunnersCourse = runnerPerCourse[cInfo[k].courseId];
+      maxGroup = max(maxGroup, cInfo[k].nRunnersGroup);
+      maxCourse = max(maxCourse, cInfo[k].nRunnersCourse);
+      cInfo[k].sortFactor = cInfo[k].nRunners * a + cInfo[k].nRunnersGroup * b + cInfo[k].nRunnersCourse * c;
+    }
+
+    /*for (size_t k = 0; k < cInfo.size(); k++) {
+      auto pc = oe->getClass(cInfo[k].classId);
+      auto c = pc->getCourse();
+      wstring cc;
+      for (int i = 0; i < 3; i++)
+        cc += itow(c->getControl(i)->getId()) + L",";
+      wstring w = pc->getName() + L"; " + cc + L"; " + itow(cInfo[k].unique) + L"; " + itow(cInfo[k].nRunners) + L"\n";
+      OutputDebugString(w.c_str());
+    }*/
+
+    di.numDistinctInit = runnerPerGroup.size();
+    di.numRunnerSameInitMax = maxGroup;
+    di.numRunnerSameCourseMax = maxCourse;
+    // Calculate the theoretical best end position to use.
+    bestEndPos = 0;
+
+    for (map<int, int>::iterator it = runnerPerGroup.begin(); it != runnerPerGroup.end(); ++it) {
+      vector< pair<int, int> > classes;
+      for (size_t k = 0; k < cInfo.size(); k++) {
+        if (cInfo[k].unique == it->first)
+          classes.push_back(make_pair(cInfo[k].nRunners, cInfo[k].nExtra));
+      }
+      int optTime = optimalLayout(di.minClassInterval / di.baseInterval, classes);
+      bestEndPos = max(optTime, bestEndPos);
+    }
+
+    if (nRunnersTot > 0)
+      bestEndPos = max(bestEndPos, nRunnersTot / di.nFields);
+
+    if (!di.allowNeighbourSameCourse)
+      bestEndPos = max(bestEndPos, maxCourse * 2 - 1);
+    else
+      bestEndPos = max(bestEndPos, maxCourse);
+  }
+
+public:
+
+  DrawOptimAlgo(oEvent *oe) : oe(oe) {
+    oe->getClasses(Classes, false);
+    oe->getRunners(-1, -1, Runners);
+  }
+
+  void optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, DrawInfo &di,
+                          vector<ClassInfo> &cInfo, int useNControls, int alteration) {
+
+    if (bestEndPosGlobal == 0) {
+      bestEndPosGlobal = 100000;
+      for (int i = 1; i <= di.maxCommonControl && i<=10; i++) {
+        int ncc = i;
+        if (i >= 10)
+          ncc = 0;
+        computeBestStartDepth(di, cInfo, ncc, 0);
+        bestEndPosGlobal = min(bestEndPos, bestEndPosGlobal);
+      }
+
+      di.minimalStartDepth = bestEndPosGlobal * di.baseInterval;
+    }
+
+    computeBestStartDepth(di, cInfo, useNControls, alteration);
+
+    ClassInfo::sSortOrder = 0;
+    sort(cInfo.begin(), cInfo.end());
+
+    int maxSize = di.minClassInterval * maxNRunner;
+
+    // Special case for constant time start
+    if (di.baseInterval == 0) {
+      di.baseInterval = 1;
+      di.minClassInterval = 0;
+    }
+
+    // Calculate an estimated maximal class intervall
+    for (size_t k = 0; k < cInfo.size(); k++) {
+      int quotient = maxSize / (cInfo[k].nRunners*di.baseInterval);
+
+      if (quotient*di.baseInterval > di.maxClassInterval)
+        quotient = di.maxClassInterval / di.baseInterval;
+
+      if (cInfo[k].nRunnersGroup >= maxGroup)
+        quotient = di.minClassInterval / di.baseInterval;
+
+      if (!cInfo[k].hasFixedTime)
+        cInfo[k].interval = quotient;
+    }
+
+    for (int m = 0; m < di.nFields; m++)
+      StartField[m].resize(3000);
+
+    int alternator = 0;
+
+    // Fill up with non-drawn classes
+    for (auto &it : Runners) {
+      int st = it->getStartTime();
+      int relSt = st - di.firstStart;
+      int relPos = relSt / di.baseInterval;
+
+      if (st > 0 && relSt >= 0 && relPos < 3000 && (relSt%di.baseInterval) == 0) {
+        if (otherClasses.count(it->getClassId(false)) == 0)
+          continue;
+        pClass cls = it->getClassRef(true);
+        if (cls) {
+          if (!di.startName.empty() && cls->getStart() != di.startName)
+            continue;
+
+          if (cls->hasFreeStart())
+            continue;
+        }
+
+        ClassInfo &ci = otherClasses[it->getClassId(false)];
+        int k = 0;
+        while (true) {
+          if (k == StartField.size()) {
+            StartField.push_back(vector< pair<int, int> >());
+            StartField.back().resize(3000);
+          }
+          if (StartField[k][relPos].first == 0) {
+            StartField[k][relPos].first = ci.unique;
+            StartField[k][relPos].second = ci.courseId;
+            break;
+          }
+          k++;
+        }
+      }
+    }
+
+    // Fill up classes with fixed starttime
+    for (size_t k = 0; k < cInfo.size(); k++) {
+      if (cInfo[k].hasFixedTime) {
+        insertStart(StartField, di.nFields, cInfo[k]);
+      }
+    }
+
+    if (di.minClassInterval == 0) {
+      // Set fixed start time
+      for (size_t k = 0; k < cInfo.size(); k++) {
+        if (cInfo[k].hasFixedTime)
+          continue;
+        cInfo[k].firstStart = di.firstStart;
+        cInfo[k].interval = 0;
+      }
+    }
+    else {
+      // Do the distribution
+      for (size_t k = 0; k < cInfo.size(); k++) {
+        if (cInfo[k].hasFixedTime)
+          continue;
+
+        int minPos = 1000000;
+        int minEndPos = 1000000;
+        int minInterval = cInfo[k].interval;
+
+        for (int i = di.minClassInterval / di.baseInterval; i <= cInfo[k].interval; i++) {
+
+          int startpos = alternator % max(1, (bestEndPos - cInfo[k].nRunners * i) / 3);
+          startpos = 0;
+          int ipos = startpos;
+          int t = 0;
+
+          while (!isFree(di, StartField, di.nFields, ipos, i, cInfo[k])) {
+            t++;
+
+            // Algorithm to randomize start position
+            // First startpos -> bestEndTime, then 0 -> startpos, then remaining
+            if (t < (bestEndPos - startpos))
+              ipos = startpos + t;
+            else {
+              ipos = t - (bestEndPos - startpos);
+              if (ipos >= startpos)
+                ipos = t;
+            }
+          }
+
+          int endPos = ipos + i * cInfo[k].nRunners;
+          if (endPos < minEndPos || endPos < bestEndPos) {
+            minEndPos = endPos;
+            minPos = ipos;
+            minInterval = i;
+          }
+        }
+
+        cInfo[k].firstStart = minPos;
+        cInfo[k].interval = minInterval;
+        cInfo[k].overShoot = max(minEndPos - bestEndPosGlobal, 0);
+        insertStart(StartField, di.nFields, cInfo[k]);
+
+        alternator += alteration;
+      }
+    }
+  }
+};
+
 void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> &cInfo)
 {
   if (Classes.size()==0)
@@ -439,12 +761,15 @@ void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> 
   int nCtrl = 1;//max(1, di.maxCommonControl-2);
   const int maxControlDiff = di.maxCommonControl < 1000 ? di.maxCommonControl : 10;
   bool checkOnlyClass = di.maxCommonControl == 1000;
+
+  DrawOptimAlgo drawOptim(this);
+
   while (!found) {
 
     StartParam optInner;
     for (int alt = 0; alt <= 20 && !found; alt++) {
       vector< vector<pair<int, int> > > startField(di.nFields);
-      optimizeStartOrder(startField, di, cInfo, nCtrl, alt);
+      drawOptim.optimizeStartOrder(startField, di, cInfo, nCtrl, alt);
 
       int overShoot = 0;
       int overSum = 0;
@@ -495,7 +820,7 @@ void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> 
   }
 
   vector< vector<pair<int, int> > > startField(di.nFields);
-  optimizeStartOrder(startField, di, cInfo, opt.nControls, opt.alternator);
+  drawOptim.optimizeStartOrder(startField, di, cInfo, opt.nControls, opt.alternator);
 
   gdi.addString("", 0, "Identifierar X unika inledningar på banorna.#" + itos(di.numDistinctInit));
   gdi.addString("", 0, "Största gruppen med samma inledning har X platser.#" + itos(di.numRunnerSameInitMax));
@@ -543,33 +868,6 @@ void oEvent::optimizeStartOrder(gdioutput &gdi, DrawInfo &di, vector<ClassInfo> 
 
   gdi.addStringUT(10, str);
   gdi.dropLine();
-}
-
-int optimalLayout(int interval, vector< pair<int, int> > &classes) {
-  sort(classes.begin(), classes.end());
-
-  vector<int> chaining(interval, 0);
-
-  for (int k = int(classes.size())-1 ; k >= 0; k--) {
-    int ix = 0;
-    // Find free position
-    for (int i = 1; i<interval; i++) {
-      if (chaining[i] < chaining[ix])
-        ix = i;
-    }
-    int nr = classes[k].first;
-    if (chaining[ix] > 0)
-      nr += classes[k].second;
-
-    chaining[ix] += 1 + interval*(nr-1);
-  }
-
-  int last = chaining[0];
-  for (int i = 1; i<interval; i++) {
-    last = max(chaining[i], last);
-  }
-
-  return last;
 }
 
 void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vector<ClassInfo> &cInfo) const {
@@ -656,250 +954,6 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
     cInfo[k].nRunnersCourse = runnerPerCourse[cInfo[k].courseId];
   }
 }
-
-void oEvent::optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, DrawInfo &di,
-                                vector<ClassInfo> &cInfo, int useNControls, int alteration)
-{
-
-  if (di.firstStart<=0)
-    di.firstStart = 0;
-
-  if (di.minClassInterval < di.baseInterval) {
-    throw meosException("Startintervallet får inte vara kortare än basintervallet.");
-  }
-
-  map<int, ClassInfo> otherClasses;
-  cInfo.clear();
-  oClassList::iterator c_it;
-  map<int, int> runnerPerGroup;
-  map<int, int> runnerPerCourse;
-  int nRunnersTot = 0;
-  for (c_it=Classes.begin(); c_it != Classes.end(); ++c_it) {
-    bool drawClass = di.classes.count(c_it->getId())>0;
-    ClassInfo *cPtr = 0;
-
-    if (!drawClass) {
-      otherClasses[c_it->getId()] = ClassInfo(&*c_it);
-      cPtr = &otherClasses[c_it->getId()];
-    }
-    else
-      cPtr = &di.classes[c_it->getId()];
-
-    ClassInfo &ci =  *cPtr;
-    pCourse pc = c_it->getCourse();
-
-    if (pc && useNControls < 1000) {
-      if (useNControls>0 && pc->nControls>0)
-        ci.unique = 1000000 + pc->getIdSum(useNControls);
-      else
-        ci.unique = 10000 + pc->getId();
-
-      ci.courseId = pc->getId();
-    }
-    else
-      ci.unique = ci.classId;
-
-    if (!drawClass)
-      continue;
-
-    int nr = c_it->getNumRunners(true, true, true);
-    if (ci.nVacant == -1 || !ci.nVacantSpecified || di.changedVacancyInfo) {
-      // Auto initialize
-      int nVacancies = int(nr * di.vacancyFactor + 0.5);
-      nVacancies = max(nVacancies, di.minVacancy);
-      nVacancies = min(nVacancies, di.maxVacancy);
-      nVacancies = max(nVacancies, 0);
-
-      if (di.vacancyFactor == 0)
-        nVacancies = 0;
-
-      ci.nVacant = nVacancies;
-      ci.nVacantSpecified = false;
-    }
-
-    if (!ci.nExtraSpecified || di.changedExtraInfo) {
-      // Auto initialize
-      ci.nExtra = max(int(nr * di.extraFactor + 0.5), 1);
-
-      if (di.extraFactor == 0)
-        ci.nExtra = 0;
-      ci.nExtraSpecified = false;
-    }
-
-    ci.nRunners = nr + ci.nVacant;
-
-    if (ci.nRunners>0) {
-      nRunnersTot += ci.nRunners + ci.nExtra;
-      cInfo.push_back(ci);
-      runnerPerGroup[ci.unique] += ci.nRunners + ci.nExtra;
-      runnerPerCourse[ci.courseId] += ci.nRunners + ci.nExtra;
-    }
-  }
-
-  int maxGroup = 0;
-  int maxCourse = 0;
-  int maxNRunner = 0;
-  int a = 1 + (alteration % 7);
-  int b = (alteration % 3);
-  int c = alteration % 5;
-
-  for (size_t k = 0; k<cInfo.size(); k++) {
-    maxNRunner = max(maxNRunner, cInfo[k].nRunners);
-    cInfo[k].nRunnersGroup = runnerPerGroup[cInfo[k].unique];
-    cInfo[k].nRunnersCourse = runnerPerCourse[cInfo[k].courseId];
-    maxGroup = max(maxGroup, cInfo[k].nRunnersGroup);
-    maxCourse = max(maxCourse, cInfo[k].nRunnersCourse);
-    cInfo[k].sortFactor = cInfo[k].nRunners * a + cInfo[k].nRunnersGroup * b + cInfo[k].nRunnersCourse * c;
-  }
-
-  di.numDistinctInit = runnerPerGroup.size();
-  di.numRunnerSameInitMax = maxGroup;
-  di.numRunnerSameCourseMax = maxCourse;
-  // Calculate the theoretical best end position to use.
-  int bestEndPos = 0;
-
-  for (map<int, int>::iterator it = runnerPerGroup.begin(); it != runnerPerGroup.end(); ++it) {
-    vector< pair<int, int> > classes;
-    for (size_t k = 0; k<cInfo.size(); k++) {
-      if (cInfo[k].unique == it->first)
-        classes.push_back(make_pair(cInfo[k].nRunners, cInfo[k].nExtra));
-    }
-    int optTime = optimalLayout(di.minClassInterval/di.baseInterval, classes);
-    bestEndPos = max(optTime, bestEndPos);
-  }
-
-  if (nRunnersTot > 0)
-    bestEndPos = max(bestEndPos, nRunnersTot / di.nFields);
-
-  bestEndPos = max(bestEndPos, maxCourse * 2);
-
-  di.minimalStartDepth = bestEndPos * di.baseInterval;
-
-  ClassInfo::sSortOrder = 0;
-  sort(cInfo.begin(), cInfo.end());
-
-  int maxSize = di.minClassInterval * maxNRunner;
-
-  // Special case for constant time start
-  if (di.baseInterval==0) {
-    di.baseInterval = 1;
-    di.minClassInterval = 0;
-  }
-
-  // Calculate an estimated maximal class intervall
-  for (size_t k = 0; k < cInfo.size(); k++) {
-    int quotient = maxSize/(cInfo[k].nRunners*di.baseInterval);
-
-    if (quotient*di.baseInterval > di.maxClassInterval)
-      quotient=di.maxClassInterval/di.baseInterval;
-
-    if (cInfo[k].nRunnersGroup >= maxGroup)
-      quotient = di.minClassInterval / di.baseInterval;
-
-    if (!cInfo[k].hasFixedTime)
-      cInfo[k].interval = quotient;
-  }
-
-  for(int m=0;m < di.nFields;m++)
-    StartField[m].resize(3000);
-
-  int alternator = 0;
-
-  // Fill up with non-drawn classes
-  for (oRunnerList::iterator it = Runners.begin(); it!=Runners.end(); ++it) {
-    int st = it->getStartTime();
-    int relSt = st-di.firstStart;
-    int relPos = relSt / di.baseInterval;
-
-    if (st>0 && relSt>=0 && relPos<3000 && (relSt%di.baseInterval) == 0) {
-      if (otherClasses.count(it->getClassId(false))==0)
-        continue;
-
-      if (!di.startName.empty() && it->Class && it->Class->getStart()!=di.startName)
-        continue;
-
-      ClassInfo &ci = otherClasses[it->getClassId(false)];
-      int k = 0;
-      while(true) {
-        if (k==StartField.size()) {
-          StartField.push_back(vector< pair<int, int> >());
-          StartField.back().resize(3000);
-        }
-        if (StartField[k][relPos].first==0) {
-          StartField[k][relPos].first = ci.unique;
-          StartField[k][relPos].second = ci.courseId;
-          break;
-        }
-        k++;
-      }
-    }
-  }
-
-  // Fill up classes with fixed starttime
-  for (size_t k = 0; k < cInfo.size(); k++) {
-    if (cInfo[k].hasFixedTime) {
-      insertStart(StartField, di.nFields, cInfo[k]);
-    }
-  }
-
-  if (di.minClassInterval == 0) {
-    // Set fixed start time
-    for (size_t k = 0; k < cInfo.size(); k++) {
-      if (cInfo[k].hasFixedTime)
-        continue;
-      cInfo[k].firstStart = di.firstStart;
-      cInfo[k].interval = 0;
-    }
-  }
-  else {
-    // Do the distribution
-    for (size_t k = 0; k < cInfo.size(); k++) {
-      if (cInfo[k].hasFixedTime)
-        continue;
-
-      int minPos = 1000000;
-      int minEndPos = 1000000;
-      int minInterval=cInfo[k].interval;
-
-      for (int i = di.minClassInterval/di.baseInterval; i<=cInfo[k].interval; i++) {
-
-        int startpos = alternator % max(1, (bestEndPos - cInfo[k].nRunners * i)/3);
-        startpos = 0;
-        int ipos = startpos;
-        int t = 0;
-
-        while( !isFree(di, StartField, di.nFields, ipos, i, cInfo[k]) ) {
-          t++;
-
-          // Algorithm to randomize start position
-          // First startpos -> bestEndTime, then 0 -> startpos, then remaining
-          if (t<(bestEndPos-startpos))
-            ipos = startpos + t;
-          else {
-            ipos = t - (bestEndPos-startpos);
-            if (ipos>=startpos)
-              ipos  = t;
-          }
-        }
-
-        int endPos = ipos + i*cInfo[k].nRunners;
-        if (endPos < minEndPos || endPos < bestEndPos) {
-          minEndPos = endPos;
-          minPos = ipos;
-          minInterval = i;
-        }
-      }
-
-      cInfo[k].firstStart = minPos;
-      cInfo[k].interval = minInterval;
-      cInfo[k].overShoot = max(minEndPos - bestEndPos, 0);
-      insertStart(StartField, di.nFields, cInfo[k]);
-
-      alternator += alteration;
-    }
-  }
-}
-
 void oEvent::drawRemaining(DrawMethod method, bool placeAfter)
 {
   DrawType drawType = placeAfter ? DrawType::RemainingAfter : DrawType::RemainingBefore;
@@ -1271,7 +1325,7 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
 
 void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
                               const wstring &minIntervall, const wstring &vacances,
-                              bool lateBefore, DrawMethod method, int pairSize)
+                              bool lateBefore, bool allowNeighbourSameCourse, DrawMethod method, int pairSize)
 {
   gdi.refresh();
   const int leg = 0;
@@ -1403,6 +1457,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
     di.minVacancy = 1;
     di.maxVacancy = 100;
     di.vacancyFactor = vacancy;
+    di.allowNeighbourSameCourse = allowNeighbourSameCourse;
 
     di.startName = start;
 

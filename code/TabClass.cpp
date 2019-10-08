@@ -900,6 +900,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       wstring firstStart = gdi.getText("FirstStart");
       wstring minInterval = gdi.getText("MinInterval");
       wstring vacances = gdi.getText("Vacances");
+      setDefaultVacant(vacances);
 
       clearPage(gdi, false);
       gdi.addString("", boldLarge, "Lotta flera klasser");
@@ -1044,13 +1045,14 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.addInput("FirstStart", oe->getAbsTime(3600), 10, 0, L"Första (ordinarie) start:");
       gdi.addInput("MinInterval", L"2:00", 10, 0, L"Minsta startintervall:");
       gdi.fillDown();
-      gdi.addInput("Vacances", L"5%", 10, 0, L"Andel vakanser:");
+      gdi.addInput("Vacances", getDefaultVacant(), 10, 0, L"Andel vakanser:");
       gdi.popX();
 
       createDrawMethod(gdi);
 
       gdi.fillDown();
       gdi.addCheckbox("LateBefore", "Efteranmälda före ordinarie");
+      gdi.addCheckbox("AllowNeighbours", "Tillåt samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) != 0);
       gdi.dropLine();
 
       gdi.popX();
@@ -1180,8 +1182,11 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         return 0;
       wstring minInterval = gdi.getText("MinInterval");
       wstring vacances = gdi.getText("Vacances");
-      bool lateBefore = false;
-      //bool pairwise = gdi.isChecked("Pairwise");
+      setDefaultVacant(vacances);
+      bool lateBefore = gdi.isChecked("LateBefore");
+      bool allowNeighbourSameCourse = gdi.isChecked("AllowNeighbours");
+      oe->setProperty("DrawInterlace", allowNeighbourSameCourse ? 1 : 0);
+
       int pairSize = 1;
       if (gdi.hasField("PairSize")) {
         pairSize = gdi.getSelectedItem("PairSize").first;
@@ -1201,7 +1206,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       clearPage(gdi, true);
       oe->automaticDrawAll(gdi, firstStart, minInterval, vacances,
-                            lateBefore, method, pairSize);
+                           lateBefore, allowNeighbourSameCourse, method, pairSize);
       oe->addAutoBib();
       gdi.scrollToBottom();
       gdi.addButton("Cancel", "Återgå", ClassesCB);
@@ -1263,10 +1268,19 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       int origin = bi.getExtraInt();
       wstring firstStart = oe->getAbsTime(3600);
       wstring minInterval = L"2:00";
-      wstring vacances = L"5%";
+      wstring vacances = getDefaultVacant();
+      if (gdi.hasField("Vacances")) {
+        vacances = gdi.getText("Vacances");
+        setDefaultVacant(vacances);
+      }
+      
       int maxNumControl = 1;
       int pairSize = 1;
 
+      if (gdi.hasField("AllowNeighbours")) {
+        bool allowNeighbourSameCourse = gdi.isChecked("AllowNeighbours");
+        oe->setProperty("DrawInterlace", allowNeighbourSameCourse ? 1 : 0);
+      }
       //bool pairwise = false;
       int by = 0;
       int bx = gdi.getCX();
@@ -4387,6 +4401,7 @@ void TabClass::readDrawInfo(gdioutput &gdi, DrawInfo &drawInfoOut) {
 
   int maxVacancy = gdi.getTextNo("VacancesMax");
   int minVacancy = gdi.getTextNo("VacancesMin");
+  setDefaultVacant(gdi.getText("Vacances"));
   double vacancyFactor = 0.01*_wtof(gdi.getText("Vacances").c_str());
   double extraFactor = 0.01*_wtof(gdi.getText("Extra").c_str());
 
@@ -4661,7 +4676,7 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   gdi.popX();
   gdi.dropLine(4);
   gdi.fillDown();
-  gdi.addCheckbox("AllowNeighbours", "Tillåt samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) == 0);
+  gdi.addCheckbox("AllowNeighbours", "Tillåt samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) != 0);
   gdi.addCheckbox("CoursesTogether", "Lotta klasser med samma bana gemensamt", 0, false);
 
   gdi.dropLine(0.5);
@@ -4680,8 +4695,10 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   gdi.fillRight();
   gdi.popX();
   gdi.addInput("Vacances", vacances, 6, 0, L"Andel vakanser:");
-  gdi.addInput("VacancesMin", L"1", 6, 0, L"Min. vakanser (per klass):");
-  gdi.addInput("VacancesMax", L"10", 6, 0, L"Max. vakanser (per klass):");
+  bool zeroVac = _wtoi(vacances.c_str()) == 0;
+
+  gdi.addInput("VacancesMin", zeroVac ? L"0" : L"1", 6, 0, L"Min. vakanser (per klass):");
+  gdi.addInput("VacancesMax", zeroVac ? L"0" : L"10", 6, 0, L"Max. vakanser (per klass):");
   gdi.addInput("Extra", L"0%", 6, 0, L"Förväntad andel efteranmälda:");
 
   gdi.dropLine(4);
@@ -4748,4 +4765,18 @@ void TabClass::loadReadyToDistribute(gdioutput &gdi, int &bx, int &by) {
   gdi.setRestorePoint("ReadyToDistribute");
 
   gdi.refresh();
+}
+
+wstring TabClass::getDefaultVacant() {
+  int dvac = oe->getPropertyInt("VacantPercent", -1);
+  if (dvac >= 0 && dvac <= 100)
+    return itow(dvac) + L" %";
+  else
+    return L"5 %";
+}
+
+void TabClass::setDefaultVacant(const wstring &v) {
+  int val = _wtoi(v.c_str());
+  if (val >= 0 && val <= 100)
+    oe->setProperty("VacantPercent", val);
 }

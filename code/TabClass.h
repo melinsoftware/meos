@@ -156,6 +156,9 @@ class TabClass :
                           int maxNumControl, const wstring& minInterval, const wstring& vacances, const set<int> &clsId);
 
   void loadReadyToDistribute(gdioutput &gdi, int &bx, int &by);
+
+  wstring getDefaultVacant();
+  void setDefaultVacant(const wstring &val);
 public:
   
   void clearCompetitionData();

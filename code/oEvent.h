@@ -588,7 +588,7 @@ public:
   // Automatic draw of all classes
   void automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
                         const wstring &minIntervall, const wstring &vacances,
-                        bool lateBefore, DrawMethod method, int pairSize);
+                        bool lateBefore, bool allowNeighbourSameCourse, DrawMethod method, int pairSize);
 
   // Restore a backup by renamning the file to .meos
   void restoreBackup();
@@ -772,10 +772,6 @@ public:
 
   /** Use the current computer time to convert the specified time to a long time, if long times are used. */
   int convertToFullTime(int inTime);
-
-  /** Internal version of start order optimizer */
-  void optimizeStartOrder(vector< vector<pair<int, int> > > &StartField, DrawInfo &drawInfo,
-                          vector<ClassInfo> &cInfo, int useNControls, int alteration);
 
   struct ResultEvent {
     ResultEvent() {}

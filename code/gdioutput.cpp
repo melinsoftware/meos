@@ -179,8 +179,7 @@ void gdioutput::constructor(double _scale)
 
 void gdioutput::setFont(int size, const wstring &font)
 {
-  //setEncoding(enc);
-  double s = 1 + double(size)*0.25;// 1 + size * sqrt(double(size))*0.2;
+  double s = 1 + double(size)*0.25;
   initCommon(s, font);
 }
 

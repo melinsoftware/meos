@@ -799,10 +799,12 @@ bool oDataContainer::isModified(const oDataInfo &di,
       return memcmp(vd, vdOld, 8) != 0;
     }
   }
-  else if (di.Type == oDTString){
-    char * vd=(char *)(data)+di.Index;
-    char * vdOld=(char *)(oldData)+di.Index;
-    return strcmp(vd, vdOld) != 0;
+  else if (di.Type == oDTString) {
+    LPBYTE vdB = LPBYTE(data) + di.Index;
+    LPBYTE vdOldB = LPBYTE(oldData) + di.Index;
+    wchar_t * vd=(wchar_t *)vdB;
+    wchar_t * vdOld=(wchar_t *)vdOldB;
+    return wcscmp(vd, vdOld) != 0;
   }
   else if (di.Type == oDTStringDynamic){
     const wstring &newS = (*strptr)[0][di.Index];

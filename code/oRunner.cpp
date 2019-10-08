@@ -3136,8 +3136,13 @@ bool oRunner::apply(bool sync, pRunner src, bool setTmpOnly) {
   tLeg = -1;
   tLegEquClass = 0;
   tUseStartPunch=true;
-  if (tInTeam)
+  if (tInTeam) {
     tInTeam->apply(sync, this, setTmpOnly);
+    if (Class && Class->isQualificationFinalBaseClass()) {
+      if (tLeg > 0 && Class == getClassRef(true))
+        tNeedNoCard = true; // Not qualified
+    }
+  }
   else {
     if (Class && Class->hasMultiCourse()) {
       pClass pc=Class;

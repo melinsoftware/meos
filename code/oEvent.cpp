@@ -2604,7 +2604,6 @@ int oEvent::getRelativeTime(const string &date, const string &absoluteTime, cons
   else return -1;
 }
 
-
 int oEvent::getRelativeTime(const wstring &m) const {
   int dayIndex = 0;
   for (size_t k = 0; k + 1 < m.length(); k++) {
@@ -2947,12 +2946,13 @@ void oEvent::generateVacancyList(gdioutput &gdi, GUICALLBACK cb)
   oRunnerList::iterator it;
 
   // BIB, START, NAME, CLUB, SI
-  int dx[5]={0, 0, 70, 150};
+  int dx[5]={0, 0, gdi.scaleLength(70), gdi.scaleLength(150)};
 
   bool withbib=hasBib(true, false);
   int i;
 
-  if (withbib) for (i=1;i<4;i++) dx[i]+=40;
+  const int bibLen = gdi.scaleLength(40);
+  if (withbib) for (i = 1; i < 4; i++) dx[i] += bibLen;
 
   int y=gdi.getCY();
   int x=gdi.getCX();
@@ -2984,7 +2984,7 @@ void oEvent::generateVacancyList(gdioutput &gdi, GUICALLBACK cb)
 
       if (nRunner>=RunnersPerCol) {
         y = yStart;
-        x += dx[3]+5;
+        x += dx[3]+gdi.scaleLength(5);
         nRunner = 0;
       }
 

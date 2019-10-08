@@ -1545,7 +1545,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
           switch (startType) {
             case SMCommon:
-              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", L"0", false, oEvent::DrawMethod::Random, 1);
+              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", L"0", false, false, oEvent::DrawMethod::Random, 1);
               drawn = true;
               break;
 
@@ -1570,7 +1570,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
                 }
               }
               if (!skip)  
-                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", L"2", true, oEvent::DrawMethod::MeOS, 1);
+                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", L"2", true, false, oEvent::DrawMethod::MeOS, 1);
               drawn = true;
               break;
           }
