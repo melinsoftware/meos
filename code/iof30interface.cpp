@@ -2827,7 +2827,8 @@ wstring formatStatus(RunnerStatus st) {
 }
 
 void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
-                                       bool includeCourse, bool teamMember, bool hasInputTime, bool includeExtraPunches) {
+                                       bool includeCourse, bool teamMember,
+                                       bool hasInputTime, bool includeExtraPunches) {
   if (!teamMember)
     xml.startTag("PersonResult");
   else

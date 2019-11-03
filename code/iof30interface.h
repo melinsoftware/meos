@@ -203,7 +203,8 @@ class IOF30Interface {
   void writeTeamResult(xmlparser &xml, const oTeam &t, bool hasInputTime);
 
   void writeResult(xmlparser &xml, const oRunner &rPerson, const oRunner &rResultCarrier,
-                   bool includeCourse, bool includeRaceNumber, bool teamMember, bool hasInputTime, bool includeExtraPunches);
+                   bool includeCourse, bool includeRaceNumber, bool teamMember,
+                   bool hasInputTime, bool includeExtraPunches);
 
   void writePerson(xmlparser &xml, const oRunner &r);
   void writeClub(xmlparser &xml, const oClub &c, bool writeExtended) const;
