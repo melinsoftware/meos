@@ -1791,8 +1791,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       ImportFormats::ExportFormats filterIndex = ImportFormats::setExportFormat(*oe, gdi.getSelectedItem("Type").first);
       int cSVLanguageHeaderIndex = gdi.getSelectedItem("LanguageType").first;
-	  bool includeSplits = gdi.isChecked("ExportSplitTimes");
-	  bool includeExtraPunches = gdi.isChecked("ExportExtraPunches");
+      bool includeSplits = gdi.isChecked("ExportSplitTimes");
+      bool includeExtraPunches = gdi.isChecked("ExportExtraPunches");
       
       bool unroll = gdi.isChecked("UnrollLoops"); // If not applicable, field does not exist.
       bool includeStage = true;

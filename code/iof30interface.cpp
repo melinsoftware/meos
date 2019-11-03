@@ -2855,18 +2855,21 @@ void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
     }
 
     writeResult(xml, r, *resultHolder, includeCourse, 
-                includeStageRaceInfo && (r.getNumMulti() > 0 || r.getRaceNo() > 0), teamMember, hasInputTime, includeExtraPunches);
+                includeStageRaceInfo && (r.getNumMulti() > 0 || r.getRaceNo() > 0),
+                teamMember, hasInputTime, includeExtraPunches);
   }
   else {
     if (r.getNumMulti() > 0) {
       for (int k = 0; k <= r.getNumMulti(); k++) {
         const pRunner tr = r.getMultiRunner(k);
         if (tr)
-          writeResult(xml, *tr, *tr, includeCourse, includeStageRaceInfo, teamMember, hasInputTime, includeExtraPunches);
+          writeResult(xml, *tr, *tr, includeCourse, includeStageRaceInfo,
+                      teamMember, hasInputTime, includeExtraPunches);
       }
     }
     else
-      writeResult(xml, r, r, includeCourse, false, teamMember, hasInputTime, includeExtraPunches);
+      writeResult(xml, r, r, includeCourse, false,
+                  teamMember, hasInputTime, includeExtraPunches);
   }
 
 
@@ -2875,7 +2878,8 @@ void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
 
 void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const oRunner &r,
                                  bool includeCourse, bool includeRaceNumber,
-                                 bool teamMember, bool hasInputTime, bool includeExtraPunches) {
+                                 bool teamMember, bool hasInputTime,
+                                 bool includeExtraPunches) {
 
   vector<SplitData> dummy;
   if (!includeRaceNumber && getStageNumber() == 0)
@@ -3023,7 +3027,8 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
           vector<pPunch> punches;
           r.getCard()->getPunches(punches);
           for (size_t k = 0; k < punches.size(); k++) {
-            if (!punches[k]->isUsedInCourse() && !punches[k]->isStart() && !punches[k]->isFinish() && punches[k]->getControlNumber()>0) {
+            if (!punches[k]->isUsedInCourse() && !punches[k]->isStart() && 
+                !punches[k]->isFinish() && punches[k]->getControlNumber()>0) {
               xml.startTag("SplitTime", "status", "Additional");
               xml.write("ControlCode", punches[k]->getControlNumber());
               xml.write("Time", punches[k]->getAdjustedTime() - r.getStartTime());
