@@ -1213,7 +1213,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       bool eventorUTC = oe->getPropertyInt("UseEventorUTC", 0) != 0;
       oe->exportIOFSplits(oEvent::IOF30, resultlist.c_str(), false,
                           eventorUTC, classes, -1, false, true, 
-                          false, true);
+                          false, true, false);
       vector<wstring> fileList;
       fileList.push_back(resultlist);
 
@@ -1791,7 +1791,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       ImportFormats::ExportFormats filterIndex = ImportFormats::setExportFormat(*oe, gdi.getSelectedItem("Type").first);
       int cSVLanguageHeaderIndex = gdi.getSelectedItem("LanguageType").first;
-      bool includeSplits = gdi.isChecked("ExportSplitTimes");
+	  bool includeSplits = gdi.isChecked("ExportSplitTimes");
+	  bool includeExtraPunches = gdi.isChecked("ExportExtraPunches");
       
       bool unroll = gdi.isChecked("UnrollLoops"); // If not applicable, field does not exist.
       bool includeStage = true;
@@ -1807,7 +1808,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
         if (!cnf.hasTeamClass()) {
           oe->exportIOFSplits(ver, save.c_str(), true, useUTC, 
-                              allTransfer, -1, false, unroll, includeStage, false);
+                              allTransfer, -1, false, unroll, includeStage, false, includeExtraPunches);
         }
         else {
           ListBoxInfo leglbi;
@@ -1828,17 +1829,17 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
             for (int leg = 0; leg<legMax; leg++) {
               file = fileBase + L"_" + itow(leg+1) + fileEnd;
               oe->exportIOFSplits(ver, file.c_str(), true, useUTC, 
-                                  allTransfer, leg, false, unroll, includeStage, false);
+                                  allTransfer, leg, false, unroll, includeStage, false, includeExtraPunches);
             }
           }
           else if (leglbi.data == 3) {
             oe->exportIOFSplits(ver, file.c_str(), true, useUTC, allTransfer, 
-                                -1, true, unroll, includeStage, false);
+                                -1, true, unroll, includeStage, false, includeExtraPunches);
           }
           else {
             int leg = leglbi.data == 1 ? -1 : leglbi.data - 10;
             oe->exportIOFSplits(ver, file.c_str(), true, useUTC, allTransfer, 
-                                leg, false, unroll, includeStage, false);
+                                leg, false, unroll, includeStage, false, includeExtraPunches);
           }
         }
       }
@@ -3785,6 +3786,8 @@ void TabCompetition::selectExportSplitOptions(gdioutput &gdi) {
   gdi.selectItemByData("LanguageType", ImportFormats::getDefaultCSVLanguage(*oe));
  
   gdi.addCheckbox("ExportSplitTimes", "Export split times", 0, oe->getPropertyInt("ExportCSVSplits", false) != 0);
+
+  gdi.addCheckbox("ExportExtraPunches", "Export extra punches", 0, false);
   
   ClassConfigInfo cnf;
   oe->getClassConfigurationInfo(cnf);
@@ -3838,6 +3841,12 @@ void TabCompetition::setExportOptionsStatus(gdioutput &gdi, int format) const {
     gdi.setInputStatus("ExportSplitTimes", format == ImportFormats::OE);
     if (format == ImportFormats::IOF203 || format == ImportFormats::IOF30)
       gdi.check("ExportSplitTimes", true);
+  }
+
+  if (gdi.hasField("ExportExtraPunches")) {
+	  gdi.setInputStatus("ExportExtraPunches", format == ImportFormats::IOF30);
+	  if (format != ImportFormats::IOF30)
+		  gdi.check("ExportExtraPunches", false);
   }
   
   if (gdi.hasField("IncludeRaceNumber")) {

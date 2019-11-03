@@ -508,7 +508,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     if (param.count("class") > 0)
       getSelection(param.find("class")->second, cls);
 
-    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, -1, false, false, true, false);
+    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, -1, false, false, true, false, false);
     ifstream fin(exportFile.c_str());
     string rbf;
     while (std::getline(fin, rbf)) {

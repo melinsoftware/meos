@@ -923,7 +923,8 @@ public:
                        bool teamsAsIndividual,
                        bool unrollLoops,
                        bool includeStageData,
-                       bool forceSplitFee);
+                       bool forceSplitFee,
+                       bool includeExtraPunches);
 
   void exportIOFStartlist(IOFVersion version, const wchar_t *file,
                           bool useUTC, const set<int> &classes,

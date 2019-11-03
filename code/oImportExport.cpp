@@ -2616,7 +2616,8 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
                              bool oldStylePatrolExport, bool useUTC,
                              const set<int> &classes, int leg,
                              bool teamsAsIndividual, bool unrollLoops,
-                             bool includeStageInfo, bool forceSplitFee) {
+                             bool includeStageInfo, bool forceSplitFee,
+                             bool includeExtraPunches) {
   xmlparser xml;
 
   xml.openOutput(file, false);
@@ -2645,7 +2646,7 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
   else {
     IOF30Interface writer(this, forceSplitFee);
     writer.writeResultList(xml, classes, leg, useUTC, 
-                           teamsAsIndividual, unrollLoops, includeStageInfo);
+                           teamsAsIndividual, unrollLoops, includeStageInfo, includeExtraPunches);
   }
 
   xml.closeOut();

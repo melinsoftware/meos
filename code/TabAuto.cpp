@@ -400,7 +400,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
 
     //Try exporting.
     oe->exportIOFSplits(oEvent::IOF20, file.c_str(), true, false,
-                        set<int>(), -1, false, true, true, false);
+                        set<int>(), -1, false, true, true, false, false);
     SplitsMachine *sm=dynamic_cast<SplitsMachine*>(getMachine(bu.getExtraInt()));
 
     if (sm) {
@@ -1128,7 +1128,7 @@ void SplitsMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
   if ((interval>0 && ast==SyncTimer) || (interval==0 && ast==SyncDataUp)) {
     if (!file.empty())
       oe->exportIOFSplits(oEvent::IOF20, file.c_str(), true, false, classes,
-                          leg, false, true, true, false);
+                          leg, false, true, true, false, false);
   }
 }
 

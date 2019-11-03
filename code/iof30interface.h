@@ -192,18 +192,18 @@ class IOF30Interface {
   void getProps(vector<wstring> &props) const;
 
   void writeClassResult(xmlparser &xml, const oClass &c, const vector<pRunner> &r,
-                        const vector<pTeam> &t);
+                        const vector<pTeam> &t, bool includeExtraPunches);
 
   void writeClass(xmlparser &xml, const oClass &c);
   void writeCourse(xmlparser &xml, const oCourse &c);
   void writePersonResult(xmlparser &xml, const oRunner &r, bool includeCourse,
-                         bool teamMember, bool hasInputTime);
+                         bool teamMember, bool hasInputTime, bool includeExtraPunches);
 
 
   void writeTeamResult(xmlparser &xml, const oTeam &t, bool hasInputTime);
 
   void writeResult(xmlparser &xml, const oRunner &rPerson, const oRunner &rResultCarrier,
-                   bool includeCourse, bool includeRaceNumber, bool teamMember, bool hasInputTime);
+                   bool includeCourse, bool includeRaceNumber, bool teamMember, bool hasInputTime, bool includeExtraPunches);
 
   void writePerson(xmlparser &xml, const oRunner &r);
   void writeClub(xmlparser &xml, const oClub &c, bool writeExtended) const;
@@ -306,7 +306,7 @@ public:
 
   void writeResultList(xmlparser &xml, const set<int> &classes, int leg,
                        bool useUTC, bool teamsAsIndividual, 
-                       bool unrollLoops, bool includeStageInfo);
+                       bool unrollLoops, bool includeStageInfo, bool includeExtraPunches);
 
   void writeStartList(xmlparser &xml, const set<int> &classes, bool useUTC, 
                       bool teamsAsIndividual, bool includeStageInfo);

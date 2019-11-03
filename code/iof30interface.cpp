@@ -2647,7 +2647,8 @@ void IOF30Interface::getProps(vector<wstring> &props) const {
 void IOF30Interface::writeResultList(xmlparser &xml, const set<int> &classes,
                                      int leg,  bool useUTC_, 
                                      bool teamsAsIndividual_, bool unrollLoops_,
-                                     bool includeStageInfo_) {
+                                     bool includeStageInfo_,
+                                     bool includeExtraPunches) {
   useGMT = useUTC_;
   includeStageRaceInfo = includeStageInfo_;
   teamsAsIndividual = teamsAsIndividual_;
@@ -2711,7 +2712,7 @@ void IOF30Interface::writeResultList(xmlparser &xml, const set<int> &classes,
       getRunnersToUse(c[k], rToUse, tToUse, leg, false);
 
       if (!rToUse.empty() || !tToUse.empty()) {
-        writeClassResult(xml, *c[k], rToUse, tToUse);
+        writeClassResult(xml, *c[k], rToUse, tToUse, includeExtraPunches);
       }
     }
   }
@@ -2723,7 +2724,8 @@ void IOF30Interface::writeResultList(xmlparser &xml, const set<int> &classes,
 void IOF30Interface::writeClassResult(xmlparser &xml,
                                       const oClass &c,
                                       const vector<pRunner> &r,
-                                      const vector<pTeam> &t) {
+                                      const vector<pTeam> &t,
+                                      bool includeExtraPunches) {
   pCourse stdCourse = haveSameCourse(r);
 
   xml.startTag("ClassResult");
@@ -2743,7 +2745,7 @@ void IOF30Interface::writeClassResult(xmlparser &xml,
   }
 
   for (size_t k = 0; k < r.size(); k++) {
-    writePersonResult(xml, *r[k], stdCourse == 0, false, hasInputTime);
+    writePersonResult(xml, *r[k], stdCourse == 0, false, hasInputTime, includeExtraPunches);
   }
 
   for (size_t k = 0; k < t.size(); k++) {
@@ -2825,7 +2827,7 @@ wstring formatStatus(RunnerStatus st) {
 }
 
 void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
-                                       bool includeCourse, bool teamMember, bool hasInputTime) {
+                                       bool includeCourse, bool teamMember, bool hasInputTime, bool includeExtraPunches) {
   if (!teamMember)
     xml.startTag("PersonResult");
   else
@@ -2853,18 +2855,18 @@ void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
     }
 
     writeResult(xml, r, *resultHolder, includeCourse, 
-                includeStageRaceInfo && (r.getNumMulti() > 0 || r.getRaceNo() > 0), teamMember, hasInputTime);
+                includeStageRaceInfo && (r.getNumMulti() > 0 || r.getRaceNo() > 0), teamMember, hasInputTime, includeExtraPunches);
   }
   else {
     if (r.getNumMulti() > 0) {
       for (int k = 0; k <= r.getNumMulti(); k++) {
         const pRunner tr = r.getMultiRunner(k);
         if (tr)
-          writeResult(xml, *tr, *tr, includeCourse, includeStageRaceInfo, teamMember, hasInputTime);
+          writeResult(xml, *tr, *tr, includeCourse, includeStageRaceInfo, teamMember, hasInputTime, includeExtraPunches);
       }
     }
     else
-      writeResult(xml, r, r, includeCourse, false, teamMember, hasInputTime);
+      writeResult(xml, r, r, includeCourse, false, teamMember, hasInputTime, includeExtraPunches);
   }
 
 
@@ -2873,7 +2875,7 @@ void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
 
 void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const oRunner &r,
                                  bool includeCourse, bool includeRaceNumber,
-                                 bool teamMember, bool hasInputTime) {
+                                 bool teamMember, bool hasInputTime, bool includeExtraPunches) {
 
   vector<SplitData> dummy;
   if (!includeRaceNumber && getStageNumber() == 0)
@@ -3015,6 +3017,21 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
             xml.write("Time", it->first);
           xml.endTag();
         }
+
+        // Write all punches not used in course (with XML attribute "Additional")
+        if (includeExtraPunches) {
+          vector<pPunch> punches;
+          r.getCard()->getPunches(punches);
+          for (size_t k = 0; k < punches.size(); k++) {
+            if (!punches[k]->isUsedInCourse() && !punches[k]->isStart() && !punches[k]->isFinish() && punches[k]->getControlNumber()>0) {
+              xml.startTag("SplitTime", "status", "Additional");
+              xml.write("ControlCode", punches[k]->getControlNumber());
+              xml.write("Time", punches[k]->getAdjustedTime() - r.getStartTime());
+              xml.endTag();
+            }
+          }
+        }
+
       }
     }
   }
@@ -3052,7 +3069,7 @@ void IOF30Interface::writeTeamResult(xmlparser &xml, const oTeam &t, bool hasInp
 
   for (int k = 0; k < t.getNumRunners(); k++) {
     if (t.getRunner(k))
-      writePersonResult(xml, *t.getRunner(k), true, true, hasInputTime);
+      writePersonResult(xml, *t.getRunner(k), true, true, hasInputTime, false);
   }
 
   writeAssignedFee(xml, t, 0);
