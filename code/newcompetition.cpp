@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id == "FAll") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       gdi.clearPage(true);
       gdi.fillRight();
@@ -111,7 +111,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id == "FBasic") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       oe->getMeOSFeatures().clear(*oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Clubs, true, *oe);
@@ -124,7 +124,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       newCompetitionGuide(gdi, 3);
     }
     else if (bi.id == "StoreFeatures") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       saveMeosFeatures(gdi, true);
       gdi.clearPage(true);
@@ -136,7 +136,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id == "FIndividual") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
@@ -157,7 +157,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id == "FNoCourses" || bi.id == "FNoCoursesRelay") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
@@ -181,7 +181,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id == "FForked") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
@@ -203,7 +203,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       loadPage(gdi);
     }
     else if (bi.id == "FTeam") {
-      if (gdi.hasField("Name"))
+      if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
@@ -435,13 +435,13 @@ void TabCompetition::createCompetition(gdioutput &gdi) {
   wstring start = gdi.getText("FirstStart");
 
   oe->newCompetition(L"tmp");
-  oe->setName(name);
-  oe->setDate(date);
+  oe->setName(name, true);
+  oe->setDate(date, true);
 
   int t = convertAbsoluteTimeHMS(start, -1);
   if (t > 0 && t < 3600*24) {
     t = max(0, t-3600);
-    oe->setZeroTime(formatTimeHMS(t));
+    oe->setZeroTime(formatTimeHMS(t), true);
   }
   else
     throw meosException("Ogiltig tid");

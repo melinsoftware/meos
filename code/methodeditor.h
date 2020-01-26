@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ class oEvent;
 
 #include <vector>
 
+class TabBase;
+
 class MethodEditor {
 private:
   enum SaveType {NotSaved, SavedInside, SavedFile};
@@ -41,7 +43,7 @@ private:
   bool dirtyInt;
   bool wasLoadedBuiltIn;
   enum DirtyFlag {MakeDirty, ClearDirty, NoTouch};
-
+  TabBase *origin = nullptr;
   /// Check (and autosave) if there are unsaved changes in a dialog box
   void checkUnsaved(gdioutput &gdi);
 
@@ -65,11 +67,17 @@ private:
 
   int inputNumber;
   void debug(gdioutput &gdi, int id, bool isTeam);
+  void show(gdioutput &gdi);
+
 public:
   MethodEditor(oEvent *oe);
   virtual ~MethodEditor();
 
-  void show(gdioutput &gdi);
+  void show(TabBase *dst, gdioutput &gdi);
+
+  bool isShown(TabBase *tab) const { return origin == tab; }
+
+  DynamicResult *load(gdioutput &gdi, const string &tag, bool forceLoadCopy);
 
   friend int methodCB(gdioutput*, int, void *);
 };

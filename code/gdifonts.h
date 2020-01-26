@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,25 +60,28 @@ const int timerIgnoreSign = 1<<15;
 const int Capitalize = 1<<16;
 const int absolutePosition = 1 << 17;
 const int skipBoundingBox = 1 << 18;
+const int hiddenText = 1 << 19;
 
-enum GDICOLOR {colorBlack = RGB(0,0,0),
-              colorRed = RGB(128,0,0),
-              colorGreen = RGB(0,128,0),
-              colorDarkGrey = RGB(40,40,40),
-              colorDarkRed = RGB(64,0,0),
-              colorGreyBlue = RGB(92,92,128),
-              colorDarkBlue = RGB(0,0,92),
-              colorDarkGreen = RGB(0,64,0),
-              colorYellow = RGB(255, 230, 0),
-              colorLightBlue = RGB(240,240,255),
-              colorLightRed = RGB(255,230,230),
-              colorLightGreen = RGB(180, 255, 180),
-              colorLightYellow = RGB(255, 255, 200),
-              colorLightCyan = RGB(200, 255, 255),
-              colorLightMagenta = RGB(255, 200, 255),
-              colorMediumRed = RGB(255,200,200),
-              colorMediumDarkRed = RGB(240,120,120),
-              colorWindowBar = -2,
-              colorDefault = -1,
-              colorTransparent = -3};
+enum GDICOLOR {
+  colorBlack = RGB(0, 0, 0),
+  colorRed = RGB(128, 0, 0),
+  colorGreen = RGB(0, 128, 0),
+  colorDarkGrey = RGB(40, 40, 40),
+  colorDarkRed = RGB(64, 0, 0),
+  colorGreyBlue = RGB(92, 92, 128),
+  colorDarkBlue = RGB(0, 0, 92),
+  colorDarkGreen = RGB(0, 64, 0),
+  colorYellow = RGB(255, 230, 0),
+  colorLightBlue = RGB(235, 238, 254),
+  colorLightRed = RGB(255, 230, 230),
+  colorLightGreen = RGB(219, 247, 209),
+  colorLightYellow = RGB(248, 248, 216),
+  colorLightCyan = RGB(220, 249, 245),//RGB(200, 255, 255),
+  colorLightMagenta = RGB(240, 207, 244),//RGB(255, 200, 255),
+  colorMediumRed = RGB(255, 200, 200),
+  colorMediumDarkRed = RGB(240, 120, 120),
+  colorWindowBar = -2,
+  colorDefault = -1,
+  colorTransparent = -3
+};
 

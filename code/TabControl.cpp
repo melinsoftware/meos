@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,7 +96,7 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
       gdi.setText("Name", pc->getName());
       gdi.setText("TimeAdjust", pc->getTimeAdjustS());
       gdi.setText("MinTime", pc->getMinTimeS());
-      if (gdi.hasField("Point"))
+      if (gdi.hasWidget("Point"))
         gdi.setText("Point", pc->getRogainingPointsS());
 
       controlId = pc->getId();
@@ -114,7 +114,7 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
       if (st == oControl::StatusNoTiming)
         gdi.disableInput("TimeAdjust");
 
-      if (gdi.hasField("Point") && st != oControl::StatusRogaining)
+      if (gdi.hasWidget("Point") && st != oControl::StatusRogaining)
         gdi.disableInput("Point");
     }
   }
@@ -127,7 +127,7 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
 
     gdi.setText("ControlID", makeDash(L"-"), true);
     gdi.setText("TimeAdjust", L"00:00");
-    if (gdi.hasField("Point"))
+    if (gdi.hasWidget("Point"))
       gdi.setText("Point", L"");
 
     gdi.disableInput("Remove");
@@ -169,7 +169,7 @@ void TabControl::save(gdioutput &gdi)
       pc->setRogainingPoints(0);
     }
     else {
-      if (gdi.hasField("Point")) {
+      if (gdi.hasWidget("Point")) {
         pc->setMinTime(0);
         pc->setRogainingPoints(gdi.getTextNo("Point"));
       }
@@ -355,7 +355,7 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
     else if (bi.id=="Visitors") {
       save(gdi);
 
-      Table *table=new Table(oe, 20, L"Kontroll X#" + itow(controlId), "controlvisitor");
+      shared_ptr<Table> table=make_shared<Table>(oe, 20, L"Kontroll X#" + itow(controlId), "controlvisitor");
 
       table->addColumn("Id", 70, true, true);
       table->addColumn("Ändrad", 70, false);
@@ -375,11 +375,11 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       int xp=gdi.getCX();
       gdi.fillDown();
       gdi.addButton("Show", "Återgå", ControlsCB);
-       gdi.addTable(table, xp, gdi.getCY());
+      gdi.addTable(table, xp, gdi.getCY());
       gdi.refresh();
     }
     else if (bi.id=="Courses") {
-       Table *table=new Table(oe, 20, L"Kontroll X#" + itow(controlId), "controlcourse");
+      auto table=make_shared<Table>(oe, 20, L"Kontroll X#" + itow(controlId), "controlcourse");
 
       table->addColumn("Id", 70, true, true);
       table->addColumn("Ändrad", 70, false);
@@ -395,7 +395,7 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       int xp=gdi.getCX();
       gdi.fillDown();
       gdi.addButton("Show", "Återgå", ControlsCB);
-       gdi.addTable(table, xp, gdi.getCY());
+      gdi.addTable(table, xp, gdi.getCY());
       gdi.refresh();
     }
     else if (bi.id=="Show") {
@@ -445,8 +445,7 @@ bool TabControl::loadPage(gdioutput &gdi)
     ControlsCB, "Välj vy", false, false).fixedCorner();
 
   if (tableMode) {
-    Table *tbl=oe->getControlTB();
-    gdi.addTable(tbl, xp, 30);
+    gdi.addTable(oControl::getTable(oe), xp, gdi.scaleLength(30));
     return true;
   }
 

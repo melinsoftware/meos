@@ -1,6 +1,6 @@
 ﻿/********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -284,7 +284,7 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
             pRunner r = oe->getRunner(rToWatch[i], 0);
             if (r) {
               r->synchronize();
-              r->setStartTime(st, true, false, true);
+              r->setStartTime(st, true, oBase::ChangeType::Update, true);
               r->synchronize(false);
             }
           }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -65,16 +65,17 @@ string conv_is(int i)
    return "";
 }
 
-
 int ConvertStatusToOE(int i)
 {
   switch(i)
   {
       case StatusOK:
+      case StatusNoTiming:
       return 0;
       case StatusDNS:  // Ej start
       case StatusCANCEL:
       case StatusNotCompetiting:
+      case StatusOutOfCompetition:
       return 1;
       case StatusDNF:  // Utg.
       return 2;
@@ -207,10 +208,10 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
     
     // Excel format HH:MM:SS
     
-    if (it->getRunningTime() > 0)
-      row[OEtime] = gdibase.recodeToNarrow(formatTimeHMS(it->getRunningTime()));
+    if (it->getRunningTime(true) > 0)
+      row[OEtime] = gdibase.recodeToNarrow(formatTimeHMS(it->getRunningTime(true)));
 
-    row[OEstatus] = conv_is(ConvertStatusToOE(it->getStatus()));
+    row[OEstatus] = conv_is(ConvertStatusToOE(it->getStatusComputed()));
     row[OEclubno] = conv_is(it->getClubId());
 
     if (it->getClubRef()) {
@@ -841,7 +842,7 @@ bool oEvent::addXMLTeamEntry(const xmlobject &xentry, int clubId)
       oTeam or(this);
       t = addTeam(or, true);
     }
-    t->setStartNo(Teams.size(), false);
+    t->setStartNo(Teams.size(), oBase::ChangeType::Update);
   }
 
   if (!t->hasFlag(oAbstractRunner::FlagUpdateName))
@@ -993,6 +994,7 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
 
   if (setClass && !r->hasFlag(oAbstractRunner::FlagUpdateClass) )
     r->Class = getXMLClass(xentry);
+  classIdToRunnerHash.reset();
 
   r->Club = getClubCreate(clubId);
 
@@ -1095,6 +1097,7 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
   pClass oldClass = r->Class;
   pClub oldClub = r->Club;
   r->Class = cls;
+  classIdToRunnerHash.reset();
 
   xmlobject xclub = xstart.getObject("Club");
   int clubId = xstart.getObjectInt("ClubId");
@@ -1362,12 +1365,14 @@ bool oEvent::addXMLEvent(const xmlobject &xevent)
   if (id>0)
     setExtIdentifier(id);
 
-  setName(name);
+  if (!hasFlag(TransferFlags::FlagManualName))
+    setName(name, false);
 
   if (date) {
     wstring dateStr;
     date.getObjectString("Date", dateStr);
-    setDate(dateStr);
+    if (!hasFlag(TransferFlags::FlagManualDateTime))
+      setDate(dateStr, false);
   }
 
   synchronize();
@@ -1636,7 +1641,8 @@ bool oEvent::addXMLClass(const xmlobject &xclass)
   else
     pc = addClass(name);
 
-  pc->setName(name);
+  if (!pc->hasFlag(oClass::TransferFlags::FlagManualName))
+    pc->setName(name, false);
   oDataInterface DI=pc->getDI();
 
   wstring tmp;
@@ -2310,7 +2316,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
               xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getLegFinishTime(-1), ZeroTime));
             xml.endTag();
 
-            xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getLegRunningTime(-1, false), 0));
+            xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getLegRunningTime(-1, true, false), 0));
             xml.write("ResultPosition", it->getLegPlaceS(-1, false));
 
             xml.write("CompetitorStatus", "value", it->Runners[0]->getIOFStatusS());
@@ -2321,7 +2327,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
             if (pc) xml.write("CourseLength", "unit", L"m", pc->getLengthS());
 
             pCourse pcourse=pc;
-            auto legStatus = it->getLegStatus(-1, false);
+            auto legStatus = it->getLegStatus(-1, true, false);
             if (pcourse && legStatus>0 && legStatus!=StatusDNS && legStatus!=StatusCANCEL) {
               int no = 1;
               bool hasRogaining = pcourse->hasRogaining();
@@ -2416,7 +2422,7 @@ void oEvent::exportIOFResults(xmlparser &xml, bool selfContained, const set<int>
         xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
         xml.endTag();
 
-        xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getRunningTime(),0));
+        xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getRunningTime(true),0));
         xml.write("ResultPosition", it->getPlaceS());
 
         xml.write("CompetitorStatus", "value", it->getIOFStatusS());
@@ -2538,7 +2544,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
       xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(it->getFinishTimeAdjusted(), ZeroTime));
       xml.endTag();
 
-      xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getRunningTime(), 0));
+      xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(it->getRunningTime(true), 0));
       xml.write("ResultPosition", it->getPlaceS());
       xml.write("TeamStatus", "value", it->getIOFStatusS());
 
@@ -2563,7 +2569,7 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
             xml.write("Clock", "clockFormat", hhmmss, formatTimeIOF(r->getFinishTimeAdjusted(), ZeroTime));
             xml.endTag();
 
-            xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(r->getRunningTime(), 0));
+            xml.write("Time", "timeFormat", hhmmss, formatTimeIOF(r->getRunningTime(true), 0));
             xml.write("ResultPosition", r->getPlaceS());
 
             xml.write("CompetitorStatus", "value", r->getIOFStatusS());
@@ -2621,24 +2627,16 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
 
   xml.openOutput(file, false);
   oClass::initClassId(*this);
-  reEvaluateAll(set<int>(), true);
+  reEvaluateAll(classes, true);
   if (version != IOF20)
-    calculateResults(set<int>(), ResultType::ClassCourseResult);
-  calculateResults(set<int>(), ResultType::TotalResult);
-  calculateResults(set<int>(), ResultType::ClassResult);
-  calculateTeamResults(true);
-  calculateTeamResults(false);
+    calculateResults(classes, ResultType::ClassCourseResult);
+  calculateResults(classes, ResultType::TotalResult);
+  calculateResults(classes, ResultType::ClassResult);
+  calculateTeamResults(classes, ResultType::TotalResult);
+  calculateTeamResults(classes, ResultType::ClassResult);
+
   sortRunners(SortOrder::ClassResult);
   sortTeams(SortOrder::ClassResult, -1, false);
-
-  set<int> rgClasses;
-  for (int clz : classes) {
-    pClass pc = getClass(clz);
-    if (pc && pc->isRogaining())
-      rgClasses.insert(clz);
-  }
-  if (!rgClasses.empty())
-    calculateRogainingResults(rgClasses);
 
   if (version == IOF20)
     exportIOFResults(xml, true, classes, leg, oldStylePatrolExport);

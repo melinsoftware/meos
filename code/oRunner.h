@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,8 +37,56 @@
 #include "oClub.h"
 #include "oClass.h"
 #include "oCard.h"
-#include "oSpeaker.h"
 #include "oDataContainer.h"
+
+enum RunnerStatus {
+  StatusOK = 1, StatusDNS = 20, StatusCANCEL = 21, StatusOutOfCompetition = 15, StatusMP = 3,
+  StatusDNF = 4, StatusDQ = 5, StatusMAX = 6, StatusNoTiming = 2,
+  StatusUnknown = 0, StatusNotCompetiting = 99
+};
+
+/** Returns true for a status that might or might not indicate a result. */
+template<int dummy=0>
+bool isPossibleResultStatus(RunnerStatus st) {
+  return st == StatusNoTiming || st == StatusOutOfCompetition;
+}
+
+template<int dummy=0>
+vector<RunnerStatus> getAllRunnerStatus() {
+  return { StatusOK, StatusDNS, StatusCANCEL, StatusOutOfCompetition, StatusMP,
+           StatusDNF, StatusDQ, StatusMAX,
+           StatusUnknown, StatusNotCompetiting , StatusNoTiming};
+}
+
+#include "oSpeaker.h"
+
+extern char RunnerStatusOrderMap[100];
+
+enum SortOrder {
+  ClassStartTime,
+  ClassTeamLeg,
+  ClassResult,
+  ClassDefaultResult,
+  ClassCourseResult,
+  ClassTotalResult,
+  ClassTeamLegResult,
+  ClassFinishTime,
+  ClassStartTimeClub,
+  ClassPoints,
+  ClassLiveResult,
+  ClassKnockoutTotalResult,
+  SortByName,
+  SortByLastName,
+  SortByFinishTime,
+  SortByFinishTimeReverse,
+  SortByStartTime,
+  SortByStartTimeClass,
+  CourseResult,
+  CourseStartTime,
+  SortByEntryTime,
+  Custom,
+  SortEnumLastItem
+};
 
 class oRunner;
 typedef oRunner* pRunner;
@@ -62,22 +110,26 @@ protected:
   int tStartTime;
 
   int FinishTime;
+  mutable int tComputedTime = 0;
+
   RunnerStatus status;
   RunnerStatus tStatus;
+  mutable RunnerStatus tComputedStatus = RunnerStatus::StatusUnknown;
+  mutable int tComputedPoints = -1;
 
-  /** Temporary storage for set operations to be applied later*/
-  struct TempSetStore {
-    int startTime;
-    RunnerStatus status;
-    int startNo;
-    wstring bib;
-  };
-
-  TempSetStore tmpStore;
-
-  void resetTmpStore();
-
+  vector<vector<wstring>> dynamicData;
 public:
+  /** Encode status as a two-letter code, non-translated*/
+  static const wstring &encodeStatus(RunnerStatus st, bool allowError = false);
+
+  /** Decode the two-letter code of above. Returns unknown if not understood*/
+  static RunnerStatus decodeStatus(const wstring &stat);
+
+  /** Return true if the status is of type indicating a result. */
+  static bool isResultStatus(RunnerStatus rs);
+
+  /** Returns true if the result in the current state is up-to-date. */
+  virtual bool isResultUpdated(bool totalResult) const = 0;
 
   struct TempResult {
   private:
@@ -86,7 +138,7 @@ public:
     int timeAfter;
     int points;
     int place;
-    int internalScore;
+    pair<int, int> internalScore;
     vector<int> outputTimes;
     vector<int> outputNumbers;
     RunnerStatus status;
@@ -100,7 +152,10 @@ public:
     int getPoints() const {return points;}
     int getPlace() const {return place;}
     RunnerStatus getStatus() const {return status;}
-
+    bool isStatusOK() const {
+      return status == StatusOK || 
+        ((status == StatusOutOfCompetition || status == StatusNoTiming) && runningTime > 0);
+    }
     const wstring &getStatusS(RunnerStatus inputStatus) const;
     const wstring &getPrintPlaceS(bool withDot) const;
     const wstring &getRunningTimeS(int inputTime) const;
@@ -120,9 +175,6 @@ public:
 
 protected:
   TempResult tmpResult;
-
-  // Sets result to object. Returns true if status/time changed
-  bool setTmpStore();
 
   mutable int tTimeAdjustment;
   mutable int tPointAdjustment;
@@ -183,6 +235,8 @@ public:
     FlagUpdateName = 32,
     FlagAutoDNS = 64, // The competitor was set to DNS by the in-forest algorithm
     FlagAddedViaAPI = 128, // Added by the REST api entry.
+    FlagOutsideCompetition = 256,
+    FlagNoTiming = 512, // No timing requested
   };
 
   bool hasFlag(TransferFlags flag) const;
@@ -245,7 +299,7 @@ public:
 
   wstring getInfo() const;
 
-  virtual bool apply(bool sync, pRunner src, bool setTmpOnly) = 0;
+  virtual void apply(ChangeType ct, pRunner src) = 0;
 
   //Get time after on leg/for race
   virtual int getTimeAfter(int leg) const = 0;
@@ -264,7 +318,7 @@ public:
 
   /** Sets start time, if updatePermanent is true, the stored start time is updated,
   otherwise the value is considered deduced. */
-  bool setStartTime(int t, bool updatePermanent, bool setTmpOnly, bool recalculate = true);
+  bool setStartTime(int t, bool updatePermanent, ChangeType changeType, bool recalculate = true);
   void setStartTimeS(const wstring &t);
 
   const pClub getClubRef() const {return Club;}
@@ -293,12 +347,12 @@ public:
       
   virtual void setClassId(int id, bool isManualUpdate);
   virtual int getStartNo() const {return StartNo;}
-  virtual void setStartNo(int no, bool storeTmpOnly);
+  virtual void setStartNo(int no, ChangeType changeType);
 
-  // Start number is equal to bib-no, but bib
+  // Do not assume start number is equal to bib-no, Bib
   // is only set when it should be shown in lists etc.
   const wstring &getBib() const;
-  virtual void setBib(const wstring &bib, int numericalBib, bool updateStartNo, bool setTmpOnly) = 0;
+  virtual void setBib(const wstring &bib, int numericalBib, bool updateStartNo) = 0;
   int getEncodedBib() const;
 
   virtual int getStartTime() const {return tStartTime;}
@@ -306,43 +360,58 @@ public:
 
   int getFinishTimeAdjusted() const {return getFinishTime() + getTimeAdjustment();}
 
-  virtual int getRogainingPoints(bool multidayTotal) const = 0;
-  virtual int getRogainingReduction() const = 0;
-  virtual int getRogainingOvertime() const = 0;
-  virtual int getRogainingPointsGross() const = 0;
+  virtual int getRogainingPoints(bool computed, bool multidayTotal) const = 0;
+  virtual int getRogainingReduction(bool computed) const = 0;
+  virtual int getRogainingOvertime(bool computed) const = 0;
+  virtual int getRogainingPointsGross(bool computed) const = 0;
   
   virtual const wstring &getStartTimeS() const;
   virtual const wstring &getStartTimeCompact() const;
   virtual const wstring &getFinishTimeS() const;
 
-  virtual	const wstring &getTotalRunningTimeS() const;
-  virtual	const wstring &getRunningTimeS() const;
-  virtual int getRunningTime() const;
+  const wstring &getTotalRunningTimeS() const;
+ 	const wstring &getRunningTimeS(bool computedTime) const;
+  virtual int getRunningTime(bool computedTime) const;
 
   /// Get total running time (including earlier stages / races)
   virtual int getTotalRunningTime() const;
 
   virtual int getPrelRunningTime() const;
-  virtual wstring getPrelRunningTimeS() const;
+  
+  wstring getPlaceS() const;
+  wstring getPrintPlaceS(bool withDot) const;
 
-  virtual wstring getPlaceS() const;
-  virtual wstring getPrintPlaceS(bool withDot) const;
-
-  virtual wstring getTotalPlaceS() const;
-  virtual wstring getPrintTotalPlaceS(bool withDot) const;
+  wstring getTotalPlaceS() const;
+  wstring getPrintTotalPlaceS(bool withDot) const;
 
   virtual int getPlace() const = 0;
   virtual int getTotalPlace() const = 0;
 
-  virtual RunnerStatus getStatus() const {return tStatus;}
-  inline bool statusOK() const {return tStatus==StatusOK;}
-  inline bool prelStatusOK() const {return tStatus==StatusOK || (tStatus == StatusUnknown && getRunningTime() > 0);}
-
+  RunnerStatus getStatusComputed() const { return tComputedStatus != StatusUnknown ? tComputedStatus : tStatus; }
+  virtual RunnerStatus getStatus() const { return tStatus;}
+  inline bool statusOK(bool computed) const {return (computed ? getStatusComputed() : tStatus) == StatusOK;}
+  inline bool prelStatusOK(bool computed, bool includeOutsideCompetition) const {
+    bool ok = statusOK(computed) || (tStatus == StatusUnknown && getRunningTime(false) > 0);
+    if (!ok && includeOutsideCompetition) {
+      RunnerStatus st = (computed ? getStatusComputed() : tStatus);
+      ok = (st == StatusOutOfCompetition || st == StatusNoTiming) && getRunningTime(false) > 0;
+    }
+    return ok;
+  }
+  // Returns true if the competitor has a definite result
+  bool hasResult() const {
+    RunnerStatus st = this->getStatusComputed();
+    if (st == StatusUnknown || st == StatusNotCompetiting)
+      return false;
+    if (isPossibleResultStatus(st))
+      return getRunningTime(false) > 0;
+    else
+      return true;
+  }
   /** Sets the status. If updatePermanent is true, the stored start
     time is updated, otherwise the value is considered deduced.
-    if setTmp is true, the status is only stored in a temporary container.
     */
-  virtual bool setStatus(RunnerStatus st, bool updatePermanent, bool setTmp, bool recalculate = true);
+  bool setStatus(RunnerStatus st, bool updatePermanent, ChangeType changeType, bool recalculate = true);
    
   /** Returns the ranking of the runner or the team (first runner in it?) */
   virtual int getRanking() const = 0;
@@ -350,7 +419,12 @@ public:
   /// Get total status for this running (including team/earlier races)
   virtual RunnerStatus getTotalStatus() const;
 
-  const wstring &getStatusS(bool formatForPrint) const;
+  // Get results from all previous stages
+  void getInputResults(vector<RunnerStatus> &st, vector<int> &times, vector<int> &points, vector<int> &places);
+  // Add current result to input result. Only use when transferring to next stage. ThisStageNumber is zero indexed.
+  void addToInputResult(int thisStageNo, const oAbstractRunner *src);
+
+  const wstring &getStatusS(bool formatForPrint, bool computedStatus) const;
   wstring getIOFStatusS() const;
 
   const wstring &getTotalStatusS(bool formatForPrint) const;
@@ -427,8 +501,9 @@ protected:
 
   //Can be changed by apply
   mutable DynamicValue tPlace;
-  mutable int tCoursePlace;
-  mutable int tTotalPlace;
+  mutable DynamicValue tCoursePlace;
+  mutable DynamicValue tCourseClassPlace;
+  mutable DynamicValue tTotalPlace;
   mutable int tLeg;
   mutable int tLegEquClass;
   mutable pTeam tInTeam;
@@ -499,7 +574,7 @@ protected:
   mutable vector<int> tAfterLeg;
   mutable vector<int> tPlaceLegAcc;
   mutable vector<int> tAfterLegAcc;
-
+    
   // Used to calculate temporary split time results
   struct OnCourseResult {
     OnCourseResult(int courseControlId,
@@ -544,13 +619,20 @@ protected:
 
   class RaceIdFormatter : public oDataDefiner {
     public:
-      const wstring &formatData(const oBase *obj) const;
-      wstring setData(oBase *obj, const wstring &input) const;
-      int addTableColumn(Table *table, const string &description, int minWidth) const;
+      const wstring &formatData(const oBase *obj) const override;
+      pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override;
+      int addTableColumn(Table *table, const string &description, int minWidth) const override;
   };
 
-  static RaceIdFormatter raceIdFormatter;
-
+  class RunnerReference : public oDataDefiner {
+  public:
+    const wstring &formatData(const oBase *obj) const override;
+    pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override;
+    void fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const override;
+    int addTableColumn(Table *table, const string &description, int minWidth) const override;
+    CellType getCellType() const override;
+  };
+ 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
 
@@ -564,8 +646,14 @@ protected:
   bool isHiredCard(int card) const;
 
 public:
+
+  static const shared_ptr<Table> &getTable(oEvent *oe);
+
+  // Get the leg defineing parallel results for this runner (in a team)
+  int getParResultLeg() const;
+
   // Returns true if there are radio control results, provided result calculation oEvent::ResultType::PreliminarySplitResults was invoked.
-  bool hasOnCourseResult() const { return !tOnCourseResults.empty() || getFinishTime() > 0 || getStatus() != RunnerStatus::StatusUnknown; }
+  bool hasOnCourseResult() const { return !tOnCourseResults.empty() || getFinishTime() > 0 || hasResult(); }
   
   /** Returns a check time (or zero for no time). */
   int getCheckTime() const;
@@ -582,7 +670,7 @@ public:
   const wstring &getNameRaw() const {return sName;}
   virtual const wstring &getName() const;
   const wstring &getNameLastFirst() const;
-  static void getRealName(const wstring &input, wstring &output);
+  void getRealName(const wstring &input, wstring &output) const;
 
   /** Returns true if this runner can use the specified card, 
    or false if it conflicts with the card of the other runner. */
@@ -592,8 +680,10 @@ public:
 
   int getRanking() const;
 
+  bool isResultUpdated(bool totalResult) const override;
+
   /** Returns true if the team / runner has a valid start time available*/
-  virtual bool startTimeAvailable() const;
+  bool startTimeAvailable() const override;
 
   /** Get a total input time from previous legs and stages*/
   int getTotalTimeInput() const;
@@ -634,10 +724,10 @@ public:
   pTeam getTeam() {return tInTeam;}
 
   /// Get total running time for multi/team runner at the given time
-  int getTotalRunningTime(int time, bool includeInput) const;
+  int getTotalRunningTime(int time, bool computedTime, bool includeInput) const;
 
-  // Get total running time at finish time (@override)
-  int getTotalRunningTime() const;
+  // Get total running time at finish time 
+  int getTotalRunningTime() const override;
 
   //Get total running time after leg
   int getRaceRunningTime(int leg) const;
@@ -646,18 +736,18 @@ public:
   wstring getCompleteIdentification(bool includeExtra = true) const;
 
   /// Get total status for this running (including team/earlier races)
-  RunnerStatus getTotalStatus() const;
+  RunnerStatus getTotalStatus() const override;
 
   // Return the runner in a multi-runner set matching the card, if course type is extra
   pRunner getMatchedRunner(const SICard &sic) const;
 
-  int getRogainingPoints(bool multidayTotal) const;
-  int getRogainingPointsGross() const;
-  int getRogainingReduction() const;
-  int getRogainingOvertime() const;
+  int getRogainingPoints(bool computed, bool multidayTotal) const override;
+  int getRogainingPointsGross(bool computed) const override;
+  int getRogainingReduction(bool computed) const override;
+  int getRogainingOvertime(bool computed) const override;
 
   const wstring &getProblemDescription() const {return tProblemDescription;}
-
+  const pair<wstring, int> getRaceInfo();
   // Leg statistics access methods
   wstring getMissedTimeS() const;
   wstring getMissedTimeS(int ctrlNo) const;
@@ -714,17 +804,17 @@ public:
   // is only set when it should be shown in lists etc.
   // Need not be so for teams. Course depends on start number,
   // which should be more stable.
-  void setBib(const wstring &bib, int bibNumerical, bool updateStartNo, bool setTmpOnly);
-  void setStartNo(int no, bool setTmpOnly);
+  void setBib(const wstring &bib, int bibNumerical, bool updateStartNo) override;
+  void setStartNo(int no, ChangeType changeType) override;
   // Update and synch start number for runner and team.
   void updateStartNo(int no);
 
   pRunner nextNeedReadout() const;
 
   // Synchronize this runner and parents/sibllings and team
-  bool synchronizeAll();
+  bool synchronizeAll(bool writeOnly = false);
 
-  void setFinishTime(int t);
+  void setFinishTime(int t) override;
   int getTimeAfter(int leg) const;
   int getTimeAfter() const;
   int getTimeAfterCourse() const;
@@ -742,7 +832,7 @@ public:
 
   bool needNoCard() const;
   int getPlace() const;
-  int getCoursePlace() const;
+  int getCoursePlace(bool perClass) const;
   int getTotalPlace() const;
 
   // Normalized = true means permuted to the unlooped version of the course
@@ -769,11 +859,11 @@ public:
   wstring getNamedSplitS(int controlNumber) const;
 
   void addTableRow(Table &table) const;
-  bool inputData(int id, const wstring &input,
-                  int inputId, wstring &output, bool noUpdate);
-  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected);
+  pair<int, bool> inputData(int id, const wstring &input,
+                            int inputId, wstring &output, bool noUpdate) override;
+  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected) override;
 
-  bool apply(bool sync, pRunner src, bool setTmpOnly);
+  void apply(ChangeType changeType, pRunner src) override;
   void resetPersonalData();
 
   //Local user data. No Update.
@@ -794,7 +884,7 @@ public:
   bool operator<(const oRunner &c) const;
   bool static CompareCardNumber(const oRunner &a, const oRunner &b) { return a.cardNumber < b.cardNumber; }
 
-  bool evaluateCard(bool applyTeam, vector<int> &missingPunches, int addpunch=0, bool synchronize=false);
+  bool evaluateCard(bool applyTeam, vector<int> &missingPunches, int addPunch, ChangeType changeType);
   void addPunches(pCard card, vector<int> &missingPunches);
 
   /** Get split time for a controlId and optionally controlIndex on course (-1 means unknown, uses the first occurance on course)*/

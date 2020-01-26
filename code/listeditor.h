@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ class BaseInfo;
 class ButtonInfo;
 class oEvent;
 enum EPostType;
+class TabBase;
+
 #include <vector>
 
 class ListEditor {
@@ -65,6 +67,10 @@ private:
   void enableOpen(gdioutput &gdi);
 
   void makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside);
+
+  TabBase *origin = nullptr;
+  void show(gdioutput &gdi);
+
 public:
   ListEditor(oEvent *oe);
   virtual ~ListEditor();
@@ -72,7 +78,9 @@ public:
   //void load(MetaList *list);
   void load(const MetaListContainer &mlc, int index);
 
-  void show(gdioutput &gdi);
+  void show(TabBase *dst, gdioutput &gdi);
+
+  bool isShown(TabBase *tab) const { return origin == tab; }
 
   MetaList *getCurrentList() const {return currentList;};
 

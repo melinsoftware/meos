@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@
 #include "random.h"
 #include "qualification_final.h"
 #include "generalresult.h"
+#include "metalist.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -480,7 +481,7 @@ void oClass::getNumResults(int leg, int &total, int &finished, int &dns) const {
 
     c.total++;
 
-    if (t.tStatus != StatusUnknown || t.getLegStatus(leg, false) != StatusUnknown)
+    if (t.tStatus != StatusUnknown || t.getLegStatus(leg, false, false) != StatusUnknown)
       c.finished++;
   }
 
@@ -524,10 +525,12 @@ void oClass::setCourse(pCourse c)
   }
 }
 
-void oClass::setName(const wstring &name)
+void oClass::setName(const wstring &name, bool manualSet)
 {
   if (getName() != name) {
-    Name=name;
+    Name = name;
+    if (manualSet)
+      setFlag(TransferFlags::FlagManualName, true);
     updateChanged();
   }
 }
@@ -560,7 +563,7 @@ pClass oEvent::getClassCreate(int Id, const wstring &createName, set<wstring> &e
 
   if (createName.empty() && Id>0) {
     oClass c(this, Id);
-    c.setName(getAutoClassName());
+    c.setName(getAutoClassName(), false);
     return addClass(c);
   }
   else {
@@ -1609,6 +1612,8 @@ void oClass::getCourses(int leg, vector<pCourse> &courses) const {
 
   //leg == -1 -> all courses
   courses.clear();
+  set<int> added;
+  
   if (leg <= 0 && Course)
     courses.push_back(Course);
 
@@ -1617,7 +1622,7 @@ void oClass::getCourses(int leg, vector<pCourse> &courses) const {
       continue;
     const vector<pCourse> &mc = MultiCourse[cl];
     for (size_t k = 0; k < mc.size(); k++)
-      if (find(courses.begin(), courses.end(), mc[k]) == courses.end())
+      if (added.insert(mc[k]->Id).second)
         courses.push_back(mc[k]);
   }
 
@@ -1626,7 +1631,7 @@ void oClass::getCourses(int leg, vector<pCourse> &courses) const {
     pCourse sht = courses[k]->getShorterVersion().second;
     int maxIter = 10;
     while (sht && --maxIter >= 0 ) {
-      if (find(courses.begin(), courses.end(), sht) == courses.end())
+      if (added.insert(sht->Id).second)
         courses.push_back(sht);
       sht = sht->getShorterVersion().second;
     }
@@ -1834,17 +1839,83 @@ void oClass::updateChangedCoursePool() {
   tCoursesChanged = false;
 }
 
-int oClass::getBestLegTime(int leg) const {
+oClass::LeaderInfo &oClass::getLeaderInfo(int leg) const {
   leg = mapLeg(leg);
+  if (leg < 0)
+    throw meosException();
+  if (size_t(leg) >= tLeaderTime.size())
+    tLeaderTime.resize(leg + 1);
 
-  if (unsigned(leg)>=tLeaderTime.size())
-    return 0;
-  else
-    return tLeaderTime[leg].bestTimeOnLeg;
+  return tLeaderTime[leg];
 }
 
-int oClass::getBestTimeCourse(int courseId) const
-{
+void oClass::LeaderInfo::updateComputed(int rt, Type t) {
+  switch (t) {
+  case Type::Leg:
+    if (bestTimeOnLegComputed == 0 || bestTimeOnLegComputed > rt)
+      bestTimeOnLegComputed = rt;
+    break;
+
+  case Type::Total:
+    if (totalLeaderTimeComputed == 0 || totalLeaderTimeComputed > rt)
+      totalLeaderTimeComputed = rt;
+    break;
+
+  case Type::TotalInput:
+    if (totalLeaderTimeInputComputed == 0 || totalLeaderTimeInputComputed > rt)
+      totalLeaderTimeInputComputed = rt;
+    break;
+  }
+}
+
+void oClass::LeaderInfo::resetComputed(Type t) {
+  switch (t) {
+  case Type::Leg:
+      bestTimeOnLegComputed = 0;
+    break;
+
+  case Type::Total:
+      totalLeaderTimeComputed = 0;
+    break;
+
+  case Type::TotalInput:
+      totalLeaderTimeInputComputed = 0;
+    break;
+  }
+}
+
+int oClass::LeaderInfo::getLeader(Type t, bool computed) const {
+  switch (t) {
+  case Type::Leg:
+    if (computed && bestTimeOnLegComputed > 0)
+      return bestTimeOnLegComputed;
+    else
+      return bestTimeOnLeg;
+
+  case Type::Total:
+    if (computed && totalLeaderTimeComputed > 0)
+      return totalLeaderTimeComputed;
+    else
+      return totalLeaderTime;
+   
+  case Type::TotalInput:
+    if (computed && totalLeaderTimeInputComputed > 0)
+      return totalLeaderTimeInputComputed;
+    else
+      return totalLeaderTimeInput;
+  }
+
+  return 0;
+}
+
+int oClass::getBestLegTime(int leg,  bool computedTime) const {
+  leg = mapLeg(leg);
+  if (unsigned(leg) >= tLeaderTime.size())
+    return 0;
+  return getLeaderInfo(leg).getLeader(LeaderInfo::Type::Leg, computedTime);
+}
+
+int oClass::getBestTimeCourse(int courseId) const {
   map<int, int>::const_iterator res = tBestTimePerCourse.find(courseId);
   if (res == tBestTimePerCourse.end())
     return 0;
@@ -1852,8 +1923,7 @@ int oClass::getBestTimeCourse(int courseId) const
     return res->second;
 }
 
-int oClass::getBestInputTime(int leg) const
-{
+int oClass::getBestInputTime(int leg) const {
   leg = mapLeg(leg);
 
   if (unsigned(leg)>=tLeaderTime.size())
@@ -1862,18 +1932,15 @@ int oClass::getBestInputTime(int leg) const
     return tLeaderTime[leg].inputTime;
 }
 
-int oClass::getTotalLegLeaderTime(int leg, bool includeInput) const
-{
+int oClass::getTotalLegLeaderTime(int leg, bool computedTime, bool includeInput) const {
   leg = mapLeg(leg);
-
   if (unsigned(leg)>=tLeaderTime.size())
     return 0;
-  else {
-    if (includeInput)
-      return tLeaderTime[leg].totalLeaderTimeInput;
-    else
-      return tLeaderTime[leg].totalLeaderTime;
-  }
+
+  if (includeInput)
+    return getLeaderInfo(leg).getLeader(LeaderInfo::Type::TotalInput, computedTime);
+  else
+    return getLeaderInfo(leg).getLeader(LeaderInfo::Type::Total, computedTime);
 }
 
 void oClass::mergeClass(int classIdSec) {
@@ -1885,7 +1952,8 @@ void oClass::mergeClass(int classIdSec) {
 
   // Update teams
   oe->getTeams(classIdSec, t, true);
-  
+  oe->getRunners(classIdSec, 0, r, false);
+
   for (size_t k = 0; k < t.size(); k++) {
     pTeam it = t[k];
     it->Class = this;
@@ -1899,7 +1967,6 @@ void oClass::mergeClass(int classIdSec) {
     it->synchronize(); //Synchronizes runners also  
   }
 
-  oe->getRunners(classIdSec, 0, r, false);
   // Update runners
   for (size_t k = 0; k < r.size(); k++) {
     pRunner it = r[k];
@@ -1907,7 +1974,7 @@ void oClass::mergeClass(int classIdSec) {
     it->updateChanged();
     it->synchronize();
   }
-
+  oe->classIdToRunnerHash.reset();
   // Check heats
   
   int maxHeatThis = 0;
@@ -2316,7 +2383,7 @@ void oClass::splitClass(ClassSplitMethod method, const vector<int> &parts, vecto
       outClassId[k] = pcv[k]->getId();
     }
 
-    setName(getName() + makeDash(L"-1"));
+    setName(getName() + makeDash(L"-1"), false);
     synchronize();
   }
 
@@ -2350,6 +2417,7 @@ void oClass::splitClass(ClassSplitMethod method, const vector<int> &parts, vecto
     it->updateChanged();
     it->synchronize();
   }
+  oe->classIdToRunnerHash.reset();
 }
 
 void oClass::getAgeLimit(int &low, int &high) const
@@ -2748,22 +2816,23 @@ void oEvent::getStartBlocks(vector<int> &blocks, vector<wstring> &starts) const
   }
 }
 
-Table *oEvent::getClassTB()//Table mode
-{
-  if (tables.count("class") == 0) {
-    Table *table=new Table(this, 20, L"Klasser", "classes");
+const shared_ptr<Table> &oClass::getTable(oEvent *oe) {
+  if (!oe->hasTable("class")) {
+    auto table =  make_shared<Table>(oe, 20, L"Klasser", "classes");
 
     table->addColumn("Id", 70, true, true);
     table->addColumn("Ändrad", 70, false);
 
     table->addColumn("Namn", 200, false);
-    oe->oClassData->buildTableCol(table);
-    tables["class"] = table;
-    table->addOwnership();
+
+    table->addColumn("Bana", 200, false);
+    table->addColumn("Anmälda", 70, true);
+
+    oe->oClassData->buildTableCol(table.get());
+    oe->setTable("class", table);
   }
 
-  tables["class"]->update();
-  return tables["class"];
+  return oe->getTable("class");
 }
 
 void oEvent::generateClassTableData(Table &table, oClass *addClass)
@@ -2785,18 +2854,51 @@ void oEvent::generateClassTableData(Table &table, oClass *addClass)
 void oClass::addTableRow(Table &table) const {
   pClass it = pClass(this);
   table.addRow(getId(), it);
-
+  
   int row = 0;
   table.set(row++, *it, TID_ID, itow(getId()), false);
   table.set(row++, *it, TID_MODIFIED, getTimeStamp(), false);
 
   table.set(row++, *it, TID_CLASSNAME, getName(), true);
+
+  wstring crsStr;
+  pCourse crs = getCourse(false);
+  bool canEdit = false;
+  if (crs) {
+    crsStr = crs->getName();
+    canEdit = true;
+  }
+  else {
+    if (getNumStages() <= 1 && MultiCourse.empty()) {
+      crsStr = lang.tl(L"Ingen bana");
+      canEdit = true;
+    }
+    else {
+      for (size_t leg = 0; leg < MultiCourse.size(); leg++) {
+        for (size_t j = 0; j < MultiCourse[leg].size(); j++) {
+          if (j >= 3) {
+            crsStr += L"…";
+            break;
+          }
+          if (MultiCourse[leg][j]) {
+            if (!crsStr.empty())
+              crsStr += L", ";
+            crsStr += MultiCourse[leg][j]->getName();
+          }
+        }
+        if (!crsStr.empty())
+          break;
+      }
+    }
+  }
+  table.set(row++, *it, TID_COURSE, crsStr, canEdit, canEdit ? CellType::cellSelection : CellType::cellEdit);
+  int numR = getNumRunners(true, false, false);
+  table.set(row++, *it, TID_NUM, itow(numR), false);
+
   oe->oClassData->fillTableCol(*this, table, true);
 }
 
-
-
-bool oClass::inputData(int id, const wstring &input,
+pair<int, bool> oClass::inputData(int id, const wstring &input,
                        int inputId, wstring &output, bool noUpdate)
 {
   synchronize(false);
@@ -2807,20 +2909,27 @@ bool oClass::inputData(int id, const wstring &input,
   }
   switch(id) {
     case TID_CLASSNAME:
-      setName(input);
+      setName(input, true);
       synchronize();
       output=getName();
-      return true;
     break;
+    case TID_COURSE: {
+      pCourse c = nullptr;
+      if (inputId != 0)
+        c = oe->getCourse(inputId);
+      setCourse(c);
+      synchronize();
+      output = input;
+    }
   }
 
-  return false;
+  return make_pair(0, false);
 }
 
 void oClass::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected)
 {
   if (id>1000) {
-    oe->oClassData->fillInput(oData, id, 0, out, selected);
+    oe->oClassData->fillInput(this, id, 0, out, selected);
     return;
   }
 
@@ -2828,11 +2937,10 @@ void oClass::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &sel
     out.clear();
     oe->fillCourses(out, true);
     out.push_back(make_pair(lang.tl(L"Ingen bana"), 0));
-    //gdi.selectItemByData(controlId.c_str(), Course ? Course->getId() : 0);
-    selected = Course ? Course->getId() : 0;
+    pCourse c = getCourse(false);
+    selected = c ? c->getId() : 0;
   }
 }
-
 
 void oClass::getStatistics(const set<int> &feeLock, int &entries, int &started) const
 {
@@ -3289,7 +3397,7 @@ void oClass::calculateSplits() {
         if (t>0) {
           splits[nc].push_back(t);
           tLegTimes[nc] = t;
-          if (it->statusOK() && (it->FinishTime - it->tStartTime) > 0) {
+          if (it->statusOK(true) && (it->FinishTime - it->tStartTime) > 0) {
             splitsAcc[nc].push_back(it->FinishTime - it->tStartTime);
           }
         }
@@ -3392,14 +3500,24 @@ void oClass::calculateSplits() {
 }
 
 bool oClass::isRogaining() const {
-  if (Course)
-    return Course->getMaximumRogainingTime() > 0;
+  if (Course &&  Course->getMaximumRogainingTime() > 0)
+    return true;
 
-  for (size_t k = 0;k<MultiCourse.size(); k++)
-    for (size_t j = 0;k<MultiCourse[j].size(); j++)
-      if (MultiCourse[k][j])
-        return MultiCourse[k][j]->getMaximumRogainingTime() > 0;
+  if (MultiCourse.size() > 0 && MultiCourse[0].size() > 0 && 
+      MultiCourse[0][0] && MultiCourse[0][0]->getMaximumRogainingTime() > 0)
+    return true;
+  GeneralResult *gr = getResultModule();
 
+  // Return true if result module makes point calculations and
+  // controls define rogaining points. Otherwize point calculations
+  // is assumed to be just a side effect.
+  if (gr && gr->isRogaining() && Course) {
+    for (int n = 0; n < Course->getNumControls(); n++) {
+      pControl ctrl = Course->getControl(n);
+      if (ctrl && ctrl->isRogaining(true))
+        return true;
+    }
+  }
   return false;
 }
 
@@ -3512,6 +3630,11 @@ oClass::ClassStatus oClass::getClassStatus() const {
   return tStatus;
 }
 
+void oClass::fillClassStatus(vector<pair<wstring, wstring>> &statusClass) {
+  statusClass.push_back(make_pair(L"", L"OK"));
+  statusClass.push_back(make_pair(L"IR", L"Struken med återbetalning"));
+  statusClass.push_back(make_pair(L"I", L"Struken utan återbetalning"));
+}
 void oClass::clearCache(bool recalculate) {
   if (recalculate)
     oe->reCalculateLeaderTimes(getId());
@@ -3637,6 +3760,8 @@ bool oClass::checkForking(vector< vector<int> > &legOrder,
     bool valid = true;
     long long hash = 0;
     for (size_t j = 0; j < it->Runners.size(); j++) {
+      if (getLegType(j) == LTExtra || getLegType(j) == LTIgnore)
+        continue;
       pCourse crs;
       if (it->Runners[j] && (crs = it->Runners[j]->getCourse(false)) != 0) {
         if (it->Runners[j]->getNumShortening() > 0) {
@@ -4274,7 +4399,7 @@ void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart,
   
   for (size_t k = 0; k < startOrder.size(); k++) {
     int kx = k/pairSize;
-    startOrder[k]->setStartTime(firstStart + interval * kx, true, false, true);
+    startOrder[k]->setStartTime(firstStart + interval * kx, true, oBase::ChangeType::Update, false);
     startOrder[k]->synchronize(true);
   }
 }
@@ -4434,8 +4559,10 @@ const pClass oClass::getVirtualClass(int instance) const {
   if (parentClass)
     return parentClass->getVirtualClass(instance);
 
-  if (size_t(instance) < virtualClasses.size() && virtualClasses[instance])
+  if (size_t(instance) < virtualClasses.size() && virtualClasses[instance]) {
+    virtualClasses[instance]->parentClass = pClass(this);
     return virtualClasses[instance];
+  }
 
   if (instance >= getNumQualificationFinalClasses())
     return pClass(this); // Invalid
@@ -4510,7 +4637,7 @@ void oClass::loadQualificationFinalScheme(const wstring &fileName) {
       pTeam t = r.getTeam();
       if (t == 0) {
         t = oe->addTeam(r.getName(), r.getClubId(), getId());
-        t->setStartNo(r.getStartNo(), false);
+        t->setStartNo(r.getStartNo(), oBase::ChangeType::Update);
         t->setRunner(0, &r, true);
       }
       r.synchronizeAll();
@@ -4627,7 +4754,7 @@ void oClass::updateFinalClasses(oRunner *causingResult, bool updateStartNumbers)
         }
       }
 
-      gr.calculateIndividualResults(classSplit[i], oListInfo::Classwise, true, 0);
+      gr.calculateIndividualResults(classSplit[i], false, oListInfo::Classwise, true, 0);
       int lastPlace = 0, orderPlace = 1;
       int numEqual = 0;
       for (size_t k = 0; k < classSplit[i].size(); k++) {
@@ -4676,7 +4803,7 @@ void oClass::updateFinalClasses(oRunner *causingResult, bool updateStartNumbers)
               di.setInt("Heat", heat);
               runnerToChange->classInstanceRev.first = -1;
               //oe->gdibase.addStringUT(0, L"HU:" + thisRunner.getName() + L" " + itow(oldHeat) + L"->" + itow(heat));
-              runnerToChange->apply(false, nullptr, false);
+              runnerToChange->apply(ChangeType::Quiet, nullptr);
               runnerToChange->synchronize();
               if (runnerToChange->getFinishTime() > 0)
                 needIter = true;
@@ -4742,4 +4869,68 @@ bool oEvent::hasAnyRestartTime() const {
   }
 
   return false;
+}
+
+GeneralResult *oClass::getResultModule() const {
+  const string &tag = getResultModuleTag();
+  if (tag.empty())
+    return nullptr;
+  wstring sf;
+  return oe->getGeneralResult(tag, sf).get();
+}
+
+void oClass::setResultModule(const string &tag) {
+  string oldTag = getResultModuleTag();
+  if (tag == oldTag)
+    return;
+
+  vector<pClass> cls;
+  oe->getClasses(cls, false);
+  bool inUse = false;
+  bool oldInUse = false;
+
+  for (pClass c : cls) {
+    if (c == this)
+      continue;
+
+    if (c->getResultModuleTag() == tag) {
+      inUse = true;
+    }
+    if (c->getResultModuleTag() == oldTag) {
+      oldInUse = true;
+    }
+  }
+
+  if (!tag.empty()) {
+    wstring fn;
+    auto &ptr = oe->getGeneralResult(tag, fn);
+    if (ptr->isDynamic()) {
+      auto dptr = dynamic_pointer_cast<DynamicResult>(ptr);
+      oe->getListContainer().updateGeneralResult(tag, dptr);
+    }
+  }
+  if (!oldTag.empty() && !oldInUse) {
+    oe->getListContainer().updateGeneralResult(oldTag, nullptr);
+  }
+  oe->synchronize(true);
+  wstring wtag(tag.begin(), tag.end());
+  getDI().setString("Result", wtag);
+}
+
+const string &oClass::getResultModuleTag() const {
+  auto ws = getDCI().getString("Result");
+  string &s = StringCache::getInstance().get();
+  s.clear();
+  s.insert(s.begin(), ws.begin(), ws.end());
+  return s;
+}
+
+bool oClass::hasFlag(TransferFlags flag) const {
+  return (getDCI().getInt("TransferFlags") & flag) != 0;
+}
+
+void oClass::setFlag(TransferFlags flag, bool onoff) {
+  int cf = getDCI().getInt("TransferFlags");
+  cf = onoff ? (cf | flag) : (cf & (~flag));
+  getDI().setInt("TransferFlags", cf);
 }

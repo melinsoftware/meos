@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 class oClass;
 typedef oClass* pClass;
 class oDataInterface;
+class GeneralResult;
 
 const int MaxClassId = 1000000;
 
@@ -67,10 +68,11 @@ enum { nLegTypes = LT_max };
 
 
 enum BibMode {
-  BibSame,
-  BibAdd,
-  BibFree,
-  BibLeg,
+  BibUndefined = -1,
+  BibSame = 0,
+  BibAdd = 1,
+  BibFree = 2,
+  BibLeg = 3,
 };
 
 enum AutoBibType {
@@ -166,15 +168,45 @@ protected:
   //First: best time on leg
   //Second: Total leader time (total leader)
   struct LeaderInfo {
-    LeaderInfo() {bestTimeOnLeg = 0; totalLeaderTime = 0; inputTime = 0; totalLeaderTimeInput = 0;}
-    void reset() {bestTimeOnLeg = 0; totalLeaderTime = 0; inputTime = 0; totalLeaderTimeInput = 0;}
+    LeaderInfo() { 
+      reset();
+    }
+    void reset() {
+      bestTimeOnLeg = 0; 
+      bestTimeOnLegComputed = 0;
+
+      totalLeaderTime = 0; 
+      totalLeaderTimeComputed = 0;
+
+      inputTime = 0;
+      totalLeaderTimeInput = 0;
+      totalLeaderTimeInputComputed = 0;
+    }
+
     int bestTimeOnLeg;
+    int bestTimeOnLegComputed; // Computed be default result module
+    
     int totalLeaderTime;
+    int totalLeaderTimeComputed; // Computed be default result module
+
     int totalLeaderTimeInput; //Team total including input
+    int totalLeaderTimeInputComputed; //Team total including input
+
     int inputTime;
+
+    enum class Type {
+      Leg,
+      Total,
+      TotalInput
+    };
+    void resetComputed(Type t);
+    void updateComputed(int rt, Type t);
+    int getLeader(Type t, bool computed) const;
   };
 
-  vector<LeaderInfo> tLeaderTime;
+  LeaderInfo &getLeaderInfo(int leg) const;
+
+  mutable vector<LeaderInfo> tLeaderTime;
   map<int, int> tBestTimePerCourse;
 
   int tSplitRevision;
@@ -238,10 +270,10 @@ protected:
   void markSQLChanged(int leg, int control);
 
   void addTableRow(Table &table) const;
-  bool inputData(int id, const wstring &input, int inputId,
-                        wstring &output, bool noUpdate);
+  pair<int, bool> inputData(int id, const wstring &input, int inputId,
+                        wstring &output, bool noUpdate) override;
 
-  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected);
+  void fillInput(int id, vector<pair<wstring, size_t>> &elements, size_t &selected) override;
 
   void exportIOFStart(xmlparser &xml);
 
@@ -299,6 +331,16 @@ protected:
 
   void configureInstance(int instance, bool allowCreation) const;
 public:
+
+  static const shared_ptr<Table> &getTable(oEvent *oe);
+
+  enum TransferFlags {
+    FlagManualName = 1,
+    FlagManualFees = 2,
+  };
+
+  bool hasFlag(TransferFlags flag) const;
+  void setFlag(TransferFlags flag, bool state);
 
   /** The master class in a qualification/final scheme. */
   const pClass getParentClass() const { return parentClass; }
@@ -398,6 +440,7 @@ public:
   const pClass getVirtualClass(int instance) const;
 
   ClassStatus getClassStatus() const;
+  static void fillClassStatus(vector<pair<wstring, wstring>> &statusClass);
 
   ClassMetaType interpretClassType() const;
 
@@ -433,10 +476,10 @@ public:
   void getStatistics(const set<int> &feeLock, int &entries, int &started) const;
 
   int getBestInputTime(int leg) const;
-  int getBestLegTime(int leg) const;
+  int getBestLegTime(int leg, bool computedTime) const;
   int getBestTimeCourse(int courseId) const;
 
-  int getTotalLegLeaderTime(int leg, bool includeInput) const;
+  int getTotalLegLeaderTime(int leg, bool computedTime, bool includeInput) const;
 
   wstring getInfo() const;
   // Returns true if the class has a pool of courses
@@ -565,7 +608,7 @@ public:
   int getNumberMaps(bool rawAttribute = false) const;
 
   const wstring &getName() const {return Name;}
-  void setName(const wstring &name);
+  void setName(const wstring &name, bool manualSet);
 
   void Set(const xmlobject *xo);
   bool Write(xmlparser &xml);
@@ -642,10 +685,12 @@ public:
   void getParallelCourseGroup(int leg, int startNo, vector< pair<int, pCourse> > &group) const;
   // Returns 0 for no parallel selection (= normal mode)
   pCourse selectParallelCourse(const oRunner &r, const SICard &sic);
-
   void getParallelRange(int leg, int &parLegRangeMin, int &parLegRangeMax) const;
-
   bool hasAnyCourse(const set<int> &crsId) const;
+
+  GeneralResult *getResultModule() const;
+  void setResultModule(const string &tag);
+  const string &getResultModuleTag() const;
 
   oClass(oEvent *poe);
   oClass(oEvent *poe, int id);

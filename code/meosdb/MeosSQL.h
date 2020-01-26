@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ class oFreePunch;
 class oDataInterface;
 class oTeam;
 class oDataContainer;
+struct SqlUpdated;
 
 namespace mysqlpp {
   class Query;
@@ -118,17 +119,22 @@ protected:
   bool checkOldVersion(oEvent *oe, mysqlpp::Row &row);
 
   map<pair<int, int>, DWORD> readTimes;
-  void clearReadTimes();
   void synchronized(const oBase &entity);
   bool skipSynchronize(const oBase &entity) const;
 
   mysqlpp::ResNSel updateCounter(const char *oTable, int id, mysqlpp::Query *updateqry);
-  string selectUpdated(const char *oTable, const string &updated, int counter);
+  string selectUpdated(const char *oTable, const SqlUpdated &updated);
 
   void addedFromDatabase(oBase *object);
 
-  
+  void updateCounters(OpFailStatus st, 
+                      int counter, 
+                      const string &modified, 
+                      SqlUpdated &update, int &maxCounter);
+
 public:
+  void clearReadTimes();
+
   bool dropDatabase(oEvent *oe);
   bool checkConnection(oEvent *oe);
   void processMissingObjects();

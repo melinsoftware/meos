@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,11 +81,11 @@ protected:
 
   /// Table methods
   void addTableRow(Table &table) const;
-  bool inputData(int id, const wstring &input,
-                 int inputId, wstring &output, bool noUpdate);
+  pair<int, bool> inputData(int id, const wstring &input,
+                            int inputId, wstring &output, bool noUpdate) override;
 
   /// Table methods
-  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected);
+  void fillInput(int id, vector< pair<wstring, size_t> > &elements, size_t &selected) override;
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -117,6 +117,8 @@ protected:
   void changedObject();
 
 public:
+  static const shared_ptr<Table> &getTable(oEvent *oe);
+
   static int getControlIdByName(const oEvent &oe, const string &name);
 
   // Returns true if controls is considered a radio control.

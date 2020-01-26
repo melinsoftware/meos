@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -681,28 +681,40 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   }
 
   vector<int> dx_new(maxRow);
+  int s60 = gdi.scaleLength(60);
+  int s28 = gdi.scaleLength(35);
+  int s7 = gdi.scaleLength(7);
+  TextInfo ti;
+  HDC hDC = GetDC(gdi.getHWNDTarget());
   for (size_t k = 0; k < toRender.size(); k++) {
     const vector<SpeakerString> &row = toRender[k].second;
     for (size_t j = 0; j < row.size(); j++) {
       if (!row[j].str.empty()) {
-        double len = row[j].str.length();
+        ti.xp = 0;
+        ti.yp = 0;
+        ti.format = 0;
+        ti.text = row[j].str;
+        gdi.calcStringSize(ti, hDC);
+        dx_new[j] = max(s28, max<int>(dx_new[j], ti.textRect.right+s7));
+        /*double len = row[j].str.length();
         double factor = 5.6;
         if (len < 4)
           factor = 7;
         else if (len <10)
           factor = 5.8;
-        dx_new[j] = max(28, max<int>(dx_new[j], int(len * factor)+15));
+        dx_new[j] = max(28, max<int>(dx_new[j], int(len * factor)+15));*/
       }
       else if (row[j].hasTimer) {
-        dx_new[j] = max<int>(dx_new[j], 60);
+        dx_new[j] = max<int>(dx_new[j], s60);
       }
     }
   }
+  ReleaseDC(gdi.getHWNDTarget(), hDC);
   bool rendered;
   int limit = gdi.scaleLength(280);
   vector<int> dx(maxRow+1);
   for (size_t k = 1; k < dx.size(); k++) {
-    dx[k] = dx[k-1] + min(limit, gdi.scaleLength(dx_new[k-1]));
+    dx[k] = dx[k-1] + min(limit, dx_new[k-1] + gdi.scaleLength(4));
   }
 
   rendered = false;
@@ -1240,7 +1252,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
         radio.push_back(TimeRunner(0, &r));
 
       if (rt > 0) {
-        bestTotalTime[j].addTime(r.getTotalRunningTime(rt + r.tStartTime, true));
+        bestTotalTime[j].addTime(r.getTotalRunningTime(rt + r.tStartTime, true, true));
         bestRaceTime[j].addTime(rt);
         // Calculate leg time since last radio (or start)
         int lt = 0;
@@ -1254,7 +1266,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
 
         if (j == rc.size()-1 && r.FinishTime>0 && r.tStatus == StatusOK) {
           // Get best total time
-          bestTotalTime[j+1].addTime(r.getTotalRunningTime(r.FinishTime, true));
+          bestTotalTime[j+1].addTime(r.getTotalRunningTime(r.FinishTime, true, true));
 
           // Calculate best time from last radio to finish
           int ft = r.FinishTime - (rt + r.tStartTime);
@@ -1368,7 +1380,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       if (radio[k].time > 0) {
         while (expIndex < expectedRadio.size() && expectedRadio[expIndex].time < radio[k].time) {
           TimeRunner &tr = expectedRadio[expIndex];
-          int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime, true);
+          int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime, true, true);
 
           timeLinePrognose(results, tr, prelT, j, rname, rc[j].first);
           expIndex++;
@@ -1379,7 +1391,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
         bool sharedPlace = false;
         vector<pRunner> preRunners;
         int time = radio[k].time - r.tStartTime;
-        int totTime = r.getTotalRunningTime(radio[k].time, true);
+        int totTime = r.getTotalRunningTime(radio[k].time, true, true);
         insertResult(results, r, totTime, place, sharedPlace, preRunners);
         int leaderTime = results.begin()->first;
         int timeAfter = totTime - leaderTime;
@@ -1453,7 +1465,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
 
       while (expIndex < expectedFinish.size() && expectedFinish[expIndex].time < r.FinishTime) {
         TimeRunner &tr = expectedFinish[expIndex];
-        int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime, true);
+        int prelT = tr.runner->getTotalRunningTime(tr.time + pwTime, true, true);
         timeLinePrognose(results, tr, prelT, 1, thelocation, 0);
         expIndex++;
       }
@@ -1461,7 +1473,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       int place = 1;
       bool sharedPlace = false;
       vector<pRunner> preRunners;
-      int time = r.getTotalRunningTime(r.FinishTime, true);
+      int time = r.getTotalRunningTime(r.FinishTime, true, true);
 
       insertResult(results, r, time, place, sharedPlace, preRunners);
 
@@ -1529,7 +1541,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
       int place = 1000;
       if (r.FinishTime > 0) {
         place = results.size() + 1;
-        int rt = r.getTotalRunningTime(r.FinishTime, true);
+        int rt = r.getTotalRunningTime(r.FinishTime, true,  true);
         if (rt > 0) {
           TempResultMap::iterator place_it = results.lower_bound(rt);
           place = place_it != results.end() ? place_it->second.place : results.size() + 1;
@@ -1700,7 +1712,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     }
     if (!ok) { // A more careful analysis
       for(int k = 0; k < nr; k++) {
-        teamLegStatusOK[base + k] = it->getLegStatus(k, true);
+        teamLegStatusOK[base + k] = it->getLegStatus(k, true, true);
       }
     }
   }
@@ -1709,8 +1721,10 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     const oRunner &r = *it;
     if (r.isRemoved() || !classFilter.count(r.getClassId(true)))
       continue;
-    if (r.prelStatusOK() || r.getStatus() != StatusUnknown) {
-      RunnerStatus stat = r.prelStatusOK() ? StatusOK : r.getStatus();
+    if (r.getStatusComputed() != StatusOutOfCompetition && 
+        r.getStatusComputed() != StatusNoTiming &&
+       (r.prelStatusOK(true, false) || r.getStatusComputed() != StatusUnknown)) {
+      RunnerStatus stat = r.prelStatusOK(true, false) ? StatusOK : r.getStatusComputed();
       results.push_back(ResultEvent(pRunner(&r), r.getFinishTime(), oPunch::PunchFinish, stat));
     }
     pCard card = r.getCard();

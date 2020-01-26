@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2019 Melin Software HB
+Copyright (C) 2009-2020 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -624,6 +624,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
   }
   else if (what == "control") {
     vector<pControl> ctrl;
+    oe.synchronizeList(oListId::oLControlId);
     oe.getControls(ctrl, true);
     vector< pair<string, wstring> > prop(1);
     prop[0].first = "id";
@@ -649,6 +650,8 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
       if (!selection.empty())
         sampleClass = oe.getClass(*selection.begin());
     }
+    oe.autoSynchronizeLists(true);
+    oe.reEvaluateAll(selection, false);
 
     if (sampleClass == 0) {
       vector<pClass> tt;
@@ -1095,11 +1098,11 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       xml.write("Club", { make_pair("id", itow(r->getClubId())) }, r->getClub());
       xml.write("Class", { make_pair("id", itow(r->getClassId(true))) }, r->getClass(true));
       xml.write("Card", r->getCardNo());
-      xml.write("Status", {make_pair("code", itow(r->getStatus()))}, r->getStatusS(true));
+      xml.write("Status", {make_pair("code", itow(r->getStatusComputed()))}, r->getStatusS(true, true));
       xml.write("Start", r->getStartTimeS());
       if (r->getFinishTime() > 0) {
         xml.write("Finish", r->getFinishTimeS());
-        xml.write("RunningTime", r->getRunningTimeS());
+        xml.write("RunningTime", r->getRunningTimeS(true));
         xml.write("Place", r->getPlaceS());
         xml.write("TimeAfter", formatTime(r->getTimeAfter()));
       }
@@ -1274,6 +1277,7 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
     permissionDenied = true;
   
   if (!permissionDenied) {
+    oe.synchronizeList({ oListId::oLClassId, oListId::oLRunnerId });
     wstring name, club;
     long long extId = 0;
     int clubId = 0;
@@ -1363,12 +1367,21 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
       }
       
       if (r) {
+        int cf = 0;
+        if (cardNo > 0 && oe.isHiredCard(cardNo)) {
+          cf = oe.getBaseCardFee();
+          r->getDI().setInt("CardFee", cf);
+        }
         r->setFlag(oRunner::FlagAddedViaAPI, true);
         r->addClassDefaultFee(true);
         r->synchronize();
         r->markClassChanged(-1);
         xml.write("Status", "OK");
-        xml.write("Fee", r->getDCI().getInt("Fee"));
+        vector < pair<string, wstring> > rentCard;
+        if (cf != 0) {
+          rentCard.emplace_back("hiredCard", L"true");
+        }
+        xml.write("Fee", rentCard, itow(r->getDCI().getInt("Fee") + max(cf, 0)));
         xml.write("Info", r->getClass(true) + L", " + r->getCompleteIdentification(false));
       }
     }

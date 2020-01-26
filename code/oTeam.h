@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,11 +70,23 @@ protected:
   void changeId(int newId);
 
   struct TeamPlace {
-    int p; // Day result
-    int totalP; // Total result
+    DynamicValue p; // Day result
+    DynamicValue totalP; // Total result
   };
 
-  TeamPlace _places[maxRunnersTeam];
+  mutable vector<TeamPlace> tPlace;
+
+  TeamPlace &oTeam::getTeamPlace(int leg) const;
+
+  struct ComputedLegResult {
+    int version = -1;
+    int time = 0;
+    RunnerStatus status = StatusUnknown;
+
+    ComputedLegResult() {};
+  };
+
+  mutable vector<ComputedLegResult> tComputedResults;
   
   mutable int _sortTime;
   mutable int _sortStatus;
@@ -97,6 +109,9 @@ protected:
   };
   mutable pair<int, RogainingResult> tTeamPatrolRogainingAndVersion;
 
+  const ComputedLegResult &getComputedResult(int leg) const;
+  void setComputedResult(int leg, ComputedLegResult &comp) const;
+
   string getRunners() const;
   bool matchTeam(int number, const wchar_t *s_lc) const;
   int tNumRestarts; //Number of restarts for team
@@ -107,15 +122,24 @@ protected:
 
   void addTableRow(Table &table) const;
 
-  bool inputData(int id, const wstring &input,
-                 int inputId, wstring &output, bool noUpdate);
+  pair<int, bool> inputData(int id, const wstring &input,
+                            int inputId, wstring &output, bool noUpdate);
 
-  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected);
+  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected) override;
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
 
+  void fillInSortData(SortOrder so, 
+                      int leg,
+                      bool linearLeg, 
+                      map<int, int> &classId2Linear, 
+                      bool &hasRunner) const;
+
 public:
+
+  static const shared_ptr<Table> &getTable(oEvent *oe);
+
   /** Check the the main leg is set if any parallel is set. Returns true if corrections where made.*/
   bool checkValdParSetup();
 
@@ -147,13 +171,10 @@ public:
   cTeam getTeam() const {return this;}
   pTeam getTeam() {return this;}
 
-  int getRunningTime() const;
+  int getRunningTime(bool computedTime) const override;
 
   /// Input data for multiday event
   void setInputData(const oTeam &t);
-
-  /// Get total status for multiday event
-  RunnerStatus getTotalStatus() const;
 
   void remove();
   bool canRemove() const;
@@ -161,20 +182,25 @@ public:
   void prepareRemove();
 
   bool skip() const {return isRemoved();}
-  void setTeamNoStart(bool dns, RunnerStatus dnsStatus); // Set DNS or CANCEL
+
+  void setTeamMemberStatus(RunnerStatus memberStatus); // Set DNS or CANCEL, NotCompeting etc to team and its members
   // If apply is triggered by a runner, don't go further than that runner.
-  bool apply(bool sync, pRunner source, bool setTmpOnly);
+  void apply(ChangeType ct, pRunner source) override;
+
+  // Set bibs on team members
+  void applyBibs(); 
 
   void quickApply();
 
-  void evaluate(bool sync);
+  // Evaluate card and times. Synchronize to server if changeType is update.
+  void evaluate(ChangeType changeType);
 
-  bool adjustMultiRunners(bool sync);
+  void adjustMultiRunners();
 
-  int getRogainingPoints(bool multidayTotal) const;
-  int getRogainingReduction() const;
-  int getRogainingOvertime() const;
-  int getRogainingPointsGross() const;
+  int getRogainingPoints(bool computed, bool multidayTotal) const override;
+  int getRogainingReduction(bool computed) const override;
+  int getRogainingOvertime(bool computed) const override;
+  int getRogainingPointsGross(bool computed) const override;
 
   int getRogainingPatrolPoints(bool multidayTotal) const;
   int getRogainingPatrolReduction() const;
@@ -208,7 +234,7 @@ public:
   wstring getDisplayName() const;
   wstring getDisplayClub() const;
 
-  void setBib(const wstring &bib, int numericalBib, bool updateStartNo, bool setTmpOnly);
+  void setBib(const wstring &bib, int numericalBib, bool updateStartNo) override;
 
   int getLegStartTime(int leg) const;
   wstring getLegStartTimeS(int leg) const;
@@ -220,18 +246,18 @@ public:
   int getTimeAfter(int leg) const;
 
   //Get total running time after leg
-  wstring getLegRunningTimeS(int leg, bool multidayTotal) const;
+  wstring getLegRunningTimeS(int leg, bool computed, bool multidayTotal) const;
 
-  int getLegRunningTime(int leg, bool multidayTotal) const;
-  int getLegPrelRunningTime(int leg) const;
-  wstring getLegPrelRunningTimeS(int leg) const;
-
-  RunnerStatus getLegStatus(int leg, bool multidayTotal) const;
-  const wstring &getLegStatusS(int leg, bool multidayTotal) const;
+  int getLegRunningTime(int leg, bool computed, bool multidayTotal) const;
+ 
+  RunnerStatus getLegStatus(int leg, bool computed, bool multidayTotal) const;
+  const wstring &getLegStatusS(int leg, bool computed, bool multidayTotal) const;
 
   wstring getLegPlaceS(int leg, bool multidayTotal) const;
   wstring getLegPrintPlaceS(int leg, bool multidayTotal, bool withDot) const;
   int getLegPlace(int leg, bool multidayTotal) const;
+
+  bool isResultUpdated(bool totalResult) const override;
 
   static bool compareSNO(const oTeam &a, const oTeam &b);
   static bool compareName(const oTeam &a, const oTeam &b) {return a.sName<b.sName;}

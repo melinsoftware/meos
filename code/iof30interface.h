@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -163,7 +163,7 @@ class IOF30Interface {
                       map<int, pair<wstring, int> > &bibPatterns,
                       const map<int, vector<LegInfo> > &teamClassConfig);
 
-  pTeam getCreateTeam(gdioutput &gdi, const xmlobject &xTeam, bool &newTeam);
+  pTeam getCreateTeam(gdioutput &gdi, const xmlobject &xTeam, int expectedClassId, bool &newTeam);
 
   static int getIndexFromLegPos(int leg, int legorder, const vector<LegInfo> &setup);
   

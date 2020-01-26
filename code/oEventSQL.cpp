@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,7 +79,6 @@ void oEvent::startReconnectDaemon()
 
 bool oEvent::msSynchronize(oBase *ob)
 {
-  //if (!msSynchronizeRead) return true;
   if (!HasDBConnection && !HasPendingDBConnection)
     return true;
 
@@ -95,7 +94,7 @@ bool oEvent::msSynchronize(oBase *ob)
   }
 
   if (typeid(*ob)==typeid(oTeam)) {
-    static_cast<pTeam>(ob)->apply(false, 0, false);
+    static_cast<pTeam>(ob)->apply(ChangeType::Quiet, nullptr);
   }
 
   if (ret==1) {
@@ -105,98 +104,33 @@ bool oEvent::msSynchronize(oBase *ob)
   return ret!=0;
 }
 
-void oEvent::resetChangeStatus(bool onlyChangable)
-{
-  if (HasDBConnection) {
-    if (!onlyChangable) {
-       // The object here has no dependeces that makes it necessary to set/rest
-
-      for (list<oFreePunch>::iterator it=oe->punches.begin();
-          it!=oe->punches.end(); ++it)
-        it->resetChangeStatus();
-
-      //synchronize changed objects
-      for (list<oCard>::iterator it=oe->Cards.begin();
-            it!=oe->Cards.end(); ++it)
-        it->resetChangeStatus();
-
-      for (list<oClub>::iterator it=oe->Clubs.begin();
-            it!=oe->Clubs.end(); ++it)
-        it->resetChangeStatus();
-
-      for (list<oControl>::iterator it=oe->Controls.begin();
-            it!=oe->Controls.end(); ++it)
-        it->resetChangeStatus();
-
-      for (list<oCourse>::iterator it=oe->Courses.begin();
-            it!=oe->Courses.end(); ++it)
-        it->resetChangeStatus();
-
-      for (list<oClass>::iterator it=oe->Classes.begin();
-          it!=oe->Classes.end(); ++it)
-        it->resetChangeStatus();
-    }
-
-    for (list<oRunner>::iterator it=oe->Runners.begin();
-        it!=oe->Runners.end(); ++it)
-      it->resetChangeStatus();
-
-    for (list<oTeam>::iterator it=oe->Teams.begin();
-        it!=oe->Teams.end(); ++it)
-      it->resetChangeStatus();
-  }
-}
-
-void oEvent::storeChangeStatus(bool onlyChangable)
-{
-  if (HasDBConnection) {
-    if (!onlyChangable) {
-       // The object here has no dependeces that makes it necessary to set/rest
-      for (list<oFreePunch>::iterator it=oe->punches.begin();
-            it!=oe->punches.end(); ++it)
-        it->storeChangeStatus();
-
-      for (list<oCard>::iterator it=oe->Cards.begin();
-            it!=oe->Cards.end(); ++it)
-        it->storeChangeStatus();
-
-      for (list<oClub>::iterator it=oe->Clubs.begin();
-            it!=oe->Clubs.end(); ++it)
-        it->storeChangeStatus();
-
-      for (list<oControl>::iterator it=oe->Controls.begin();
-            it!=oe->Controls.end(); ++it)
-        it->storeChangeStatus();
-
-      for (list<oCourse>::iterator it=oe->Courses.begin();
-            it!=oe->Courses.end(); ++it)
-        it->storeChangeStatus();
-
-      for (list<oClass>::iterator it=oe->Classes.begin();
-          it!=oe->Classes.end(); ++it)
-        it->storeChangeStatus();
-    }
-
-    for (list<oRunner>::iterator it=oe->Runners.begin();
-        it!=oe->Runners.end(); ++it)
-      it->storeChangeStatus();
-
-    for (list<oTeam>::iterator it=oe->Teams.begin();
-        it!=oe->Teams.end(); ++it)
-      it->storeChangeStatus();
-  }
-}
-
 bool MEOSDB_API msSynchronizeList(oEvent *, oListId lid);
 
 bool oEvent::synchronizeList(initializer_list<oListId> types) {
   if (!HasDBConnection)
     return true;
 
+  resetSynchTimes();
   msSynchronize(this);
   resetSQLChanged(true, false);
 
+  vector<oListId> toSync;
+  bool hasCard = false;
   for (oListId t : types) {
+    if (t == oListId::oLRunnerId && !hasCard) {
+      hasCard = true;
+      toSync.push_back(oListId::oLCardId); // Make always card sync before runners
+    }
+    else if (t == oListId::oLCardId) {
+      if (hasCard)
+        continue;
+      else
+        hasCard = true;
+    }
+    toSync.push_back(t);
+  }
+
+  for (oListId t : toSync) {
     if (!msSynchronizeList(this, t)) {
       verifyConnection();
       return false;
@@ -208,13 +142,18 @@ bool oEvent::synchronizeList(initializer_list<oListId> types) {
 
   reinitializeClasses();
   reEvaluateChanged();
-  resetChangeStatus();
   return true;
 }
 
 bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) {
   if (!HasDBConnection)
     return true;
+
+  if (preSyncEvent && postSyncEvent && id == oListId::oLRunnerId) {
+    resetSynchTimes();
+    synchronizeList(oListId::oLCardId, true, false);
+    preSyncEvent = false;
+  }
 
   if (preSyncEvent) {
     msSynchronize(this);
@@ -232,7 +171,6 @@ bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) 
   if (postSyncEvent) {
     reinitializeClasses();
     reEvaluateChanged();
-    resetChangeStatus();
     return true;
   }
 
@@ -240,43 +178,36 @@ bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) 
 }
 
 bool oEvent::needReEvaluate() {
-  return sqlChangedRunners |
-         sqlChangedClasses |
-         sqlChangedCourses |
-         sqlChangedControls |
-         sqlChangedCards |
-         sqlChangedTeams;
+  return sqlRunners.changed |
+         sqlClasses.changed |
+         sqlCourses.changed |
+         sqlControls.changed |
+         sqlCards.changed |
+         sqlTeams.changed;
 }
 
 void oEvent::resetSQLChanged(bool resetAllTeamsRunners, bool cleanClasses) {
   if (empty())
     return;
-  sqlChangedRunners = false;
-  sqlChangedClasses = false;
-  sqlChangedCourses = false;
-  sqlChangedControls = false;
-  sqlChangedClubs = false;
-  sqlChangedCards = false;
-  sqlChangedPunches = false;
-  sqlChangedTeams = false;
+  sqlRunners.changed = false;
+  sqlClasses.changed = false;
+  sqlCourses.changed = false;
+  sqlControls.changed = false;
+  sqlClubs.changed = false;
+  sqlCards.changed = false;
+  sqlPunches.changed = false;
+  sqlTeams.changed = false;
 
   if (resetAllTeamsRunners) {
-    for (list<oRunner>::iterator it=oe->Runners.begin();
-      it!=oe->Runners.end(); ++it) {
-      it->storeChangeStatus();
-      it->sqlChanged = false;
-    }
-    for (list<oTeam>::iterator it=oe->Teams.begin();
-      it!=oe->Teams.end(); ++it) {
-        it->storeChangeStatus();
-      it->sqlChanged = false;
-    }
+    for (auto &r : Runners) 
+      r.sqlChanged = false;
+    for (auto &t : Teams) 
+      t.sqlChanged = false;
   }
   if (cleanClasses) {
     // This data is used to redraw lists/speaker etc.
     for (list<oClass>::iterator it=oe->Classes.begin();
       it!=oe->Classes.end(); ++it) {
-      it->storeChangeStatus();
       it->sqlChangedControlLeg.clear();
       it->sqlChangedLegControl.clear();
     }
@@ -304,6 +235,7 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
   if (mask == 0)
     return false;
 
+  resetSynchTimes();
   // Reset change data and store update status on objects
   // (which might be incorrectly changed during sql update)
   resetSQLChanged(true, false);
@@ -320,74 +252,74 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
 
   //Controls
   if (isSet(mask, oListId::oLControlId)) {
-    int oc = sqlCounterControls;
-    ot = sqlUpdateControls;
+    int oc = sqlControls.counter;
+    ot = sqlControls.updated;
     synchronizeList(oListId::oLControlId, false, false);
-    changed |= oc!=sqlCounterControls;
-    changed |= ot!=sqlUpdateControls;
+    changed |= oc != sqlControls.counter;
+    changed |= ot != sqlControls.updated;
   }
 
   //Courses
   if (isSet(mask, oListId::oLCourseId)) {
-    int oc = sqlCounterCourses;
-    ot = sqlUpdateCourses;
+    int oc = sqlCourses.counter;
+    ot = sqlCourses.updated;
     synchronizeList(oListId::oLCourseId, false, false);
-    changed |= oc!=sqlCounterCourses;
-    changed |= ot!=sqlUpdateCourses;
+    changed |= oc != sqlCourses.counter;
+    changed |= ot != sqlCourses.updated;
   }
 
   //Classes
   if (isSet(mask, oListId::oLClassId)) {
-    int oc = sqlCounterClasses;
-    ot = sqlUpdateClasses;
+    int oc = sqlClasses.counter;
+    ot = sqlClasses.updated;
     synchronizeList(oListId::oLClassId, false, false);
-    changed |= oc!=sqlCounterClasses;
-    changed |= ot!=sqlUpdateClasses;
+    changed |= oc != sqlClasses.counter;
+    changed |= ot != sqlClasses.updated;
   }
 
   //Clubs
   if (isSet(mask, oListId::oLClubId)) {
-    int oc = sqlCounterClubs;
-    ot = sqlUpdateClubs;
+    int oc = sqlClubs.counter;
+    ot = sqlClubs.updated;
     synchronizeList(oListId::oLClubId, false, false);
-    changed |= oc!=sqlCounterClubs;
-    changed |= ot!=sqlUpdateClubs;
+    changed |= oc != sqlClubs.counter;
+    changed |= ot != sqlClubs.updated;
   }
 
   //Cards
   if (isSet(mask, oListId::oLCardId)) {
-    int oc = sqlCounterCards;
-    ot = sqlUpdateCards;
+    int oc = sqlCards.counter;
+    ot = sqlCards.updated;
     synchronizeList(oListId::oLCardId, false, false);
-    changed |= oc!=sqlCounterCards;
-    changed |= ot!=sqlUpdateCards;
+    changed |= oc != sqlCards.counter;
+    changed |= ot != sqlCards.updated;
   }
 
   //Runners
   if (isSet(mask, oListId::oLRunnerId)) {
-    int oc = sqlCounterRunners;
-    ot = sqlUpdateRunners;
+    int oc = sqlRunners.counter;
+    ot = sqlRunners.updated;
     synchronizeList(oListId::oLRunnerId, false, false);
-    changed |= oc!=sqlCounterRunners;
-    changed |= ot!=sqlUpdateRunners;
+    changed |= oc != sqlRunners.counter;
+    changed |= ot != sqlRunners.updated;
   }
 
   //Teams
   if (isSet(mask, oListId::oLTeamId)) {
-    int oc = sqlCounterTeams;
-    ot = sqlUpdateTeams;
+    int oc = sqlTeams.counter;
+    ot = sqlTeams.updated;
     synchronizeList(oListId::oLTeamId, false, false);
-    changed |= oc!=sqlCounterTeams;
-    changed |= ot!=sqlUpdateTeams;
+    changed |= oc != sqlTeams.counter;
+    changed |= ot != sqlTeams.updated;
   }
 
   if (SyncPunches && isSet(mask, oListId::oLPunchId)) {
     //Punches
-    int oc = sqlCounterPunches;
-    ot = sqlUpdatePunches;
+    int oc = sqlPunches.counter;
+    ot = sqlPunches.updated;
     synchronizeList(oListId::oLPunchId, false, false);
-    changed |= oc!=sqlCounterPunches;
-    changed |= ot!=sqlUpdatePunches;
+    changed |= oc != sqlPunches.counter;
+    changed |= ot != sqlPunches.updated;
   }
 
   if (changed) {
@@ -397,7 +329,6 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
     reCalculateLeaderTimes(0);
     //Restore changed staus on object that might have been changed
     //during sql update, due to partial updates
-    resetChangeStatus();
     return true;
   }
 
@@ -430,7 +361,7 @@ bool oEvent::connectToMySQL(const string &server, const string &user, const stri
   if (!msConnectToServer(this)) {
     char bf[256];
     msGetErrorState(bf);
-    MessageBox(NULL, lang.tl(bf).c_str(), L"Error", MB_OK);
+    gdibase.alert(bf);
     return false;
   }
 
@@ -666,7 +597,10 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
 
   if (teamCorrected) {
     for (oTeamList::iterator it = Teams.begin(); it != Teams.end(); ++it) {
-      it->apply(true, 0, false);
+      if (!it->isRemoved()) {
+        it->apply(oBase::ChangeType::Update, nullptr);
+        it->synchronize(true);
+      }
     }
   }
 

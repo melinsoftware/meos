@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ public:
   vector<int> individual;
   vector<int> relay;
   vector<int> patrol;
+  vector<int> rogainingTeam;
 
   vector< vector<int> > legNStart;
   vector< vector<int> > raceNStart;
@@ -65,15 +66,18 @@ public:
   bool hasRelay() const {return relay.size()>0;}
   bool hasPatrol() const {return patrol.size()>0;}
   bool hasRogaining() const {return rogainingClasses.size()>0;}
+  bool hasRogainingTeam() const { return rogainingTeam.size()>0; }
+
   bool empty() const;
 
   // Return true of this is an event in a sequence of events.
   bool isMultiStageEvent() const {return hasMultiEvent;}
-  void getIndividual(set<int> &sel) const;
+  void getIndividual(set<int> &sel, bool forStartList) const;
   void getRelay(set<int> &sel) const;
   void getPatrol(set<int> &sel) const;
   void getTeamClass(set<int> &sel) const;
   void getRogaining(set<int> &sel) const;
+  void getRogainingTeam(set<int> &sel) const;
 
   bool hasTeamClass() const;
 

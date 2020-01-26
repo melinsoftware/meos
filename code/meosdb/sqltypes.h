@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 ************************************************************************/
 
 enum OpFailStatus {
+  opStatusOKSkipped = 3,
   opStatusOK = 2,
   opStatusFail = 0,
   opStatusWarning = 1,
@@ -33,10 +34,8 @@ enum OpFailStatus {
 class oEvent;
 class oBase;
 
-
 #define MEOSDB_API
   int MEOSDB_API getMeosVersion();
-//  bool MEOSDB_API msSynchronizeList(oEvent *, oListId lid);
   int MEOSDB_API msSynchronizeUpdate(oBase *);
   int MEOSDB_API msSynchronizeRead(oBase *obj);
   int MEOSDB_API msRemove(oBase *obj);
@@ -50,6 +49,7 @@ class oBase;
   bool MEOSDB_API msReConnect();
   int MEOSDB_API msListCompetitions(oEvent *oe);
 
+  void resetSynchTimes();
   int getListMask(oEvent &oe);
   
 

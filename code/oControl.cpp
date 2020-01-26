@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -787,7 +787,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillControlStatus(vector< pair<ws
   out.push_back(make_pair(lang.tl(L"OK"), oControl::StatusOK));
   out.push_back(make_pair(lang.tl(L"Multipel"), oControl::StatusMultiple));
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining))
+  if (getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining))
     out.push_back(make_pair(lang.tl(L"Rogaining"), oControl::StatusRogaining));
   out.push_back(make_pair(lang.tl(L"Utan tidtagning"), oControl::StatusNoTiming));
   out.push_back(make_pair(lang.tl(L"Trasig"), oControl::StatusBad));
@@ -796,10 +796,10 @@ const vector< pair<wstring, size_t> > &oEvent::fillControlStatus(vector< pair<ws
   return out;
 }
 
-Table *oEvent::getControlTB()//Table mode
-{
-  if (tables.count("control") == 0) {
-    Table *table=new Table(this, 20, L"Kontroller", "controls");
+
+const shared_ptr<Table> &oControl::getTable(oEvent *oe) {
+  if (!oe->hasTable("control")) {
+    auto table = make_shared<Table>(oe, 20, L"Kontroller", "controls");
 
     table->addColumn("Id", 70, true, true);
     table->addColumn("Ändrad", 70, false);
@@ -812,15 +812,13 @@ Table *oEvent::getControlTB()//Table mode
     table->addColumn("Bomtid (medel)", 70, true, true);
     table->addColumn("Bomtid (median)", 70, true, true);
 
-    oe->oControlData->buildTableCol(table);
-    tables["control"] = table;
-    table->addOwnership();
+    oe->oControlData->buildTableCol(table.get());
+    oe->setTable("control", table);
 
     table->setTableProp(Table::CAN_DELETE);
   }
 
-  tables["control"]->update();
-  return tables["control"];
+  return oe->getTable("control");
 }
 
 void oEvent::generateControlTableData(Table &table, oControl *addControl)
@@ -862,7 +860,7 @@ void oControl::addTableRow(Table &table) const {
   oe->oControlData->fillTableCol(it, table, true);
 }
 
-bool oControl::inputData(int id, const wstring &input,
+pair<int, bool> oControl::inputData(int id, const wstring &input,
                        int inputId, wstring &output, bool noUpdate)
 {
   synchronize(false);
@@ -875,27 +873,26 @@ bool oControl::inputData(int id, const wstring &input,
       setName(input);
       synchronize();
       output=getName();
-      return true;
+      break;
     case TID_STATUS:
       setStatus(ControlStatus(inputId));
       synchronize(true);
       output = getStatusS();
-      return true;
+      break;
     case TID_CODES:
-      bool stat = setNumbers(input);
+      setNumbers(input);
       synchronize(true);
       output = codeNumbers();
-      return stat;
-    break;
+      break;
   }
 
-  return false;
+  return make_pair(0, false);
 }
 
 void oControl::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected)
 {
   if (id>1000) {
-    oe->oControlData->fillInput(oData, id, 0, out, selected);
+    oe->oControlData->fillInput(this, id, 0, out, selected);
     return;
   }
 

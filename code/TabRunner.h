@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -90,7 +90,7 @@ private:
   int numShorteningLevels() const;
 
   void updateNumShort(gdioutput &gdi, pCourse crs, pRunner r);
-
+  static void updateStatus(gdioutput &gdi, pRunner r);
   static void autoGrowCourse(gdioutput &gdi);
 
   void loadEconomy(gdioutput &gdi, oRunner &r);

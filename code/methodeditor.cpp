@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,13 +66,23 @@ int methodCB(gdioutput *gdi, int type, void *data) {
   throw meosException("Unexpected error");
 }
 
+void MethodEditor::show(TabBase *dst, gdioutput &gdi) {
+  gdi.clearPage(false);
+  origin = dst;
+  show(gdi);
+}
+
 void MethodEditor::show(gdioutput &gdi) {
-  oe->loadGeneralResults(true);
+  oe->loadGeneralResults(true, true);
 
   gdi.setRestorePoint("BeginMethodEdit");
 
   gdi.pushX();
   gdi.setCX(gdi.getCX() + gdi.scaleLength(6));
+
+  int bx = gdi.getCX();
+  int by = gdi.getCY();
+  
   if (currentResult)
     gdi.addString("", boldLarge, makeDash(L"Result Module - X#") + currentResult->getName(true));
   else
@@ -100,10 +110,23 @@ void MethodEditor::show(gdioutput &gdi) {
 #ifdef _DEBUG
   gdi.addButton("WriteDoc", "#WriteDoc", methodCB);
 #endif
-  gdi.popX();
   gdi.dropLine(2);
   gdi.fillDown();
-  
+
+  int dx = gdi.getCX();
+  int dy = gdi.getCY();
+
+  RECT rc;
+  int off = gdi.scaleLength(6);
+  rc.left = bx - 2 * off;
+  rc.right = dx + 2 * off;
+
+  rc.top = by - off;
+  rc.bottom = dy + off;
+
+  gdi.addRectangle(rc, colorWindowBar);
+  gdi.popX();
+
   if (currentResult) {
     gdi.dropLine(0.5);
     if (currentResult->getTag().empty())
@@ -205,6 +228,11 @@ string MethodEditor::uniqueTag(const string &tag) const {
   return tag + un + itos(iter);
 }
 
+void makeScore(wstring &str, const pair<int, int> &score) {
+  int64_t v = int64_t(score.first) * (1LL << 32) + int64_t(score.second);
+  str = itow(v);
+}
+
 int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
   if (type == GUI_BUTTON) {
     ButtonInfo bi = dynamic_cast<ButtonInfo &>(data);
@@ -271,7 +299,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       wstring path = fileNameSource.empty() ? getInternalPath(currentResult->getTag()) : fileNameSource;
       currentResult->save(path);
       fileNameSource = path;
-      oe->loadGeneralResults(true);
+      oe->loadGeneralResults(true, true);
       makeDirty(gdi, ClearDirty);
 
       currentResult->save(fileName);
@@ -308,7 +336,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       oe->synchronize(false);
       oe->getListContainer().updateResultModule(*currentResult, doUpdate);
 
-      oe->loadGeneralResults(true);
+      oe->loadGeneralResults(true, true);
 
       oe->synchronize(true);
 
@@ -324,7 +352,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         wstring rm = path + L".removed";
         DeleteFile(rm.c_str());
         _wrename(path.c_str(), rm.c_str());
-        oe->loadGeneralResults(true);
+        oe->loadGeneralResults(true, true);
         makeDirty(gdi, ClearDirty);
         setCurrentResult(0, L"");
         gdi.clearPage(false);
@@ -373,6 +401,19 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       //oe->getListContainer().getLists(lists);
       vector< pair<int, pair<string, wstring> > > tagNameList;
       oe->getGeneralResults(true, tagNameList, true);
+      map<string, wstring> tag2ClassUsage;
+      vector<pClass> cls;
+      oe->getClasses(cls, false);
+      for (pClass c : cls) {
+        string rt = c->getResultModuleTag();
+        if (!rt.empty()) {
+          wstring &n = tag2ClassUsage[rt];
+          if (n.empty())
+            n = L" | " + c->getName();
+          else
+            n += L", \x2026";
+        }
+      }
       for (size_t k = 0; k < tagNameList.size(); k++) {
         string tag = tagNameList[k].second.first;
         string utag = DynamicResult::undecorateTag(tag);
@@ -383,6 +424,8 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         if (listIx.size() > 0) {
           n += L" *";
         }
+        else if (tag2ClassUsage.count(tag))
+          n += tag2ClassUsage[tag];
 
         lists.push_back(make_pair(n, tagNameList[k].first));
       }
@@ -400,7 +443,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       if (!lists.empty()) {
         wstring srcFile;
         
-        bool ro = dynamic_cast<DynamicResult &>(oe->getGeneralResult(tagNameList.front().second.first, srcFile)).isReadOnly();
+        bool ro = dynamic_cast<DynamicResult &>(*oe->getGeneralResult(tagNameList.front().second.first, srcFile)).isReadOnly();
         gdi.setInputStatus("DoOpen", !ro);
       }
       else {
@@ -427,8 +470,9 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         }
 
         if (ix < tagNameList.size()) {
-          wstring srcFile;
-          DynamicResult &drIn = dynamic_cast<DynamicResult &>(oe->getGeneralResult(tagNameList[ix].second.first, srcFile));
+          dr = load(gdi, tagNameList[ix].second.first, bi.id == "DoOpenCopy");
+          /*wstring srcFile;
+          DynamicResult &drIn = dynamic_cast<DynamicResult &>(*oe->getGeneralResult(tagNameList[ix].second.first, srcFile));
           wasLoadedBuiltIn = drIn.isReadOnly();
           dr = new DynamicResult(drIn);
           if (bi.id == "DoOpenCopy") {
@@ -437,17 +481,8 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
             setCurrentResult(dr, L"");
           }
           else
-            setCurrentResult(dr, srcFile);
+            setCurrentResult(dr, srcFile);*/
         }
-
-        if (bi.id == "DoOpen")
-          makeDirty(gdi, ClearDirty);
-        else
-          makeDirty(gdi, MakeDirty);
-      
-        gdi.clearPage(false);
-        show(gdi);
-        if (dr) dr->compile(true);
       }
     }
     else if (bi.id == "CancelReload") {
@@ -461,7 +496,11 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       setCurrentResult(0, L"");
       makeDirty(gdi, ClearDirty);
       currentIndex = -1;
-      gdi.getTabs().get(TListTab)->loadPage(gdi);
+      if (origin) {
+        auto oc = origin;
+        origin = nullptr;
+        oc->loadPage(gdi);
+      }
       return 0;
     }
     else if (bi.id == "SaveSource") {
@@ -519,16 +558,19 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       int xp = gdi.getCX();
       int yp = gdi.getCY();
       int diff = gdi.scaleLength(3);
-      const int w[5] = {200, 70, 70, 70, 85};
+      int w[5] = {200, 70, 70, 70, 135};
+      for (int i = 0; i < 5; i++)
+        w[i] = gdi.scaleLength(w[i]);
+
       set<wstring> errors;
-      currentResult->prepareCalculations(*oe, tr.size()>0, inputNumber);
+      currentResult->prepareCalculations(*oe, false, {}, rr, tr, inputNumber);
 
       for (size_t k = 0; k < rr.size(); k++) {
         int txp = xp;
         int wi = 0;
         gdi.addStringUT(yp, txp, 0, rr[k]->getCompleteIdentification(), w[wi]-diff);
         txp += w[wi++];
-        currentResult->prepareCalculations(*rr[k]);
+        currentResult->prepareCalculations(*rr[k], false);
         int rt = 0, pt = 0;
         RunnerStatus st = StatusUnknown;
         {
@@ -595,8 +637,8 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring err;
           wstring str;
           try {
-            int score = currentResult->score(*rr[k], st, rt, pt, false);
-            str = itow(score);
+            pair<int,int> score = currentResult->score(*rr[k], st, rt, pt, false);
+            makeScore(str, score);
           }
           catch (meosException &ex) {
             err = ex.wwhat();
@@ -630,7 +672,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         int wi = 0;
         gdi.addStringUT(yp, txp, 0, tr[k]->getName(), w[wi]-diff);
         txp += w[wi++];
-        currentResult->prepareCalculations(*tr[k]);
+        currentResult->prepareCalculations(*tr[k], false);
         int rt = 0, pt = 0;
         RunnerStatus st = StatusUnknown;
         {
@@ -696,8 +738,8 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring err;
           wstring str;
           try {
-            int score = currentResult->score(*tr[k], st, rt, pt);
-            str = itow(score);
+            auto score = currentResult->score(*tr[k], st, rt, pt);
+            makeScore(str, score);
           }
           catch (meosException &ex) {
             err = ex.wwhat();
@@ -732,7 +774,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       gdi.enableInput("CancelSource");
       gdi.getBaseInfo("SaveSource").setExtra(lbi.data);
 
-      if (!gdi.hasField("Source")) {
+      if (!gdi.hasWidget("Source")) {
         gdi.fillRight();
         gdi.restore("TestRule", false);
         gdi.pushX();
@@ -742,8 +784,8 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
                         methodCB, L"Source code:").setFont(gdi, monoText);
         gdi.fillDown();
         gdi.setCX(gdi.getCX() + gdi.getLineHeight());
-        gdi.addListBox("Symbols", 450, 300-20, methodCB, L"Available symbols:");
-        gdi.setTabStops("Symbols", 180);
+        gdi.addListBox("Symbols", 600, 300-20, methodCB, L"Available symbols:");
+        gdi.setTabStops("Symbols", 250);
         gdi.addString("SymbInfo", gdi.getCY(), gdi.getCX(), 0, "", 350, 0);
         gdi.popX();
         gdi.setCY(gdi.getHeight());
@@ -776,7 +818,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       }
       wstring srcFile;
       if (ix < tagNameList.size()) {
-        bool ro = dynamic_cast<DynamicResult &>(oe->getGeneralResult(tagNameList[ix].second.first, srcFile)).isReadOnly();
+        bool ro = dynamic_cast<DynamicResult &>(*oe->getGeneralResult(tagNameList[ix].second.first, srcFile)).isReadOnly();
         gdi.setInputStatus("DoOpen", !ro);
       }
       else
@@ -866,7 +908,7 @@ void MethodEditor::makeDirty(gdioutput &gdi, DirtyFlag inside) {
   else if (inside == ClearDirty)
     dirtyInt = false;
 
-  if (gdi.hasField("SaveInside")) {
+  if (gdi.hasWidget("SaveInside")) {
     gdi.setInputStatus("SaveInside", dirtyInt);
     gdi.setInputStatus("Remove", resultIsInstalled());
   }
@@ -888,7 +930,7 @@ bool MethodEditor::checkSave(gdioutput &gdi) {
 }
 
 void MethodEditor::checkChangedSave(gdioutput &gdi) {
-  if (gdi.hasField("Source")) {
+  if (gdi.hasWidget("Source")) {
     gdi.getText("Source");
     if (dynamic_cast<InputInfo &>(gdi.getBaseInfo("Source")).changed() &&
         gdi.ask(L"Save changes in rule code?")) {      
@@ -952,11 +994,18 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
   gdi_new->clearPage(false);
   gdi_new->setData("MethodEditorClz", this);
   gdioutput &gdi = *gdi_new;
-  currentResult->prepareCalculations(*oe, isTeam, inputNumber);
+
+  vector<pRunner> rr;
+  vector<pTeam> tt;
+  oe->getRunners(art->getClassId(true), 0, rr);
+  if (isTeam)
+    oe->getTeams(art->getClassId(true), tt, false);
+
+  currentResult->prepareCalculations(*oe, false, {art->getClassId(true)}, rr, tt, inputNumber);
   gdi_new->addString("", fontMediumPlus, "Debug Output");
   if (!isTeam) {
     oRunner &r = *pRunner(art);
-    currentResult->prepareCalculations(r);
+    currentResult->prepareCalculations(r, false);
     int rt = 0, pt = 0;
     RunnerStatus st = StatusUnknown;
     gdi.dropLine();
@@ -994,11 +1043,13 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       gdi.addString("", 0, L"Points Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceRPoints))
-      currentResult->debugDumpVariables(gdi, true);
+      currentResult->debugDumpVariables(gdi, false);
     
     try {
-       int score = currentResult->score(r, st, rt, pt, false);
-       gdi.addStringUT(1, "ComputedScore: " + itos(score)).setColor(colorGreen);
+       auto score = currentResult->score(r, st, rt, pt, false);
+       wstring str;
+       makeScore(str, score);
+       gdi.addStringUT(1, L"ComputedScore: " + str).setColor(colorGreen);
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
@@ -1010,7 +1061,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
   }
   else {
     oTeam &t = *pTeam(art);
-    currentResult->prepareCalculations(t);
+    currentResult->prepareCalculations(t, false);
     int rt = 0, pt = 0;
     RunnerStatus st = StatusUnknown;
     gdi.dropLine();
@@ -1048,11 +1099,13 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
       gdi.addString("", 0, L"Points Calculation Failed: X#" + err).setColor(colorRed);
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceTPoints))
-      currentResult->debugDumpVariables(gdi, true);
+      currentResult->debugDumpVariables(gdi, false);
     
     try {
-       int score = currentResult->score(t, st, rt, pt);
-       gdi.addStringUT(1, "ComputedScore:"  + itos(score)).setColor(colorGreen);
+       auto score = currentResult->score(t, st, rt, pt);
+       wstring str;
+       makeScore(str, score);
+       gdi.addStringUT(1, L"ComputedScore:"  + str).setColor(colorGreen);
     }
     catch (meosException &ex) {
       currentResult->debugDumpVariables(gdi, true);
@@ -1065,4 +1118,32 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
 
   gdi.addButton("CloseWindow", "Stäng", methodCB);
   gdi.refresh();
+}
+
+
+DynamicResult *MethodEditor::load(gdioutput &gdi, const string &tag, bool forceLoadCopy) {
+  DynamicResult *dr;
+  wstring srcFile;
+  DynamicResult &drIn = dynamic_cast<DynamicResult &>(*oe->getGeneralResult(tag, srcFile));
+  wasLoadedBuiltIn = drIn.isReadOnly();
+  dr = new DynamicResult(drIn);
+  if (forceLoadCopy || wasLoadedBuiltIn) {
+    dr->setTag(uniqueTag("result"));
+    dr->setName(lang.tl("Copy of ") + dr->getName(false));
+    setCurrentResult(dr, L"");
+  }
+  else
+    setCurrentResult(dr, srcFile);
+
+  if (forceLoadCopy || wasLoadedBuiltIn)
+    makeDirty(gdi, MakeDirty);
+  else
+    makeDirty(gdi, ClearDirty);
+
+
+  gdi.clearPage(false);
+  show(gdi);
+  if (dr) dr->compile(true);
+
+  return dr;
 }

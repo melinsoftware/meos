@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -95,7 +95,7 @@ void oListParam::serialize(xmlparser &xml,
   xml.writeBool("Large", useLargeSize);
   xml.writeBool("PageBreak", pageBreak);
   xml.writeBool("HideHeader", !showHeader);
-
+  xml.write("AgeFilter", int(ageFilter));
   xml.writeBool("ShowNamedSplits", showInterTimes);
   xml.writeBool("ShowInterTitle", showInterTitle);
   xml.writeBool("ShowSplits", showSplitTimes);
@@ -162,7 +162,7 @@ void oListParam::deserialize(const xmlobject &xml, const MetaListContainer &cont
   showInterTitle = xml.getObjectBool("ShowInterTitle");
   inputNumber = xml.getObjectInt("InputNumber");
   nextList = xml.getObjectInt("NextList");
-
+  ageFilter = AgeFilter(xml.getObjectInt("AgeFilter"));
   xmlobject bg = xml.getObject("BGColor");
   if (bg)
     bgColor = bg.getInt();
@@ -366,7 +366,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   li.lp = par;
   gdiFonts normal, header, small, italic;
   double s_factor;
-
+  oe->calculateResults({}, oEvent::ResultType::ClassResult, false);
   map<pair<gdiFonts, int>, int> fontHeight;
 
   for (size_t k = 0; k < fontFaces.size(); k++) {
@@ -405,6 +405,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   li.rogainingResults = false;
   li.calculateLiveResults = false;
   li.calcCourseClassResults = false;
+  li.calcCourseResults = false;
+
   if (par.useControlIdResultFrom > 0 || par.useControlIdResultTo > 0)
     li.needPunches = oListInfo::PunchMode::SpecificPunch;
   const bool isPunchList = mList.listSubType == oListInfo::EBaseTypeCoursePunches ||
@@ -449,7 +451,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         if (mp.type == lTeamPlace || mp.type == lRunnerPlace || mp.type == lRunnerGeneralPlace) {
           if (!li.calcResults) {
             oe->calculateResults(set<int>(), oEvent::ResultType::ClassResult);
-            oe->calculateTeamResults(false);
+            oe->calculateTeamResults(set<int>(), oEvent::ResultType::ClassResult);
           }
           li.calcResults = true;
         }
@@ -458,7 +460,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                 || mp.type == lRunnerGeneralPlace) {
           if (!li.calcTotalResults) {
             oe->calculateResults(set<int>(), oEvent::ResultType::TotalResult);
-            oe->calculateTeamResults(true);
+            oe->calculateTeamResults(set<int>(), oEvent::ResultType::TotalResult);
           }
           li.calcTotalResults = true;
         }
@@ -471,6 +473,12 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
             oe->calculateResults(set<int>(), oEvent::ResultType::ClassCourseResult);
 
           li.calcCourseClassResults = true;
+        }
+        else if (mp.type == lRunnerCoursePlace) {
+          if (!li.calcCourseResults)
+            oe->calculateResults(set<int>(), oEvent::ResultType::ClassCourseResult);
+
+          li.calcCourseResults = true;
         }
         else if (mp.type == lRunnerTempTimeAfter || mp.type == lRunnerTempTimeStatus) {
           if (li.needPunches == oListInfo::PunchMode::NoPunch)
@@ -791,8 +799,18 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   li.supportFrom = supportFromControl;
   li.supportTo = supportToControl;
   li.resType = getResultType();
-  if (!resultModule.empty() || li.calcResults || li.calcCourseClassResults || li.calcTotalResults)
+  if (!resultModule.empty() || li.calcResults || li.calcCourseClassResults 
+      || li.calcTotalResults || li.calcCourseResults)
     hasResults_ = true;
+
+  if (li.sortOrder == SortOrder::CourseResult) {
+    li.replaceType(EPostType::lRunnerPlace, EPostType::lRunnerCoursePlace, true);
+  }
+
+  if (li.sortOrder == SortOrder::ClassCourseResult) {
+    li.replaceType(EPostType::lRunnerPlace, EPostType::lRunnerClassCoursePlace, true);
+  }
+
 }
 
 void Position::indent(int ind) {
@@ -1080,7 +1098,7 @@ void MetaList::save(xmlparser &xml, const oEvent *oe) const {
     xml.write("ResultModule", ttw);
     try {
       wstring srcFile;
-      GeneralResult &gr = oe->getGeneralResult(resultModule, srcFile);
+      GeneralResult &gr = *oe->getGeneralResult(resultModule, srcFile);
       DynamicResult &dr = dynamic_cast<DynamicResult &>(gr);
       if (!dr.isBuiltIn()) {
         string ot = dr.getTag();
@@ -1158,7 +1176,7 @@ void MetaList::load(const xmlobject &xDef) {
 //    string db = "Loaded res mod: " + dr.getTag() + ", h=" + itos(dr.getHashCode())+ "\n";
 //    OutputDebugString(db.c_str());
     wstring file = L"*";
-    dynamicResults[k] = GeneralResultCtr(file, new DynamicResult(dr));
+    dynamicResults[k] = GeneralResultCtr(file, make_shared<DynamicResult>(dr));
   }
   supportFromControl = xDef.getObjectBool("SupportFrom");
   supportToControl = xDef.getObjectBool("SupportTo");
@@ -1302,7 +1320,7 @@ void MetaList::load(const xmlobject &xDef) {
 void MetaList::getDynamicResults(vector<DynamicResultRef> &resultModules) const {
   resultModules.resize(dynamicResults.size());
   for (size_t k = 0; k < dynamicResults.size(); k++) {
-    resultModules[k].res = dynamic_cast<DynamicResult *>(dynamicResults[k].ptr);
+    resultModules[k].res = dynamic_pointer_cast<DynamicResult>(dynamicResults[k].ptr);
     resultModules[k].ctr = const_cast<MetaList *>(this);
   }
 }
@@ -1320,7 +1338,7 @@ const wstring &MetaList::getListInfo(const oEvent &oe) const {
   if (!resultModule.empty()) {
     wstring f;
     try {
-      GeneralResult &res = oe.getGeneralResult(resultModule, f);
+      GeneralResult &res = *oe.getGeneralResult(resultModule, f);
       DynamicResult &dres = dynamic_cast<DynamicResult &>(res);
       return dres.getDescription();
     }
@@ -1349,7 +1367,7 @@ void MetaList::retagResultModule(const string &newTag, bool retagStoredModule) {
 
   if (retagStoredModule) {
     for (size_t k = 0; k < dynamicResults.size(); k++) {
-      DynamicResult *res = dynamic_cast<DynamicResult *>(dynamicResults[k].ptr);
+      DynamicResult *res = dynamic_cast<DynamicResult *>(dynamicResults[k].ptr.get());
       if (res && res->getTag() == oldTag) {
         res->setTag(newTag);
       }
@@ -1359,7 +1377,7 @@ void MetaList::retagResultModule(const string &newTag, bool retagStoredModule) {
 
 bool MetaList::updateResultModule(const DynamicResult &dr, bool updateSimilar) {
   for (size_t k = 0; k < dynamicResults.size(); k++) {
-    DynamicResult *res = dynamic_cast<DynamicResult *>(dynamicResults[k].ptr);
+    DynamicResult *res = dynamic_cast<DynamicResult *>(dynamicResults[k].ptr.get());
     if (res) {
       const string &tag1 = res->getTag();
       const string &tag2 = dr.getTag();
@@ -1385,6 +1403,12 @@ bool MetaListContainer::updateResultModule(const DynamicResult &dr, bool updateS
       if (data[i].second.updateResultModule(dr, updateSimilar))
         changed = true;
     }
+  }
+
+  auto f = freeResultModules.find(dr.getTag());
+  if (f != freeResultModules.end()) {
+    f->second.ptr = make_shared<DynamicResult>(dr);
+    changed = true;
   }
 
   if (changed && owner)
@@ -1685,6 +1709,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerLostTime] = L"RunnerTimeLost";
     typeToSymbol[lRunnerPlace] = L"RunnerPlace";
     typeToSymbol[lRunnerClassCoursePlace] = L"RunnerClassCoursePlace";
+    typeToSymbol[lRunnerCoursePlace] = L"RunnerCoursePlace";
     typeToSymbol[lRunnerStart] = L"RunnerStart";
     typeToSymbol[lRunnerCheck] = L"RunnerCheck";
     typeToSymbol[lRunnerStartCond] = L"RunnerStartCond";
@@ -1848,6 +1873,7 @@ void MetaList::initSymbols() {
     orderToSymbol[ClassStartTime] = "ClassStartTime";
     orderToSymbol[ClassStartTimeClub] = "ClassStartTimeClub";
     orderToSymbol[ClassResult] = "ClassResult";
+    orderToSymbol[ClassDefaultResult] = "ClassDefaultResult";
     orderToSymbol[ClassCourseResult] = "ClassCourseResult";
     orderToSymbol[SortByName] = "SortNameOnly";
     orderToSymbol[SortByLastName] = "SortLastNameOnly";
@@ -2005,6 +2031,13 @@ void MetaListContainer::save(MetaListType type, xmlparser &xml, const oEvent *oe
       it->second.serialize(xml, *this, id2Ix);
     }
   }
+
+  for (auto res : freeResultModules) {
+    DynamicResult *dr = dynamic_cast<DynamicResult *>(res.second.ptr.get());
+    if (dr) {
+      dr->save(xml);
+    }
+  }
 }
 
 bool MetaListContainer::load(MetaListType type, const xmlobject &xDef, bool ignoreOld) {
@@ -2014,9 +2047,11 @@ bool MetaListContainer::load(MetaListType type, const xmlobject &xDef, bool igno
   xDef.getObjects("MeOSListDefinition", xList);
   wstring majVer = getMajorVersion();
   bool hasSkipped = false;
-
-  if (xList.empty() && strcmp(xDef.getName(), "MeOSListDefinition") == 0)
+  bool pushLevel = false;
+  if (xList.empty() && strcmp(xDef.getName(), "MeOSListDefinition") == 0) {
     xList.push_back(xDef);
+    pushLevel = true;
+  }
   wstring err;
   for (size_t k = 0; k<xList.size(); k++) {
     xmlattrib ver = xList[k].getAttrib("version");
@@ -2088,9 +2123,26 @@ bool MetaListContainer::load(MetaListType type, const xmlobject &xDef, bool igno
         it->second.nextList = 0; // Clear relation
     }
   }
+  if (!pushLevel) {
+    xDef.getObjects("MeOSResultCalculationSet", xList);
+    decltype(freeResultModules) copy;
+    freeResultModules.swap(copy);
+    for (auto res : xList) {
+      GeneralResultCtr ctr;
+      auto dr = make_shared<DynamicResult>();
+      dr->load(res);
+      if (copy.count(dr->getTag())) {
+        DynamicResult &oldResult = dynamic_cast<DynamicResult&>(*copy[dr->getTag()].ptr);
+        oldResult = *dr;
+        dr = dynamic_pointer_cast<DynamicResult>(copy[dr->getTag()].ptr);
+      }
 
-  if (owner)
-    owner->updateChanged();
+      freeResultModules.emplace(dr->getTag(), GeneralResultCtr(dr->getTag().c_str(), dr->getName(false), dr));
+    }
+
+    if (owner)
+      owner->updateChanged();
+  }
 
   if (!err.empty())
     throw meosException(err);
@@ -2768,4 +2820,54 @@ void MetaListContainer::synchronizeTo(MetaListContainer &dst) const {
       dst.listParam[ix].listCode = dstCode;
     }
   }
+}
+
+void MetaListContainer::getGeneralResults(vector<DynamicResultRef> &rmAll) {
+  for (int k = 0; k < getNumLists(); k++) {
+    vector<DynamicResultRef> rm;
+    getList(k).getDynamicResults(rm);
+
+    if (!isExternal(k)) {
+      for (size_t j = 0; j < rm.size(); j++) {
+        if (rm[j].res)
+          rm[j].res->setReadOnly();
+      }
+    }
+    rmAll.insert(rmAll.end(), rm.begin(), rm.end());
+  }
+
+  for (auto &res : freeResultModules) {
+    auto dynRes = dynamic_pointer_cast<DynamicResult, GeneralResult>(res.second.ptr);
+    dynRes->retaggable(false);
+    if (dynRes) {
+      rmAll.emplace_back(dynRes, nullptr);
+    }
+  }
+}
+
+wstring DynamicResultRef::getAnnotation() const {
+  if (ctr)
+    return ctr->getListName();
+  else
+    return L"";
+}
+
+void MetaListContainer::updateGeneralResult(string tag, const shared_ptr<DynamicResult> &res) {
+  bool changed = false;
+  if (!res) {
+    changed = freeResultModules.count(tag) > 0;
+    freeResultModules.erase(tag);
+  }
+  else {
+    auto rm = freeResultModules.find(tag);
+    if (rm == freeResultModules.end())
+      changed = true;
+    else
+      changed = rm->second.ptr.get() != res.get();
+    assert(tag == res->getTag());
+    freeResultModules.emplace(tag, GeneralResultCtr(tag.c_str(), res->getName(false), res));
+  }
+
+  if (changed && owner)
+    owner->updateChanged();
 }

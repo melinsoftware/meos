@@ -7,7 +7,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,7 +61,6 @@ protected:
   mutable int previousPunchTime; /// Note that this is not valid in general
 
 public:
-
   virtual int getControlId() const {return tMatchControlId;}
 
   bool isUsedInCourse() const {return isUsed;}

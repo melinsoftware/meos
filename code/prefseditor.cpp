@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,7 +132,7 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
     else if (bi.id.substr(0, 5) == "Save_") {
       string pref = bi.id.substr(5);
       wstring value;
-      if (gdi.hasField("ValueBoolean")) {
+      if (gdi.hasWidget("ValueBoolean")) {
         ListBoxInfo lbi;
         gdi.getSelectedItem("ValueBoolean", lbi);
         value = itow(lbi.data);

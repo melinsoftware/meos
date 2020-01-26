@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,10 +132,11 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       pClub pc=oe->getClub(lbi.data);
       if (pc) {
         gdi.clearPage(true);
-        oe->calculateTeamResults(false);
-        oe->sortTeams(ClassStartTime, 0, true);
         oe->calculateResults({}, oEvent::ResultType::ClassResult);
         oe->sortRunners(ClassStartTime);
+        oe->calculateTeamResults(set<int>({}), oEvent::ResultType::ClassResult);
+        oe->sortTeams(ClassStartTime, 0, true);
+
         int pay, paid;
         {
           map<int, int> ppm;
@@ -581,7 +582,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
   else if (type == GUI_LINK) {
     TextInfo *ti = static_cast<TextInfo*>(data);
     if (ti->id == "CmpSettings") {
-      if (gdi.hasField("SaveSettings"))
+      if (gdi.hasWidget("SaveSettings"))
         gdi.sendCtrlMessage("SaveSettings");
       TabCompetition &tc = dynamic_cast<TabCompetition &>(*gdi.getTabs().get(TCmpTab));
       tc.loadPage(gdi);
@@ -592,7 +593,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
   }
   else if (type == GUI_CLEAR) {
     if (gdi.isInputChanged("")) {
-      if (gdi.hasField("SaveSettings")) {
+      if (gdi.hasWidget("SaveSettings")) {
         gdi.sendCtrlMessage("SaveSettings");
       }
     }
@@ -664,8 +665,7 @@ bool TabClub::loadPage(gdioutput &gdi)
   gdi.dropLine(2);
   gdi.addString("", 10, "help:29758");
   gdi.dropLine(1);
-  Table *tbl=oe->getClubsTB();
-  gdi.addTable(tbl, gdi.getCX(), gdi.getCY());
+  gdi.addTable(oClub::getTable(oe), gdi.getCX(), gdi.getCY());
   gdi.refresh();
   return true;
 }

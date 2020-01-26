@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,6 +67,10 @@ static int nSynchEnt = 0;
 
 int getListMask(oEvent &oe) {
   return msql.getModifiedMask(oe);
+}
+
+void resetSynchTimes() {
+  msql.clearReadTimes();
 }
 
 bool MEOSDB_API msSynchronizeList(oEvent *oe, oListId lid)

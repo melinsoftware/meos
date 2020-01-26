@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,7 +72,6 @@ Table::Table(oEvent *oe_, int rowH,
   partialCell = false;
 
   startSelect = false;
-  ownerCounter = 0;
   clearCellSelection(0);
   tableProp = -1;
   dataPointer = -1;
@@ -86,16 +85,8 @@ Table::Table(oEvent *oe_, int rowH,
 
 Table::~Table(void)
 {
-  assert(ownerCounter == 0);
   if (hEdit)
     DestroyWindow(hEdit);
-}
-
-
-void Table::releaseOwnership() {
-  ownerCounter--;
-  if (ownerCounter == 0)
-    delete this;
 }
 
 void Table::clearCellSelection(gdioutput *gdi) {
@@ -111,8 +102,12 @@ void Table::clearCellSelection(gdioutput *gdi) {
 }
 
 int Table::addColumn(const string &Title, int width, bool isnum, bool formatRight) {
+  return addColumn(lang.tl(Title).c_str(), width, isnum, formatRight);
+}
+
+int Table::addColumn(const wstring &translatedTitle, int width, bool isnum, bool formatRight) {
   ColInfo ri;
-  wcscpy_s(ri.name, lang.tl(Title).c_str());
+  wcscpy_s(ri.name, translatedTitle.c_str());
   ri.baseWidth = width;
   ri.width = 0;
   ri.padWidthZeroSort = 0;
@@ -121,7 +116,7 @@ int Table::addColumn(const string &Title, int width, bool isnum, bool formatRigh
   Titles.push_back(ri);
   columns.push_back(nTitles);
   nTitles++;
-  return Titles.size()-1;
+  return Titles.size() - 1;
 }
 
 int Table::addColumnPaddedSort(const string &title, int width, int padding, bool formatRight) {
@@ -440,16 +435,14 @@ void Table::sort(int col)
   }
 }
 
-int TablesCB(gdioutput *gdi, int type, void *data)
-{
+int TablesCB(gdioutput *gdi, int type, void *data) {
   if (type!=GUI_LINK || gdi->Tables.empty())
     return 0;
 
   TableInfo &tai=gdi->Tables.front();
-  Table *t=tai.table;
+  auto &t = tai.table;
 
   TextInfo *ti=(TextInfo *)data;
-
 
   if (ti->id.substr(0,4)=="sort"){
     int col=atoi(ti->id.substr(4).c_str());
@@ -457,9 +450,6 @@ int TablesCB(gdioutput *gdi, int type, void *data)
   }
 
   gdi->refresh();
-  //gdi->Restore();
-  //t->Render(*gdi);
-//*/
   return 0;
 }
 
@@ -720,17 +710,26 @@ int tblSelectionCB(gdioutput *gdi, int type, void *data)
 }
 
 void Table::selection(gdioutput &gdi, const wstring &text, int data) {
- if (size_t(selectionRow) >= Data.size() || size_t(selectionCol) >= Titles.size())
-   throw std::exception("Index out of bounds.");
+  if (size_t(selectionRow) >= Data.size() || size_t(selectionCol) >= Titles.size())
+    throw std::exception("Index out of bounds.");
 
- TableCell &cell = Data[selectionRow].cells[selectionCol];
- int id = Data[selectionRow].id;
- if (cell.hasOwner())
-   cell.getOwner()->inputData(cell.id, text, data, cell.contents, false);
- reloadRow(id);
- RECT rc;
- getRowRect(selectionRow, rc);
- InvalidateRect(gdi.getHWNDTarget(), &rc, false);
+  TableCell &cell = Data[selectionRow].cells[selectionCol];
+  int id = Data[selectionRow].id;
+  pair<int, bool> res;
+  if (cell.hasOwner())
+    res = cell.getOwner()->inputData(cell.id, text, data, cell.contents, false);
+  if (res.second) {
+    update();
+    gdi.refresh();
+  }
+  else {
+    reloadRow(id);
+    if (res.first)
+      reloadRow(res.first);
+    //RECT rc;
+    //getRowRect(selectionRow, rc);
+    InvalidateRect(gdi.getHWNDTarget(), nullptr, false);
+  }
 }
 
 #ifndef MEOSDB
@@ -838,7 +837,7 @@ bool Table::destroyEditControl(gdioutput &gdi) {
       hEdit=0;
     }
   }
-  gdi.removeControl(tId);
+  gdi.removeWidget(tId);
 
   if (drawFilterLabel) {
     drawFilterLabel=false;
@@ -1643,7 +1642,7 @@ bool Table::enter(gdioutput &gdi)
       }
     }
   }
-  else if (gdi.hasField(tId)) {
+  else if (gdi.hasWidget(tId)) {
     ListBoxInfo lbi;
     gdi.getSelectedItem(tId, lbi);
 
@@ -1662,7 +1661,7 @@ void Table::escape(gdioutput &gdi)
     DestroyWindow(hEdit);
     hEdit = 0;
   }
-  gdi.removeControl(tId);
+  gdi.removeWidget(tId);
   drawFilterLabel=false;
   gdi.refresh();
 }
@@ -2279,7 +2278,7 @@ void Table::autoSelectColumns() {
 
         for (size_t r = 2; r<Data.size(); r++) {
           const wstring &c = Data[r].cells[k].contents;
-          if (!c.empty() && c != first) {
+          if (c != first) {
             nonEmpty++;
             empty[k] = false;
             break;

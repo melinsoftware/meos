@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,11 +48,15 @@ void ClassConfigInfo::clear() {
 }
 
 bool ClassConfigInfo::empty() const {
-  return individual.empty() && relay.empty() && patrol.empty() && raceNStart.empty();
+  return individual.empty() && rogainingClasses.empty() 
+    && relay.empty() && patrol.empty() 
+    && raceNStart.empty() && rogainingTeam.empty();
 }
 
-void ClassConfigInfo::getIndividual(set<int> &sel) const {
+void ClassConfigInfo::getIndividual(set<int> &sel, bool forStartList) const {
   sel.insert(individual.begin(), individual.end());
+  if (forStartList)
+    sel.insert(rogainingClasses.begin(), rogainingClasses.end());
 }
 
 void ClassConfigInfo::getRelay(set<int> &sel) const {
@@ -79,6 +83,9 @@ void ClassConfigInfo::getRogaining(set<int> &sel) const {
   sel.insert(rogainingClasses.begin(), rogainingClasses.end());
 }
 
+void ClassConfigInfo::getRogainingTeam(set<int> &sel) const {
+  sel.insert(rogainingTeam.begin(), rogainingTeam.end());
+}
 
 void ClassConfigInfo::getRaceNStart(int race, set<int> &sel) const {
   if (size_t(race) < raceNStart.size() && !raceNStart[race].empty())
@@ -124,8 +131,6 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
     cnf.maximumLegNumber = max<int>(cnf.maximumLegNumber, it->getNumStages());
     ClassType ct = it->getClassType();
 
-    if (it->isRogaining())
-      cnf.rogainingClasses.push_back(it->getId());
 
     if (it->getCourse() == 0)
       cnf.classWithoutCourse.push_back(it->getName()); //MultiCourse not analysed...
@@ -187,11 +192,19 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
           cnf.hasMultiCourse = true;
       }
     }
+
     if (ct == oClassIndividual) {
-      cnf.individual.push_back(it->getId());
+      if (it->isRogaining())
+        cnf.rogainingClasses.push_back(it->getId());
+      else
+        cnf.individual.push_back(it->getId());
+
       if (cnf.timeStart.empty())
         cnf.timeStart.resize(1);
       cnf.timeStart[0].push_back(it->getId());
+    }
+    else if ((ct == oClassPatrol || ct == oClassRelay) && it->isRogaining()) {
+      cnf.rogainingTeam.push_back(it->getId());
     }
     else if (ct == oClassPatrol)
       cnf.patrol.push_back(it->getId());

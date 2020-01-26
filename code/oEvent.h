@@ -6,7 +6,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -78,24 +78,18 @@ struct oCounter {
   void operator++() {level1++, level2++, level3++;}
 };
 
-
-struct GeneralResultCtr {
-  wstring name;
-  string tag;
-  wstring fileSource;
-
-  bool isDynamic() const;
-
-  mutable GeneralResult *ptr;
-
-  GeneralResultCtr(const char *tag, const wstring &name, GeneralResult *ptr);
-  GeneralResultCtr(wstring &file, DynamicResult *ptr);
-  GeneralResultCtr() : ptr(0) {}
-
-  ~GeneralResultCtr();
-  GeneralResultCtr(const GeneralResultCtr &ctr);
-  void operator=(const GeneralResultCtr &ctr);
+struct SqlUpdated {
+  string updated;
+  int counter = 0;
+  bool changed = false;
+  void reset() {
+    updated.clear();
+    changed = false;
+    counter = 0;
+  }
 };
+
+struct GeneralResultCtr;
 
 class oTimeLine {
 public:
@@ -217,9 +211,6 @@ enum PropertyType {
 
 class oEvent : public oBase
 {
-private:
-  oDataDefiner *firstStartDefiner;
-  oDataDefiner *intervalDefiner;
 
 protected:
   // Revision number for data modified on this client.
@@ -229,8 +220,7 @@ protected:
   bool globalModification;
 
   gdioutput &gdibase;
-  HMODULE hMod;//meosdb.dll
-
+  
   void generateFixedList(gdioutput &gdi, const oListInfo &li);
 
   void startReconnectDaemon();
@@ -297,6 +287,16 @@ protected:
   oDataContainer *oRunnerData;
   oDataContainer *oTeamData;
 
+  SqlUpdated sqlRunners;
+  SqlUpdated sqlClasses;
+  SqlUpdated sqlCourses;
+  SqlUpdated sqlControls;
+  SqlUpdated sqlClubs;
+  SqlUpdated sqlCards;
+  SqlUpdated sqlPunches;
+  SqlUpdated sqlTeams;
+
+  /*
   string sqlUpdateRunners;
   string sqlUpdateClasses;
   string sqlUpdateCourses;
@@ -314,7 +314,7 @@ protected:
   int sqlCounterCards;
   int sqlCounterPunches;
   int sqlCounterTeams;
-
+  
   bool sqlChangedRunners;
   bool sqlChangedClasses;
   bool sqlChangedCourses;
@@ -323,7 +323,7 @@ protected:
   bool sqlChangedCards;
   bool sqlChangedPunches;
   bool sqlChangedTeams;
-
+  */
 
   bool needReEvaluate();
 
@@ -374,9 +374,7 @@ protected:
   bool HasDBConnection;
   bool HasPendingDBConnection;
   bool msSynchronize(oBase *ob);
-  void resetChangeStatus(bool onlyChangable=true);
-  void storeChangeStatus(bool onlyChangable=true);
-
+  
   wstring clientName;
   vector<wstring> connectedClients;
   DWORD clientCheckSum() const; //Calculate a check sum for current clients
@@ -394,7 +392,7 @@ protected:
   int getDISize() const {return dataSize;}
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
-  vector< vector<string> > dynamicData;
+  vector<vector<wstring>> dynamicData;
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -446,7 +444,7 @@ protected:
   int nextTimeLineEvent; // Time when next known event will occur.
 
   // Tables
-  map<string, Table *> tables;
+  map<string, shared_ptr<Table>> tables;
 
   // Internal list method
   void generateListInternal(gdioutput &gdi, const oListInfo &li, bool formatHead);
@@ -474,7 +472,16 @@ protected:
   // Temporarily disable recaluclate leader times
   bool disableRecalculate;
 public:
-  
+
+  enum TransferFlags {
+    FlagManualName = 1,
+    FlagManualDateTime = 2,
+    FlagManualFees = 4,
+  };
+
+  bool hasFlag(TransferFlags flag) const;
+  void setFlag(TransferFlags flag, bool state);
+
   int getVacantClub(bool returnNoClubClub); // Create vacant club if it does not exist
   int getVacantClubIfExist(bool returnNoClubClub) const;
 
@@ -509,6 +516,15 @@ private:
   NameMode currentNameMode;
 
 public:
+
+  enum class ResultType {
+    ClassResult,
+    ClassResultDefault, // Class Result, but ignore any class specified result module 
+    TotalResult,
+    TotalResultDefault, // Total Result, but ignore any class specified result module
+    CourseResult, ClassCourseResult,
+    PreliminarySplitResults
+  };
 
   // Returns true if there is a class with restart time
   bool hasAnyRestartTime() const;
@@ -549,9 +565,13 @@ public:
 
   //Get list of runners in a class
   void getRunners(int classId, int courseId, vector<pRunner> &r, bool sortRunners = true);
-  
-  void getTeams(int classId, vector<pTeam> &t, bool sortTeams = true);
+  void getRunners(const set<int> &classId, vector<pRunner> &r, bool synchRunners);
+  void getRunners(const set<int> &classId, vector<pRunner> &r) const;
 
+  void getTeams(int classId, vector<pTeam> &t, bool sortTeams = true);
+  void getTeams(const set<int> &classId, vector<pTeam> &t, bool synchTeams);
+  void getTeams(const set<int> &classId, vector<pTeam> &t) const;
+  
   bool hasRank() const;
   bool hasBib(bool runnerBib, bool teamBib) const;
   bool hasTeam() const;
@@ -804,6 +824,13 @@ public:
   /** Compute results for split times while runners are on course.*/
   void computePreliminarySplitResults(const set<int> &classes) const;
 
+
+  void calculateRunnerResults(ResultType resultType,
+                              const set<int> &rgClasses,
+                              vector<const oRunner*> &runners,
+                              bool useComputedResult,
+                              bool includePreliminary) const;
+
   /** Synchronizes to server and checks if there are hired card data*/
   bool hasHiredCardData();
   bool isHiredCard(int cardNo) const;
@@ -822,6 +849,8 @@ protected:
   mutable shared_ptr<unordered_multimap<int, pRunner>> cardToRunnerHash;
   vector<pRunner> getCardToRunner(int cardNo) const;
 
+  mutable shared_ptr<map<int, vector<pRunner>>> classIdToRunnerHash;
+
   mutable set<int>  hiredCardHash;
   mutable int tHiredCardHashDataRevision = -1;
   
@@ -832,6 +861,9 @@ protected:
   mutable int tLongTimesCached;
   mutable map<int, pair<int, int> > cachedFirstStart; //First start per classid.
   map<pair<int, int>, oFreePunch> advanceInformationPunches;
+
+  bool calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultType resultType);
+  void calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &teams);
 
 public:
   void updateStartTimes(int delta);
@@ -990,19 +1022,19 @@ public:
 
   const wstring &getName() const;
   wstring getTitleName() const;
-  void setName(const wstring &m);
+  void setName(const wstring &m, bool manualSet);
 
   const wstring &getAnnotation() const {return Annotation;}
   void setAnnotation(const wstring &m);
 
   const wstring &getDate() const {return Date;}
     
-  void setDate(const wstring &m);
+  void setDate(const wstring &m, bool manualSet);
 
   int getZeroTimeNum() const {return ZeroTime;}
   wstring getZeroTime() const;
   
-  void setZeroTime(wstring m);
+  void setZeroTime(wstring m, bool manualSet);
 
   /** Get the automatic bib gap between classes. */
   int getBibClassGap() const;
@@ -1012,26 +1044,26 @@ public:
 
   bool openRunnerDatabase(const wchar_t *file);
   bool saveRunnerDatabase(const wchar_t *file, bool onlyLocal);
-
-  enum class ResultType {ClassResult, TotalResult, CourseResult, 
-                         ClassCourseResult, PreliminarySplitResults};
+  
   void calculateResults(const set<int> &classes, ResultType result, bool includePreliminary = false) const;
-  void calculateRogainingResults(const set<int> &classSelection) const;
-
+  
   void calculateResults(list<oSpeakerObject> &rl);
-  void calculateTeamResults(bool totalMultiday);
-  bool calculateTeamResults(int leg, bool totalMultiday);
+  void calculateTeamResults(const set<int> &cls, ResultType resultType);
+  void calculateTeamResults(const vector<pTeam> &teams, ResultType resultType);
+
   // Set results for specified classes to tempResult
   void calculateTeamResultAtControl(const set<int> &classId, int leg, int controlId, bool totalResults);
 
   bool sortRunners(SortOrder so);
   
+  bool sortRunners(SortOrder so, vector<pRunner> &runners) const;
   bool sortRunners(SortOrder so, vector<const oRunner *> &runners) const;
 
   /** If linear leg is true, leg is interpreted as actual leg numer, otherwise w.r.t to parallel legs. */
   bool sortTeams(SortOrder so, int leg, bool linearLeg);
 
   bool sortTeams(SortOrder so, int leg, bool linearLeg, vector<const oTeam *> &teams) const;
+  bool sortTeams(SortOrder so, int leg, bool linearLeg, vector<oTeam *> &teams) const;
 
 
   pCard allocateCard(pRunner owner);
@@ -1055,11 +1087,11 @@ public:
   pTeam getTeam(int Id) const;
   pTeam getTeamByName(const wstring &pname) const;
   const vector< pair<wstring, size_t> > &fillTeams(vector< pair<wstring, size_t> > &out, int classId=0);
-  const vector< pair<wstring, size_t> > &fillStatus(vector< pair<wstring, size_t> > &out);
+  static const vector< pair<wstring, size_t> > &fillStatus(vector< pair<wstring, size_t> > &out);
   const vector< pair<wstring, size_t> > &fillControlStatus(vector< pair<wstring, size_t> > &out) const;
 
   void fillTeams(gdioutput &gdi, const string &id, int ClassId=0);
-  void fillStatus(gdioutput &gdi, const string &id);
+  static void fillStatus(gdioutput &gdi, const string &id);
   void fillControlStatus(gdioutput &gdi, const string &id) const;
 
 
@@ -1119,15 +1151,9 @@ public:
                                                     const unordered_set<int> &personFilter);
   void fillRunners(gdioutput &gdi, const string &id, bool longName = false, int filter = 0);
 
-  Table *getRunnersTB();//Table mode
-  Table *getClubsTB();
-  Table *getPunchesTB();
-  Table *getClassTB();
-  Table *getControlTB();
-  Table *getCardsTB();
-  Table *getTeamsTB();
-  Table *getCoursesTB();
-
+  const shared_ptr<Table> &getTable(const string &key) const;
+  void setTable(const string &key, const shared_ptr<Table> &table);
+  bool hasTable(const string &key) const { return tables.count(key) > 0; }
 
   void generateTableData(const string &tname, Table &table, TableUpdateInfo &ui);
 
@@ -1275,9 +1301,11 @@ protected:
 
 public:
 
-  GeneralResult &getGeneralResult(const string &tag, wstring &sourceFileOut) const;
-  void getGeneralResults(bool onlyEditable, vector< pair<int, pair<string, wstring> > > &tagNameList, bool includeDateInName) const;
-  void loadGeneralResults(bool forceReload) const;
+  const shared_ptr<GeneralResult> &getGeneralResult(const string &tag, wstring &sourceFileOut) const;
+  void getGeneralResults(bool onlyEditable, vector<pair<int, pair<string, wstring>>> &tagNameList, bool includeDateInName) const;
+  void loadGeneralResults(bool forceReload, bool loadFromDisc) const;
+  // Set or clear temporary list context
+  void setGeneralResultContext(const oListParam *ctx);
 
   void getPredefinedClassTypes(map<wstring, ClassMetaType> &types) const;
 

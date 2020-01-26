@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -77,6 +77,7 @@ enum EPostType
   lRunnerTotalPlace,
   lRunnerPlaceDiff,
   lRunnerClassCoursePlace,
+  lRunnerCoursePlace,
   lRunnerTotalTimeAfter,
   lRunnerClassCourseTimeAfter,
   lRunnerTimeAfterDiff,
@@ -324,6 +325,7 @@ struct oListParam {
   bool operator==(const oListParam& a) const {
     return a.listCode == listCode &&
       a.selection == selection &&
+      a.ageFilter == ageFilter &&
       a.useControlIdResultFrom == useControlIdResultFrom &&
       a.useControlIdResultTo == useControlIdResultTo &&
       a.filterMaxPer == filterMaxPer &&
@@ -369,6 +371,14 @@ struct oListParam {
   int inputNumber;
   int nextList; // 1-based index of next list (in the container, MetaListParam::listParam) for linked lists
   int previousList; // 1-based index of previous list (in the container, MetaListParam::listParam) for linked lists. Not serialized
+
+  enum class AgeFilter {
+    All,
+    OnlyYouth,
+    ExludeYouth,
+  };
+
+  AgeFilter ageFilter = AgeFilter::All;
 
   mutable bool lineBreakControlList = false;
   mutable int relayLegIndex; // Current index of leg (or -1 for entire team)
@@ -480,6 +490,8 @@ protected:
      
   bool calcResults;
   bool calcCourseClassResults;
+  bool calcCourseResults;
+
   bool calcTotalResults;
   bool rogainingResults;
   bool calculateLiveResults;
@@ -526,6 +538,7 @@ public:
   // Result type 
   ResultType resType;
 
+  void replaceType(EPostType find, EPostType replace, bool onlyFirst);
 
   PunchMode needPunchCheck() const {return needPunches;}
   void setCallback(GUICALLBACK cb);

@@ -429,13 +429,16 @@ This query is suitable for auto complete functionality.</p>
   <li><i>card</i> Card number.</li>
 </ul>
 
-<b>Returns:</b>
-Status.
+<p></p><b>Returns:</b>
+Status.</p>
+
+<b>Note: </b> <p></p>If the card number is registered as a rental card, it will be set as such and 
+              <i>hiredCard</i> will be set in the Fee attribute. The returned fee includes any rental card fee.</p>
 
 <pre>
 *Answer>
   *Status>OK*/Status>
-  *Fee>130*/Fee>
+  *Fee hiredCard="true">130*/Fee>
   *Info>Open Long, Rudolf Minowski (OK Tisaren)*/Info>
 */Answer>
 </pre>
@@ -453,7 +456,6 @@ Status.
 
 <b>Returns:</b>
 Installed template file with the specified tag.
-
 
 <h2>Image</h2>
 <b>Syntax:</b>

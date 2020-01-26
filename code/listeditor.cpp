@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include "oEvent.h"
 #include "tabbase.h"
 #include "CommDlg.h"
+#include "generalresult.h"
 
 ListEditor::ListEditor(oEvent *oe_) {
   oe = oe_;
@@ -42,7 +43,7 @@ ListEditor::ListEditor(oEvent *oe_) {
   dirtyExt = false;
   dirtyInt = false;
   lastSaved = NotSaved;
-  oe->loadGeneralResults(false);
+  oe->loadGeneralResults(false, true);
 }
 
 ListEditor::~ListEditor() {
@@ -76,6 +77,13 @@ void ListEditor::load(const MetaListContainer &mlc, int index) {
   dirtyExt = true;
   dirtyInt = false;
   savedFileName.clear();
+}
+
+void ListEditor::show(TabBase *dst, gdioutput &gdi) {
+
+  gdi.clearPage(false);
+  origin = dst;
+  show(gdi);
 }
 
 void ListEditor::show(gdioutput &gdi) {
@@ -452,7 +460,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       else
         mlp.setLeg(-1);
 
-      if (gdi.hasField("UseResultModule") && gdi.isChecked("UseResultModule"))
+      if (gdi.hasWidget("UseResultModule") && gdi.isChecked("UseResultModule"))
         mlp.setResultModule(currentList->getResultModule());
       else
         mlp.setResultModule("");
@@ -604,7 +612,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       lastSaved = SavedFile;
 
       savedFileName = fileName;
-      oe->loadGeneralResults(true);
+      oe->loadGeneralResults(true, true);
       makeDirty(gdi, ClearDirty, ClearDirty);
       show(gdi);
     }
@@ -700,7 +708,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       makeDirty(gdi, ClearDirty, ClearDirty);
       currentIndex = -1;
       savedFileName.clear();
-      gdi.getTabs().get(TListTab)->loadPage(gdi);
+
+      if (origin) {
+        auto oc = origin;
+        origin = nullptr;
+        oc->loadPage(gdi);
+      }
       return 0;
     }
     /*else if (bi.id == "BrowseFont") {
@@ -732,9 +745,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       if (type == lResultModuleNumber || type == lResultModuleTime ||
           type == lResultModuleNumberTeam || type == lResultModuleTimeTeam) {
         gdi.check("UseLeg", true);
-        gdi.check("UseResultModule", true);
-        gdi.disableInput("UseResultModule");
         gdi.disableInput("UseLeg");
+
+        if (gdi.hasWidget("UseResultModule")) {
+          gdi.check("UseResultModule", true);
+          gdi.disableInput("UseResultModule");
+        }
         gdi.enableInput("Leg");
         if (gdi.getText("Leg").empty())
           gdi.setText("Leg", L"0");
@@ -887,9 +903,11 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   
   if (storedType == lResultModuleNumber || storedType == lResultModuleTime || storedType == lResultModuleTimeTeam || storedType == lResultModuleNumberTeam) {
     gdi.check("UseLeg", true);
-    gdi.check("UseResultModule", true);
-    gdi.disableInput("UseResultModule");
     gdi.disableInput("UseLeg");
+    if (gdi.hasWidget("UseResultModule")) {
+      gdi.check("UseResultModule", true);
+      gdi.disableInput("UseResultModule");
+    }
   }
 
   gdi.dropLine(2);
@@ -1174,11 +1192,11 @@ void ListEditor::makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside) 
   else if (outside == ClearDirty)
     dirtyExt = false;
 
-  if (gdi.hasField("SaveInside")) {
+  if (gdi.hasWidget("SaveInside")) {
     gdi.setInputStatus("SaveInside", dirtyInt || lastSaved != SavedInside);
   }
 
-  if (gdi.hasField("SaveFile")) {
+  if (gdi.hasWidget("SaveFile")) {
     gdi.setInputStatus("SaveFile", dirtyExt || lastSaved != SavedFile);
   }
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -182,9 +182,12 @@ class InfoCompetitor : public InfoBaseCompetitor {
     int inputTime;
     int totalStatus;
     int course;
+    int cardNo = 0;
+    bool isRunning = false;
     bool synchronize(const InfoCompetition &cmp, oRunner &c);
     bool changeTotalSt;
     bool changeRadio;
+    mutable bool changeCard = false;
   public:
     bool synchronize(bool useTotalResults, bool useCourse, oRunner &c);
     void serialize(xmlbuffer &xml, bool diffOnly) const;

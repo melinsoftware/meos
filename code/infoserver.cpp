@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -488,10 +488,14 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     ch = true;
   }
 
-  int s = bc.getStatus();
-  int rt = bc.getRunningTime() * 10;
-  if (rt > 0 && s == RunnerStatus::StatusUnknown)
-    s = RunnerStatus::StatusOK;
+  RunnerStatus s = bc.getStatus();
+  int rt = bc.getRunningTime(true) * 10;
+  if (rt > 0) {
+    if (s == RunnerStatus::StatusUnknown)
+      s = RunnerStatus::StatusOK;
+  }
+  else if (isPossibleResultStatus(s))
+    s = StatusUnknown;
 
   if (status != s) {
     status = s;
@@ -547,8 +551,8 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
     s = r.getTotalStatusInput();
   }
   else if (t && !isQF && r.getLegNumber() > 0) {
-    legInput = t->getLegRunningTime(r.getLegNumber() - 1, false) * 10;
-    s  = t->getLegStatus(r.getLegNumber() - 1, false);
+    legInput = t->getLegRunningTime(r.getLegNumber() - 1, true, false) * 10;
+    s  = t->getLegStatus(r.getLegNumber() - 1, true, false);
   }
 
   if (totalStatus != s) {
@@ -569,8 +573,28 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
 bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
   bool useTotalResults = cmp.includeTotalResults();
   bool inludeCourse = cmp.includeCourse();
-
   bool ch = synchronize(useTotalResults, inludeCourse, r);
+
+  int cno = r.getCardNo();
+  if (cno != cardNo) {
+    cardNo = cno;
+    changeCard = true;
+    ch = true;
+  }
+
+  bool nr;
+  if ((r.getStatus() == StatusUnknown || r.getStatus() == StatusOutOfCompetition || r.getStatus() == StatusNoTiming) && r.getFinishTime() <= 0) {
+    vector<pFreePunch> pv;
+    r.getEvent()->getPunchesForRunner(r.getId(), false, pv);
+    nr = pv.size() > 0;
+  }
+  else {
+    nr = false;
+  }
+  if (isRunning != nr) {
+    isRunning = nr;
+    ch = true;
+  }
 
   vector<RadioTime> newRT;
   if (r.getClassId(false) > 0)  {
@@ -601,7 +625,16 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
 
 void InfoCompetitor::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector< pair<string, wstring> > sprop;
-  sprop.push_back(make_pair("id", itow(getId())));
+  sprop.reserve(3);
+  sprop.emplace_back("id", itow(getId()));
+
+  if (changeCard || !diffOnly) {
+    sprop.emplace_back("card", itow(cardNo));
+    changeCard = false;
+  }
+  if (isRunning)
+    sprop.emplace_back("competing", L"true");
+
   xmlbuffer &subTag = xml.startTag("cmp", sprop);
   InfoBaseCompetitor::serialize(subTag, diffOnly, course);
 
@@ -626,7 +659,6 @@ void InfoCompetitor::serialize(xmlbuffer &xml, bool diffOnly) const {
   }
   xml.endTag();
 }
-
 
 bool InfoTeam::synchronize(oTeam &t) {
   bool ch = synchronizeBase(t);

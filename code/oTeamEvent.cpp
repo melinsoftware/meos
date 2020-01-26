@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -168,13 +168,14 @@ pTeam oEvent::addTeam(const wstring &pname, int ClubId, int ClassId)
 
   pt->StartNo = ++nextFreeStartNo; // Need not be unique
   pt->getEntryDate(false);// Store entry time
-  pt->apply(false, 0, false);
+  pt->apply(ChangeType::Quiet, nullptr);
+  pt->makeQuietChangePermanent();
   pt->updateChanged();
   return pt;
 }
 
 pTeam oEvent::addTeam(const oTeam &t, bool autoAssignStartNo) {
-  if (t.Id==0)
+  if (t.Id==  0)
     return 0;
   if (getTeam(t.Id))
     return 0;
@@ -692,8 +693,8 @@ void oEvent::adjustTeamMultiRunners(pClass cls)
   }
   disableRecalculate = true;
   try {
-    for (oTeamList::iterator it=Teams.begin(); it != Teams.end(); ++it) {
-      it->adjustMultiRunners(true);
+    for (auto &t : Teams) {
+      t.adjustMultiRunners();
     }
   }
   catch(...) {
@@ -703,10 +704,9 @@ void oEvent::adjustTeamMultiRunners(pClass cls)
   disableRecalculate = false;
 }
 
-bool oTeam::adjustMultiRunners(bool sync)
-{
+void oTeam::adjustMultiRunners() {
   if (!Class)
-    return false;
+    return;
 
   for (size_t k = Class->getNumStages(); k < Runners.size(); k++) {
     setRunnerInternal(k, 0);
@@ -723,14 +723,14 @@ bool oTeam::adjustMultiRunners(bool sync)
       unsigned lr = Class->getLegRunner(i);
 
       if (lr < i && Runners[lr]) {
-        Runners[lr]->createMultiRunner(true, sync);
+        Runners[lr]->createMultiRunner(true, true);
         int dup = Class->getLegRunnerIndex(i);
         Runners[i] = Runners[lr]->getMultiRunner(dup);
       }
     }
   }
 
-  return apply(sync, 0, false);
+  evaluate(ChangeType::Update);
 }
 
 void oEvent::makeUniqueTeamNames() {
@@ -842,4 +842,177 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
       }
     }
   }
+}
+
+void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> &classId2Linear, bool &hasRunner) const {
+  if (so == ClassStartTime || so == ClassStartTimeClub) {
+    if (leg == -1)
+      leg = 0;
+    if (unsigned(leg) < Runners.size())
+      hasRunner = true;
+    _cachedStatus = StatusUnknown;
+    _sortStatus = 0;
+    _sortTime = getLegStartTime(leg);
+    if (_sortTime <= 0)
+      _sortStatus = 1;
+    return;
+  }
+  else if (so == ClassPoints) {
+    bool totalResult = so == ClassTotalResult;
+    _sortTime = getRunningTime(true) - 7 * 24 * 3600 * getRogainingPoints(true, totalResult);
+    _cachedStatus = getLegStatus(-1, true, totalResult);
+  }
+  else if (so == ClassKnockoutTotalResult) {
+    hasRunner = true;
+    _cachedStatus = StatusUnknown;
+    _sortStatus = 0;
+    _sortTime = 0;
+
+    // Count number of races with results
+    int numResult = 0;
+    int lastClassHeat = 0;
+    for (auto &r : Runners) {
+      if (r && (r->prelStatusOK(true, true) ||
+        (r->tStatus != StatusUnknown && r->tStatus != StatusDNS && r->tStatus != StatusCANCEL))) {
+
+        if (r->Class && r->tLeg > 0 && r->Class->isQualificationFinalBaseClass() && r->getClassRef(true) == r->Class)
+          continue; // Skip if not qualified.
+
+        numResult++;
+        lastClassHeat = r->getDCI().getInt("Heat");
+        _cachedStatus = r->tStatus;
+        _sortTime = r->getRunningTime(false);
+      }
+    }
+    if (lastClassHeat > 50 || lastClassHeat < 0)
+      lastClassHeat = 0;
+
+    unsigned rawStatus = _cachedStatus;
+    _sortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0] - (numResult * 100 + lastClassHeat) * 1000;
+
+    return;
+  }
+  else {
+    bool totalResult = so == ClassTotalResult;
+    bool legResult = so == ClassTeamLegResult;
+
+    int lg = leg;
+    int clsId = Class->getId();
+
+    if (leg >= 0 && !linearLeg) {
+      auto res = classId2Linear.find(Class->getId());
+      if (res == classId2Linear.end()) {
+        unsigned linLegBase = Class->getLegNumberLinear(leg, 0);
+        while (linLegBase + 1 < Class->getNumStages()) {
+          if (Class->isParallel(linLegBase + 1) || Class->isOptional(linLegBase + 1))
+            linLegBase++;
+          else
+            break;
+        }
+        lg = linLegBase;
+        classId2Linear[clsId] = lg;
+      }
+      else {
+        lg = res->second;
+      }
+    }
+
+    const int lastIndex = Class->getLastStageIndex();
+    lg = min<unsigned>(lg, lastIndex);
+
+    if (lg >= leg)
+      hasRunner = true;
+    if (legResult) {
+      pRunner r = getRunner(lg);
+      if (r) {
+        if (so == ClassDefaultResult) {
+          _sortTime = r->getRunningTime(false);
+          _cachedStatus = r->getStatus();
+        }
+        else {
+          _sortTime = r->getRunningTime(true);
+          _cachedStatus = r->getStatusComputed();
+        }
+      }
+      else {
+        _sortTime = 0;
+        _cachedStatus = StatusUnknown;
+      }
+    }
+    else {
+      if (so == ClassDefaultResult) {
+        _sortTime = getLegRunningTime(lg, false, totalResult) + getNumShortening(lg) * 3600 * 24 * 10;
+        _cachedStatus = getLegStatus(lg, false, totalResult);
+      }
+      else {
+        _sortTime = getLegRunningTime(lg, true, totalResult) + getNumShortening(lg) * 3600 * 24 * 10;
+        _cachedStatus = getLegStatus(lg, true, totalResult);
+      }
+
+      // Ensure number of restarts has effect on final result
+      if (lg == lastIndex)
+        _sortTime += tNumRestarts * 24 * 3600;
+    }
+  }
+  unsigned rawStatus = _cachedStatus;
+  _sortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0];
+}
+
+bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg) {
+  reinitializeClasses();
+  oTeamList::iterator it;
+  map<int, int> classId2Linear;
+  bool hasRunner = (leg == -1);
+  for (it = Teams.begin(); it != Teams.end(); ++it) {
+    if (!it->isRemoved() && it->Class)
+      it->fillInSortData(so, leg, linearLeg, classId2Linear, hasRunner);
+  }
+
+  if (!hasRunner)
+    return false;
+
+  if (so == ClassStartTimeClub)
+    Teams.sort(oTeam::compareResultNoSno);
+  else
+    Teams.sort(oTeam::compareResult);
+
+  return true;
+}
+
+bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg, vector<const oTeam *> &teams) const {
+  reinitializeClasses();
+  map<int, int> classId2Linear;
+  bool hasRunner = (leg == -1);
+  for (auto it : teams) {
+    it->fillInSortData(so, leg, linearLeg, classId2Linear, hasRunner);
+  }
+
+  if (!hasRunner)
+    return false;
+
+  if (so != ClassStartTimeClub)
+    sort(teams.begin(), teams.end(), [](const oTeam * &a, const oTeam * &b)->bool {return oTeam::compareResult(*a, *b); });
+  else
+    sort(teams.begin(), teams.end(), [](const oTeam * &a, const oTeam * &b)->bool {return oTeam::compareResultNoSno(*a, *b); });
+
+  return true;
+}
+
+bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg, vector<oTeam *> &teams) const {
+  reinitializeClasses();
+  map<int, int> classId2Linear;
+  bool hasRunner = (leg == -1);
+  for (auto it : teams) {
+    it->fillInSortData(so, leg, linearLeg, classId2Linear, hasRunner);
+  }
+
+  if (!hasRunner)
+    return false;
+
+  if (so != ClassStartTimeClub)
+    sort(teams.begin(), teams.end(), [](oTeam * &a, oTeam * &b)->bool {return oTeam::compareResult(*a, *b); });
+  else
+    sort(teams.begin(), teams.end(), [](oTeam * &a, oTeam * &b)->bool {return oTeam::compareResultNoSno(*a, *b); });
+
+  return true;
 }

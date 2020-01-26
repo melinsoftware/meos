@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,22 +32,26 @@
 extern gdioutput *gdi_main;
 
 
-GeneralResultCtr::GeneralResultCtr(const char *tagIn, const wstring &nameIn, GeneralResult *ptrIn) {
+GeneralResultCtr::GeneralResultCtr(const char *tagIn, const wstring &nameIn, const shared_ptr<GeneralResult> &ptrIn) {
   name = nameIn;
   tag = tagIn;
   ptr = ptrIn;
 }
 
-GeneralResultCtr::GeneralResultCtr(wstring &file, DynamicResult *ptrIn) {
+GeneralResultCtr::GeneralResultCtr(wstring &file, const shared_ptr<DynamicResult> &ptrIn) {
   ptr = ptrIn;
   name = ptrIn->getName(false);
   tag = ptrIn->getTag();
   fileSource = file;
 }
 
+bool GeneralResultCtr::operator<(const GeneralResultCtr &c) const {
+  return CompareString(LOCALE_USER_DEFAULT, 0,
+                       name.c_str(), name.length(),
+                       c.name.c_str(), c.name.length()) == CSTR_LESS_THAN;
+}
+
 GeneralResultCtr::~GeneralResultCtr() {
-  delete ptr;
-  ptr = 0;
 }
 
 GeneralResultCtr::GeneralResultCtr(const GeneralResultCtr &ctr) {
@@ -55,16 +59,15 @@ GeneralResultCtr::GeneralResultCtr(const GeneralResultCtr &ctr) {
   name = ctr.name;
   tag = ctr.tag;
   fileSource = ctr.fileSource;
-  ctr.ptr = 0;
 }
 
 void GeneralResultCtr::operator=(const GeneralResultCtr &ctr) {
   if (this == &ctr)
     return;
-  delete ptr;
   name = ctr.name;
   ptr = ctr.ptr;
-  ctr.ptr = 0;
+  tag = ctr.tag;
+  fileSource = ctr.fileSource;
 }
 
 bool GeneralResultCtr::isDynamic() const {
@@ -87,6 +90,13 @@ void GRINSTANCE() {
   gr.sort(b, SortByFinishTime);
 }
 
+const string &GeneralResult::getTimeStamp() const {
+  return gdioutput::narrow(getMeosDate());
+}
+
+bool GeneralResult::isRogaining() const {
+  return false;
+}
 
 void GeneralResult::setContext(const oListParam *contextIn) {
   context = contextIn;
@@ -112,7 +122,7 @@ int GeneralResult::getListParamTimeFromControl() const {
 
 struct GRSortInfo {
   int principalSort;
-  int score;
+  pair<int, int> score;
   oAbstractRunner *tr;
 
   bool operator<(const GRSortInfo &other) const {
@@ -130,72 +140,99 @@ struct GRSortInfo {
   }
 };
 
-void GeneralResult::calculateTeamResults(vector<oTeam *> &teams, oListInfo::ResultType resType, bool sortTeams, int inputNumber) const {
+void GeneralResult::calculateTeamResults(vector<oTeam *> &teams, 
+                                         bool classResult, 
+                                         oListInfo::ResultType resType, 
+                                         bool sortTeams, 
+                                         int inputNumber) const {
   if (teams.empty())
     return;
-  prepareCalculations(*teams[0]->oe, true, inputNumber);
 
-  //bool classSort = resType == oListInfo::Global ? false : true;
-  vector<GRSortInfo> teamScore(teams.size());
-  for (size_t k = 0; k < teams.size(); k++) {
-    if (resType == oListInfo::Classwise) {
-      teamScore[k].principalSort = teams[k]->Class ? teams[k]->Class->getSortIndex() * 50000
-        + teams[k]->Class->getId() : 0;
+  if (lockPrepare)
+    throw meosException("Bad cyclic call");
+  lockPrepare = true;
+
+  try {
+    set<int> clsId;
+    vector<pRunner> runners;
+    for (pTeam t : teams) {
+      clsId.insert(t->getClassId(true));
+      for (int j = 0; j < t->getNumRunners(); j++) {
+        pRunner r = t->getRunner(j);
+        if (r) {
+          runners.push_back(r);
+          clsId.insert(r->getClassId(true));
+        }
+      }
     }
-    else
-      teamScore[k].principalSort = 0;
+    prepareCalculations(*teams[0]->oe, classResult, clsId, runners, teams, inputNumber);
 
-    prepareCalculations(*teams[k]);
-    teams[k]->tmpResult.runningTime = teams[k]->getStartTime(); //XXX
-    teams[k]->tmpResult.runningTime = deduceTime(*teams[k]);
-    teams[k]->tmpResult.status = deduceStatus(*teams[k]);
-    teams[k]->tmpResult.points = deducePoints(*teams[k]);
+    vector<GRSortInfo> teamScore(teams.size());
+    for (size_t k = 0; k < teams.size(); k++) {
+      if (resType == oListInfo::Classwise) {
+        teamScore[k].principalSort = teams[k]->Class ? teams[k]->Class->getSortIndex() * 50000
+          + teams[k]->Class->getId() : 0;
+      }
+      else
+        teamScore[k].principalSort = 0;
 
-    teamScore[k].score = score(*teams[k], teams[k]->tmpResult.status,
-                               teams[k]->tmpResult.runningTime,
-                               teams[k]->tmpResult.points);
+      prepareCalculations(*teams[k], classResult);
+      teams[k]->tmpResult.runningTime = teams[k]->getStartTime(); //XXX
+      teams[k]->tmpResult.runningTime = deduceTime(*teams[k]);
+      teams[k]->tmpResult.status = deduceStatus(*teams[k]);
+      teams[k]->tmpResult.points = deducePoints(*teams[k]);
 
-    storeOutput(teams[k]->tmpResult.outputTimes,
-                teams[k]->tmpResult.outputNumbers);
+      teamScore[k].score = score(*teams[k], teams[k]->tmpResult.status,
+                                 teams[k]->tmpResult.runningTime,
+                                 teams[k]->tmpResult.points);
 
-    teamScore[k].tr = teams[k];
+      storeOutput(teams[k]->tmpResult.outputTimes,
+                  teams[k]->tmpResult.outputNumbers);
 
-  }
+      teamScore[k].tr = teams[k];
 
-  ::sort(teamScore.begin(), teamScore.end());
-  int place = 1;
-  int iPlace = 1;
-  int leadtime = 0;
-  for (size_t k = 0; k < teamScore.size(); k++) {
-    if (k > 0 && teamScore[k - 1].principalSort != teamScore[k].principalSort) {
-      place = 1;
-      iPlace = 1;
-    }
-    else if (k > 0 && teamScore[k - 1].score != teamScore[k].score) {
-      place = iPlace;
     }
 
-    if (teamScore[k].tr->tmpResult.status == StatusOK) {
-      teamScore[k].tr->tmpResult.place = place;
-      iPlace++;
-      if (place == 1) {
-        leadtime = teamScore[k].tr->tmpResult.runningTime;
-        teamScore[k].tr->tmpResult.timeAfter = 0;
+    ::sort(teamScore.begin(), teamScore.end());
+    int place = 1;
+    int iPlace = 1;
+    int leadtime = 0;
+    for (size_t k = 0; k < teamScore.size(); k++) {
+      if (k > 0 && teamScore[k - 1].principalSort != teamScore[k].principalSort) {
+        place = 1;
+        iPlace = 1;
+      }
+      else if (k > 0 && teamScore[k - 1].score != teamScore[k].score) {
+        place = iPlace;
+      }
+
+      if (teamScore[k].tr->tmpResult.status == StatusOK) {
+        teamScore[k].tr->tmpResult.place = place;
+        iPlace++;
+        if (place == 1) {
+          leadtime = teamScore[k].tr->tmpResult.runningTime;
+          teamScore[k].tr->tmpResult.timeAfter = 0;
+        }
+        else {
+          teamScore[k].tr->tmpResult.timeAfter = teamScore[k].tr->tmpResult.runningTime - leadtime;
+        }
       }
       else {
-        teamScore[k].tr->tmpResult.timeAfter = teamScore[k].tr->tmpResult.runningTime - leadtime;
+        teamScore[k].tr->tmpResult.place = 0;
+        teamScore[k].tr->tmpResult.timeAfter = 0;
       }
     }
-    else {
-      teamScore[k].tr->tmpResult.place = 0;
-      teamScore[k].tr->tmpResult.timeAfter = 0;
-    }
-  }
 
-  if (sortTeams) {
-    for (size_t k = 0; k < teamScore.size(); k++) {
-      teams[k] = (oTeam *)teamScore[k].tr;
+    if (sortTeams) {
+      for (size_t k = 0; k < teamScore.size(); k++) {
+        teams[k] = (oTeam *)teamScore[k].tr;
+      }
     }
+    lockPrepare = false;
+  }
+  catch (...) {
+    lockPrepare = false;
+    throw;
   }
 }
 
@@ -271,118 +308,138 @@ template<class T> void GeneralResult::sort(vector<T *> &rt, SortOrder so) const 
 }
 
 void GeneralResult::calculateIndividualResults(vector<oRunner *> &runners,
+                                               bool classResult,
                                                oListInfo::ResultType resType,
                                                bool sortRunners,
                                                int inputNumber) const {
 
   if (runners.empty())
     return;
-  prepareCalculations(*runners[0]->oe, false, inputNumber);
-  //bool classSort = resType == oListInfo::Global ? false : true;
-  vector<GRSortInfo> runnerScore(runners.size());
-  for (size_t k = 0; k < runners.size(); k++) {
-    const oRunner *r = runners[k];
-    if (resType == oListInfo::Classwise) {
-      runnerScore[k].principalSort = r->Class ? r->Class->getSortIndex() * 50000
-        + r->Class->getId() : 0;
-    }
-    else if (resType == oListInfo::Legwise) {
-      runnerScore[k].principalSort = r->Class ? r->Class->getSortIndex() * 50000
-        + r->Class->getId() : 0;
 
-      int ln = r->getLegNumber();
-      const oTeam *pt = r->getTeam();
-      if (pt) {
-        const oClass *tcls = pt->getClassRef(false);
-        if (tcls && tcls->getClassType() == oClassRelay) {
-          int dummy;
-          tcls->splitLegNumberParallel(r->getLegNumber(), ln, dummy);
-        }
+  if (lockPrepare)
+    throw meosException("Bad cyclic call");
+  lockPrepare = true;
+
+  try {
+
+    set<int> clsId;
+    for (pRunner r : runners) {
+      clsId.insert(r->getClassId(true));
+    }
+    vector<pTeam> noTeams;
+    prepareCalculations(*runners[0]->oe, classResult, clsId, runners, noTeams, inputNumber);
+    //bool classSort = resType == oListInfo::Global ? false : true;
+    vector<GRSortInfo> runnerScore(runners.size());
+    for (size_t k = 0; k < runners.size(); k++) {
+      const oRunner *r = runners[k];
+      if (resType == oListInfo::Classwise) {
+        runnerScore[k].principalSort = r->Class ? r->Class->getSortIndex() * 50000
+          + r->Class->getId() : 0;
       }
-      runnerScore[k].principalSort = runnerScore[k].principalSort * 50 + ln;
-    }
-    else if (resType == oListInfo::Coursewise) {
-      pCourse crs = r->getCourse(false);
-      runnerScore[k].principalSort = crs ? crs->getId() : 0;
-    }
-    else
-      runnerScore[k].principalSort = 0;
+      else if (resType == oListInfo::Legwise) {
+        runnerScore[k].principalSort = r->Class ? r->Class->getSortIndex() * 50000
+          + r->Class->getId() : 0;
 
-    int from = getListParamTimeFromControl();
-    if (from <= 0) {
-      runners[k]->tmpResult.startTime = r->getStartTime();
-    }
-    else {
-      int rt;
-      RunnerStatus stat;
-      runners[k]->getSplitTime(from, stat, rt);
-      if (stat == StatusOK)
-        runners[k]->tmpResult.startTime = runners[k]->getStartTime() + rt;
+        int ln = r->getLegNumber();
+        const oTeam *pt = r->getTeam();
+        if (pt) {
+          const oClass *tcls = pt->getClassRef(false);
+          if (tcls && tcls->getClassType() == oClassRelay) {
+            int dummy;
+            tcls->splitLegNumberParallel(r->getLegNumber(), ln, dummy);
+          }
+        }
+        runnerScore[k].principalSort = runnerScore[k].principalSort * 50 + ln;
+      }
+      else if (resType == oListInfo::Coursewise) {
+        pCourse crs = r->getCourse(false);
+        runnerScore[k].principalSort = crs ? crs->getId() : 0;
+      }
       else
-        runners[k]->tmpResult.startTime = runners[k]->getStartTime();
-    }
-    prepareCalculations(*runners[k]);
-    runners[k]->tmpResult.runningTime = deduceTime(*runners[k], runners[k]->tmpResult.startTime);
-    runners[k]->tmpResult.status = deduceStatus(*runners[k]);
-    runners[k]->tmpResult.points = deducePoints(*runners[k]);
+        runnerScore[k].principalSort = 0;
 
-    runnerScore[k].score = score(*runners[k], runners[k]->tmpResult.status,
-                                 runners[k]->tmpResult.runningTime,
-                                 runners[k]->tmpResult.points, false);
-
-    storeOutput(runners[k]->tmpResult.outputTimes,
-                runners[k]->tmpResult.outputNumbers);
-
-    runnerScore[k].tr = runners[k];
-
-  }
-
-  ::sort(runnerScore.begin(), runnerScore.end());
-  int place = 1;
-  int iPlace = 1;
-  int leadtime = 0;
-  for (size_t k = 0; k < runnerScore.size(); k++) {
-    if (k > 0 && runnerScore[k - 1].principalSort != runnerScore[k].principalSort) {
-      place = 1;
-      iPlace = 1;
-    }
-    else if (k > 0 && runnerScore[k - 1].score != runnerScore[k].score) {
-      place = iPlace;
-    }
-
-    if (runnerScore[k].tr->tmpResult.status == StatusOK) {
-      runnerScore[k].tr->tmpResult.place = place;
-      iPlace++;
-      if (place == 1) {
-        leadtime = runnerScore[k].tr->tmpResult.runningTime;
-        runnerScore[k].tr->tmpResult.timeAfter = 0;
+      int from = getListParamTimeFromControl();
+      if (from <= 0) {
+        runners[k]->tmpResult.startTime = r->getStartTime();
       }
       else {
-        runnerScore[k].tr->tmpResult.timeAfter = runnerScore[k].tr->tmpResult.runningTime - leadtime;
+        int rt;
+        RunnerStatus stat;
+        runners[k]->getSplitTime(from, stat, rt);
+        if (stat == StatusOK)
+          runners[k]->tmpResult.startTime = runners[k]->getStartTime() + rt;
+        else
+          runners[k]->tmpResult.startTime = runners[k]->getStartTime();
+      }
+
+      prepareCalculations(*runners[k], classResult);
+      runners[k]->tmpResult.runningTime = deduceTime(*runners[k], runners[k]->tmpResult.startTime);
+      runners[k]->tmpResult.status = deduceStatus(*runners[k]);
+      runners[k]->tmpResult.points = deducePoints(*runners[k]);
+
+      runnerScore[k].score = score(*runners[k], runners[k]->tmpResult.status,
+                                   runners[k]->tmpResult.runningTime,
+                                   runners[k]->tmpResult.points, false);
+
+      storeOutput(runners[k]->tmpResult.outputTimes,
+                  runners[k]->tmpResult.outputNumbers);
+
+      runnerScore[k].tr = runners[k];
+
+    }
+
+    ::sort(runnerScore.begin(), runnerScore.end());
+    int place = 1;
+    int iPlace = 1;
+    int leadtime = 0;
+    for (size_t k = 0; k < runnerScore.size(); k++) {
+      if (k > 0 && runnerScore[k - 1].principalSort != runnerScore[k].principalSort) {
+        place = 1;
+        iPlace = 1;
+      }
+      else if (k > 0 && runnerScore[k - 1].score != runnerScore[k].score) {
+        place = iPlace;
+      }
+
+      if (runnerScore[k].tr->tmpResult.status == StatusOK) {
+        runnerScore[k].tr->tmpResult.place = place;
+        iPlace++;
+        if (place == 1) {
+          leadtime = runnerScore[k].tr->tmpResult.runningTime;
+          runnerScore[k].tr->tmpResult.timeAfter = 0;
+        }
+        else {
+          runnerScore[k].tr->tmpResult.timeAfter = runnerScore[k].tr->tmpResult.runningTime - leadtime;
+        }
+      }
+      else {
+        runnerScore[k].tr->tmpResult.place = 0;
+        runnerScore[k].tr->tmpResult.timeAfter = 0;
       }
     }
-    else {
-      runnerScore[k].tr->tmpResult.place = 0;
-      runnerScore[k].tr->tmpResult.timeAfter = 0;
+
+    if (sortRunners) {
+      for (size_t k = 0; k < runnerScore.size(); k++) {
+        runners[k] = (oRunner *)runnerScore[k].tr;
+      }
     }
   }
-
-  if (sortRunners) {
-    for (size_t k = 0; k < runnerScore.size(); k++) {
-      runners[k] = (oRunner *)runnerScore[k].tr;
-    }
+  catch (...) {
+    lockPrepare = false;
+    throw;
   }
+  lockPrepare = false;
 }
 
-void GeneralResult::prepareCalculations(oEvent &oe, bool prepareForTeam, int inputNumber) const {
+void GeneralResult::prepareCalculations(oEvent &oe, bool classResult, const set<int> &cls, vector<pRunner> &runners, vector<pTeam> &teams, int inputNumber) const {
 }
 
-void GeneralResult::prepareCalculations(oTeam &team) const {
+void GeneralResult::prepareCalculations(oTeam &team, bool classResult) const {
   int nr = team.getNumRunners();
   for (int j = 0; j < nr; j++) {
     pRunner r = team.getRunner(j);
     if (r) {
-      prepareCalculations(*r);
+      prepareCalculations(*r, classResult);
       r->tmpResult.runningTime = deduceTime(*r, r->getStartTime()); //XXX
       r->tmpResult.status = deduceStatus(*r);
       r->tmpResult.place = 0;//XXX?
@@ -398,7 +455,7 @@ void GeneralResult::prepareCalculations(oTeam &team) const {
   }
 }
 
-void GeneralResult::prepareCalculations(oRunner &runner) const {
+void GeneralResult::prepareCalculations(oRunner &runner, bool classResult) const {
   int from = getListParamTimeFromControl();
   runner.tmpResult.startTime = runner.getStartTime();
 
@@ -414,8 +471,8 @@ void GeneralResult::prepareCalculations(oRunner &runner) const {
 void GeneralResult::storeOutput(vector<int> &times, vector<int> &numbers) const {
 }
 
-int GeneralResult::score(oTeam &team, RunnerStatus st, int rt, int points) const {
-  return (100 * RunnerStatusOrderMap[st] + team.getNumShortening()) * 900000 + rt;
+pair<int, int> GeneralResult::score(oTeam &team, RunnerStatus st, int rt, int points) const {
+  return make_pair((100 * RunnerStatusOrderMap[st] + team.getNumShortening()) * 100000 - points,  + rt);
 }
 
 RunnerStatus GeneralResult::deduceStatus(oTeam &team) const {
@@ -423,19 +480,20 @@ RunnerStatus GeneralResult::deduceStatus(oTeam &team) const {
 }
 
 int GeneralResult::deduceTime(oTeam &team) const {
-  return team.getRunningTime();
+  return team.getRunningTime(false);
 }
 
 int GeneralResult::deducePoints(oTeam &team) const {
-  return team.getRogainingPoints(false);
+  return team.getRogainingPoints(false, false);
 }
 
-int GeneralResult::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
+pair<int,int> GeneralResult::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
   if (asTeamMember) {
-    return runner.getLegNumber();
+    return make_pair(runner.getLegNumber(), 0);
   }
-  else
-    return (RunnerStatusOrderMap[st] * 100 + runner.getNumShortening()) * 900000 + time;
+  else {
+    return make_pair((100 * RunnerStatusOrderMap[st] + runner.getNumShortening()) * 100000 - points,  time);
+  }
 }
 
 RunnerStatus GeneralResult::deduceStatus(oRunner &runner) const {
@@ -443,14 +501,14 @@ RunnerStatus GeneralResult::deduceStatus(oRunner &runner) const {
 }
 
 int GeneralResult::deduceTime(oRunner &runner, int startTime) const {
-  return runner.getRunningTime();
+  return runner.getRunningTime(false);
 }
 
 int GeneralResult::deducePoints(oRunner &runner) const {
-  return runner.getRogainingPoints(false);
+  return runner.getRogainingPoints(false, false);
 }
 
-int ResultAtControl::score(oTeam &team, RunnerStatus st, int time, int points) const {
+pair<int, int> ResultAtControl::score(oTeam &team, RunnerStatus st, int time, int points) const {
   return GeneralResult::score(team, st, time, points);
 }
 
@@ -466,14 +524,11 @@ int ResultAtControl::deducePoints(oTeam &team) const {
   return GeneralResult::deducePoints(team);
 }
 
-int ResultAtControl::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
+pair<int, int> ResultAtControl::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
   if (asTeamMember)
-    return runner.getLegNumber();
-  const int TK = 3600 * 100;
-  if (st == StatusOK)
-    return time;
-  else
-    return TK + st;
+    return make_pair(runner.getLegNumber(), 0);
+  
+  return make_pair(RunnerStatusOrderMap[st], time);
 }
 
 RunnerStatus TotalResultAtControl::deduceStatus(oRunner &runner) const {
@@ -492,7 +547,7 @@ RunnerStatus TotalResultAtControl::deduceStatus(oRunner &runner) const {
       while (legIx > 0 && (cls->isParallel(legIx) || cls->isOptional(legIx)))
         legIx--;
       if (legIx > 0)
-        inputStatus = t->getLegStatus(legIx - 1, true);
+        inputStatus = t->getLegStatus(legIx - 1, false, true);
     }
     else {
       inputStatus = t->getInputStatus();
@@ -522,7 +577,7 @@ int TotalResultAtControl::deduceTime(oRunner &runner, int startTime) const {
       while (legIx > 0 && (cls->isParallel(legIx) || cls->isOptional(legIx)))
         legIx--;
       if (legIx > 0)
-        inputTime = t->getLegRunningTime(legIx - 1, true);
+        inputTime = t->getLegRunningTime(legIx - 1, false, true);
     }
     else {
       inputTime = t->getInputTime();
@@ -535,16 +590,16 @@ int TotalResultAtControl::deduceTime(oRunner &runner, int startTime) const {
   return singleTime + inputTime;
 }
 
-int TotalResultAtControl::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
+pair<int,int> TotalResultAtControl::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
   if (asTeamMember)
-    return runner.getLegNumber();
-  const int TK = 3600 * 100;
+    return make_pair(runner.getLegNumber(), 0);
+  const int TK = 3600 * 24 * 7;
   RunnerStatus inputStatus = StatusOK;
 
   if (runner.getTeam()) {
     const pTeam t = runner.getTeam();
     if (runner.getLegNumber() > 0) {
-      inputStatus = t->getLegStatus(runner.getLegNumber() - 1, true);
+      inputStatus = t->getLegStatus(runner.getLegNumber() - 1, false, true);
     }
     else {
       inputStatus = t->getInputStatus();
@@ -557,11 +612,7 @@ int TotalResultAtControl::score(oRunner &runner, RunnerStatus st, int time, int 
   if (st != StatusUnknown)
     st = max(inputStatus, st);
 
-  if (st == StatusOK) {
-    return time;
-  }
-  else
-    return TK + st;
+  return make_pair(RunnerStatusOrderMap[st], time);
 }
 
 RunnerStatus ResultAtControl::deduceStatus(oRunner &runner) const {
@@ -573,7 +624,7 @@ RunnerStatus ResultAtControl::deduceStatus(oRunner &runner) const {
     return stat;
   }
   RunnerStatus st = runner.getStatus();
-  if (st == StatusUnknown && runner.getRunningTime() > 0)
+  if (st == StatusUnknown && runner.getRunningTime(false) > 0)
     return StatusOK;
   return st;
 }
@@ -644,6 +695,7 @@ DynamicResult::DynamicResult(const DynamicResult &resIn) {
 }
 
 void DynamicResult::operator=(const DynamicResult &resIn) {
+  clear();
   isCompiled = false;
   name = resIn.name;
   tag = resIn.tag;
@@ -718,17 +770,21 @@ RunnerStatus DynamicResult::toStatus(int status) const {
     return StatusDQ;
   case StatusMAX:
     return StatusMAX;
+  case StatusOutOfCompetition:
+    return StatusOutOfCompetition;
+  case StatusNoTiming:
+    return StatusNoTiming;
   default:
     throw meosException("Unknown status code X#" + itos(status));
   }
 }
 
-int DynamicResult::score(oTeam &team, RunnerStatus st, int time, int points) const {
+pair<int,int> DynamicResult::score(oTeam &team, RunnerStatus st, int time, int points) const {
   if (getMethod(MTScore)) {
     parser.addSymbol("ComputedTime", time);
     parser.addSymbol("ComputedStatus", st);
     parser.addSymbol("ComputedPoints", points);
-    return getMethod(MTScore)->evaluate(parser);
+    return make_pair(0, getMethod(MTScore)->evaluate(parser));
   }
   else if (getMethodSource(MTScore).empty())
     return GeneralResult::score(team, st, time, points);
@@ -759,12 +815,12 @@ int DynamicResult::deducePoints(oTeam &team) const {
   else throw meosException("Syntax error");
 }
 
-int DynamicResult::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
+pair<int,int> DynamicResult::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
   if (getMethod(MRScore)) {
     parser.addSymbol("ComputedTime", time);
     parser.addSymbol("ComputedStatus", st);
     parser.addSymbol("ComputedPoints", points);
-    return getMethod(MRScore)->evaluate(parser);
+    return make_pair(0, getMethod(MRScore)->evaluate(parser));
   }
   else if (getMethodSource(MRScore).empty())
     return GeneralResult::score(runner, st, time, points, asTeamMember);
@@ -831,7 +887,7 @@ void DynamicResult::save(xmlparser &xml) const {
 void DynamicResult::clear() {
   parser.clear();
   for (size_t k = 0; k < methods.size(); k++) {
-    methods[k].pn = 0;
+    methods[k].pn = nullptr;
     methods[k].source.clear();
     methods[k].description.clear();
   }
@@ -937,6 +993,11 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
   parser.declareSymbol("InputPlace", "Runner/team input place", false);
   parser.declareSymbol("InputPoints", "Runner/team input points", false);
 
+  parser.declareSymbol("StageStatus", "Runner/team earlier stage statuses", true);
+  parser.declareSymbol("StageTime", "Runner/team earlier stage running times", true);
+  parser.declareSymbol("StagePlace", "Runner/team earlier stage places", true);
+  parser.declareSymbol("StagePoints", "Runner/team earlier stage points", true);
+
   parser.declareSymbol("Fee", "Runner/team fee", false);
 
   parser.declareSymbol("ClubId", "Club id number", false);
@@ -963,6 +1024,9 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
     parser.declareSymbol("LegPlace", "Place on course leg", true);
     parser.declareSymbol("Leg", "Leg number in team, zero indexed", false);
     parser.declareSymbol("BirthYear", "Year of birth", false);
+    parser.declareSymbol("Age", "Age (on last day of current year)", false);
+    parser.declareSymbol("AgeLowLimit", "Age below or equal implies youth", false);
+    parser.declareSymbol("AgeHighLimit", "Age above or equal implies senior/pensioner", false);
     parser.declareSymbol("CheckTime", "Runner check time", false);
   }
   else {
@@ -997,7 +1061,9 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
   parser.declareSymbol("StatusCANCEL", "Status code for cancelled entry", false);
   parser.declareSymbol("StatusMAX", "Status code for a time over the maximum", false);
   parser.declareSymbol("StatusDQ", "Status code for disqualification", false);
+  parser.declareSymbol("StatusOutOfCompetition", "Status code for running out-of-competition", false);
   parser.declareSymbol("StatusNotCompetiting", "Status code for not competing", false);
+  parser.declareSymbol("StatusNoTiming", "Status code for not no timing", false);
 
   parser.declareSymbol("ShortestClassTime", "Shortest time in class", false);
 
@@ -1016,22 +1082,59 @@ void DynamicResult::getSymbolInfo(int ix, wstring &name, wstring &desc) const {
   parser.getSymbolInfo(ix, name, desc);
 }
 
-void DynamicResult::prepareCalculations(oEvent &oe, bool prepareForTeam, int inputNumber) const {
+void DynamicResult::prepareCalculations(oEvent &oe,
+                                        bool classResult,
+                                        const set<int> &clsSelection, 
+                                        vector<pRunner> &runners, 
+                                        vector<pTeam> &teams, 
+                                        int inputNumber) const {
   compile(false);
-  oe.calculateResults(set<int>(), oEvent::ResultType::ClassResult);
-  oe.calculateResults(set<int>(), oEvent::ResultType::TotalResult);
+
+
+  oDataConstInterface odc = oe.getDCI();
+  lowAgeLimit = odc.getInt("YouthAge");
+  highAgeLimit = odc.getInt("SeniorAge");
+
+  oEvent::ResultType single, total;
+  if (classResult) {
+    single = oEvent::ResultType::ClassResultDefault;
+    total = oEvent::ResultType::TotalResultDefault;
+  }
+  else {
+    single = oEvent::ResultType::ClassResult;
+    total = oEvent::ResultType::TotalResult;
+  }
+  oe.calculateResults(clsSelection, single);
+  oe.calculateResults(clsSelection, total);
+  vector<pTeam> *tPtr = &teams;
+  vector<pTeam> prepTeam;
+  if (teams.empty()) {
+    vector<pTeam> allTeam;
+    oe.getTeams(0, allTeam, false);
+    if (clsSelection.empty())
+      prepTeam.swap(allTeam);
+    else {
+      for (pTeam t : allTeam)
+        if (clsSelection.count(t->getClassId(false))) {
+          prepTeam.push_back(t);
+        }
+    }
+    tPtr = &prepTeam;
+  }
+
+  oe.calculateTeamResults(*tPtr, single);
+  oe.calculateTeamResults(*tPtr, total);
 
   declareSymbols(MRScore, true);
-  if (prepareForTeam) {
+  if (teams.size() > 0) {
     declareSymbols(MTScore, false);
-    vector<pTeam> t;
-    oe.getTeams(0, t, false);
-    for (size_t k = 0; k < t.size(); k++)
-      t[k]->resetResultCalcCache();
+    for (pTeam t : teams)
+      t->resetResultCalcCache();
 
-    oe.calculateTeamResults(false);
-    oe.calculateTeamResults(true);
+    oe.calculateTeamResults(teams, single);
+    oe.calculateTeamResults(teams, total);
   }
+
   parser.addSymbol("StatusUnknown", StatusUnknown);
   parser.addSymbol("StatusOK", StatusOK);
   parser.addSymbol("StatusMP", StatusMP);
@@ -1040,13 +1143,16 @@ void DynamicResult::prepareCalculations(oEvent &oe, bool prepareForTeam, int inp
   parser.addSymbol("StatusDNS", StatusDNS);
   parser.addSymbol("StatusMAX", StatusMAX);
   parser.addSymbol("StatusDQ", StatusDQ);
+  parser.addSymbol("StatusOutOfCompetition", StatusOutOfCompetition);
+  parser.addSymbol("StatusNoTiming", StatusNoTiming);
   parser.addSymbol("StatusNotCompetiting", StatusNotCompetiting);
 
   parser.addSymbol("MaxTime", oe.getMaximalTime());
   parser.addSymbol("InputNumber", inputNumber);
 }
 
-void DynamicResult::prepareCommon(oAbstractRunner &runner) const {
+void DynamicResult::prepareCommon(oAbstractRunner &runner, bool classResult) const {
+  bool useComputed = classResult == false;
   parser.clearVariables();
   int st = runner.getStatus();
   int ft = runner.getFinishTime();
@@ -1055,12 +1161,12 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner) const {
   parser.addSymbol("Status", st);
   parser.addSymbol("Start", runner.getStartTime());
   parser.addSymbol("Finish", ft);
-  parser.addSymbol("Time", runner.getRunningTime());
+  parser.addSymbol("Time", runner.getRunningTime(useComputed));
   parser.addSymbol("Place", runner.getPlace());
-  parser.addSymbol("Points", runner.getRogainingPoints(false));
-  parser.addSymbol("PointReduction", runner.getRogainingReduction());
-  parser.addSymbol("PointOvertime", runner.getRogainingOvertime());
-  parser.addSymbol("PointGross", runner.getRogainingPointsGross());
+  parser.addSymbol("Points", runner.getRogainingPoints(useComputed, false));
+  parser.addSymbol("PointReduction", runner.getRogainingReduction(useComputed));
+  parser.addSymbol("PointOvertime", runner.getRogainingOvertime(useComputed));
+  parser.addSymbol("PointGross", runner.getRogainingPointsGross(useComputed));
 
   parser.addSymbol("PointAdjustment", runner.getPointAdjustment());
   parser.addSymbol("TimeAdjustment", runner.getTimeAdjustment());
@@ -1074,6 +1180,25 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner) const {
   parser.addSymbol("InputPlace", runner.getInputPlace());
   parser.addSymbol("InputPoints", runner.getInputPoints());
   parser.addSymbol("Shorten", runner.getNumShortening());
+
+  vector<RunnerStatus> inst;
+  vector<int> times;
+  vector<int> points;
+  vector<int> places;
+  vector<int> iinst;
+  runner.getInputResults(inst, times, points, places);
+  for (RunnerStatus s : inst)
+    iinst.push_back(s);
+
+  parser.addSymbol("StageStatus", iinst);
+  parser.addSymbol("StageTime", times);
+  parser.addSymbol("StagePlace", places);
+  parser.addSymbol("StagePoints", points);
+
+  parser.addSymbol("InputStatus", runner.getInputStatus());
+  parser.addSymbol("InputTime", runner.getInputTime());
+  parser.addSymbol("InputPlace", runner.getInputPlace());
+  parser.addSymbol("InputPoints", runner.getInputPoints());
 
   parser.addSymbol("Fee", runner.getDCI().getInt("Fee"));
 
@@ -1089,9 +1214,9 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner) const {
   parser.addSymbol("Bib", _wtoi(runner.getBib().c_str()));
 }
 
-void DynamicResult::prepareCalculations(oTeam &team) const {
-  GeneralResult::prepareCalculations(team);
-  prepareCommon(team);
+void DynamicResult::prepareCalculations(oTeam &team, bool classResult) const {
+  GeneralResult::prepareCalculations(team, classResult);
+  prepareCommon(team, classResult);
   int nr = team.getNumRunners();
   vector<int> status(nr), time(nr), start(nr), finish(nr), points(nr);
   vector< vector<int> > runnerOutputTimes(nr);
@@ -1126,7 +1251,8 @@ void DynamicResult::prepareCalculations(oTeam &team) const {
   parser.removeSymbol("SplitTimesAccumulated");
   parser.removeSymbol("LegTimeDeviation");
   parser.removeSymbol("BirthYear");
-
+  parser.removeSymbol("Age");
+  
   parser.addSymbol("RunnerOutputNumbers", runnerOutputNumbers);
   parser.addSymbol("RunnerOutputTimes", runnerOutputTimes);
 
@@ -1150,13 +1276,13 @@ void DynamicResult::prepareCalculations(oTeam &team) const {
   pClass cls = team.getClassRef(true);
   if (cls) {
     int nl = max<int>(1, cls->getNumStages() - 1);
-    parser.addSymbol("ShortestClassTime", cls->getTotalLegLeaderTime(nl, false));
+    parser.addSymbol("ShortestClassTime", cls->getTotalLegLeaderTime(nl, false, false));
   }
 }
 
-void DynamicResult::prepareCalculations(oRunner &runner) const {
-  GeneralResult::prepareCalculations(runner);
-  prepareCommon(runner);
+void DynamicResult::prepareCalculations(oRunner &runner, bool classResult) const {
+  GeneralResult::prepareCalculations(runner, classResult);
+  prepareCommon(runner, classResult);
   pCard pc = runner.getCard();
   if (pc) {
     vector<pPunch> punches;
@@ -1263,7 +1389,7 @@ void DynamicResult::prepareCalculations(oRunner &runner) const {
   pClass cls = runner.getClassRef(true);
   if (cls) {
     int nl = runner.getLegNumber();
-    parser.addSymbol("ShortestClassTime", cls->getBestLegTime(nl));
+    parser.addSymbol("ShortestClassTime", cls->getBestLegTime(nl, false));
   }
   vector<int> delta;
   vector<int> place;
@@ -1277,6 +1403,11 @@ void DynamicResult::prepareCalculations(oRunner &runner) const {
   parser.addSymbol("LegPlace", place);
   parser.addSymbol("Leg", runner.getLegNumber());
   parser.addSymbol("BirthYear", runner.getBirthYear());
+  int ba = runner.getBirthAge();
+  parser.addSymbol("Age", ba);
+  parser.addSymbol("AgeLowLimit", lowAgeLimit);
+  parser.addSymbol("AgeHighLimit", highAgeLimit);
+
   parser.addSymbol("CheckTime", runner.getCheckTime());
 }
 
@@ -1298,10 +1429,15 @@ long long DynamicResult::getHashCode() const {
 
 string DynamicResult::undecorateTag(const string &inputTag) {
   int ix = inputTag.rfind("-v");
-  if (ix > 0 && ix != inputTag.npos)
+  int limit = inputTag.length() - 4;
+  if (ix > 0 && ix != inputTag.npos && ix >= limit)
     return inputTag.substr(0, ix);
   else
     return inputTag;
+}
+
+bool DynamicResult::isRogaining() const {
+  return !methods[DynamicMethods::MDeduceRPoints].source.empty();
 }
 
 wstring DynamicResult::getName(bool withAnnotation) const {
@@ -1346,7 +1482,11 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
         controlId.first == oPunch::PunchStart) {
 
       if (!totalResults) {
-        oe.calculateResults(set<int>(), oEvent::ResultType::ClassResult, true);
+        set<int> clsId;
+        for (pRunner r : runners) {
+          clsId.insert(r->getClassId(true));
+        }
+        oe.calculateResults(clsId, oEvent::ResultType::ClassResult, true);
         for (pRunner r : runners) {
           ri.status = r->getStatus();
           if (ri.status == StatusUnknown) {
@@ -1368,8 +1508,8 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
           else
             ri.place = 0;
 
-          ri.score = r->getRogainingPoints(false);
-          ri.time = r->getRunningTime();
+          ri.score = r->getRogainingPoints(true, false);
+          ri.time = r->getRunningTime(true);
           ri.src = r;
           results.push_back(ri);
         }
@@ -1397,7 +1537,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
           else
             ri.place = 0;
 
-          ri.score = r->getRogainingPoints(true);
+          ri.score = r->getRogainingPoints(true, true);
           ri.time = r->getTotalRunningTime();
           ri.src = r;
           results.push_back(ri);
@@ -1432,14 +1572,14 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
   }
   else {
     wstring srcDMY;
-    GeneralResult *gResult = 0;
+    GeneralResult *gResult = nullptr;
     shared_ptr<GeneralResult> specialInstance;
     oListParam param;
     param.useControlIdResultTo = controlId.second;
     param.useControlIdResultFrom = controlId.first;
 
     if (!resTag.empty())
-      gResult = &oe.getGeneralResult(resTag, srcDMY);
+      gResult = oe.getGeneralResult(resTag, srcDMY).get();
     else {
       if (controlId.second == oPunch::PunchFinish &&
           controlId.first == oPunch::PunchStart && !totalResults)
@@ -1452,7 +1592,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
       gResult = specialInstance.get();
     }
     gResult->setContext(&param);
-    gResult->calculateIndividualResults(runners, resType, true, inputNumber);
+    gResult->calculateIndividualResults(runners, false, resType, true, inputNumber);
     gResult->clearContext();
     map<int, bool> mapHasCourse;
     GeneralResultInfo ri;
@@ -1510,7 +1650,7 @@ GeneralResult::calculateTeamResults(vector<pTeam> &teams,
   if (resTag.empty()) {
     out->useModule = false;
     if (controlId.second == oPunch::PunchFinish) {
-      oe.calculateTeamResults(false);
+      oe.calculateTeamResults(teams, oEvent::ResultType::ClassResult);
       GeneralResultInfo ri;
       for (pTeam r : teams) {
         ri.status = r->getStatus();
@@ -1524,9 +1664,9 @@ GeneralResult::calculateTeamResults(vector<pTeam> &teams,
         else
           ri.place = 0;
 
-        ri.score = r->getRogainingPoints(false);
+        ri.score = r->getRogainingPoints(true, false);
         ri.status = r->getStatus();
-        ri.time = r->getRunningTime();
+        ri.time = r->getRunningTime(true);
         ri.src = r;
         results.push_back(ri);
       }
@@ -1555,7 +1695,7 @@ GeneralResult::calculateTeamResults(vector<pTeam> &teams,
     out->useModule = true;
     wstring srcDMY;
     auto &gResult = oe.getGeneralResult(resTag, srcDMY);
-    gResult.calculateTeamResults(teams, resType, true, inputNumber);
+    gResult->calculateTeamResults(teams, false, resType, true, inputNumber);
     GeneralResultInfo ri;
     for (pTeam r : teams) {
       const auto &tmp = r->getTempResult(0);
@@ -1623,9 +1763,9 @@ bool GeneralResult::GeneralResultInfo::getSubResult(const BaseResultContext &con
   }
   else {
     if (context.controlId.second == oPunch::PunchFinish) {
-      out.score = r->getRogainingPoints(false);
+      out.score = r->getRogainingPoints(true, false);
       out.status = r->getStatus();
-      out.time = r->getRunningTime();
+      out.time = r->getRunningTime(true);
     }
     else {
       out.score = 0; // Undefined

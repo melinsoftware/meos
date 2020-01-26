@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ void LoadClassPage(gdioutput &gdi);
 
 void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
 {
-  if (gdi.hasField("Rogaining")) {
+  if (gdi.hasWidget("Rogaining")) {
     gdi.setText("TimeLimit", L"");
     gdi.disableInput("TimeLimit");
     gdi.setText("PointLimit", L"");
@@ -77,7 +77,8 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
     wstring uis =  pc->getControlsUI();
     gdi.setText("Controls", uis);
 
-    gdi.setText("CourseExpanded", encodeCourse(uis, pc->useFirstAsStart(), pc->useLastAsFinish()), true);
+    gdi.setText("CourseExpanded", encodeCourse(uis, pc->getMaximumRogainingTime() > 0,
+                pc->useFirstAsStart(), pc->useLastAsFinish()), true);
 
     gdi.setText("Name", pc->getName());
 
@@ -88,7 +89,7 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
     gdi.check("FirstAsStart", pc->useFirstAsStart());
     gdi.check("LastAsFinish", pc->useLastAsFinish());
 
-    if (gdi.hasField("Rogaining")) {
+    if (gdi.hasWidget("Rogaining")) {
       int rt = pc->getMaximumRogainingTime();
       int rp = pc->getMinimumRogainingPoints();
 
@@ -215,19 +216,19 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
   gdi.setInputStatus("DrawCourse", pc != 0);  
 }
 
-int CourseCB(gdioutput *gdi, int type, void *data)
-{
+int CourseCB(gdioutput *gdi, int type, void *data) {
   TabCourse &tc = dynamic_cast<TabCourse &>(*gdi->getTabs().get(TCourseTab));
-
   return tc.courseCB(*gdi, type, data);
 }
 
-void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
-{
+void TabCourse::save(gdioutput &gdi, int canSwitchViewMode) {
   DWORD cid = courseId;
 
   pCourse pc;
   wstring name=gdi.getText("Name");
+
+  if (cid == 0 && name.empty())
+    return;
 
   if (name.empty()) {
     gdi.alert("Banan måste ha ett namn.");
@@ -292,7 +293,7 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode)
   else
     pc->setShorterVersion(false, 0);
 
-  if (gdi.hasField("Rogaining")) {
+  if (gdi.hasWidget("Rogaining")) {
     string t;
     pc->setMaximumRogainingTime(convertAbsoluteTimeMS(gdi.getText("TimeLimit")));
     pc->setMinimumRogainingPoints(_wtoi(gdi.getText("PointLimit").c_str()));
@@ -337,6 +338,12 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
 
     if (bi.id=="Save") {
       save(gdi, 1);
+    }
+    else if (bi.id == "SwitchMode") {
+      if (!tableMode)
+        save(gdi, true);
+      tableMode = !tableMode;
+      loadPage(gdi);
     }
     else if (bi.id == "LegLengths") {
       save(gdi, 2);
@@ -723,9 +730,22 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.getData("RunnerID", RunnerID);
 
   gdi.clearPage(false);
+  int xp = gdi.getCX();
 
   gdi.setData("ClassID", ClassID);
   gdi.setData("RunnerID", RunnerID);
+
+  string switchMode;
+  const int button_w = gdi.scaleLength(90);
+  switchMode = tableMode ? "Formulärläge" : "Tabelläge";
+  gdi.addButton(2, 2, button_w, "SwitchMode", switchMode,
+                CourseCB, "Välj vy", false, false).fixedCorner();
+
+  if (tableMode) {
+    gdi.addTable(oCourse::getTable(oe), xp, gdi.scaleLength(30));
+    return true;
+  }
+
   gdi.addString("", boldLarge, "Banor");
   gdi.pushY();
 
@@ -1125,17 +1145,21 @@ oEvent::DrawMethod TabCourse::getDefaultMethod() const {
 void TabCourse::clearCompetitionData() {
   courseId = 0;
   addedCourse = false;
+  tableMode = false;
 }
 
 void TabCourse::refreshCourse(const wstring &text, gdioutput &gdi) {
   bool firstAsStart = gdi.isChecked("FirstAsStart");
   bool lastAsFinish = gdi.isChecked("LastAsFinish");
-  wstring controls = encodeCourse(text, firstAsStart, lastAsFinish);
+  bool rogaining = gdi.hasWidget("Rogaining") && gdi.getSelectedItem("Rogaining").first == 1;
+  
+  wstring controls = encodeCourse(text, rogaining, firstAsStart, lastAsFinish);
+
   if (controls != gdi.getText("CourseExpanded"))
     gdi.setText("CourseExpanded", controls, true);
 }
 
-wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFinish) {
+wstring TabCourse::encodeCourse(const wstring &in, bool rogaining, bool firstStart, bool lastFinish) {
   vector<int> newC;
   string ins;
   wide2String(in, ins);
@@ -1144,35 +1168,53 @@ wstring TabCourse::encodeCourse(const wstring &in, bool firstStart, bool lastFin
   wstring out;
   out.reserve(in.length() * 2);
   wstring bf;
-  for (size_t i = 0; i < newC.size(); ++i) {
-    if (i == 0 && (newC.size() > 1 || firstStart)) {
-      out += lang.tl("Start");
-      if (firstStart)
-        out += L"(" + itow(newC[i]) + L")";
-      else
-        out += dash + formatControl(newC[i], bf);
 
-      if (newC.size() == 1) {
-        out += dash + lang.tl("Mål");
-        break;
-      }
-      continue;
-    }
-    else
-      out += dash;
+  if (!rogaining) {
+    for (size_t i = 0; i < newC.size(); ++i) {
+      if (i == 0 && (newC.size() > 1 || firstStart)) {
+        out += lang.tl("Start");
+        if (firstStart)
+          out += L"(" + itow(newC[i]) + L")";
+        else
+          out += dash + formatControl(newC[i], bf);
 
-    if (i+1 == newC.size()) {
-      if (i == 0) {
-        out = lang.tl("Start") + dash;
+        if (newC.size() == 1) {
+          out += dash + lang.tl("Mål");
+          break;
+        }
+        continue;
       }
-      if (lastFinish)
-        out += lang.tl("Mål") + L"(" + itow(newC[i]) + L")";
       else
-        out += formatControl(newC[i], bf) + dash + lang.tl("Mål");
+        out += dash;
+
+      if (i + 1 == newC.size()) {
+        if (i == 0) {
+          out = lang.tl("Start") + dash;
+        }
+        if (lastFinish)
+          out += lang.tl("Mål") + L"(" + itow(newC[i]) + L")";
+        else
+          out += formatControl(newC[i], bf) + dash + lang.tl("Mål");
+      }
+      else {
+        out += formatControl(newC[i], bf);
+      }
     }
-    else {
+  }
+  else {
+    int pcnt = 0;
+    for (size_t i = 0; i < newC.size(); ++i) {
+      if (i > 0)
+        out += L"; ";
+      auto pc = oe->getControl(newC[i]);
+      if (pc)
+        pcnt += pc->getRogainingPoints();
+
       out += formatControl(newC[i], bf);
     }
+
+    if (pcnt > 0)
+      out += L" = " + itow(pcnt) + L"p";
   }
   return out;
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,6 +42,10 @@ oDataContainer::oDataContainer(int maxsize) {
 oDataContainer::~oDataContainer(void) {
 }
 
+CellType oDataDefiner::getCellType() const {
+  return CellType::cellEdit; 
+}
+
 oDataInfo::oDataInfo() {
   memset(Name, 0, sizeof(Name));
   Index = 0;
@@ -51,7 +55,6 @@ oDataInfo::oDataInfo() {
   tableIndex = 0;
   decimalSize = 0;
   decimalScale = 1;
-  dataDefiner = 0;
   zeroSortPadding = 0;
   memset(Description, 0, sizeof(Description));
 }
@@ -60,8 +63,8 @@ oDataInfo::~oDataInfo() {
 }
 
 oDataInfo &oDataContainer::addVariableInt(const char *name,
-                                    oIntSize isize, const char *description,
-                                    const oDataDefiner *dataDef) {
+                                          oIntSize isize, const char *description,
+                                          const shared_ptr<oDataDefiner> &dataDef) {
   oDataInfo odi;
   odi.dataDefiner = dataDef;
   odi.Index=dataPointer;
@@ -95,12 +98,12 @@ oDataInfo &oDataContainer::addVariableDecimal(const char *name, const char *desc
   return odi;
 }
 
-oDataInfo &oDataContainer::addVariableString(const char *name, const char *descr, const oDataDefiner *dataDef) {
+oDataInfo &oDataContainer::addVariableString(const char *name, const char *descr, const shared_ptr<oDataDefiner> &dataDef) {
   return addVariableString(name, -1, descr, dataDef);
 }
 
 oDataInfo &oDataContainer::addVariableString(const char *name, int maxChar,
-                                       const char *descr, const oDataDefiner *dataDef)
+                                       const char *descr, const shared_ptr<oDataDefiner> &dataDef)
 {
   oDataInfo odi;
   odi.dataDefiner = dataDef;
@@ -129,7 +132,7 @@ oDataInfo &oDataContainer::addVariableString(const char *name, int maxChar,
 }
 
 oDataInfo &oDataContainer::addVariableEnum(const char *name, int maxChar, const char *descr,
-                     const vector< pair<wstring, wstring> > enumValues) {
+                                           const vector< pair<wstring, wstring> > enumValues) {
   oDataInfo &odi = addVariableString(name, maxChar, descr);
   odi.SubType = oSSEnum;
   for (size_t k = 0; k<enumValues.size(); k++)
@@ -202,7 +205,7 @@ void oDataContainer::initData(oBase *ob, int datasize) {
   memset(oldData, 0, dataPointer);
 
   if (stringIndexPointer > 0 || stringArrayIndexPointer>2) {
-    vector< vector<wstring> > &str = *strptr;
+    vector<vector<wstring>> &str = *strptr;
     str.clear();
     str.resize(stringArrayIndexPointer);
     str[0].resize(stringIndexPointer);
@@ -598,7 +601,7 @@ bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi) {
 
     string Id=di.Name+string("_odc");
 
-    if (!gdi.hasField(Id)) {
+    if (!gdi.hasWidget(Id)) {
       continue;
     }
     if (di.Type==oDTInt){
@@ -1011,7 +1014,7 @@ void oDataContainer::buildTableCol(Table *table)
     oDataInfo &di=ordered[kk];
 
     if (di.dataDefiner)  {
-      table->addDataDefiner(di.Name, di.dataDefiner);
+      table->addDataDefiner(di.Name, di.dataDefiner.get());
       int w = strlen(di.Description)*6;
       di.tableIndex = di.dataDefiner->addTableColumn(table, di.Description, w);
     }
@@ -1106,8 +1109,12 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
   oBase &ob = *(oBase *)&owner;
   for (size_t kk = 0; kk < ordered.size(); kk++) {
     const oDataInfo &di=ordered[kk];
-    if (di.dataDefiner != 0) {
-      table.set(di.tableIndex, ob, 1000+di.tableIndex, di.dataDefiner->formatData(&ob), canEdit);
+    if (di.dataDefiner != nullptr) {
+      if (di.tableIndex >= 0) {
+        table.set(di.tableIndex, ob, 1000 + di.tableIndex,
+                  di.dataDefiner->formatData(&ob), canEdit && di.dataDefiner->canEdit(),
+                  di.dataDefiner->getCellType());
+      }
     }
     else if (di.Type==oDTInt) {
       LPBYTE vd=LPBYTE(data)+di.Index;
@@ -1150,33 +1157,34 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
       const wstring &str = (*strptr)[0][di.Index];
       table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, str, canEdit, cellEdit);
     }
-    nextIndex = di.tableIndex + 1;
+    if (di.tableIndex >= 0)
+      nextIndex = di.tableIndex + 1;
   }
   return nextIndex;
 }
 
-bool oDataContainer::inputData(oBase *ob, int id,
-                               const wstring &input, int inputId,
-                               wstring &output, bool noUpdate)
+pair<int, bool>  oDataContainer::inputData(oBase *ob, int id,
+                                           const wstring &input, int inputId,
+                                           wstring &output, bool noUpdate)
 {
   void *data, *oldData;
   vector< vector<wstring> > *strptr;
   ob->getDataBuffers(data, oldData, strptr);
 
   for (size_t kk = 0; kk < ordered.size(); kk++) {
-    const oDataInfo &di=ordered[kk];
+    const oDataInfo &di = ordered[kk];
 
-    if (di.tableIndex+1000==id) {
+    if (di.tableIndex + 1000 == id) {
       if (di.dataDefiner) {
         const wstring &src = di.dataDefiner->formatData(ob);
-        output = di.dataDefiner->setData(ob, input);
+        auto ret = di.dataDefiner->setData(ob, input, output, inputId);
         bool ch = output != src;
         if (ch && noUpdate == false)
           ob->synchronize(true);
-        return ch;
+        return ret;
       }
-      else if (di.Type==oDTInt) {
-        LPBYTE vd=LPBYTE(data)+di.Index;
+      else if (di.Type == oDTInt) {
+        LPBYTE vd = LPBYTE(data) + di.Index;
 
         int no = 0;
         if (di.SubType == oISCurrency) {
@@ -1219,7 +1227,7 @@ bool oDataContainer::inputData(oBase *ob, int id,
           oBase::converExtIdentifierString(out64, outbf);
           output = outbf;
 
-          return k64 != no64;
+          return make_pair(0, false);
         }
         else
           no = _wtoi(input.c_str());
@@ -1240,28 +1248,27 @@ bool oDataContainer::inputData(oBase *ob, int id,
 
         formatNumber(outN, di, bf);
         output = bf;
-        return k != no;
       }
-      else if (di.Type==oDTString) {
-        LPBYTE vd=LPBYTE(data)+di.Index;
+      else if (di.Type == oDTString) {
+        LPBYTE vd = LPBYTE(data) + di.Index;
         const wchar_t *str = input.c_str();
 
         if (di.SubType == oSSEnum) {
-          size_t ix = inputId-1;
+          size_t ix = inputId - 1;
           if (ix < di.enumDescription.size()) {
             str = di.enumDescription[ix].first.c_str();
           }
         }
 
-        if (wcscmp((wchar_t *)vd, str)!=0) {
-          wcsncpy_s((wchar_t *)vd, di.Size/sizeof(wchar_t), str, (di.Size-1)/sizeof(wchar_t));
+        if (wcscmp((wchar_t *)vd, str) != 0) {
+          wcsncpy_s((wchar_t *)vd, di.Size / sizeof(wchar_t), str, (di.Size - 1) / sizeof(wchar_t));
 
           ob->updateChanged();
           if (noUpdate == false)
             ob->synchronize(true);
 
           if (di.SubType == oSSEnum) {
-            size_t ix = inputId-1;
+            size_t ix = inputId - 1;
             if (ix < di.enumDescription.size()) {
               output = lang.tl(di.enumDescription[ix].second);
               // This might be incorrect if data was changed on server,
@@ -1269,16 +1276,15 @@ bool oDataContainer::inputData(oBase *ob, int id,
               // Anyway, the row will typically be reloaded
             }
             else
-              output=(wchar_t *)vd;
+              output = (wchar_t *)vd;
           }
           else
-            output=(wchar_t *)vd;
-          return true;
+            output = (wchar_t *)vd;
+          return make_pair(0, false);
         }
         else
-          output=input;
+          output = input;
 
-        return false;
       }
       else if (di.Type == oDTStringDynamic) {
         wstring &vd = (*strptr)[0][di.Index];
@@ -1290,28 +1296,28 @@ bool oDataContainer::inputData(oBase *ob, int id,
             ob->synchronize(true);
 
           output = (*strptr)[0][di.Index];
-          return true;
         }
         else
-          output=input;
-
-        return false;
+          output = input;
       }
     }
   }
-  return true;
+  return make_pair(0, false);
 }
 
-void oDataContainer::fillInput(const void *data, int id, const char *name,
+void oDataContainer::fillInput(const oBase *obj, int id, const char *name,
                                vector< pair<wstring, size_t> > &out, size_t &selected) const {
 
+  void *data, *olddata;
+  pvectorstr strData;
+  obj->getDataBuffers(data, olddata, strData);
 
   const oDataInfo * info = findVariable(name);
 
   if (!info) {
     for (size_t kk = 0; kk < ordered.size(); kk++) {
       const oDataInfo &di=ordered[kk];
-      if (di.tableIndex+1000==id && di.Type == oDTString && di.SubType == oSSEnum) {
+      if (di.tableIndex+1000 == id) {
         info = &di;
         break;
       }
@@ -1327,6 +1333,9 @@ void oDataContainer::fillInput(const void *data, int id, const char *name,
       if (info->enumDescription[k].first == wstring(vd))
         selected = k+1;
     }
+  }
+  else if (info && info->dataDefiner) {
+    info->dataDefiner->fillInput(obj, out, selected);
   }
   else
     throw meosException("Invalid enum");

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1137,7 +1137,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   int minStartNo = Runners.size();
   vector<pair<int, int>> newStartNo;
   for(unsigned k=0;k<stimes.size(); k++) {
-    runners[k]->setStartTime(stimes[k], true, false, false);
+    runners[k]->setStartTime(stimes[k], true, ChangeType::Update, false);
     runners[k]->synchronize();
     minStartNo = min(minStartNo, runners[k]->getStartNo());
     newStartNo.emplace_back(stimes[k], k);
@@ -1313,7 +1313,7 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
 
   for (it = Runners.begin(); it != Runners.end(); ++it) {
     if (it->Class && it->Class->Id == ClassID) {
-      it->setStartTime(stimes[k++], true, false, false);
+      it->setStartTime(stimes[k++], true, oBase::ChangeType::Update, false);
       it->StartNo = k;
       it->synchronize();
     }
@@ -1627,15 +1627,15 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
 
     if ((times[k].first - delta) < maxTime && breakIndex == -1) {
       if (!reverse)
-        r->setStartTime(firstTime + times[k].first - delta, true, false, false);
+        r->setStartTime(firstTime + times[k].first - delta, true, ChangeType::Update, false);
       else
-        r->setStartTime(firstTime - times[k].first + reverseDelta, true, false, false);
+        r->setStartTime(firstTime - times[k].first + reverseDelta, true, ChangeType::Update, false);
     }
     else if (!reverse) {
       if (breakIndex == -1)
         breakIndex = k;
 
-      r->setStartTime(restartTime + ((k - breakIndex)/pairSize) * interval, true, false, false);
+      r->setStartTime(restartTime + ((k - breakIndex)/pairSize) * interval, true, ChangeType::Update, false);
     }
     else {
       if (breakIndex == -1) {
@@ -1643,7 +1643,7 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
         odd = times.size() % 2;
       }
 
-      r->setStartTime(restartTime + ((breakIndex - k + odd)/pairSize) * interval, true, false, false);
+      r->setStartTime(restartTime + ((breakIndex - k + odd)/pairSize) * interval, true, ChangeType::Update, false);
     }
     r->synchronize(true);
   }

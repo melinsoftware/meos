@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,10 +56,10 @@ static int OnlineCB(gdioutput *gdi, int type, void *data) {
     case GUI_LISTBOX:{
       ListBoxInfo lbi = *static_cast<ListBoxInfo *>(data);
       if (lbi.id == "Format") {
-        if (gdi->hasField("IncludeTotal")) {
+        if (gdi->hasWidget("IncludeTotal")) {
           gdi->setInputStatus("IncludeTotal", lbi.data == 1);
         }
-        if (gdi->hasField("IncludeCourse")) {
+        if (gdi->hasWidget("IncludeCourse")) {
           gdi->setInputStatus("IncludeCourse", lbi.data == 1);
         }
       }
@@ -264,8 +264,8 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
   prefix = gdi.getText("Prefix");
   exportScript = gdi.getText("ExportScript");
   zipFile = gdi.isChecked("Zip");
-  includeTotal = gdi.hasField("IncludeTotal") && gdi.isChecked("IncludeTotal");
-  includeCourse = gdi.hasField("IncludeCourse") && gdi.isChecked("IncludeCourse");
+  includeTotal = gdi.hasWidget("IncludeTotal") && gdi.isChecked("IncludeTotal");
+  includeCourse = gdi.hasWidget("IncludeCourse") && gdi.isChecked("IncludeCourse");
 
   ListBoxInfo lbi;
   gdi.getSelectedItem("Format", lbi);
@@ -304,7 +304,7 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
     ctrl[k]->getCourseControls(ids);
     for (size_t i = 0; i < ids.size(); i++) {
       string id =  "C"+itos(ids[i]);
-      if (gdi.hasField(id)) {
+      if (gdi.hasWidget(id)) {
         bool st = gdi.isChecked(id);
         if (st != ctrl[k]->isValidRadio()) {
           ctrl[k]->setRadio(st);

@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -161,8 +161,8 @@ class RunnerDB {
 private:
   oEvent *oe;
 
-  Table *runnerTable;
-  Table *clubTable;
+  shared_ptr<Table> runnerTable;
+  shared_ptr<Table> clubTable;
 
   static int cellEntryIndex;
 
@@ -286,8 +286,8 @@ public:
   void refreshClubTableData(Table &table);
   void refreshTables();
 
-  Table *getRunnerTB();
-  Table *getClubTB();
+  const shared_ptr<Table> &getRunnerTB();
+  const shared_ptr<Table> &getClubTB();
 
   void hasEnteredCompetition(__int64 extId);
 
@@ -368,9 +368,9 @@ public:
   const RunnerDBEntry &getRunner() const;
 
   void addTableRow(Table &table) const;
-  bool inputData(int id, const wstring &input,
-                 int inputId, wstring &output, bool noUpdate);
-  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected);
+  pair<int, bool> inputData(int id, const wstring &input,
+                            int inputId, wstring &output, bool noUpdate) override;
+  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected) override;
 
   oDBRunnerEntry(oEvent *oe);
   virtual ~oDBRunnerEntry();

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -371,7 +371,7 @@ public:
   bool hasToolbar() const;
   void activateToolbar(bool active);
 
-  void processToolbarMessage(const string &id, void *data);
+  void processToolbarMessage(const string &id, Table *data);
 
   void synchronizeListScroll(const string &id1, const string &id2);
 
@@ -424,7 +424,7 @@ public:
 
   void selectTab(int Id);
 
-  void addTable(Table *table, int x, int y);
+  void addTable(const shared_ptr<Table> &table, int x, int y);
   Table &getTable() const; //Get the (last) table. If needed, add support for named tables...
 
 
@@ -468,8 +468,8 @@ public:
   void setRestorePoint();
   void setRestorePoint(const string &id);
 
-  bool removeControl(const string &id);
-  bool hideControl(const string &id);
+  bool removeWidget(const string &id);
+  bool hideWidget(const string &id, bool hide = true);
 
   void CheckInterfaceTimeouts(DWORD T);
   bool RemoveFirstInfoBox(const string &id);
@@ -597,7 +597,7 @@ public:
 
   bool clearList(const string &id);
 
-  bool hasField(const string &id) const;
+  bool hasWidget(const string &id) const;
   
   const wstring &getText(const char *id, bool acceptMissing = false) const;
   

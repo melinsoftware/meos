@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -249,7 +249,6 @@ protected:
 
   void getRowRange(int &rowLo, int &rowHi) const;
   void getColRange(int &colLo, int &colHi) const;
-  int ownerCounter;
   DWORD tableProp;
 
   int selectionRow;
@@ -302,9 +301,7 @@ public:
   void setTableProp(DWORD w) {tableProp = w;}
 
   void hide(gdioutput &gdi); //Ensure no edit contol is visible
-  void addOwnership() {ownerCounter++;}
-  void releaseOwnership();
-
+  
   void autoAdjust(gdioutput &gdi); // Adjust column widths
   void autoSelectColumns();
 
@@ -347,6 +344,8 @@ public:
   void filter(int col, const wstring &filt, bool forceFilter=false);
 
   int addColumn(const string &Title, int width, bool isnum, bool formatRight = false);
+  int addColumn(const wstring &translatedTitle, int width, bool isnum, bool formatRight = false);
+
   int addColumnPaddedSort(const string &title, int width, int padding, bool formatRight = false);
 
   void reserve(size_t siz);
@@ -385,7 +384,7 @@ struct TableSortIndex {
 
 enum {TID_CLASSNAME, TID_COURSE, TID_NUM, TID_ID, TID_MODIFIED,
 TID_RUNNER, TID_CLUB, TID_START, TID_TIME,
-TID_FINISH, TID_STATUS, TID_RUNNINGTIME, TID_PLACE,
+TID_FINISH, TID_STATUS, TID_RUNNINGTIME, TID_PLACE, TID_POINTS,
 TID_CARD, TID_TEAM, TID_LEG, TID_CONTROL, TID_CODES, TID_FEE, TID_PAID,
 TID_INPUTTIME, TID_INPUTSTATUS, TID_INPUTPOINTS, TID_INPUTPLACE,
 TID_NAME, TID_NATIONAL, TID_SEX, TID_YEAR, TID_INDEX, TID_ENTER, TID_STARTNO};

@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,30 +37,35 @@ class GeneralResult
 {
 private:
   const oListParam *context;
+  mutable bool lockPrepare = false;
 
 protected:
 
   enum PrincipalSort {None, ClassWise, CourseWise};
 
-  virtual int score(oTeam &team, RunnerStatus st, int time, int points) const;
+  virtual pair<int, int> score(oTeam &team, RunnerStatus st, int time, int points) const;
   virtual RunnerStatus deduceStatus(oTeam &team) const;
   virtual int deduceTime(oTeam &team) const;
   virtual int deducePoints(oTeam &team) const;
 
-  virtual int score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const;
+  virtual pair<int, int> score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const;
   virtual RunnerStatus deduceStatus(oRunner &runner) const;
   virtual int deduceTime(oRunner &runner, int startTime) const;
   virtual int deducePoints(oRunner &runner) const;
 
-  virtual void prepareCalculations(oEvent &oe, bool prepareForTeam, int inputNumber) const;
-  virtual void prepareCalculations(oTeam &team) const;
-  virtual void prepareCalculations(oRunner &runner) const;
+  virtual void prepareCalculations(oEvent &oe, bool classResult, const set<int> &clsSelection, vector<pRunner> &runners, vector<pTeam> &teams, int inputNumber) const;
+  virtual void prepareCalculations(oTeam &team, bool classResult) const;
+  virtual void prepareCalculations(oRunner &runner, bool classResult) const;
   virtual void storeOutput(vector<int> &times, vector<int> &numbers) const;
 
   int getListParamTimeToControl() const;
   int getListParamTimeFromControl() const;
 
 public:
+
+  virtual const string &getTimeStamp() const;
+
+  virtual bool isRogaining() const;
 
   struct BaseResultContext {
   private:
@@ -142,9 +147,21 @@ public:
   void setContext(const oListParam *context);
   void clearContext();
 
-  void calculateTeamResults(vector<oTeam *> &teams, oListInfo::ResultType resType, bool sortTeams, int inputNumber) const;
-  void calculateIndividualResults(vector<oRunner *> &runners, oListInfo::ResultType resType, bool sortRunners, int inputNumber) const;
+  void calculateTeamResults(vector<oTeam *> &teams, 
+                            bool classResult, 
+                            oListInfo::ResultType resType, 
+                            bool sortTeams, 
+                            int inputNumber) const;
+  void calculateIndividualResults(vector<oRunner *> &runners, 
+                                  bool classResult, 
+                                  oListInfo::ResultType resType, 
+                                  bool sortRunners, 
+                                  int inputNumber) const;
   void sortTeamMembers(vector<oRunner *> &runners) const;
+
+  virtual bool isDynamic() const {
+    return false;
+  }
 
   template<class T> void sort(vector<T*> &rt, SortOrder so) const;
 
@@ -154,22 +171,22 @@ public:
 
 class ResultAtControl : public GeneralResult {
 protected:
-  int score(oTeam &team, RunnerStatus st, int time, int points) const;
-  RunnerStatus deduceStatus(oTeam &team) const;
-  int deduceTime(oTeam &team) const;
-  int deducePoints(oTeam &team) const;
+  pair<int, int> score(oTeam &team, RunnerStatus st, int time, int points) const override;
+  RunnerStatus deduceStatus(oTeam &team) const override;
+  int deduceTime(oTeam &team) const override;
+  int deducePoints(oTeam &team) const override;
 
-  int score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const;
-  RunnerStatus deduceStatus(oRunner &runner) const;
-  int deduceTime(oRunner &runner, int startTime) const;
-  int deducePoints(oRunner &runner) const;
+  pair<int, int> score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const override;
+  RunnerStatus deduceStatus(oRunner &runner) const override;
+  int deduceTime(oRunner &runner, int startTime) const override;
+  int deducePoints(oRunner &runner) const override;
 };
 
 class TotalResultAtControl : public ResultAtControl {
 protected:
-  int deduceTime(oRunner &runner, int startTime) const;
-  RunnerStatus deduceStatus(oRunner &runner) const;
-  int score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const;
+  int deduceTime(oRunner &runner, int startTime) const override;
+  RunnerStatus deduceStatus(oRunner &runner) const override;
+  pair<int, int> score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const override;
 };
 
 class DynamicResult : public GeneralResult {
@@ -189,10 +206,13 @@ public:
   };
 
 private:
-
+  bool allowRetag = true;
   static map<string, DynamicMethods> symb2Method;
   static map<DynamicMethods, pair<string, string> > method2SymbName;
   static int instanceCount;
+
+  mutable int lowAgeLimit = -1;
+  mutable int highAgeLimit = 1000;
 
   class MethodInfo {
     string source;
@@ -221,16 +241,24 @@ private:
   void addSymbol(DynamicMethods method, const char *symb, const char *name);
   RunnerStatus toStatus(int status) const;
   
-  void prepareCommon(oAbstractRunner &runner) const;
+  void prepareCommon(oAbstractRunner &runner, bool classResult) const;
   
-  static string getInternalPath(const string &tag);
 public:
+
+  bool isDynamic() const override {
+    return true;
+  }
+
+  bool retaggable() const { return allowRetag; }
+  void retaggable(bool r) { allowRetag = r; }
 
   void setReadOnly() const {readOnly = true;}
 
   bool isReadOnly() const {return readOnly;}
 
-  const string &getTimeStamp() const {return timeStamp;}
+  const string &getTimeStamp() const override {return timeStamp;}
+
+  bool isRogaining() const override;
 
   static string undecorateTag(const string &inputTag);
 
@@ -241,20 +269,26 @@ public:
 
   void declareSymbols(DynamicMethods m, bool clear) const;
 
-  void prepareCalculations(oEvent &oe, bool prepareForTeam, int inputNumber) const;
-  void prepareCalculations(oTeam &team) const;
-  void prepareCalculations(oRunner &runner) const;
+  void prepareCalculations(oEvent &oe,
+                           bool classResult,
+                           const set<int> &clsSelection,
+                           vector<pRunner> &runners,
+                           vector<pTeam> &teams,
+                           int inputNumber) const override;
+  void prepareCalculations(oTeam &team, bool classResult) const override;
+  void prepareCalculations(oRunner &runner, bool classResult) const override;
+  
   void storeOutput(vector<int> &times, vector<int> &numbers) const;
 
-  int score(oTeam &team, RunnerStatus st, int time, int points) const;
-  RunnerStatus deduceStatus(oTeam &team) const;
-  int deduceTime(oTeam &team) const;
-  int deducePoints(oTeam &team) const;
+  pair<int, int> score(oTeam &team, RunnerStatus st, int time, int points) const override;
+  RunnerStatus deduceStatus(oTeam &team) const override;
+  int deduceTime(oTeam &team) const override;
+  int deducePoints(oTeam &team) const override;
 
-  int score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const;
-  RunnerStatus deduceStatus(oRunner &runner) const;
-  int deduceTime(oRunner &runner, int startTime) const;
-  int deducePoints(oRunner &runner) const;
+  pair<int, int> score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const override;
+  RunnerStatus deduceStatus(oRunner &runner) const override;
+  int deduceTime(oRunner &runner, int startTime) const override;
+  int deducePoints(oRunner &runner) const override;
 
   DynamicResult();
   DynamicResult(const DynamicResult &resIn);
@@ -294,3 +328,25 @@ public:
   void clear();
 };
 
+struct GeneralResultCtr {
+  wstring name;
+  string tag;
+  wstring fileSource;
+
+  bool isDynamic() const;
+  bool operator<(const GeneralResultCtr &c) const;
+  shared_ptr<GeneralResult> ptr;
+
+  // True if implicitly loaded (form list or by class results)
+  bool isImplicit() const {
+    return fileSource == L"*";
+  }
+
+  GeneralResultCtr(const char *tag, const wstring &name, const shared_ptr<GeneralResult> &ptr);
+  GeneralResultCtr(wstring &file, const shared_ptr<DynamicResult> &ptr);
+  GeneralResultCtr() {}
+
+  ~GeneralResultCtr();
+  GeneralResultCtr(const GeneralResultCtr &ctr);
+  void operator=(const GeneralResultCtr &ctr);
+};

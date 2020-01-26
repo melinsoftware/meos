@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -214,7 +214,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.clearPage(false);
     gdi.addButton("Cancel", "Stäng", tabSpeakerCB);
     gdi.dropLine();
-    gdi.addTable(oe->getPunchesTB(), gdi.getCX(), gdi.getCY());
+    gdi.addTable(oFreePunch::getTable(oe), gdi.getCX(), gdi.getCY());
     gdi.refresh();
   }
   else if (bu.id == "Report") {
@@ -745,7 +745,7 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
     return;
 
   bool keepLegs = false;
-  if (gdi.hasField("Leg")) {
+  if (gdi.hasWidget("Leg")) {
     DWORD clsSel = 0;
     if (gdi.getData("ClassSelection", clsSel) && clsSel == pc->getId()) {
       gdi.restore("LegSelection", true);
@@ -1125,17 +1125,17 @@ bool TabSpeaker::loadPage(gdioutput &gdi) {
 
   if (classId == -1) {
     string btn = "Events";
-    if (gdi.hasField(btn))
+    if (gdi.hasWidget(btn))
       gdi.sendCtrlMessage(btn);
   }
   else if (classId == -2) {
     string btn = "Report";
-    if (gdi.hasField(btn))
+    if (gdi.hasWidget(btn))
       gdi.sendCtrlMessage(btn);
   }
   else if (classId > 0) {
     string btn = "cid" + itos(classId);
-    if (gdi.hasField(btn))
+    if (gdi.hasWidget(btn))
       gdi.sendCtrlMessage(btn);
   }
 
@@ -1265,7 +1265,7 @@ void TabSpeaker::savePriorityClass(gdioutput &gdi) {
     pRunner r = oe->getRunner(runnersToSet[k], 0);
     if (r) {
       int id = runnersToSet[k];
-      if (!gdi.hasField("A" + itos(id))) {
+      if (!gdi.hasWidget("A" + itos(id))) {
         runnersToSet.clear(); //Page not loaded. Abort.
         return;
       }

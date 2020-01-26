@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,8 @@ protected:
 
 public:
 
+  static const shared_ptr<Table> &getTable(oEvent *oe);
+
   // Get control hash (itype) from course controld and race number
   static int getControlHash(int courseControlId, int race);
 
@@ -70,8 +72,8 @@ public:
   // Get the runner currently tied to this punch
   pRunner getTiedRunner() const;
   void addTableRow(Table &table) const;
-  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected);
-  bool inputData(int id, const wstring &input, int inputId, wstring &output, bool noUpdate);
+  void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected) override;
+  pair<int, bool> inputData(int id, const wstring &input, int inputId, wstring &output, bool noUpdate) override;
 
   void remove();
   bool canRemove() const;

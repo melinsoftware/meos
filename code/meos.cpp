@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@
 #include "autocomplete.h"
 #include "image.h"
 #include "csvparser.h"
+#include "generalresult.h"
 
 int defaultCodePage = 1252;
 
@@ -221,17 +222,26 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     RunnerStatusOrderMap[k] = 0;
   }
   RunnerStatusOrderMap[StatusOK] = 0;
-  RunnerStatusOrderMap[StatusMAX] = 1;
-  RunnerStatusOrderMap[StatusMP] = 2;
-  RunnerStatusOrderMap[StatusDNF] = 3;
-  RunnerStatusOrderMap[StatusDQ] = 4;
-  RunnerStatusOrderMap[StatusCANCEL] = 5;
-  RunnerStatusOrderMap[StatusDNS] = 6;
-  RunnerStatusOrderMap[StatusUnknown] = 7;
-  RunnerStatusOrderMap[StatusNotCompetiting] = 8;
+  RunnerStatusOrderMap[StatusNoTiming] = 1;
+  RunnerStatusOrderMap[StatusOutOfCompetition] = 2;
+
+  RunnerStatusOrderMap[StatusMAX] = 3;
+  RunnerStatusOrderMap[StatusMP] = 4;
+  RunnerStatusOrderMap[StatusDNF] = 5;
+  RunnerStatusOrderMap[StatusDQ] = 6;
+  RunnerStatusOrderMap[StatusCANCEL] = 7;
+  RunnerStatusOrderMap[StatusDNS] = 8;
+  RunnerStatusOrderMap[StatusUnknown] = 9;
+  RunnerStatusOrderMap[StatusNotCompetiting] = 10;
 
   lang.init();
   StringCache::getInstance().init();
+  
+  for (RunnerStatus st : getAllRunnerStatus()) {
+    if (st != StatusOK)
+      assert(RunnerStatusOrderMap[st] > 0);
+    oAbstractRunner::encodeStatus(st);
+  }
 
   GetCurrentDirectory(MAX_PATH, programPath);
   bool utfRecode = false;
@@ -469,14 +479,14 @@ int APIENTRY WinMain(HINSTANCE hInstance,
       }
     }
   }
-
+  gdi_main = nullptr;
   gdi_extra.clear();
 
   if (gEvent)
     gEvent->saveProperties(settings);
 
   delete gEvent;
-  gEvent = 0;
+  gEvent = nullptr;
 
   initMySQLCriticalSection(false);
 

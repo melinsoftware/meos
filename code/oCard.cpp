@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -555,27 +555,25 @@ bool oEvent::isCardRead(const SICard &card) const
   return false;
 }
 
+const shared_ptr<Table> &oCard::getTable(oEvent *oe) {
+  if (!oe->hasTable("cards")) {
+    auto table = make_shared<Table>(oe, 20, L"Brickor", "cards");
 
-Table *oEvent::getCardsTB() //Table mode
-{
-  oCardList::iterator it;
+    table->addColumn("Id", 70, true, true);
+    table->addColumn("Ändrad", 70, false);
 
-  Table *table=new Table(this, 20, L"Brickor", "cards");
+    table->addColumn("Bricka", 120, true);
+    table->addColumn("Deltagare", 200, false);
 
-  table->addColumn("Id", 70, true, true);
-  table->addColumn("Ändrad", 70, false);
+    table->addColumn("Starttid", 70, false);
+    table->addColumn("Måltid", 70, false);
+    table->addColumn("Stämplingar", 70, true);
 
-  table->addColumn("Bricka", 120, true);
-  table->addColumn("Deltagare", 200, false);
-
-  table->addColumn("Starttid", 70, false);
-  table->addColumn("Måltid", 70, false);
-  table->addColumn("Stämplingar", 70, true);
-
-  table->setTableProp(Table::CAN_DELETE);
-  table->update();
-
-  return table;
+    table->setTableProp(Table::CAN_DELETE);
+    oe->setTable("cards", table);
+  }
+  
+  return oe->getTable("cards");
 }
 
 void oEvent::generateCardTableData(Table &table, oCard *addCard)

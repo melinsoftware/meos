@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 //V35: abcdef
 //V36: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 935 $");
+  string revision("$Rev: 972 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
@@ -42,16 +42,16 @@ int getMeosBuild() {
 //V33: abcdefghij
 //V34: abcdfge
 wstring getMeosDate() {
-  wstring date(L"$Date: 2019-10-05 21:53:12 +0200 (lö, 05 okt 2019) $");
+  wstring date(L"$Date: 2020-01-18 15:14:04 +0100 (lö, 18 jan 2020) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Update 3"; // No parantheses (...)
+  return L"Beta 1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
-  return L"3.6";
+  return L"3.7";
 }
 
 wstring getMeosFullVersion() {
@@ -103,7 +103,6 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Hans Carlstedt, Sävedalens AIK");
   supp.emplace_back(L"IFK Mora OK");
   supp.emplace_back(L"Attunda OK");
-  supp.emplace_back(L"OK Tyr, Karlstad");
   supp.emplace_back(L"Siguldas Takas, Latvia");
   supp.emplace_back(L"Eric Teutsch, Ottawa Orienteering Club, Canada");
   supp.emplace_back(L"Silkeborg OK, Denmark");
@@ -142,6 +141,13 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"TJ Slávia Farmaceut Bratislava");
   supp.emplace_back(L"OK Tyr, Karlstad");
   supp.emplace_back(L"Magnus Thornell, Surahammars SOK");
-  
+  supp.emplace_back(L"Mariager Fjord OK");
+  supp.emplace_back(L"Nässjö OK");
+  supp.emplace_back(L"Ringsjö OK");
+  supp.emplace_back(L"Big Foot Orienteers");
+  supp.emplace_back(L"Bay Area Orienteering Club");
+  supp.emplace_back(L"Finspångs SOK");
+  supp.emplace_back(L"OK Gorm, Denmark");
+  supp.emplace_back(L"Nyköpings OK");
   reverse(supp.begin(), supp.end());
 }

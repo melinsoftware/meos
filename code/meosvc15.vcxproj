@@ -428,6 +428,7 @@
     <ClInclude Include="oListInfo.h" />
     <ClInclude Include="onlineinput.h" />
     <ClInclude Include="onlineresults.h" />
+    <ClInclude Include="oRunner.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="pdfwriter.h" />
     <ClInclude Include="prefseditor.h" />
@@ -459,7 +460,6 @@
     <ClInclude Include="oFreeImport.h" />
     <ClInclude Include="oFreePunch.h" />
     <ClInclude Include="oPunch.h" />
-    <ClInclude Include="oRunner.h" />
     <ClInclude Include="ospeaker.h" />
     <ClInclude Include="oTeam.h" />
     <ClInclude Include="progress.h" />

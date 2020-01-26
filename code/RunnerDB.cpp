@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1194,19 +1194,13 @@ void RunnerDB::refreshTables() {
 }
 
 void RunnerDB::releaseTables() {
-  if (runnerTable)
-    runnerTable->releaseOwnership();
-  runnerTable = 0;
-
-  if (clubTable)
-    clubTable->releaseOwnership();
-  clubTable = 0;
+  runnerTable.reset();
+  clubTable.reset();
 }
 
-Table *RunnerDB::getRunnerTB()//Table mode
-{
-  if (runnerTable == 0) {
-    Table *table=new Table(oe, 20, L"Löpardatabasen", "runnerdb");
+const shared_ptr<Table> &RunnerDB::getRunnerTB() {
+  if (!runnerTable) {
+    auto table = make_shared<Table>(oe, 20, L"Löpardatabasen", "runnerdb");
 
     table->addColumn("Index", 70, true, true);
     table->addColumn("Id", 70, true, true);
@@ -1220,7 +1214,6 @@ Table *RunnerDB::getRunnerTB()//Table mode
 
     table->setTableProp(Table::CAN_INSERT|Table::CAN_DELETE|Table::CAN_PASTE);
     table->setClearOnHide(false);
-    table->addOwnership();
     runnerTable = table;
   }
   int nr = 0;
@@ -1284,18 +1277,17 @@ void RunnerDB::refreshRunnerTableData(Table &table) {
   }
 }
 
-Table *RunnerDB::getClubTB()//Table mode
-{
+const shared_ptr<Table> &RunnerDB::getClubTB() {
   bool canEdit = !oe->isClient();
 
-  if (clubTable == 0) {
-    Table *table = new Table(oe, 20, L"Klubbdatabasen", "clubdb");
+  if (!clubTable) {
+    auto table = make_shared<Table>(oe, 20, L"Klubbdatabasen", "clubdb");
 
     table->addColumn("Id", 70, true, true);
     table->addColumn("Ändrad", 70, false);
 
     table->addColumn("Namn", 200, false);
-    oClub::buildTableCol(oe, table);
+    oClub::buildTableCol(oe, table.get());
 
     if (canEdit)
       table->setTableProp(Table::CAN_DELETE|Table::CAN_INSERT|Table::CAN_PASTE);
@@ -1303,7 +1295,6 @@ Table *RunnerDB::getClubTB()//Table mode
       table->setTableProp(0);
 
     table->setClearOnHide(false);
-    table->addOwnership();
     clubTable = table;
   }
 
@@ -1317,7 +1308,6 @@ Table *RunnerDB::getClubTB()//Table mode
     clubTable->update();
   return clubTable;
 }
-
 
 void oDBRunnerEntry::addTableRow(Table &table) const {
   bool canEdit = !oe->isClient();
@@ -1377,8 +1367,8 @@ const RunnerDBEntry &oDBRunnerEntry::getRunner() const {
   return db->rdb[index];
 }
 
-bool oDBRunnerEntry::inputData(int id, const wstring &input,
-                           int inputId, wstring &output, bool noUpdate)
+pair<int, bool>  oDBRunnerEntry::inputData(int id, const wstring &input,
+                                           int inputId, wstring &output, bool noUpdate)
 {
   if (!db)
     throw meosException("Not initialized");
@@ -1392,7 +1382,7 @@ bool oDBRunnerEntry::inputData(int id, const wstring &input,
       db->nhash.clear();
       db->runnerHash.clear();
       db->runnerHashByClub.clear();
-      return true;
+      break;
     case TID_CARD:
       db->rhash.remove(rd.cardNo);
       rd.cardNo = _wtoi(input.c_str());
@@ -1401,7 +1391,7 @@ bool oDBRunnerEntry::inputData(int id, const wstring &input,
         output = itow(rd.cardNo);
       else
         output = L"";
-      return true;
+      break;
     case TID_NATIONAL:
       if (input.empty()) {
         rd.national[0] = 0;
@@ -1429,7 +1419,7 @@ bool oDBRunnerEntry::inputData(int id, const wstring &input,
       output = input;
       break;
   }
-  return false;
+  return make_pair(0, false);
 }
 
 void oDBRunnerEntry::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected)

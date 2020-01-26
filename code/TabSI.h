@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,8 +81,13 @@ private:
   bool printErrorShown;
   void printProtected(gdioutput &gdi, gdioutput &gdiprint);
 
-  //Interactive card assign
+  //Operation mode
   SIMode mode;
+  bool lockedFunction = false;
+  bool allowControl = true;
+  bool allowFinish = true;
+  bool allowStart = false;
+
   int currentAssignIndex;
 
   void printSIInfo(gdioutput &gdi, const wstring &port) const;
@@ -96,7 +101,7 @@ private:
   int lastClubId;
   wstring lastFee;
   int inputId;
-
+  int numSavedCardsOnCmpOpen = 0;
   void showCheckCardStatus(gdioutput &gdi, const string &cmd);
   void showRegisterHiredCards(gdioutput &gdi);
 
@@ -142,7 +147,7 @@ private:
 
   void generateSplits(const pRunner r, gdioutput &gdi);
   int logcounter;
-  csvparser *logger;
+  shared_ptr<csvparser> logger;
 
   string insertCardNumberField;
 
@@ -159,7 +164,7 @@ private:
 
   void showModeCardData(gdioutput &gdi);
 
-  void printCard(gdioutput &gdi, int cardId, bool forPrinter) const;
+  void printCard(gdioutput &gdi, int cardId, SICard *crdRef, bool forPrinter) const;
   void generateSplits(int cardId, gdioutput &gdi);
 
   static int analyzePunch(SIPunch &p, int &start, int &accTime, int &days);
@@ -196,6 +201,10 @@ private:
 
   oClub *extractClub(gdioutput &gdi) const;
   RunnerWDBEntry *extractRunner(gdioutput &gdi) const;
+
+  void updateReadoutFunction(gdioutput &gdi);
+  int readoutFunctionX = 0;
+  int readoutFunctionY = 0;
 
 protected:
   void clearCompetitionData();

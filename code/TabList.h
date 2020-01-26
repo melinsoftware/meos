@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,8 +67,8 @@ protected:
 
   bool hideButtons;
   bool ownWindow;
-  ListEditor *listEditor;
-  MethodEditor *methodEditor;
+  shared_ptr<ListEditor> listEditor;
+  shared_ptr<MethodEditor> methodEditor;
 
   bool noReEvaluate;
   
@@ -112,6 +112,8 @@ public:
   /** Returns a collection of public lists. */
   void static getPublicLists(oEvent &oe, vector<oListParam> &lists);
 
+  MethodEditor &getMethodEditor();
+
   bool loadPage(gdioutput &gdi);
   bool loadPage(gdioutput &gdi, const string &command);
   
@@ -149,7 +151,8 @@ public:
   static void saveExtraLines(oEvent &oe, const char *dataField, gdioutput &gdi);
   static void enableWideFormat(gdioutput &gdi, bool wide);
 
-  ListEditor *getListeditor() const {return listEditor;}
+  ListEditor &getListEditor();
+  ListEditor *getListEditorPtr() const;
 
   const char * getTypeStr() const {return "TListTab";}
   TabType getType() const {return TListTab;}

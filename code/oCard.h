@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,6 +72,8 @@ protected:
   mutable string punchString;
 
 public:
+
+  static const shared_ptr<Table> &getTable(oEvent *oe);
 
   // Returns true if the card was constructed from punches.
   bool isConstructedFromPunches() {return ConstructedFromPunches == readId;}

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ LRESULT CALLBACK ToolProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 const DWORD buttonStyles = BTNS_AUTOSIZE;
 const int bitmapSize = 24;
 
-Toolbar::Toolbar(gdioutput &gdi_par) : gdi(gdi_par), data(0)
+Toolbar::Toolbar(gdioutput &gdi_par) : gdi(gdi_par)
 {
   hwndFloater = 0;
   hwndToolbar = 0;
@@ -127,7 +127,7 @@ void Toolbar::processCommand(int id, int code)
 {
   size_t ix = id - BASE_ID;
   if (ix < btn_id.size()) {
-    gdi.processToolbarMessage(btn_id[ix], data);
+    gdi.processToolbarMessage(btn_id[ix], table.get());
   }
 }
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "stdafx.h"
 #include "gdioutput.h"
 
+class Table;
 
 #pragma warning( disable : 4512 )
 class Toolbar {
@@ -37,7 +38,7 @@ class Toolbar {
   vector<TBBUTTON> btn;
   vector<string> btn_id;
   list<wstring> tooltips;
-  void *data;
+  shared_ptr<Table> table;
 
   string toolbar_id;
 
@@ -52,7 +53,7 @@ public:
   HWND getFloater() const;
   bool isVisible() const;
 
-  void setData(void *d) {data = d;}
+  void setData(const shared_ptr<Table> &d) {table = d;}
 
   void reset();
   void addButton(const string &id, int imgList, int icon, const string &tooltip);

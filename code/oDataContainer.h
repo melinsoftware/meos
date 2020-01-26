@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2019 Melin Software HB
+    Copyright (C) 2009-2020 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,15 +30,24 @@
 #include "inthashmap.h"
 
 class Table;
+enum CellType;
 
 class oDataDefiner {
 public:
   virtual ~oDataDefiner() {}
   virtual const wstring &formatData(const oBase *obj) const = 0;
-  virtual wstring setData(oBase *obj, const wstring &input) const = 0;
+  virtual pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const = 0;
+  virtual void fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const {}
+
   /** Used to define/add the table column in the table*/
   virtual int addTableColumn(Table *table, const string &description, int minWidth) const = 0;
   virtual void prepare(oEvent *oe) const {}
+
+  // Return false to be cell read-only
+  virtual bool canEdit() const { return true; }
+
+  // Return the desired cell type
+  virtual CellType getCellType() const;
 };
 
 struct oDataInfo {
@@ -51,8 +60,8 @@ struct oDataInfo {
   char Description[48];
   int decimalSize;
   int decimalScale;
-  vector< pair<wstring, wstring> > enumDescription;
-  const oDataDefiner *dataDefiner;
+  vector<pair<wstring, wstring>> enumDescription;
+  shared_ptr<oDataDefiner> dataDefiner;
   int zeroSortPadding;
   oDataInfo();
   ~oDataInfo();
@@ -141,12 +150,12 @@ public:
   oDataConstInterface getConstInterface(const void *data, int datasize,
                                         const oBase *ob) const;
 
-  oDataInfo &addVariableInt(const char *name, oIntSize isize, const char *descr, const oDataDefiner *dataDef = 0);
+  oDataInfo &addVariableInt(const char *name, oIntSize isize, const char *descr, const shared_ptr<oDataDefiner> &dataDef = nullptr);
   oDataInfo &addVariableDecimal(const char *name, const char *descr, int fixedDeci);
   oDataInfo &addVariableDate(const char *name,  const char *descr){return addVariableInt(name, oISDate, descr);}
   oDataInfo &addVariableCurrency(const char *name,  const char *descr){return addVariableInt(name, oISCurrency, descr);}
-  oDataInfo &addVariableString(const char *name, int maxChar, const char *descr, const oDataDefiner *dataDef = 0);
-  oDataInfo &addVariableString(const char *name, const char *descr, const oDataDefiner *dataDef = 0);
+  oDataInfo &addVariableString(const char *name, int maxChar, const char *descr, const shared_ptr<oDataDefiner> &dataDef = nullptr);
+  oDataInfo &addVariableString(const char *name, const char *descr, const shared_ptr<oDataDefiner> &dataDef = nullptr);
 
   oDataInfo &addVariableEnum(const char *name, int maxChar, const char *descr,
                                   const vector< pair<wstring, wstring> > enumValues);
@@ -180,10 +189,10 @@ public:
 
   int fillTableCol(const oBase &owner, Table &table, bool canEdit) const;
   void buildTableCol(Table *table);
-  bool inputData(oBase *ob, int id, const wstring &input, int inputId, wstring &output, bool noUpdate);
+  pair<int, bool> inputData(oBase *ob, int id, const wstring &input, int inputId, wstring &output, bool noUpdate);
 
   // Use id (table internal) or name
-  void fillInput(const void *data, int id, const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const;
+  void fillInput(const oBase *ob, int id, const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const;
 
   bool setEnum(oBase *ob, const char *name, int selectedIndex);
 
@@ -298,7 +307,7 @@ public:
     {oDC->set(oB, xo);}
 
   void fillInput(const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const {
-    oDC->fillInput(Data, -1, name, out, selected);
+    oDC->fillInput(oB, -1, name, out, selected);
   }
 
   bool setEnum(const char *name, int selectedIndex) {
@@ -380,7 +389,7 @@ public:
     {return oDC->getDataAmountMeasure(Data);}
 
   void fillInput(const char *name, vector< pair<wstring, size_t> > &out, size_t &selected) const {
-    oDC->fillInput(Data, -1, name, out, selected);
+    oDC->fillInput(oB, -1, name, out, selected);
   }
 
   oDataConstInterface(const oDataContainer *odc, const void *data, const oBase *ob);
