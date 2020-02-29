@@ -96,7 +96,7 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
   bool disablePermisson = true;
   gdi.popX();
 
-  gdi.addCheckbox("MapRoot", "Mappa rootadresssen (http:///localhost:port/) till funktion:", nullptr, !rootMap.empty()).setHandler(this);
+  gdi.addCheckbox("MapRoot", "Mappa rootadressen (http:///localhost:port/) till funktion:", nullptr, !rootMap.empty()).setHandler(this);
   gdi.addInput("RootMap", gdi.recodeToWide(rootMap));
   gdi.setInputStatus("RootMap", !rootMap.empty());
 

@@ -1944,7 +1944,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
       par.selection.insert(classId);
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
     }
   }

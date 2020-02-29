@@ -263,7 +263,9 @@ protected:
   oRunnerList Runners;
   intkeymap<pRunner> runnerById;
 
-  RunnerDB *runnerDB;
+  shared_ptr<RunnerDB> runnerDB;
+  shared_ptr<RunnerDB> runnerDBCopy;
+
   MeOSFeatures *meosFeatures;
 
   oCardList Cards;
@@ -295,35 +297,6 @@ protected:
   SqlUpdated sqlCards;
   SqlUpdated sqlPunches;
   SqlUpdated sqlTeams;
-
-  /*
-  string sqlUpdateRunners;
-  string sqlUpdateClasses;
-  string sqlUpdateCourses;
-  string sqlUpdateControls;
-  string sqlUpdateClubs;
-  string sqlUpdateCards;
-  string sqlUpdatePunches;
-  string sqlUpdateTeams;
-
-  int sqlCounterRunners;
-  int sqlCounterClasses;
-  int sqlCounterCourses;
-  int sqlCounterControls;
-  int sqlCounterClubs;
-  int sqlCounterCards;
-  int sqlCounterPunches;
-  int sqlCounterTeams;
-  
-  bool sqlChangedRunners;
-  bool sqlChangedClasses;
-  bool sqlChangedCourses;
-  bool sqlChangedControls;
-  bool sqlChangedClubs;
-  bool sqlChangedCards;
-  bool sqlChangedPunches;
-  bool sqlChangedTeams;
-  */
 
   bool needReEvaluate();
 
@@ -496,6 +469,13 @@ public:
     DrawAll, RemainingBefore, RemainingAfter,
   };
 
+  /** Where to put vacancies */
+  enum class VacantPosition {
+    Mixed = 0,
+    First = 1,
+    Last = 2,
+  };
+
   /** Drawing algorithm. */
   enum class DrawMethod {
     NOMethod = -1,
@@ -553,9 +533,11 @@ public:
   void getExtraLines(const char *attrib, vector<pair<wstring, int> > &lines) const;
 
   RunnerDB &getRunnerDatabase() const {return *runnerDB;}
+  void backupRunnerDatabase();
+  void restoreRunnerDatabase();
 
   MeOSFeatures &getMeOSFeatures() const {return *meosFeatures;}
-  void getDBRunnersInEvent(intkeymap<pClass, __int64> &runners) const;
+  void getDBRunnersInEvent(intkeymap<int, __int64> &runners) const;
   MetaListContainer &getListContainer() const;
   wstring getNameId(int id) const;
   const wstring &getFileNameFromId(int id) const;
@@ -607,8 +589,10 @@ public:
 
   // Automatic draw of all classes
   void automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
-                        const wstring &minIntervall, const wstring &vacances,
-                        bool lateBefore, bool allowNeighbourSameCourse, DrawMethod method, int pairSize);
+                        const wstring &minIntervall, 
+                        const wstring &vacances, VacantPosition vp,
+                        bool lateBefore, bool allowNeighbourSameCourse, 
+                        DrawMethod method, int pairSize);
 
   // Restore a backup by renamning the file to .meos
   void restoreBackup();
@@ -728,10 +712,10 @@ public:
 
   void generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, bool updateScrollBars);
   
-  void generateListInfo(oListParam &par, int lineHeight, oListInfo &li);
-  void generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo &li);
+  void generateListInfo(oListParam &par, oListInfo &li);
+  void generateListInfo(vector<oListParam> &par, oListInfo &li);
   void generateListInfo(EStdListType lt, const gdioutput &gdi, int classId, oListInfo &li);
-  void generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li, const wstring &name);
+  void generateListInfoAux(oListParam &par, oListInfo &li, const wstring &name);
 
   /** Format a string for a list. Returns true of output is not empty*/
   const wstring &formatListString(const oPrintPost &pp, const oListParam &par,

@@ -471,7 +471,6 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
     }
   }
 
-  int width = minSize;
   vector<int> row(pps.size(), 0);
   vector<wstring> samples(pps.size());
   wstring totWord = L"";
@@ -527,11 +526,8 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
 
   wstring dummy;
   int w = totMeasure.measure(gdi, font, fontFace, dummy);
-  w = max(w, minSize);
-  if (large)
-    return w + 5;
-  else
-    return w + 15;
+  w = max(w, gdi.scaleLength(minSize));
+  return int(0.5 + (w + (large ? 5 : 15))/gdi.getScale());
 }
 
 const wstring & oEvent::formatListString(EPostType type, const pRunner r) const
@@ -2416,7 +2412,6 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
 
       }
 
-
       if (pp.color != colorDefault)
         ti->setColor(pp.color);
     }
@@ -3719,7 +3714,7 @@ void oEvent::generateListInfo(EStdListType lt, const gdioutput &gdi, int classId
 
   par.listCode=lt;
 
-  generateListInfo(par, gdi.getLineHeight(), li);
+  generateListInfo(par, li);
 }
 
 int openRunnerTeamCB(gdioutput *gdi, int type, void *data);
@@ -3822,15 +3817,14 @@ void oListInfo::setCallback(GUICALLBACK cb) {
   }
 }
 
-void oEvent::generateListInfo(oListParam &par, int lineHeight, oListInfo &li) {
+void oEvent::generateListInfo(oListParam &par, oListInfo &li) {
   vector<oListParam> parV(1, par);
-  generateListInfo(parV, lineHeight, li);
+  generateListInfo(parV, li);
 }
 
-void oEvent::generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo &li) {
+void oEvent::generateListInfo(vector<oListParam> &par, oListInfo &li) {
   li.getParam().sourceParam = -1;// Reset source
   loadGeneralResults(false, false);
-  lineHeight = 14;
   for (size_t k = 0; k < par.size(); k++) {
     par[k].cb = 0;
   }
@@ -3839,7 +3833,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo
   getListTypes(listMap, false);
 
   if (par.size() == 1) {
-    generateListInfoAux(par[0], lineHeight, li, listMap[par[0].listCode].Name);
+    generateListInfoAux(par[0], li, listMap[par[0].listCode].Name);
     set<int> used;
     // Add linked lists
     oListParam *cPar = &par[0];
@@ -3851,7 +3845,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo
       oListParam &nextPar = oe->getListContainer().getParam(cPar->nextList-1);
       li.next.push_back(oListInfo());
       nextPar.cb = 0;
-      generateListInfoAux(nextPar, lineHeight, li.next.back(), L"");
+      generateListInfoAux(nextPar, li.next.back(), L"");
       cPar = &nextPar;
     }
   }
@@ -3860,14 +3854,14 @@ void oEvent::generateListInfo(vector<oListParam> &par, int lineHeight, oListInfo
       if (k > 0) {
         li.next.push_back(oListInfo());
       }
-      generateListInfoAux(par[k], lineHeight, k == 0 ? li : li.next.back(), 
+      generateListInfoAux(par[k], k == 0 ? li : li.next.back(), 
                           li.Name = listMap[par[0].listCode].Name);
     }
   }
 }
 
-void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li, const wstring &name) {
-  const int lh=lineHeight;
+void oEvent::generateListInfoAux(oListParam &par, oListInfo &li, const wstring &name) {
+  const int lh=14;
   const int vspace=lh/2;
   int bib;
   pair<int, bool> ln;
@@ -3896,7 +3890,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
   switch (lt) {
     case EStdStartList: {
-      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Startlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Startlista - %s", true)), boldLarge, 0,0));
       li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       int bib = 0;
@@ -3926,7 +3920,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
 
     case EStdClubStartList: {
-      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Klubbstartlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Klubbstartlista - %s", true)), boldLarge, 0,0));
       li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       if (hasBib(true, true)) {
@@ -3964,7 +3958,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     }
 
     case EStdClubResultList: {
-      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Klubbresultatlista - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Klubbresultatlista - %s", true)), boldLarge, 0,0));
       li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       pos.add("class", li.getMaxCharWidth(this, par.selection, lClassName, L"", normalText));
@@ -3994,7 +3988,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
 
     case EStdRentedCard:
     {
-      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Hyrbricksrapport - %s")), boldLarge, 0,0));
+      li.addHead(oPrintPost(lCmpName, makeDash(lang.tl(L"Hyrbricksrapport - %s", true)), boldLarge, 0,0));
       li.addHead(oPrintPost(lCmpDate, L"", normalText, 0, 25));
 
       li.addListPost(oPrintPost(lTotalCounter, L"%s", normalText, 0, 0));
@@ -4334,7 +4328,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
         mList.addToSubList(lRunnerName);
         mList.addToSubList(lRunnerCard).align(lClassStartName);
 
-        mList.interpret(this, gdibase, par, lh, li);
+        mList.interpret(this, gdibase, par, li);
       }
       li.listType=li.EBaseTypeTeam;
       li.listSubType=li.EBaseTypeRunner;
@@ -4583,7 +4577,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
       mList.setListType(li.EBaseTypeTeam);
       mList.setSortOrder(ClassStartTime);
       mList.addFilter(EFilterExcludeDNS);
-      mList.interpret(this, gdibase, par, lh, li);
+      mList.interpret(this, gdibase, par, li);
       break;
     }
     case EStdPatrolResultList:
@@ -4793,10 +4787,10 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
           continue;
         par.setLegNumberCoded(out[k].second);
         if (k == 0)
-          generateListInfo(par, lineHeight, li);
+          generateListInfo(par, li);
         else {
           li.next.push_back(oListInfo());
-          generateListInfo(par, lineHeight, li.next.back());
+          generateListInfo(par, li.next.back());
         }
       }
     }
@@ -4814,7 +4808,7 @@ void oEvent::generateListInfoAux(oListParam &par, int lineHeight, oListInfo &li,
     break;
 
     default:
-      if (!getListContainer().interpret(this, gdibase, par, lineHeight, li))
+      if (!getListContainer().interpret(this, gdibase, par, li))
         throw std::exception("Not implemented");
   }
 }

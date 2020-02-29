@@ -656,11 +656,14 @@ void oClub::generateInvoice(gdioutput &gdi, int &toPay, int &hasPaid,
   data.resPos = gdi.scaleLength(550);
 
   gdi.addString("", ys, xs+data.adrPos, boldHuge, "FAKTURA");
-  if (number>0)
-    gdi.addStringUT(ys+lh*3, xs+data.adrPos, fontMedium, lang.tl("Faktura nr")+ L": " + itow(number));
+  if (number > 0) {
+    gdi.addStringUT(ys + lh * 3, xs + data.adrPos, fontMedium, lang.tl("Faktura nr") + L": " + itow(number));
+    gdi.addStringUT(ys + lh * 4, xs + data.adrPos, fontMedium, getInvoiceDate(*oe));
+  }
+
   int &yp = data.yp;
 
-  yp = ys+lh;
+  yp = ys+lh * 2;
   wstring ostreet = oe->getDI().getString("Street");
   wstring oaddress = oe->getDI().getString("Address");
   wstring oco = oe->getDI().getString("CareOf");
@@ -684,7 +687,7 @@ void oClub::generateInvoice(gdioutput &gdi, int &toPay, int &hasPaid,
   wstring city =  getDCI().getString("ZIP") + L" " + getDCI().getString("City");
   wstring country =  getDCI().getString("Country");
 
-  int ayp = ys + 122;
+  int ayp = ys + gdi.scaleLength(122);
 
   const int absX = oe->getPropertyInt("addressxpos", 125);
   int absY = oe->getPropertyInt("addressypos", 50);
@@ -706,7 +709,7 @@ void oClub::generateInvoice(gdioutput &gdi, int &toPay, int &hasPaid,
   if (!country.empty())
     gdi.addStringUT(ayp, xs+data.adrPos, fontMedium, country).setAbsPrintPos(absX,absY), ayp+=lh, absY+=absYL;
 
-  yp = ayp+30;
+  yp = ayp+gdi.scaleLength(36);
 
   gdi.addString("", yp, xs, boldSmall, "Deltagare");
   gdi.addString("", yp, xs+data.clsPos, boldSmall, "Klass");
@@ -1147,4 +1150,18 @@ bool oClub::operator<(const oClub &c) const {
   return CompareString(LOCALE_USER_DEFAULT, 0,
                       name.c_str(), name.length(),
                       c.name.c_str(), c.name.length()) == CSTR_LESS_THAN;
+}
+
+wstring oClub::getInvoiceDate(oEvent &oe) {
+  wstring invoiceDate = oe.getDCI().getDate("InvoiceDate");
+  int invoiceDateI = oe.getDCI().getInt("InvoiceDate");
+  if (invoiceDateI == 0) {
+    invoiceDate = getLocalDate();
+    setInvoiceDate(oe, invoiceDate);
+  }
+  return invoiceDate;
+}
+
+void oClub::setInvoiceDate(oEvent &oe, const wstring &id) {
+  oe.getDI().setDate("InvoiceDate", id);
 }

@@ -944,6 +944,11 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
 
       di.setString("Phone", gdi.getText("Phone"));
 
+      if (gdi.isChecked("NoTiming"))
+        r->setStatus(RunnerStatus::StatusNoTiming, true, oBase::ChangeType::Update, false);
+      else if (r->getStatus() == RunnerStatus::StatusNoTiming)
+        r->setStatus(RunnerStatus::StatusUnknown, true, oBase::ChangeType::Update, false);
+
       r->setFlag(oRunner::FlagTransferSpecified, gdi.hasWidget("AllStages"));
       r->setFlag(oRunner::FlagTransferNew, gdi.isChecked("AllStages"));
 
@@ -2938,9 +2943,11 @@ void TabSI::generateEntryLine(gdioutput &gdi, pRunner r) {
   gdi.setCX(gdi.getCX()+gdi.scaleLength(20));
 
   gdi.addCheckbox("RentCard", "Hyrbricka", SportIdentCB, storedInfo.rentState);
+  gdi.addCheckbox("NoTiming", "Utan tidtagning", nullptr, false);
+
   if (oe->hasNextStage())
     gdi.addCheckbox("AllStages", "Anmäl till efterföljande etapper", SportIdentCB, storedInfo.allStages);
-      
+  
   if (r!=0) {
     if (r->getCardNo()>0)
       gdi.setText("CardNo", r->getCardNo());
@@ -2955,9 +2962,10 @@ void TabSI::generateEntryLine(gdioutput &gdi, pRunner r) {
     if (gdi.hasWidget("Fee"))
       gdi.setText("Fee", oe->formatCurrency(dci.getInt("Fee")));
 
+    gdi.setText("StartTime", r->getStartTimeS());
     gdi.setText("Phone", dci.getString("Phone"));
     gdi.setText("Bib", r->getBib());
-
+    gdi.check("NoTiming", r->hasFlag(oAbstractRunner::TransferFlags::FlagNoTiming));
     gdi.check("RentCard", dci.getInt("CardFee") != 0);
     if (gdi.hasWidget("Paid"))
       gdi.check("Paid", dci.getInt("Paid")>0);

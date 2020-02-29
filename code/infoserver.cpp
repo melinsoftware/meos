@@ -427,9 +427,12 @@ void InfoMeosStatus::serialize(xmlbuffer &xml, bool diffOnly) const {
 
 bool InfoOrganization::synchronize(oClub &c) {
   const wstring &n = c.getDisplayName();
-  if (n == name)
+  const wstring &nat = c.getDCI().getString("Nationality");
+
+  if (n == name && nat == nationality)
     return false;
   else {
+    nationality = nat;
     name = n;
     modified();
   }
@@ -439,6 +442,8 @@ bool InfoOrganization::synchronize(oClub &c) {
 void InfoOrganization::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector< pair<string, wstring> > prop;
   prop.push_back(make_pair("id", itow(getId())));
+  if (!nationality.empty())
+    prop.emplace_back("nat", nationality);
   xml.write("org", prop, name);
 }
 
@@ -461,9 +466,11 @@ void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) co
   if (course != 0)
     prop.emplace_back("crs", itow(course));
 
-  if (!bib.empty()) {
+  if (!bib.empty()) 
     prop.emplace_back("bib", bib);
-  }
+
+  if (!nationality.empty())
+    prop.emplace_back("nat", nationality);
 
   xml.write("base", prop, name);
 }
@@ -488,11 +495,21 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     ch = true;
   }
 
-  RunnerStatus s = bc.getStatus();
+  const wstring &nat = bc.getDCI().getString("Nationality");
+  if (nat != nationality) {
+    nationality = nat;
+    ch = true;
+  }
+
+  RunnerStatus s = bc.getStatusComputed();
+
   int rt = bc.getRunningTime(true) * 10;
   if (rt > 0) {
     if (s == RunnerStatus::StatusUnknown)
       s = RunnerStatus::StatusOK;
+
+    if (s == RunnerStatus::StatusNoTiming)
+      rt = 0;
   }
   else if (isPossibleResultStatus(s))
     s = StatusUnknown;
@@ -583,7 +600,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
   }
 
   bool nr;
-  if ((r.getStatus() == StatusUnknown || r.getStatus() == StatusOutOfCompetition || r.getStatus() == StatusNoTiming) && r.getFinishTime() <= 0) {
+  if ((r.getStatus() == StatusUnknown || isPossibleResultStatus(r.getStatus())) && r.getFinishTime() <= 0) {
     vector<pFreePunch> pv;
     r.getEvent()->getPunchesForRunner(r.getId(), false, pv);
     nr = pv.size() > 0;
@@ -597,7 +614,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
   }
 
   vector<RadioTime> newRT;
-  if (r.getClassId(false) > 0)  {
+  if (r.getClassId(false) > 0 && r.getStatusComputed() != RunnerStatus::StatusNoTiming)  {
     const vector<int> &radios = cmp.getControls(r.getClassId(true), r.getLegNumber());
     for (size_t k = 0; k < radios.size(); k++) {
       RadioTime radioTime;
@@ -611,7 +628,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
       }
     }
   }
-  changeRadio = radioTimes.size() > 0;//false; // Always write full attributes
+  changeRadio = radioTimes.size() > 0; // Always write full attributes
   if (newRT != radioTimes) {
     ch = true;
     changeRadio = true;
@@ -878,4 +895,34 @@ bool xmlbuffer::commit(xmlparser &xml, int count) {
   }
 
   return !blocks.empty();
+}
+
+void xmlbuffer::commitCopy(xmlparser &xml) {
+  vector<wstring> p2;
+  for (block &block : blocks) {
+    if (block.subValues.empty()) {
+      xml.write(block.tag.c_str(), block.prop, block.value);
+    }
+    else {
+      if (block.prop.size() > 1) {
+        p2.resize(block.prop.size() * 2);
+        for (size_t k = 0; k < block.prop.size(); k++) {
+          p2[k * 2] = gdi_main->widen(block.prop[k].first);
+          p2[k * 2 + 1] = block.prop[k].second;
+        }
+        xml.startTag(block.tag.c_str(), p2);
+      }
+      else if (block.prop.size() == 1) {
+        xml.startTag(block.tag.c_str(), block.prop[0].first.c_str(), block.prop[0].second);
+      }
+      else if (block.prop.empty()) {
+        xml.startTag(block.tag.c_str());
+      }
+
+      for (size_t k = 0; k < block.subValues.size(); k++)
+        block.subValues[k].commitCopy(xml);
+
+      xml.endTag();
+    }
+  }
 }

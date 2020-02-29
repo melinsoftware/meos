@@ -47,13 +47,13 @@ private:
   T &rehash(int size, KEY key, const T &value);
   T &get(const KEY key);
 
-  const intkeymap &operator=(const intkeymap &co);
   void *lookup(KEY key) const;
 public:
   virtual ~intkeymap();
   intkeymap(int size);
   intkeymap();
   intkeymap(const intkeymap &co);
+  const intkeymap &operator=(const intkeymap &co);
 
   bool empty() const;
   int size() const;

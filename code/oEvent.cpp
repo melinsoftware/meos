@@ -249,7 +249,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   ZeroTime=st.wHour*3600;
   oe=this;
 
-  runnerDB = new RunnerDB(this);
+  runnerDB = make_shared<RunnerDB>(this);
   meosFeatures = new MeOSFeatures();
   openFileLock = new MeOSFileLock();
 
@@ -326,7 +326,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableInt("CurrencyPreSymbol", oDataContainer::oIS8, "Symbolläge");
   oEventData->addVariableString("CurrencyCode", 5, "Valutakod");
   oEventData->addVariableInt("UTC", oDataContainer::oIS8, "UTC");
-
+  
   oEventData->addVariableInt("Analysis", oDataContainer::oIS8, "Utan analys");
   // With split time analysis (0 = default, with analysis, with min/km)
   // bit 1: without analysis
@@ -342,6 +342,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableInt("LongTimes", oDataContainer::oIS8U, "Långa tider");
   oEventData->addVariableString("PayModes", "Betalsätt");
   oEventData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring");
+  oEventData->addVariableDate("InvoiceDate", "Fakturadatum");
+
   oEventData->initData(this, dataSize);
 
   oClubData=new oDataContainer(oClub::dataSize);
@@ -520,9 +522,8 @@ oEvent::~oEvent()
 {
   //Clean up things in the right order.
   clear();
-  delete runnerDB;
+  runnerDB.reset();
   delete meosFeatures;
-  runnerDB = 0;
   meosFeatures = 0;
 
   delete oEventData;
@@ -1595,6 +1596,17 @@ void oEvent::updateRunnerDatabase(pRunner r, map<int, int> &clubIdMap)
   runnerDB->updateAdd(*r, clubIdMap);
 }
 
+void oEvent::backupRunnerDatabase() {
+  if (!runnerDBCopy)
+    runnerDBCopy = make_shared<RunnerDB>(*runnerDB);
+}
+
+void oEvent::restoreRunnerDatabase() {
+  if (runnerDBCopy && *runnerDB != *runnerDBCopy) {
+    runnerDB = make_shared<RunnerDB>(*runnerDBCopy);
+  }
+}
+
 pCourse oEvent::addCourse(const wstring &pname, int plengh, int id) {
   oCourse c(this, id);
   c.Length = plengh;
@@ -2181,6 +2193,7 @@ void oEvent::setDate(const wstring &m, bool manualSet)
       throw meosException(L"Felaktigt datumformat 'X' (Använd ÅÅÅÅ-MM-DD).#" + m);
     wstring nDate = formatDate(d, true);
     if (Date != nDate) {
+      Date = nDate;
       if (manualSet)
         setFlag(TransferFlags::FlagManualDateTime, true);
       updateChanged();
@@ -2210,7 +2223,7 @@ const wstring &oEvent::getTimeZoneString() const {
 
 wstring oEvent::getAbsDateTimeISO(DWORD time, bool includeDate, bool useGMT) const
 {
-  DWORD t = ZeroTime + time;
+  int t = ZeroTime + time;
   wstring dateS, timeS;
   if (int(t)<0) {
     dateS = L"2000-01-01";
@@ -2888,7 +2901,7 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
   // Get a set with unknown runner id:s
   set<int> statUnknown;
   for (oRunnerList::const_iterator itr=Runners.begin(); itr != Runners.end(); ++itr) {
-    if (itr->tStatus == StatusUnknown && !(itr->skip() || itr->needNoCard())) {
+    if (!itr->hasFinished() && !(itr->skip() || itr->needNoCard())) {
       statUnknown.insert(itr->getId());
     }
   }
@@ -2959,7 +2972,7 @@ void oEvent::generateInForestList(gdioutput &gdi, GUICALLBACK cb, GUICALLBACK cb
       if (it->skip() || it->needNoCard())
         continue;
 
-      if (it->tStatus == StatusUnknown) {
+      if (!it->hasFinished()) {
 
         if (id != it->getClassId(true)) {
           if (nr>0) {
@@ -5181,7 +5194,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
       nRunners-=nRInClass;
       if (k%5!=5) {
         vector<ClassDrawSpecification> spec;
-        spec.push_back(ClassDrawSpecification(cls->getId(), 0, getRelativeTime(start), 10, 3));
+        spec.emplace_back(cls->getId(), 0, getRelativeTime(start), 10, 3, VacantPosition::Mixed);
         drawList(spec, DrawMethod::MeOS, 1, oEvent::DrawType::DrawAll);
       }
       else
@@ -5203,7 +5216,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
 
       if ( cls->getStartType(0)==STDrawn ) {
         vector<ClassDrawSpecification> spec;
-        spec.push_back(ClassDrawSpecification(cls->getId(), 0, getRelativeTime(start), 20, 3));
+        spec.emplace_back(cls->getId(), 0, getRelativeTime(start), 20, 3, VacantPosition::Mixed);
         drawList(spec, DrawMethod::MeOS, 1, DrawType::DrawAll);
       }
     }

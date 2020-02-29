@@ -64,7 +64,9 @@ public:
 
   size_t size() const {return blocks.size();}
   bool commit(xmlparser &xml, int count);
+  void commitCopy(xmlparser &xml);
 
+  bool isComplete() const { return complete; }
   void startXML(xmlparser &xml, const wstring &dest);
 };
 
@@ -140,6 +142,7 @@ class InfoMeosStatus : public InfoBase {
 class InfoOrganization : public InfoBase {
   protected:
     wstring name;
+    wstring nationality;
   public:
     InfoOrganization(int id);
     virtual ~InfoOrganization() {}
@@ -169,6 +172,7 @@ class InfoBaseCompetitor : public InfoBase {
     int startTime;
     int runningTime;
     wstring bib;
+    wstring nationality;
     void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
     bool synchronizeBase(oAbstractRunner &bc);
   public:

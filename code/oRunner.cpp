@@ -1557,6 +1557,8 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
       *refStatus = StatusOutOfCompetition;
     else if (hasFlag(TransferFlags::FlagNoTiming))
       *refStatus = StatusNoTiming;
+    else if (clz && clz->getNoTiming())
+      *refStatus = StatusNoTiming;
   }
   // Adjust times on course, including finish time
   doAdjustTimes(course);
@@ -4128,6 +4130,11 @@ void oRunner::fillSpeakerObject(int leg, int courseControlId, int previousContro
 
   getSplitTime(courseControlId, spk.status, spk.runningTime.time);
 
+  if (getStatus() == StatusNoTiming || getStatus() == StatusOutOfCompetition) {
+    if (spk.status == StatusOK)
+      spk.status = getStatus();
+  }
+
   if (courseControlId == oPunch::PunchFinish)
     spk.timeSinceChange = oe->getComputerTime() - FinishTime;
   else
@@ -4380,7 +4387,7 @@ void oEvent::analyseDNS(vector<pRunner> &unknown_dns, vector<pRunner> &known_dns
 
   for (oRunnerList::iterator it = Runners.begin(); it!=Runners.end();++it) {
     if (!it->isRemoved() && !it->needNoCard()) {
-      if (it->getStatus() == StatusUnknown)
+      if (!it->hasFinished())
         stUnknown.push_back(&*it);
       else if (it->getStatus() == StatusDNS) {
         stDNS.push_back(&*it);
@@ -5909,14 +5916,14 @@ void oRunner::setInputData(const oRunner &r) {
   }
 }
 
-void oEvent::getDBRunnersInEvent(intkeymap<pClass, __int64> &runners) const {
+void oEvent::getDBRunnersInEvent(intkeymap<int, __int64> &runners) const {
   runners.clear();
   for (oRunnerList::const_iterator it = Runners.begin(); it != Runners.end(); ++it) {
     if (it->isRemoved())
       continue;
     __int64 id = it->getExtIdentifier();
     if (id != 0)
-      runners.insert(id, it->Class);
+      runners.insert(id, it->getId());
   }
 }
 
@@ -6338,6 +6345,7 @@ void oAbstractRunner::getInputResults(vector<RunnerStatus> &st,
 
 // Add current result to input result. Only use when transferring to next stage
 void oAbstractRunner::addToInputResult(int thisStageNo, const oAbstractRunner *src) {
+  thisStageNo = max(thisStageNo, 0);
   int p = src->getPlace();
   int rt = src->getRunningTime(true);
   RunnerStatus st = src->getStatusComputed();
@@ -6594,7 +6602,7 @@ int oRunner::getCheckTime() const {
 const pair<wstring, int> oRunner::getRaceInfo() {
   pair<wstring, int> res;
   RunnerStatus baseStatus = getStatus();
-  if (baseStatus != StatusUnknown) {
+  if (hasFinished()) {
     int p = getPlace();
     int rtComp = getRunningTime(true);
     int rtActual = getRunningTime(false);

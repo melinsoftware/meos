@@ -449,7 +449,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       if (gdi.getSelectedItem("SavedInstance", lbi)) {
         oListParam &par = oe->getListContainer().getParam(lbi.data);
 
-        oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+        oe->generateListInfo(par, currentList);
         currentList.getParam().sourceParam = lbi.data;
         generateList(gdi);
       }
@@ -646,7 +646,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       lastSplitState = par.showSplitTimes;
       lastLargeSize = par.useLargeSize;
 
-      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
 
       generateList(gdi);
       gdi.refresh();
@@ -676,7 +676,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       cnf.getIndividual(par.selection, false);
       readSettings(gdi, par, true);
 
-      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -692,7 +692,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       par.showSplitTimes = true;
       par.setLegNumberCoded(-1);
       
-      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -704,7 +704,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       getStartIndividual(par, cnf);
       readSettings(gdi, par, false);
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -715,7 +715,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       getStartClub(par);
       readSettings(gdi, par, false);
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -730,7 +730,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       readSettings(gdi, par, false);
       par.splitAnalysis = gdi.isChecked("SplitAnalysis");
       
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -762,7 +762,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       getStartTeam(par, cnf);
       readSettings(gdi, par, false);
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -778,7 +778,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getRaceNStart(race, par.selection);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -794,7 +794,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getLegNStart(race, par.selection);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par,  currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -806,7 +806,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       oe->getClassConfigurationInfo(cnf);
       getResultTeam(par, cnf);
       readSettings(gdi, par, true); 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -818,7 +818,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getRaceNRes(0, par.selection);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -833,7 +833,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getRaceNRes(race, par.selection);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -848,7 +848,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       cnf.getLegNRes(race, par.selection);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -861,7 +861,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       getResultRogaining(par, cnf);
       readSettings(gdi, par, true);
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -891,7 +891,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         cnf.getIndividual(par.back().selection, true);
       }
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -902,7 +902,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       par.listCode = EStdRentedCard;
       par.showHeader = gdi.isChecked("ShowHeader");
       par.setLegNumberCoded(-1);
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -914,7 +914,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       par.listCode = EIndPriceList;
       par.showHeader = gdi.isChecked("ShowHeader");
       par.filterMaxPer = gdi.getSelectedItem("ClassLimit").first;
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       generateList(gdi);
       gdi.refresh();
     }
@@ -984,7 +984,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
         cnf.getPatrol(par.selection);
       }
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -999,7 +999,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       par.selection = set<int>(cnf.knockout.begin(), cnf.knockout.end());
-      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -1019,7 +1019,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       else
         par.selection = set<int>(cnf.lapcountsingle.begin(), cnf.lapcountsingle.end());
 
-      oe->generateListInfo(par, gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -1043,7 +1043,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       if (oListInfo::addTeams(type))
         cnf.getTeamClass(par.selection);
 
-      oe->generateListInfo(par,  gdi.getLineHeight(), currentList);
+      oe->generateListInfo(par, currentList);
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
@@ -1965,6 +1965,7 @@ void TabList::htmlSettings(gdioutput &gdi, string targetTag) {
     html2IdToInfo[id] = t.desc;
   }
   gdi.addSelection("Format", 200, 100, 0, L"Format:").setHandler(&htmlClass);
+  gdi.autoGrow("Format");
   if (!htmlTemplateTag2Id.count(tmpSettingsParam.htmlTypeTag))
     tmpSettingsParam.htmlTypeTag = "free";
 

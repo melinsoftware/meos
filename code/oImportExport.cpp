@@ -51,8 +51,16 @@
 #include <fcntl.h>
 #include "localizer.h"
 #include "iof30interface.h"
+#include "gdiconstants.h"
 
 #include "meosdb/sqltypes.h"
+
+FlowOperation importFilterGUI(oEvent *oe,
+                              gdioutput & gdi,
+                              const set<int>& stages,
+                              const vector<string> &idProviders,
+                              set<int> & filter,
+                              string &preferredIdProvider);
 
 string conv_is(int i)
 {
@@ -1276,6 +1284,22 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
 
     if (xo && xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false);
+
+      vector<string> idProviders;
+      reader.prescanCompetitorList(xo);
+      reader.getIdTypes(idProviders);
+
+      if (idProviders.size() > 1) {
+        string preferredIdProvider;
+        set<int> dmy;
+        FlowOperation op = importFilterGUI(oe, gdibase, 
+                                           {}, idProviders,
+                                           dmy, preferredIdProvider);
+        if (op != FlowContinue)
+          return;
+
+        reader.setPreferredIdType(preferredIdProvider);
+      }
       reader.readCompetitorList(gdibase, xo, personCount);
     }
     else {
@@ -1305,8 +1329,6 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
   if (HasDBConnection) {
     gdibase.addString("", 0, "Uppdaterar serverns databas...");
     gdibase.refresh();
-
-    //msUploadRunnerDB(this);
 
     OpFailStatus stat = (OpFailStatus)msUploadRunnerDB(this);
 

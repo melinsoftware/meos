@@ -22,6 +22,8 @@
 
 ************************************************************************/
 
+#include "oEvent.h"
+
 struct ClassDrawSpecification {
   int classID; 
   int leg;
@@ -29,11 +31,11 @@ struct ClassDrawSpecification {
   mutable int interval;
   int vacances;
   mutable int ntimes;
-
-  ClassDrawSpecification() : ntimes(0) {}
-  ClassDrawSpecification(int classID, int leg, int firstStart, int interval, int vacances) :
+  oEvent::VacantPosition vacantPosition;
+  ClassDrawSpecification() : ntimes(0), vacantPosition(oEvent::VacantPosition::Mixed) {}
+  ClassDrawSpecification(int classID, int leg, int firstStart, int interval, int vacances, oEvent::VacantPosition vp) :
                          classID(classID), leg(leg), firstStart(firstStart), 
-                         interval(interval), vacances(vacances), ntimes(0) {}
+                         interval(interval), vacances(vacances), ntimes(0), vacantPosition(vp) {}
 };
 
 

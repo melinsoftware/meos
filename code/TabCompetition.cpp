@@ -621,7 +621,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id=="Browse") {
       vector< pair<wstring, wstring> > ext;
-      ext.push_back(make_pair(lang.tl(L"Databaskälla"), L"*.xml;*.csv"));
+      ext.push_back(make_pair(L"Databaskälla", L"*.xml;*.csv"));
       
       wstring f = gdi.browseForOpen(ext, L"xml");
       string id;
@@ -1545,7 +1545,9 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
           switch (startType) {
             case SMCommon:
-              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", L"0", false, false, oEvent::DrawMethod::Random, 1);
+              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", 
+                                   L"0", oEvent::VacantPosition::Mixed,
+                                   false, false, oEvent::DrawMethod::Random, 1);
               drawn = true;
               break;
 
@@ -1570,7 +1572,9 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
                 }
               }
               if (!skip)  
-                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", L"2", true, false, oEvent::DrawMethod::MeOS, 1);
+                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", 
+                                     L"2", oEvent::VacantPosition::Mixed,
+                                     true, false, oEvent::DrawMethod::MeOS, 1);
               drawn = true;
               break;
           }
@@ -1766,7 +1770,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         par.setLegNumberCoded(-1);
         oListInfo li;
         par.selection = allTransfer;
-        oe->generateListInfo(par,  gdi.getLineHeight(), li);
+        oe->generateListInfo(par, li);
         gdioutput tGdi("temp", gdi.getScale());
         oe->generateList(tGdi, true, li, false);
         HTMLWriter::writeTableHTML(tGdi, save, oe->getName(), 0, 1.0);
@@ -1851,7 +1855,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         par.showSplitTimes = true;
         par.setLegNumberCoded(-1);
         oListInfo li;
-        oe->generateListInfo(par,  gdi.getLineHeight(), li);
+        oe->generateListInfo(par, li);
         gdioutput tGdi("temp", gdi.getScale());
         oe->generateList(tGdi, true, li, false);
         HTMLWriter::writeTableHTML(tGdi, save, oe->getName(), 0, 1.0);
@@ -3459,7 +3463,7 @@ void TabCompetition::entryForm(gdioutput &gdi, bool isGuide) {
   gdi.dropLine(3);
 }
 
-TabCompetition::FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide) {
+FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide) {
   wstring filename[5];
   filename[0] = gdi.getText("FileNameCmp");
   filename[1] = gdi.getText("FileNameCls");
@@ -3574,11 +3578,17 @@ int stageInfoCB(gdioutput *gdi, int type, void *data)
 }
 
 void mainMessageLoop(HACCEL hAccelTable, DWORD time);
+FlowOperation importFilterGUI(oEvent *oe,
+                              gdioutput & gdi,
+                              const set<int>& stages,
+                              const vector<string> &idProviders,
+                              set<int> & filter,
+                              string &preferredIdProvider);
 
-TabCompetition::FlowOperation TabCompetition::checkStageFilter(gdioutput & gdi,
-                                                               const wstring & fname, 
-                                                               set<int>& filter,
-                                                               string &preferredIdProvider) {
+FlowOperation TabCompetition::checkStageFilter(gdioutput & gdi,
+                                               const wstring & fname,
+                                               set<int>& filter,
+                                               string &preferredIdProvider) {
   xmlparser xml;
   xml.read(fname);
   xmlobject xo = xml.getObject("EntryList");
@@ -3591,6 +3601,16 @@ TabCompetition::FlowOperation TabCompetition::checkStageFilter(gdioutput & gdi,
       reader.getIdTypes(idProviders);
     }
   }
+  return importFilterGUI(oe, gdi, scanFilter, idProviders, filter, preferredIdProvider);
+}
+
+FlowOperation importFilterGUI(oEvent *oe,
+                              gdioutput & gdi,
+                              const set<int>& stages,
+                              const vector<string> &idProviders,
+                              set<int> & filter,
+                              string &preferredIdProvider) {
+  auto &scanFilter = stages;
   bool stageFilter = scanFilter.size() > 1;
   bool idtype = idProviders.size() > 1;
 
@@ -3631,7 +3651,7 @@ TabCompetition::FlowOperation TabCompetition::checkStageFilter(gdioutput & gdi,
     gdi.fillRight();
     gdi.addSelection("IdType", 150, 200, stageInfoCB, L"Välj vilken typ du vill importera:");
     int i = 0;
-    for (string &sn : idProviders) {
+    for (const string &sn : idProviders) {
       gdi.addItem("IdType", gdi.widen(sn), i++);
     }
   }

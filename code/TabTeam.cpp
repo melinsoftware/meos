@@ -1215,8 +1215,9 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
   int numberPos = xp;
   xp += gdi.scaleLength(25);
   int dx[6] = {0, 184, 220, 290, 316, 364};
-  for (int i = 0; i<6; i++)
-    dx[i] = gdi.scaleLength(dx[i]);
+  dx[1] = gdi.getInputDimension(18).first + gdi.scaleLength(4);
+  for (int i = 2; i<6; i++)
+    dx[i] = dx[1] + gdi.scaleLength(dx[i]-188);
 
   gdi.addString("", yp, xp + dx[0], 0, "Namn:");
   gdi.addString("", yp, xp + dx[2], 0, "Bricka:");
@@ -1224,38 +1225,36 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
   gdi.addString("", yp, xp + dx[5], 0, "Status:");
   gdi.dropLine(0.5);
 
-  for (unsigned i=0;i<pc->getNumStages();i++) {
-    yp = gdi.getCY();
+  for (unsigned i = 0; i < pc->getNumStages(); i++) {
+    yp = gdi.getCY() - gdi.scaleLength(3);
 
     sprintf_s(bf, "R%d", i);
     gdi.pushX();
     bool hasSI = false;
     gdi.addStringUT(yp, numberPos, 0, pc->getLegNumber(i) + L".");
-    if (pc->getLegRunner(i)==i) {
+    if (pc->getLegRunner(i) == i) {
 
       gdi.addInput(xp + dx[0], yp, bf, L"", 18, TeamCB);//Name
-      gdi.addButton(xp + dx[1], yp-2, gdi.scaleLength(28), "DR" + itos(i), "<>", TeamCB, "Knyt löpare till sträckan.", false, false); // Change
+      gdi.addButton(xp + dx[1], yp - 2, gdi.scaleLength(28), "DR" + itos(i), "<>", TeamCB, "Knyt löpare till sträckan.", false, false); // Change
       sprintf_s(bf_si, "SI%d", i);
       hasSI = true;
       gdi.addInput(xp + dx[2], yp, bf_si, L"", 5, TeamCB).setExtra(i); //Si
 
-      gdi.addCheckbox(xp + dx[3], yp + gdi.scaleLength(10), "RENT"+itos(i), "", 0, false); //Rentcard
+      gdi.addCheckbox(xp + dx[3], yp + gdi.scaleLength(10), "RENT" + itos(i), "", 0, false); //Rentcard
     }
     else {
-      //gdi.addInput(bf, "", 24);
       gdi.addInput(xp + dx[0], yp, bf, L"", 18, 0);//Name
       gdi.disableInput(bf);
     }
-    gdi.addButton(xp + dx[4], yp-2,  gdi.scaleLength(38), "MR" + itos(i), "...", TeamCB, "Redigera deltagaren.", false, false); // Change
+    gdi.addButton(xp + dx[4], yp - 2, gdi.scaleLength(38), "MR" + itos(i), "...", TeamCB, "Redigera deltagaren.", false, false); // Change
 
-    gdi.addString(("STATUS"+itos(i)).c_str(), yp+gdi.scaleLength(5), xp + dx[5], 0, "#MMMMMMMMMMMMMMMM");
-    gdi.setText("STATUS"+itos(i), L"", false);
+    gdi.addString(("STATUS" + itos(i)).c_str(), yp + gdi.scaleLength(5), xp + dx[5], 0, "#MMMMMMMMMMMMMMMM");
+    gdi.setText("STATUS" + itos(i), L"", false);
     gdi.dropLine(0.5);
     gdi.popX();
 
-
     if (t) {
-      pRunner r=t->getRunner(i);
+      pRunner r = t->getRunner(i);
       if (r) {
         gdi.setText(bf, r->getNameRaw())->setExtra(r->getId());
 
@@ -1265,7 +1264,7 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
           warnDuplicateCard(gdi, bf_si, cno, r);
           gdi.check("RENT" + itos(i), r->getDCI().getInt("CardFee") != 0);
         }
-        string sid = "STATUS"+itos(i);
+        string sid = "STATUS" + itos(i);
         if (r->statusOK(true)) {
           TextInfo * ti = (TextInfo *)gdi.setText(sid, L"OK, " + r->getRunningTimeS(true), false);
           if (ti)

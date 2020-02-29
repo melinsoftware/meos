@@ -40,5 +40,14 @@ enum KeyCommandCode {
   KC_AUTOCOMPLETE,
 };
 
+/** Enum used to stack GUI command control, "command line wizard" */
+enum FlowOperation {
+  FlowContinue,
+  FlowCancel,
+  FlowAborted
+};
+
+
+
 const int GDI_BUTTON_SPACING = 8;
 #endif

@@ -22,7 +22,7 @@
 ************************************************************************/
 
 #include "tabbase.h"
-
+#include "gdiconstants.h"
 #include "oFreeImport.h"
 
 class PrefsEditor;
@@ -31,12 +31,6 @@ class ImportFormats;
 class TabCompetition :
   public TabBase
 {
-  enum FlowOperation {
-    FlowContinue,
-    FlowCancel,
-    FlowAborted
-  };
-
   wstring eventorBase;
   wstring iofExportVersion;
   void textSizeControl(gdioutput &gdi) const;

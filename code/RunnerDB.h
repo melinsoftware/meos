@@ -107,6 +107,10 @@ struct RunnerDBEntry {
 
   bool isUTF() const { return (reserved & 2) == 2; }
   void setUTF() { reserved |= 2; }
+
+  bool operator==(const RunnerDBEntry &d) const {
+    return memcmp(this, &d, sizeof(RunnerDBEntry)) == 0;
+  }
 };
 
 class RunnerDB;
@@ -168,7 +172,7 @@ private:
 
   bool check(const RunnerDBEntry &rde) const;
 
-  intkeymap<oClass *, __int64> runnerInEvent;
+  intkeymap<int, __int64> runnerInEvent;
 
   /** Init name hash lazy */
   void setupNameHash() const;
@@ -345,6 +349,9 @@ public:
 
   void getAllNames(vector<wstring> &givenName, vector<wstring> &familyName);
   RunnerDB(oEvent *);
+  RunnerDB(const RunnerDB &in);
+  bool operator!=(const RunnerDB &other) const;
+
   ~RunnerDB(void);
   friend class oDBRunnerEntry;
   friend class oDBClubEntry;
@@ -373,6 +380,12 @@ public:
   void fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &selected) override;
 
   oDBRunnerEntry(oEvent *oe);
+  oDBRunnerEntry(oDBRunnerEntry &&in);
+  oDBRunnerEntry(const oDBRunnerEntry &in);
+
+  const oDBRunnerEntry &operator=(oDBRunnerEntry &&in);
+  const oDBRunnerEntry &operator=(const oDBRunnerEntry &in);
+
   virtual ~oDBRunnerEntry();
 
   void remove();

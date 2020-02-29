@@ -31,6 +31,10 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include <deque>
 #include <condition_variable>
 #include <tuple>
+#include <random>
+
+class InfoCompetition;
+class xmlbuffer;
 
 namespace restbed {
   class Service;
@@ -111,6 +115,29 @@ private:
 
   string root;
   multimap<string, string> rootMap;
+
+  struct InfoServerContainer {
+    //static int currentInstanceId;
+    int getNextInstanceId();
+
+    const int instanceIncrementor;
+    int thisInstanceId = -1;
+    int nextInstanceId;
+    shared_ptr<InfoCompetition> cmpModel;
+    shared_ptr<xmlbuffer> lastData;
+    set<int> classes;
+    set<int> controls;
+
+    InfoServerContainer(int s, int e) : nextInstanceId(s), instanceIncrementor(e) {}
+  };
+
+  shared_ptr<default_random_engine> randGen;
+  list<InfoServerContainer> isContainers;
+  int getNewInstanceId();
+  xmlbuffer *getMOPXML(oEvent &oe, int id, int &nextId);
+
+  void difference(oEvent &oe, int id, string &answer);
+
 public:
 
   ~RestServer();

@@ -79,8 +79,9 @@ class TabClass :
   set<oEvent::DrawMethod> getSupportedDrawMethods(bool multiDay) const;
 
   void drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClass &cls);
-
   void pursuitDialog(gdioutput &gdi);
+  void addVacantPosition(gdioutput &gdi);
+  oEvent::VacantPosition TabClass::readVacantPosition(gdioutput &gdi) const;
 
   bool warnDrawStartTime(gdioutput &gdi, int time, bool absTime);
   bool warnDrawStartTime(gdioutput &gdi, const wstring &firstStart);
@@ -117,7 +118,7 @@ class TabClass :
   void showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK classesCB) const;
 
   // Set simultaneous start in a class
-  void simultaneous(int classId, const wstring &time);
+  void simultaneous(int classId, const wstring &time, int nVacant);
 
   void updateFairForking(gdioutput &gdi, pClass pc) const;
   void selectCourses(gdioutput &gdi, int legNo);

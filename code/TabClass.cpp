@@ -913,7 +913,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       readClassSettings(gdi);
       oEvent::DrawMethod method = (oEvent::DrawMethod)gdi.getSelectedItem("Method").first;
       int pairSize = gdi.getSelectedItem("PairSize").first;
-      
+      auto vp = readVacantPosition(gdi);
       bool drawCoursebased = drawInfo.coursesTogether;
 
       int maxST = 0;
@@ -923,7 +923,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         const ClassInfo &ci=cInfo[k];
         
         ClassDrawSpecification cds(ci.classId, 0, drawInfo.firstStart + drawInfo.baseInterval * ci.firstStart,
-                                   drawInfo.baseInterval * ci.interval, ci.nVacant);
+                                   drawInfo.baseInterval * ci.interval, ci.nVacant, vp);
         if (drawCoursebased) {
           pCourse pCrs = oe->getClass(ci.classId)->getCourse();
           int id = pCrs ? pCrs->getId() : 101010101 + ci.classId;
@@ -954,7 +954,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       for (size_t k=0; k<cInfo.size(); k++)
         par.selection.insert(cInfo[k].classId);
 
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }
@@ -1013,8 +1013,10 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.fillRight();
       gdi.addInput("FirstStart", oe->getAbsTime(3600), 10, 0, L"Första (ordinarie) start:");
       gdi.addInput("MinInterval", L"2:00", 10, 0, L"Minsta startintervall:");
-      gdi.fillDown();
       gdi.addInput("Vacances", getDefaultVacant(), 10, 0, L"Andel vakanser:");
+      gdi.fillDown();
+      addVacantPosition(gdi);
+      
       gdi.popX();
 
       createDrawMethod(gdi);
@@ -1134,7 +1136,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
       gdi.dropLine();
       gdi.addButton("Cancel", "Återgå", ClassesCB);
@@ -1151,6 +1153,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         return 0;
       wstring minInterval = gdi.getText("MinInterval");
       wstring vacances = gdi.getText("Vacances");
+      auto vp = readVacantPosition(gdi);
       setDefaultVacant(vacances);
       bool lateBefore = gdi.isChecked("LateBefore");
       bool allowNeighbourSameCourse = gdi.isChecked("AllowNeighbours");
@@ -1160,7 +1163,6 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (gdi.hasWidget("PairSize")) {
         pairSize = gdi.getSelectedItem("PairSize").first;
       }
-
       oEvent::DrawMethod method = (oEvent::DrawMethod)gdi.getSelectedItem("Method").first;
    
       int baseInterval = convertAbsoluteTimeMS(minInterval) / 2;
@@ -1174,7 +1176,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         throw meosException("Ogiltig första starttid. Måste vara efter nolltid.");
 
       clearPage(gdi, true);
-      oe->automaticDrawAll(gdi, firstStart, minInterval, vacances,
+      oe->automaticDrawAll(gdi, firstStart, minInterval, vacances, vp,
                            lateBefore, allowNeighbourSameCourse, method, pairSize);
       oe->addAutoBib();
       gdi.scrollToBottom();
@@ -1203,13 +1205,16 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       showClassSelection(gdi, bx, by, 0);
 
       gdi.pushX();
+
+      gdi.fillRight();
       gdi.addInput("FirstStart", firstStart, 10, 0, L"Starttid:");
+      gdi.addInput("Vacanses", lastNumVac, 10, 0, L"Antal vakanser:").setSynchData(&lastNumVac);
 
       gdi.dropLine(4);
       gdi.popX();
       gdi.fillRight();
       gdi.addButton("AssignStart", "Tilldela", ClassesCB).isEdit(true);
-      gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
+      gdi.addButton("Cancel", "Återgå", ClassesCB).setCancel();
       gdi.addButton("EraseStartAll", "Radera starttider...", ClassesCB).isEdit(true).setExtra(1);
 
       gdi.refresh();
@@ -1226,8 +1231,10 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (warnDrawStartTime(gdi, time))
         return 0;
 
+      int nVacant = gdi.getTextNo("Vacanses");
+
       for (set<int>::iterator it = classes.begin(); it!=classes.end();++it) {
-        simultaneous(*it, time);
+        simultaneous(*it, time, nVacant);
       }
 
       bi.id = "Simultaneous";
@@ -1412,7 +1419,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       for (set<int>::const_iterator it = classes.begin(); it != classes.end(); ++it) {
         vector<ClassDrawSpecification> spec;
-        spec.push_back(ClassDrawSpecification(*it, 0, 0, 0, 0));
+        spec.emplace_back(ClassDrawSpecification(*it, 0, 0, 0, 0, oEvent::VacantPosition::Mixed));
         oe->drawList(spec, oEvent::DrawMethod::Random, 1, oEvent::DrawType::DrawAll);
       }
 
@@ -1487,14 +1494,13 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         if (warnDrawStartTime(gdi, t, false))
           return 0;
       }
-      //bool pairwise = false;
 
-//      if (gdi.hasWidget("Pairwise"))
- //       pairwise = gdi.isChecked("Pairwise");
       int pairSize = 1;
       if (gdi.hasWidget("PairSize")) {
         pairSize = gdi.getSelectedItem("PairSize").first;
       }
+
+      auto vp = readVacantPosition(gdi);
 
       int maxTime = 0, restartTime = 0;
       double scaleFactor = 1.0;
@@ -1510,7 +1516,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       if (method == oEvent::DrawMethod::Random || method == oEvent::DrawMethod::SOFT || method == oEvent::DrawMethod::MeOS) {
         vector<ClassDrawSpecification> spec;
-        spec.push_back(ClassDrawSpecification(cid, leg, t, interval, vacanses));
+        spec.emplace_back(cid, leg, t, interval, vacanses, vp);
     
         oe->drawList(spec, method, pairSize, dtype);
       }
@@ -1523,7 +1529,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
                             scaleFactor);
       }
       else if (method == oEvent::DrawMethod::Simultaneous) {
-        simultaneous(cid, time);
+        simultaneous(cid, time, vacanses);
       }
       else if (method == oEvent::DrawMethod::Seeded) {
         ListBoxInfo seedMethod;
@@ -1572,7 +1578,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       oListInfo info;
       par.listCode = EStdStartList;
       par.setLegNumberCoded(leg);
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
 
       gdi.refresh();
@@ -1596,7 +1602,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         leg = gdi.getSelectedItem("Leg").first;
       }
       vector<ClassDrawSpecification> spec;
-      spec.push_back(ClassDrawSpecification(ClassId, leg, 0, 0, 0));
+      spec.emplace_back(ClassId, leg, 0, 0, 0, oEvent::VacantPosition::Mixed);
     
       oe->drawList(spec, oEvent::DrawMethod::Random, 1, oEvent::DrawType::DrawAll);
       loadPage(gdi);
@@ -1822,7 +1828,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           par.listCode = EStdStartList;
         }
       }
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
 
       gdi.refresh();
@@ -1953,7 +1959,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       par.selection.insert(outClass.begin(), outClass.end());
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
     }
     else if (bi.id == "LockAllForks" || bi.id == "UnLockAllForks") {
@@ -2069,7 +2075,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       par.selection.insert(ClassId);
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }
@@ -2451,6 +2457,8 @@ void TabClass::showClassSettings(gdioutput &gdi)
     gdi.setCY(rc.top + gdi.scaleLength(10));
     
     createDrawMethod(gdi);
+
+    addVacantPosition(gdi);
 
     gdi.addSelection("PairSize", 150, 200, 0, L"Tillämpa parstart:");
     gdi.addItem("PairSize", getPairOptions());
@@ -3634,9 +3642,18 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
   if (method != oEvent::DrawMethod::Simultaneous)
     gdi.addInput("Interval", formatTime(interval), 10, 0, L"Startintervall (min):").setSynchData(&lastInterval);
 
-  if ((method == oEvent::DrawMethod::Random || method == oEvent::DrawMethod::SOFT || method == oEvent::DrawMethod::Clumped || method == oEvent::DrawMethod::MeOS) && pc.getParentClass() == 0)
+  if ((method == oEvent::DrawMethod::Random ||
+      method == oEvent::DrawMethod::SOFT ||
+      method == oEvent::DrawMethod::Clumped ||
+      method == oEvent::DrawMethod::MeOS ||
+      method == oEvent::DrawMethod::Simultaneous) && pc.getParentClass() == 0) {
     gdi.addInput("Vacanses", itow(vac), 10, 0, L"Antal vakanser:").setSynchData(&lastNumVac);
 
+    if (method == oEvent::DrawMethod::SOFT ||
+        method == oEvent::DrawMethod::Random ||
+        method == oEvent::DrawMethod::MeOS)
+      addVacantPosition(gdi);
+  }
   if ((method == oEvent::DrawMethod::Random || method == oEvent::DrawMethod::SOFT || method == oEvent::DrawMethod::Seeded || method == oEvent::DrawMethod::MeOS) && pc.getNumStages() > 1 && pc.getClassType() != oClassPatrol) {
     gdi.addSelection("Leg", 90, 100, 0, L"Sträcka:", L"Sträcka att lotta");
     for (unsigned k = 0; k < pc.getNumStages(); k++)
@@ -3689,6 +3706,26 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
   gdi.refresh();
 
   lastDrawMethod = method;
+}
+
+void TabClass::addVacantPosition(gdioutput &gdi) {
+  gdi.addSelection("VacantPosition", 120, 80, nullptr, L"Vakansplacering:");
+  vector<pair<wstring, size_t>> vp;
+  vp.emplace_back(lang.tl("Lottat"), size_t(oEvent::VacantPosition::Mixed));
+  vp.emplace_back(lang.tl("Först"), size_t(oEvent::VacantPosition::First));
+  vp.emplace_back(lang.tl("Sist"), size_t(oEvent::VacantPosition::Last));
+  gdi.addItem("VacantPosition", vp);
+  int def = oe->getPropertyInt("VacantPosition", size_t(oEvent::VacantPosition::Mixed));
+  gdi.selectItemByData("VacantPosition", def);
+}
+
+oEvent::VacantPosition TabClass::readVacantPosition(gdioutput &gdi) const {
+  if (gdi.hasWidget("VacantPosition")) {
+    int val = gdi.getSelectedItem("VacantPosition").first;
+    oe->setProperty("VacantPosition", val);
+    return oEvent::VacantPosition(val);
+  }
+  return oEvent::VacantPosition::Mixed;
 }
 
 set<oEvent::DrawMethod> TabClass::getSupportedDrawMethods(bool hasMulti) const {
@@ -3916,13 +3953,34 @@ void TabClass::enableLoadSettings(gdioutput &gdi) {
 }
 
 
-void TabClass::simultaneous(int classId, const wstring &time) {
+void TabClass::simultaneous(int classId, const wstring &time, int nVacant) {
   pClass pc = oe->getClass(classId);
 
   if (!pc)
     throw exception();
 
-  pc->getNumStages();
+  if (nVacant >= 0 && pc->getNumStages() <= 1) {
+    vector<int> toRemove;
+    vector<pRunner> runners;
+    oe->getRunners(classId, 0, runners, true);
+    //Remove old vacances
+    for (pRunner r : runners) {
+      if (r->getTeam())
+        continue; // Cannot remove team runners
+      if (r->isVacant()) {
+        
+        if (--nVacant < 0)
+          toRemove.push_back(r->getId());
+      }
+    }
+
+    oe->removeRunner(toRemove);
+    toRemove.clear();
+    for (int i = 0; i < nVacant; i++) {
+      oe->addRunnerVacant(classId);
+    }
+  }
+
   if (pc->getNumStages() == 0) {
     pCourse crs = pc->getCourse();
     pc->setNumStages(1);

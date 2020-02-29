@@ -366,7 +366,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
             else
               par.setLegNumberCoded(0);
 
-            oe->generateListInfo(par, gdi.getLineHeight(), prm->listInfo);
+            oe->generateListInfo(par, prm->listInfo);
           }
         }
         prm->po.onlyChanged = gdi.isChecked("OnlyChanged");

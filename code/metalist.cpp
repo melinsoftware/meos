@@ -358,8 +358,7 @@ static void setFixedWidth(oPrintPost &added,
     added.fixedWidth = 0;
 }
 
-void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
-                         int lineHeight, oListInfo &li) const {
+void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const {
   const MetaList &mList = *this;
   Position pos;
   const bool large = par.useLargeSize;
@@ -376,19 +375,20 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         if (fontFaces[k].scale > 0 && fontFaces[k].scale != 100) {
           face += L";" + itow(fontFaces[k].scale/100) + L"." + itow(fontFaces[k].scale%100);
         }
-        fontHeight[make_pair(it->first, int(k))] = gdi.getLineHeight(it->first, face.c_str());
+        fontHeight[make_pair(it->first, int(k))] = int(gdi.getLineHeight(it->first, face.c_str()) / gdi.getScale());
     }
   }
-
+  int lineHeight;
   if (large) {
     s_factor = 0.9;
     normal = fontLarge;
     header = boldLarge;
     small = normalText;
-    lineHeight = int(lineHeight *1.6);
+    lineHeight = 22;
     italic = italicMediumPlus;
   }
   else {
+    lineHeight = 14;
     s_factor = 1.0;
     normal = normalText;
     header = boldText;
@@ -511,6 +511,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                                      oPrintPost::encodeFont(fontFaces[i].font, 
                                      fontFaces[i].scale).c_str(), 
                                      large, max(mp.blockWidth, extraMinWidth));
+
           ++linePostCount[make_pair(i, j)]; // Count how many positions on this line
           indexPosToWidth[tuple<int,int,int>(i, j, k)] = width;
         }
@@ -584,7 +585,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   resultToIndex.clear();
   /*if (large == false && par.pageBreak == false) {*/
   {
-    int head_dy = gdi.scaleLength(mList.getExtraSpace(MLHead));
+    int head_dy = mList.getExtraSpace(MLHead);
     for (size_t j = 0; j<mList.getHead().size(); j++) {
       const vector<MetaListPost> &cline = mList.getHead()[j];
       next_dy = 0;
@@ -639,7 +640,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
   }
 
   dy = lineHeight;
-  int subhead_dy = gdi.scaleLength(mList.getExtraSpace(MLSubHead));
+  int subhead_dy = mList.getExtraSpace(MLSubHead);
     
   last = 0;
   base = 0;
@@ -689,7 +690,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
   last = 0;
   base = 0;
-  int list_dy = gdi.scaleLength(mList.getExtraSpace(MLList));//mList.getSubList().size() > 0 ? lineHeight/2 : 0;
+  int list_dy = mList.getExtraSpace(MLList);
   dy = 0;
   for (size_t j = 0; j<mList.getList().size(); j++) {
     const vector<MetaListPost> &cline = mList.getList()[j];
@@ -731,7 +732,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
     dy += next_dy;
   }
 
-  int sublist_dy = gdi.scaleLength(mList.getExtraSpace(MLSubList));
+  int sublist_dy = mList.getExtraSpace(MLSubList);
   last = 0;
   base = 0;
   dy = 0;
@@ -2309,12 +2310,11 @@ wstring MetaListContainer::makeUniqueParamName(const wstring &nameIn) const {
 }
 
 
-bool MetaListContainer::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
-                                  int lineHeight, oListInfo &li) const {
+bool MetaListContainer::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const {
 
   map<EStdListType, int>::const_iterator it = globalIndex.find(par.listCode);
   if (it != globalIndex.end()) {
-    data[it->second].second.interpret(oe, gdi, par, lineHeight, li);
+    data[it->second].second.interpret(oe, gdi, par, li);
     return true;
   }
   return false;

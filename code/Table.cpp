@@ -2045,7 +2045,7 @@ void Table::importClipboard(gdioutput &gdi)
       tw = max(tw, table[k].size());
 
     if (tw > columns.size())
-      throw std::exception("Antalet columner i urklippet är större än antalet kolumner i tabellen.");
+      throw meosException("Antalet kolumner i urklippet är större än antalet kolumner i tabellen.");
 
     if (upperRow == -1) {
       if (!gdi.ask(L"Vill du klistra in X nya rader i tabellen?#"+itow(table.size())))
@@ -2059,10 +2059,10 @@ void Table::importClipboard(gdioutput &gdi)
       getRowRange(row1, row2);
 
       if ( (row1 + table.size()) > sortIndex.size() )
-        throw std::exception("Antalet rader i urklipp får inte plats i selektionen.");
+        throw meosException("Antalet rader i urklipp får inte plats i selektionen.");
 
       if ( (col1 + tw) > columns.size() )
-        throw std::exception("Antalet kolumner i urklipp får inte plats i selektionen.");
+        throw meosException("Antalet kolumner i urklipp får inte plats i selektionen.");
 
       bool wrongSize = false;
 

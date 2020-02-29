@@ -408,6 +408,7 @@ public:
     else
       return true;
   }
+
   /** Sets the status. If updatePermanent is true, the stored start
     time is updated, otherwise the value is considered deduced.
     */
@@ -646,7 +647,6 @@ protected:
   bool isHiredCard(int card) const;
 
 public:
-
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
   // Get the leg defineing parallel results for this runner (in a team)
@@ -655,6 +655,17 @@ public:
   // Returns true if there are radio control results, provided result calculation oEvent::ResultType::PreliminarySplitResults was invoked.
   bool hasOnCourseResult() const { return !tOnCourseResults.empty() || getFinishTime() > 0 || hasResult(); }
   
+  /** Return true if the race is completed (or definitely never will be started), e.g., not in forest*/
+  bool hasFinished() const {
+    if (tStatus == StatusUnknown)
+      return false;
+    else if (isPossibleResultStatus(tStatus)) {
+      return Card || FinishTime > 0;
+    }
+    else
+      return true;
+  }
+
   /** Returns a check time (or zero for no time). */
   int getCheckTime() const;
 

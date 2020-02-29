@@ -225,7 +225,7 @@ void ListEditor::show(gdioutput &gdi) {
   gdi.fillDown();
 
   try {
-    currentList->interpret(oe, gdi, par, gdi.getLineHeight(), li);
+    currentList->interpret(oe, gdi, par, li);
     rc.left = gdi.getCX();
     rc.right = gdi.getCX() + gdi.getWidth() - 20;
     rc.top = gdi.getCY();

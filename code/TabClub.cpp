@@ -144,12 +144,12 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
           oClub::definedPayModes(*oe, dpm);
           pc->generateInvoice(gdi, pay, paid, dpm, ppm);
         }
-        gdi.addButton(gdi.getWidth()+20, 15, gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(15), gdi.scaleLength(120),
                       "Cancel", "Återgå", ClubsCB, "", true, false);
-        gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(45),  gdi.scaleLength(120),
                       "Print", "Skriv ut...", ClubsCB,
                       "Skriv ut fakturan", true, false);
-        gdi.addButton(gdi.getWidth()+20, 75,  gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(75),  gdi.scaleLength(120),
                       "PDF", "PDF...", ClubsCB,
                       "Spara som PDF.", true, false);
         gdi.refresh();
@@ -299,16 +299,20 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "InvoiceSettings") {
       gdi.clearPage(true);
+      gdi.pushX();
       gdi.addString("", boldLarge, "Fakturainställningar");
       gdi.dropLine();
       firstInvoice = oClub::getFirstInvoiceNumber(*oe);
       if (firstInvoice == 0)
         firstInvoice = oe->getPropertyInt("FirstInvoice", 1000);
 
-      gdi.addInput("FirstInvoice", itow(firstInvoice), 5, 0, L"Första fakturanummer:");
-
-      gdi.dropLine();
-      gdi.addString("", boldText, "Organisatör");
+      gdi.fillRight();
+      gdi.addInput("InvoiceDate", oClub::getInvoiceDate(*oe), 16, nullptr, L"Fakturadatum:");
+      gdi.addInput("FirstInvoice", itow(firstInvoice), 16, 0, L"Första fakturanummer:");
+      gdi.fillDown();
+      gdi.popX();
+      gdi.dropLine(4);
+      gdi.addString("", fontMediumPlus, "Organisatör");
 
       vector<string> fields;
       gdi.pushY();
@@ -320,7 +324,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       oe->getDI().buildDataFields(gdi, fields, 32);
 
       gdi.dropLine();
-      gdi.addString("", boldText, "Betalningsinformation");
+      gdi.addString("", fontMediumPlus, "Betalningsinformation");
       fields.clear();
       fields.push_back("Account");
       fields.push_back("PaymentDue");
@@ -334,7 +338,7 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.dropLine(2);
       gdi.popX();
 
-      gdi.addString("", boldText, "Formatering");
+      gdi.addString("", fontMediumPlus, "Formatering");
 
       gdi.fillRight();
       gdi.addString("", 0, "Koordinater (mm) för adressfält:");
@@ -353,12 +357,11 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.dropLine(1);
 
       gdi.fillRight();
-      gdi.addButton("SaveSettings", "Spara", ClubsCB);
-      gdi.addButton("Cancel", "Avbryt", ClubsCB);
+      gdi.addButton("SaveSettings", "Spara", ClubsCB).setDefault();
+      gdi.addButton("Cancel", "Avbryt", ClubsCB).setCancel();
       gdi.dropLine(2);
       gdi.setOnClearCb(ClubsCB);
       oe->getDI().fillDataFields(gdi);
-
     }
     else if (bi.id == "SaveSettings") {
       oe->getDI().saveDataFields(gdi);
@@ -375,6 +378,13 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       }
       else
         oe->setProperty("FirstInvoice", fn);
+
+      if (gdi.getText("InvoiceDate").empty()) {
+        gdi.setText("InvoiceDate", oClub::getInvoiceDate(*oe));
+        dynamic_cast<InputInfo &>(gdi.getBaseInfo("InvoiceDate")).setBgColor(colorLightRed);
+        return 0;
+      }
+      oClub::setInvoiceDate(*oe, gdi.getText("InvoiceDate"));
 
       int xc = gdi.getTextNo("XC");
       int yc = gdi.getTextNo("YC");

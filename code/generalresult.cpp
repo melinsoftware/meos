@@ -1063,7 +1063,7 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
   parser.declareSymbol("StatusDQ", "Status code for disqualification", false);
   parser.declareSymbol("StatusOutOfCompetition", "Status code for running out-of-competition", false);
   parser.declareSymbol("StatusNotCompetiting", "Status code for not competing", false);
-  parser.declareSymbol("StatusNoTiming", "Status code for not no timing", false);
+  parser.declareSymbol("StatusNoTiming", "Status code for no timing", false);
 
   parser.declareSymbol("ShortestClassTime", "Shortest time in class", false);
 

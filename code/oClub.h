@@ -147,9 +147,10 @@ public:
   static void assignInvoiceNumber(oEvent &oe, bool reset);
 
   static int getFirstInvoiceNumber(oEvent &oe);
+  static wstring getInvoiceDate(oEvent &oe);
+  static void setInvoiceDate(oEvent &oe, const wstring &id);
 
   static void definedPayModes(oEvent &oe, map<int, wstring> &definedPayModes);
-
 
   /** Remove all clubs from a competion (and all belong to club relations)*/
   static void clearClubs(oEvent &oe);

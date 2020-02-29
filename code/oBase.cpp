@@ -54,6 +54,59 @@ oBase::oBase(oEvent *poe) {
   localObject = false;
 }
 
+oBase::oBase(const oBase &in) {
+  Removed = in.Removed;
+  oe = in.oe;
+  Id = in.Id;
+  changed = false;
+  counter = in.counter;
+  Modified.update();
+  correctionNeeded = in.correctionNeeded;
+  localObject = in.localObject;
+  implicitlyAdded = in.implicitlyAdded;
+  addedToEvent = in.addedToEvent;
+  sqlUpdated = in.sqlUpdated;
+  localObject = in.localObject;
+  transientChanged = in.transientChanged;
+}
+
+oBase::oBase(oBase &&in) {
+  Removed = in.Removed;
+  oe = in.oe;
+  Id = in.Id;
+  changed = false;
+  counter = in.counter;
+  Modified.update();
+  correctionNeeded = in.correctionNeeded;
+  localObject = in.localObject;
+  implicitlyAdded = in.implicitlyAdded;
+  addedToEvent = in.addedToEvent;
+  sqlUpdated = in.sqlUpdated;
+  localObject = in.localObject;
+  transientChanged = in.transientChanged;
+  if (in.myReference) {
+    myReference.swap(in.myReference);
+    myReference->ref = this;
+  }
+}
+
+const oBase &oBase::operator=(const oBase &in) {
+  Removed = in.Removed;
+  oe = in.oe;
+  Id = in.Id;
+  changed = false;
+  counter = in.counter;
+  Modified.update();
+  correctionNeeded = in.correctionNeeded;
+  localObject = in.localObject;
+  implicitlyAdded = in.implicitlyAdded;
+  addedToEvent = in.addedToEvent;
+  sqlUpdated = in.sqlUpdated;
+  localObject = in.localObject;
+  transientChanged = in.transientChanged;
+  return *this;
+}
+
 oBase::~oBase(){
   if (myReference)
     myReference->ref = nullptr;
@@ -63,6 +116,7 @@ void oBase::remove() {
   if (myReference)
     myReference->ref = nullptr;
 }
+
 
 bool oBase::synchronize(bool writeOnly)
 {

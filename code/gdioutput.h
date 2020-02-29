@@ -684,6 +684,9 @@ public:
 
   bool isInputChanged(const string &exclude);
 
+  /** Get width of input widget with specified length (chars)*/
+  pair<int,int> getInputDimension(int length) const;
+
   InputInfo &addInput(const string &id, const wstring &text = L"", int length=16, GUICALLBACK cb=0,
                       const wstring &Explanation = L"", const wstring &tooltip=L"");
   InputInfo &addInput(int x, int y, const string &id, const wstring &text, int length, 

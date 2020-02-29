@@ -65,21 +65,19 @@ public:
   };
 
 private:
-  // Changed in client, not yet sent to server
-  bool changed;
-  // Changed in client, silent mode, should not be sent to server
-  bool transientChanged;
-
-  bool localObject;
-  const static unsigned long long BaseGenStringFlag = 1ull << 63;
-  const static unsigned long long Base36StringFlag = 1ull << 62;
-  const static unsigned long long ExtStringMask = ~(BaseGenStringFlag|Base36StringFlag);
-  shared_ptr<oBaseReference> myReference;
 
 protected:
   int Id;
   TimeStamp Modified;
   string sqlUpdated; //SQL TIMESTAMP
+
+private:
+  const static unsigned long long BaseGenStringFlag = 1ull << 63;
+  const static unsigned long long Base36StringFlag = 1ull << 62;
+  const static unsigned long long ExtStringMask = ~(BaseGenStringFlag | Base36StringFlag);
+  shared_ptr<oBaseReference> myReference;
+
+protected:
   int counter;
   oEvent *oe;
   bool Removed;
@@ -93,6 +91,11 @@ private:
   
   bool implicitlyAdded = false;
   bool addedToEvent = false;
+  // Changed in client, not yet sent to server
+  bool changed;
+  // Changed in client, silent mode, should not be sent to server
+  bool transientChanged;
+  bool localObject;
 
 protected:
 
@@ -186,6 +189,9 @@ public:
   static __int64 converExtIdentifierString(const wstring &str);
 
   oBase(oEvent *poe);
+  oBase(const oBase &in);
+  oBase(oBase &&in);
+  const oBase &operator=(const oBase &in);
   virtual ~oBase();
 
   friend class RunnerDB;

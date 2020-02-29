@@ -212,6 +212,7 @@ namespace {
   void drawMeOSMethod(vector<pRunner> &runners) {
     if (runners.empty())
       return;
+
     map<int, vector<pRunner>> runnersPerClub;
     for (pRunner r : runners)
       runnersPerClub[r->getClubId()].push_back(r);
@@ -960,7 +961,7 @@ void oEvent::drawRemaining(DrawMethod method, bool placeAfter)
 
   for (oClassList::iterator it = Classes.begin(); it !=  Classes.end(); ++it) {
     vector<ClassDrawSpecification> spec;
-    spec.push_back(ClassDrawSpecification(it->getId(), 0, 0, 0, 0));
+    spec.emplace_back(it->getId(), 0, 0, 0, 0, VacantPosition::Mixed);
 
     drawList(spec, method, 1, drawType);
   }
@@ -1120,6 +1121,21 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   if (gdibase.isTest())
     InitRanom(0,0);
 
+
+  vector<pRunner> vacant;
+  VacantPosition vp = spec[0].vacantPosition;
+  if (vp != VacantPosition::Mixed) {
+    // Move vacants to a dedicated container
+    for (size_t k = 0; k < runners.size(); k++) {
+      if (runners[k]->isVacant()) {
+        vacant.push_back(runners[k]);
+        swap(runners[k], runners.back());
+        runners.pop_back();
+        k--;
+      }
+    }
+  }
+
   switch (method) {
   case DrawMethod::SOFT:
     drawSOFTMethod(runners, true);
@@ -1128,10 +1144,26 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     drawMeOSMethod(runners);
     break;
   case DrawMethod::Random:
-    permute(stimes);
+  {
+    vector<int> pv(runners.size());
+    for (size_t k = 0; k < pv.size(); k++)
+      pv[k] = k;
+    permute(pv);
+    vector<pRunner> r2(runners.size());
+    for (size_t k = 0; k < pv.size(); k++)
+      r2[k] = runners[pv[k]];
+    r2.swap(runners);
+  }
     break;
   default:
     throw 0;
+  }
+
+  if (vp == VacantPosition::First) {
+    runners.insert(runners.begin(), vacant.begin(), vacant.end());
+  }
+  else if (vp == VacantPosition::Last) {
+    runners.insert(runners.end(), vacant.begin(), vacant.end());
   }
 
   int minStartNo = Runners.size();
@@ -1323,10 +1355,15 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
   delete[] stimes;
 }
 
-void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
-                              const wstring &minIntervall, const wstring &vacances,
-                              bool lateBefore, bool allowNeighbourSameCourse, DrawMethod method, int pairSize)
-{
+void oEvent::automaticDrawAll(gdioutput &gdi, 
+                              const wstring &firstStart,
+                              const wstring &minIntervall, 
+                              const wstring &vacances, 
+                              VacantPosition vp,
+                              bool lateBefore, 
+                              bool allowNeighbourSameCourse,
+                              DrawMethod method, 
+                              int pairSize) {
   gdi.refresh();
   const int leg = 0;
   const double extraFactor = 0.0;
@@ -1350,7 +1387,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
       if (it->isRemoved())
         continue;
       vector<ClassDrawSpecification> spec;
-      spec.push_back(ClassDrawSpecification(it->getId(), 0, iFirstStart, 0, 0));
+      spec.emplace_back(it->getId(), 0, iFirstStart, 0, 0, vp);
       oe->drawList(spec, DrawMethod::Random, 1, DrawType::DrawAll);
     }
     return;
@@ -1505,9 +1542,9 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
 
       gdi.addString("", 0, L"Lottar: X#" + getClass(ci.classId)->getName());
       vector<ClassDrawSpecification> spec;
-      spec.push_back(ClassDrawSpecification(ci.classId, leg, 
-                                  di.firstStart + di.baseInterval * ci.firstStart, 
-                                  di.baseInterval * ci.interval, ci.nVacant));
+      spec.emplace_back(ci.classId, leg,
+                        di.firstStart + di.baseInterval * ci.firstStart,
+                        di.baseInterval * ci.interval, ci.nVacant, vp);
 
       drawList(spec, method, pairSize, DrawType::DrawAll);
       gdi.scrollToBottom();
@@ -1526,7 +1563,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi, const wstring &firstStart,
     gdi.addStringUT(0, lang.tl(L"Lottar efteranmälda: ") + it->getName());
 
     vector<ClassDrawSpecification> spec;
-    spec.push_back(ClassDrawSpecification(it->getId(), leg, 0, 0, 0));
+    spec.emplace_back(it->getId(), leg, 0, 0, 0, vp);
     drawList(spec, method, 1, lateBefore ? DrawType::RemainingBefore : DrawType::RemainingAfter);
 
     gdi.scrollToBottom();

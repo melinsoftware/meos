@@ -1358,6 +1358,15 @@ HFONT gdioutput::getGUIFont() const
     return getCurrentFont().getGUIFont();
 }
 
+pair<int, int> gdioutput::getInputDimension(int length) const {
+  HDC hDC = GetDC(hWndTarget);
+  SelectObject(hDC, getGUIFont());
+  SIZE size;
+  GetTextExtentPoint32(hDC, L"M", 1, &size);
+  ReleaseDC(hWndTarget, hDC);
+  return make_pair(length*size.cx + scaleLength(8), size.cy + scaleLength(6));
+}
+
 InputInfo &gdioutput::addInput(int x, int y, const string &id, const wstring &text,
                                int length, GUICALLBACK cb,
                                const wstring &explanation, const wstring &help) {
@@ -1367,30 +1376,25 @@ InputInfo &gdioutput::addInput(int x, int y, const string &id, const wstring &te
   }
 
   InputInfo ii;
-  SIZE size;
-
-  HDC hDC=GetDC(hWndTarget);
-  SelectObject(hDC, getGUIFont());
-  GetTextExtentPoint32(hDC, L"M", 1, &size);
-  ReleaseDC(hWndTarget, hDC);
-
+  
+  auto dim = getInputDimension(length);
   int ox=OffsetX;
   int oy=OffsetY;
 
   ii.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", text.c_str(),
     WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS | ES_AUTOHSCROLL | WS_BORDER,
-    x-ox, y-oy, length*size.cx+scaleLength(8), size.cy+scaleLength(6),
+    x-ox, y-oy, dim.first, dim.second,
     hWndTarget, NULL, (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
-
-  updatePos(x, y, length*size.cx+scaleLength(12), size.cy+scaleLength(10));
+  int mrg = scaleLength(4);
+  updatePos(x, y, dim.first+mrg, dim.second+mrg);
 
   SendMessage(ii.hWnd, WM_SETFONT,
               (WPARAM) getGUIFont(), 0);
 
   ii.xp=x;
   ii.yp=y;
-  ii.width = length*size.cx+scaleLength(8);
-  ii.height = size.cy+scaleLength(6);
+  ii.width = dim.first;
+  ii.height = dim.second;
   ii.text = text;
   ii.original = text;
   ii.focusText = text;

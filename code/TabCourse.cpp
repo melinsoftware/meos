@@ -510,7 +510,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
           if (!gdi.ask(L"warning:drawresult"))
             return 0;
         }
-        courseDrawClasses.push_back(ClassDrawSpecification(cls[k]->getId(), 0, -1, -1, 0));
+        courseDrawClasses.emplace_back(cls[k]->getId(), 0, -1, -1, 0, oEvent::VacantPosition::Mixed);
         if (!clsNames.empty())
           clsNames += L", ";
         clsNames += cls[k]->getName();
@@ -586,7 +586,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       for (size_t k=0; k<courseDrawClasses.size(); k++)
         par.selection.insert(courseDrawClasses[k].classID);
 
-      oe->generateListInfo(par, gdi.getLineHeight(), info);
+      oe->generateListInfo(par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }

@@ -805,6 +805,7 @@ bool oTeam::compareSNO(const oTeam &a, const oTeam &b) {
         return a.Class->tSortIndex < b.Class->tSortIndex || (a.Class->tSortIndex == b.Class->tSortIndex && a.Class->Id < b.Class->Id);
       else return true;
     }
+    else return false;
   }
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
@@ -2382,8 +2383,9 @@ oTeam::TeamPlace &oTeam::getTeamPlace(int leg) const {
   if (size_t(leg) < tPlace.size())
     return tPlace[leg];
 
-  if (tComputedResults.empty())
+  if (tComputedResults.empty() || tPlace.empty())
     tPlace.resize(1);
+    
   return tPlace[0];
 }
 

@@ -69,7 +69,7 @@ template<typename T, typename Apply> void calculatePlace(vector<ResultCalcData<T
       vPlace = 0;
       cScore = 0;
       pClass cls = it.dst->getClassRef(true);
-      useResults = cls ? cls->getNoTiming() == false : true;
+      useResults = true;// cls ? cls->getNoTiming() == false : true;
       invalidClass = cls ? cls->getClassStatus() != oClass::Normal : false;
     }
 

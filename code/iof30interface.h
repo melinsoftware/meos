@@ -167,7 +167,8 @@ class IOF30Interface {
 
   static int getIndexFromLegPos(int leg, int legorder, const vector<LegInfo> &setup);
   
-  void prescanEntry(xmlobject & xo, set<int>& stages);
+  void prescanEntry(xmlobject & xo, set<int>& stages, xmlList &work);
+  void readIdProviders(xmlobject &person, xmlList &ids, std::string &type);
   void setupClassConfig(int classId, const xmlobject &xTeam, map<int, vector<LegInfo> > &teamClassConfig);
 
   void setupRelayClasses(const map<int, vector<LegInfo> > &teamClassConfig);
@@ -298,6 +299,7 @@ public:
 
   void readClassList(gdioutput &gdi, xmlobject &xo, int &entRead, int &entFail);
 
+  void prescanCompetitorList(xmlobject &xo);
   void readCompetitorList(gdioutput &gdi, const xmlobject &xo, int &personCount);
 
   void readClubList(gdioutput &gdi, const xmlobject &xo, int &clubCount);

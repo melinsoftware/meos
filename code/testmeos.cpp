@@ -137,12 +137,11 @@ void TestMeOS::runProtected(bool protect) const {
   oe_main->setProperty("TestPath", tp);
   oe_main->getPropertyInt("UseEventor", 1);  
   oe_main->setProperty("Interactive", 0);
+  oe_main->backupRunnerDatabase();
   TabSI *tsi = dynamic_cast<TabSI*>(gdi_main->getTabs().get(TabType::TSITab));
   tsi->setMode(TabSI::ModeReadOut);
   tsi->clearQueue();
-  //string pmOrig = oe_main->getPropertyString("PayModes", "");
-  //oe_main->setProperty("PayModes", "");
-
+  
   OutputDebugString((L"Running test" + gdi_main->widen(test) + L"\n").c_str());
   try {
     status = RUNNING;
@@ -161,20 +160,20 @@ void TestMeOS::runProtected(bool protect) const {
   catch (const meosAssertionFailure & ex) {
     OutputDebugString(L"Test FAILED (assert)\n");
     status = FAILED;
+    oe_main->restoreRunnerDatabase();
     oe_main->useDefaultProperties(false);
     gdi_main->clearDialogAnswers(false);
     gdi_main->dbRegisterSubCommand(0, "");
     gdi_main->isTestMode = false;
     subWindows.clear();
     message = ex.message;
-    //oe_main->setProperty("PayModes", pmOrig);
     if (!protect)
       throw meosException(message);
   }
   catch (const std::exception &ex) {
     status = FAILED;
     OutputDebugString(L"Test FAILED (std)\n");
-
+    oe_main->restoreRunnerDatabase();
     oe_main->useDefaultProperties(false);
     gdi_main->clearDialogAnswers(false);
     gdi_main->dbRegisterSubCommand(0, "");
@@ -189,18 +188,18 @@ void TestMeOS::runProtected(bool protect) const {
     OutputDebugString(L"Test FAILED (...)\n");
 
     status = FAILED;
+    oe_main->restoreRunnerDatabase();
     oe_main->useDefaultProperties(false);
     gdi_main->clearDialogAnswers(false);
     gdi_main->dbRegisterSubCommand(0, "");
     gdi_main->isTestMode = false;
     subWindows.clear();
-    //oe_main->setProperty("PayModes", pmOrig);
     message = L"Unknown Exception";
     cleanup();
     if (!protect)
       throw;
   }
-  //oe_main->setProperty("PayModes", pmOrig);
+  oe_main->restoreRunnerDatabase();
   oe_main->useDefaultProperties(false);
   gdi_main->dbRegisterSubCommand(0, "");
   for (size_t k = 0; k < tmpFiles.size(); k++)

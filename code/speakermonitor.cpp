@@ -53,7 +53,7 @@ void SpeakerMonitor::setClassFilter(const set<int> &filter, const set<int> &cfil
   classFilter = filter;
   controlIdFilter = cfilter;
   oListInfo li;
-  maxClassNameWidth = li.getMaxCharWidth(&oe, classFilter, lClassName, L"", normalText, false);
+  maxClassNameWidth = oe.gdiBase().scaleLength(li.getMaxCharWidth(&oe, classFilter, lClassName, L"", normalText, false));
 }
 
 void SpeakerMonitor::setLimits(int place, int num) {

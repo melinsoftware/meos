@@ -307,8 +307,7 @@ public:
   void save(xmlparser &xml, const oEvent *oe) const;
   void load(const xmlobject &xDef);
 
-  void interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
-                 int lineHeight, oListInfo &li) const;
+  void interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const;
 
   MetaList &setListName(const wstring &title) {listName = title; return *this;}
 
@@ -424,8 +423,7 @@ public:
 
   void synchronizeTo(MetaListContainer &dst) const;
 
-  bool interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par,
-                 int lineHeight, oListInfo &li) const;
+  bool interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const;
 
   void enumerateLists(vector< pair<wstring, pair<string, wstring> > > &out) const;
 };
