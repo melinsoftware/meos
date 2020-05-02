@@ -2845,6 +2845,16 @@ void MetaListContainer::getGeneralResults(vector<DynamicResultRef> &rmAll) {
   }
 }
 
+
+void MetaListContainer::getFreeResultModules(vector<pair<string, shared_ptr<DynamicResult>>> &res) const {
+  for (auto &r : freeResultModules) {
+    auto dynRes = dynamic_pointer_cast<DynamicResult, GeneralResult>(r.second.ptr);
+    if (dynRes) {
+      res.emplace_back(r.first, dynRes);
+    }
+  }
+}
+
 wstring DynamicResultRef::getAnnotation() const {
   if (ctr)
     return ctr->getListName();

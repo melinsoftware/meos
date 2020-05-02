@@ -44,9 +44,9 @@ public:
   };
 
 private:
-  int getLegRunningTimeUnadjusted(int leg, bool multidayTotal) const;
+  int getLegRunningTimeUnadjusted(int leg, bool multidayTotal, bool useComputedRunnerTime) const;
   /** Return the total time the team has been resting (pursuit start etc.) up to the specified leg */
-  int getLegRestingTime(int leg) const;
+  int getLegRestingTime(int leg, bool useComputedRunnerTime) const;
   
   void speakerLegInfo(int leg, int specifiedLeg, int courseControlId,
                       int &missingLeg, int &totalLeg,
@@ -138,6 +138,13 @@ protected:
 
 public:
 
+  /** Deduce from computed runner times.*/
+  RunnerStatus deduceComputedStatus() const;
+  int deduceComputedRunningTime() const;
+  int deduceComputedPoints() const;
+
+  const pair<wstring, int> getRaceInfo() override;
+
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
   /** Check the the main leg is set if any parallel is set. Returns true if corrections where made.*/
@@ -224,8 +231,8 @@ public:
   void importRunners(const vector<int> &rns);
   void importRunners(const vector<pRunner> &rns);
 
-  int getPlace() const {return getLegPlace(-1, false);}
-  int getTotalPlace() const  {return getLegPlace(-1, true);}
+  int getPlace(bool allowUpdate = true) const override {return getLegPlace(-1, false, allowUpdate);}
+  int getTotalPlace(bool allowUpdate = true) const override {return getLegPlace(-1, true, allowUpdate);}
 
   int getNumShortening() const;
   // Number of shortenings up to and including a leg
@@ -255,7 +262,7 @@ public:
 
   wstring getLegPlaceS(int leg, bool multidayTotal) const;
   wstring getLegPrintPlaceS(int leg, bool multidayTotal, bool withDot) const;
-  int getLegPlace(int leg, bool multidayTotal) const;
+  int getLegPlace(int leg, bool multidayTotal, bool allowUpdate = true) const;
 
   bool isResultUpdated(bool totalResult) const override;
 

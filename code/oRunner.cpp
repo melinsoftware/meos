@@ -54,9 +54,27 @@ bool oAbstractRunner::DynamicValue::isOld(const oEvent &oe) const {
   return oe.dataRevision != dataRevision;
 }
 
-void oAbstractRunner::DynamicValue::update(const oEvent &oe, int v) {
-  value = v;
-  dataRevision = oe.dataRevision;
+oAbstractRunner::DynamicValue &oAbstractRunner::DynamicValue::update(const oEvent &oe, int v, bool preferStd) {
+  if (preferStd)
+    valueStd = v; // A temporary result for "default" when computing with result modules (internal calculation)
+  else {
+    value = v;
+    dataRevision = oe.dataRevision;
+  }
+  return *this;
+}
+
+int oAbstractRunner::DynamicValue::get(bool preferStd) const {
+  if (preferStd && valueStd >= 0)
+    return valueStd;
+
+  return value;
+}
+
+void oAbstractRunner::DynamicValue::reset() {
+  value = -1;
+  valueStd = -1;
+  dataRevision = -1;
 }
 
 const wstring &oAbstractRunner::encodeStatus(RunnerStatus st, bool allowError) {
@@ -1611,19 +1629,19 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
   if (clz && changeType == ChangeType::Update) {
     bool update = false;
     if (tInTeam) {
-      int t1 = clz->getTotalLegLeaderTime(tLeg, false, false);
+      int t1 = clz->getTotalLegLeaderTime(oClass::AllowRecompute::No, tLeg, false, false);
       int t2 = tInTeam->getLegRunningTime(tLeg, false, false);
       if (t2<=t1 && t2>0)
         update = true;
 
-      int t3 = clz->getTotalLegLeaderTime(tLeg, false, true);
+      int t3 = clz->getTotalLegLeaderTime(oClass::AllowRecompute::No, tLeg, false, true);
       int t4 = tInTeam->getLegRunningTime(tLeg, false, true);
       if (t4<=t3 && t4>0)
         update = true;
     }
 
     if (!update) {
-      int t1 = clz->getBestLegTime(tLeg, false);
+      int t1 = clz->getBestLegTime(oClass::AllowRecompute::No, tLeg, false);
       int t2 = getRunningTime(false);
       if (t2<=t1 && t2>0)
         update = true;
@@ -1741,17 +1759,27 @@ bool oRunner::storeTimesAux(pClass targetClass) {
 
       for (int leg = firstLeg; leg<lastLeg; leg++) {
         if (tStatus==StatusOK) {
-          int &bt=targetClass->tLeaderTime[leg].bestTimeOnLeg;
+          //int &bt=targetClass->tLeaderTime[leg].bestTimeOnLeg;
           int rt=getRunningTime(false);
-          if (rt > 0 && (bt == 0 || rt < bt)) {
+          if (targetClass->tLeaderTime[leg].update(rt, oClass::LeaderInfo::Type::Leg))
+            updated = true;
+          /*if (rt > 0 && (bt == 0 || rt < bt)) {
             bt=rt;
             updated = true;
-          }
+          }*/
+        }
+
+        if (getStatusComputed() == StatusOK) {
+          int rt = getRunningTime(true);
+          if (targetClass->tLeaderTime[leg].updateComputed(rt, oClass::LeaderInfo::Type::Leg))
+            updated = true;
         }
       }
 
       bool updateTotal = true;
       bool updateTotalInput = true;
+      bool updateTotalC = true;
+      bool updateTotalInputC = true;
 
       int basePLeg = firstLeg;
       while (basePLeg > 0 && targetClass->legInfo[basePLeg].isParallel())
@@ -1761,6 +1789,9 @@ bool oRunner::storeTimesAux(pClass targetClass) {
       while (ix < nleg && (ix == basePLeg || targetClass->legInfo[ix].isParallel()) ) {
         updateTotal = updateTotal && tInTeam->getLegStatus(ix, false, false)==StatusOK;
         updateTotalInput = updateTotalInput && tInTeam->getLegStatus(ix, false, true)==StatusOK;
+
+        updateTotalC = updateTotalC && tInTeam->getLegStatus(ix, true, false) == StatusOK;
+        updateTotalInputC = updateTotalInputC && tInTeam->getLegStatus(ix, true, true) == StatusOK;
         ix++;
       }
 
@@ -1773,11 +1804,25 @@ bool oRunner::storeTimesAux(pClass targetClass) {
         }
 
         for (int leg = firstLeg; leg<lastLeg; leg++) {
-          int &bt=targetClass->tLeaderTime[leg].totalLeaderTime;
+          /*int &bt=targetClass->tLeaderTime[leg].totalLeaderTime;
           if (rt > 0 && (bt == 0 || rt < bt)) {
             bt=rt;
             updated = true;
-          }
+          }*/
+          if (targetClass->tLeaderTime[leg].update(rt, oClass::LeaderInfo::Type::Total))
+            updated = true;
+        }
+      }
+      if (updateTotalC) {
+        int rt = 0;
+        int ix = basePLeg;
+        while (ix < nleg && (ix == basePLeg || targetClass->legInfo[ix].isParallel())) {
+          rt = max(rt, tInTeam->getLegRunningTime(ix, true, false));
+          ix++;
+        }
+        for (int leg = firstLeg; leg<lastLeg; leg++) {
+          if (targetClass->tLeaderTime[leg].updateComputed(rt, oClass::LeaderInfo::Type::Total))
+            updated = true;
         }
       }
       if (updateTotalInput) {
@@ -1789,11 +1834,25 @@ bool oRunner::storeTimesAux(pClass targetClass) {
           ix++;
         }
         for (int leg = firstLeg; leg<lastLeg; leg++) {
-          int &bt=targetClass->tLeaderTime[leg].totalLeaderTimeInput;
-          if (rt > 0 && (bt == 0 || rt < bt)) {
+          /*int &bt=targetClass->tLeaderTime[leg].totalLeaderTimeInput;
+          if (rt > 0 && (bt <= 0 || rt < bt)) {
             bt=rt;
             updated = true;
-          }
+          }*/
+          if (targetClass->tLeaderTime[leg].update(rt, oClass::LeaderInfo::Type::TotalInput))
+            updated = true;
+        }
+      }
+      if (updateTotalInputC) {
+        int rt = 0;
+        int ix = basePLeg;
+        while (ix < nleg && (ix == basePLeg || targetClass->legInfo[ix].isParallel())) {
+          rt = max(rt, tInTeam->getLegRunningTime(ix, true, true));
+          ix++;
+        }
+        for (int leg = firstLeg; leg<lastLeg; leg++) {
+          if (targetClass->tLeaderTime[leg].updateComputed(rt, oClass::LeaderInfo::Type::TotalInput))
+            updated = true;
         }
       }
     }
@@ -1802,35 +1861,56 @@ bool oRunner::storeTimesAux(pClass targetClass) {
     size_t dupLeg = targetClass->mapLeg(tDuplicateLeg);
     if (targetClass && dupLeg < targetClass->tLeaderTime.size()) {
       if (tStatus == StatusOK) {
-        int &bt = targetClass->tLeaderTime[dupLeg].bestTimeOnLeg;
         int rt = getRunningTime(false);
-        if (rt > 0 && (bt == 0 || rt < bt)) {
+        /*int &bt = targetClass->tLeaderTime[dupLeg].bestTimeOnLeg;
+        if (rt > 0 && (bt <= 0 || rt < bt)) {
           bt = rt;
           updated = true;
-        }
+        }*/
+        if (targetClass->tLeaderTime[dupLeg].update(rt, oClass::LeaderInfo::Type::Leg))
+          updated = true;
+
+
       }
-      int &bt = targetClass->tLeaderTime[dupLeg].totalLeaderTime;
-      int rt = getRaceRunningTime(dupLeg);
-      if (rt > 0 && (bt == 0 || rt < bt)) {
+      if (getStatusComputed() == StatusOK) {
+        int rt = getRunningTime(true);
+        if (targetClass->tLeaderTime[dupLeg].updateComputed(rt, oClass::LeaderInfo::Type::Leg))
+          updated = true;
+      }
+
+      int rt = getRaceRunningTime(false, dupLeg);
+      if (targetClass->tLeaderTime[dupLeg].update(rt, oClass::LeaderInfo::Type::Total))
+        updated = true;
+
+      rt = getRaceRunningTime(true, dupLeg);
+      if (targetClass->tLeaderTime[dupLeg].updateComputed(rt, oClass::LeaderInfo::Type::Total))
+        updated = true;
+
+      /*int &bt = targetClass->tLeaderTime[dupLeg].totalLeaderTime;
+      if (rt > 0 && (bt <= 0 || rt < bt)) {
         bt = rt;
         updated = true;
         targetClass->tLeaderTime[dupLeg].totalLeaderTimeInput = rt;
-      }
+      }*/
     }
   }
 
   size_t mappedLeg = targetClass->mapLeg(tLeg);
   // Best input time
   if (mappedLeg<targetClass->tLeaderTime.size()) {
-    int &it = targetClass->tLeaderTime[mappedLeg].inputTime;
-    if (inputTime > 0 && inputStatus == StatusOK && (it == 0 || inputTime < it) ) {
+    /*int &it = targetClass->tLeaderTime[mappedLeg].inputTime;
+    if (inputTime > 0 && inputStatus == StatusOK && (it <= 0 || inputTime < it) ) {
       it = inputTime;
       updated = true;
+    }*/
+    if (inputStatus == StatusOK) {
+      if (targetClass->tLeaderTime[mappedLeg].update(inputTime, oClass::LeaderInfo::Type::Input))
+        updated = true;
     }
   }
 
   if (targetClass && tStatus==StatusOK) {
-    int rt = getRunningTime(false);
+    int rt = getRunningTime(true);
     pCourse pCrs = getCourse(false);
     if (pCrs && rt > 0) {
       map<int, int>::iterator res = targetClass->tBestTimePerCourse.find(pCrs->getId());
@@ -1847,17 +1927,16 @@ bool oRunner::storeTimesAux(pClass targetClass) {
   return updated;
 }
 
-int oRunner::getRaceRunningTime(int leg) const
-{
+int oRunner::getRaceRunningTime(bool computedTime, int leg) const {
   if (tParentRunner)
-    return tParentRunner->getRaceRunningTime(leg);
+    return tParentRunner->getRaceRunningTime(computedTime, leg);
 
-  if (leg==-1)
-    leg=multiRunner.size()-1;
+  if (leg == -1)
+    leg = multiRunner.size() - 1;
 
-  if (leg==0) {
+  if (leg == 0) { /// XXX This code is buggy
     if (getTotalStatus() == StatusOK)
-      return getRunningTime(false) + inputTime;
+      return getRunningTime(computedTime) + inputTime;
     else return 0;
   }
   leg--;
@@ -1870,23 +1949,24 @@ int oRunner::getRaceRunningTime(int leg) const
 
       switch(lt) {
         case LTNormal:
-          if (r->statusOK(false)) {
-            int dt=leg>0 ? r->getRaceRunningTime(leg)+r->getRunningTime(false):0;
+          if (r->statusOK(computedTime)) {
+            int dt=leg>0 ? r->getRaceRunningTime(computedTime, leg)+r->getRunningTime(computedTime):0;
             return max(r->getFinishTime()-tStartTime, dt); // ### Luckor, jaktstart???
           }
           else return 0;
         break;
 
         case LTSum:
-          if (r->statusOK(false))
-            return r->getRunningTime(false)+getRaceRunningTime(leg);
+          if (r->statusOK(computedTime))
+            return r->getRunningTime(computedTime)+getRaceRunningTime(computedTime, leg);
           else return 0;
 
         default:
           return 0;
       }
     }
-    else return getRunningTime(false);
+    else 
+      return getRunningTime(computedTime);
   }
   return 0;
 }
@@ -1915,7 +1995,7 @@ bool oRunner::operator<(const oRunner &c) const {
   const oClass * cClass = c.getClassRef(true);
   if (!myClass || !cClass)
     return size_t(myClass) < size_t(cClass);
-  else if (Class == cClass && Class->getClassStatus() != oClass::Normal)
+  else if (Class == cClass && Class->getClassStatus() != oClass::ClassStatus::Normal)
     return CompareString(LOCALE_USER_DEFAULT, 0,
                          tRealName.c_str(), tRealName.length(),
                          c.tRealName.c_str(), c.tRealName.length()) == CSTR_LESS_THAN;
@@ -2416,14 +2496,14 @@ void oRunner::updateStartNo(int no) {
   }
 }
 
-int oRunner::getPlace() const {
-  if (tPlace.isOld(*oe)) {
+int oRunner::getPlace(bool allowUpdate) const {
+  if (allowUpdate && tPlace.isOld(*oe)) {
     if (Class) {
       oEvent::ResultType rt = oEvent::ResultType::ClassResult;
       oe->calculateResults({ getClassId(true) }, rt, false);
     }
   }
-  return tPlace.value;
+  return tPlace.get(!allowUpdate);
 }
 
 int oRunner::getCoursePlace(bool perClass) const {
@@ -2432,7 +2512,7 @@ int oRunner::getCoursePlace(bool perClass) const {
       oEvent::ResultType rt = oEvent::ResultType::ClassCourseResult;
       oe->calculateResults({ getClassId(true) }, rt, false);
     }
-    return tCourseClassPlace.value;
+    return tCourseClassPlace.get(false);
 
   }
   else {
@@ -2440,20 +2520,19 @@ int oRunner::getCoursePlace(bool perClass) const {
       oEvent::ResultType rt = oEvent::ResultType::CourseResult;
       oe->calculateResults({ getClassId(true) }, rt, false);
     }
-    return tCoursePlace.value;
+    return tCoursePlace.get(false);
   }
 }
 
-int oRunner::getTotalPlace() const
-{
+int oRunner::getTotalPlace(bool allowUpdate) const {
   if (tInTeam)
-    return tInTeam->getLegPlace(getParResultLeg(), true);
+    return tInTeam->getLegPlace(getParResultLeg(), true, allowUpdate);
   else {
-    if (tTotalPlace.isOld(*oe) && Class) {
+    if (allowUpdate && tTotalPlace.isOld(*oe) && Class) {
       oEvent::ResultType rt = oEvent::ResultType::TotalResult;
       oe->calculateResults({ getClassId(true) }, rt, false);
     }
-    return tTotalPlace.value;
+    return tTotalPlace.get(!allowUpdate);
   }
 }
 
@@ -3489,7 +3568,8 @@ void oRunner::apply(ChangeType changeType, pRunner src) {
       if (st == STTime) {
         pCourse crs = getCourse(false);
         int startType = crs ? crs->getStartPunchType() : oPunch::PunchStart;
-        if (!Card || Card->getPunchByType(startType) == 0 || !pc->hasFreeStart()) {
+        bool hasStartPunch = Card && Card->getPunchByType(startType) != nullptr;
+        if (!hasStartPunch || pc->ignoreStartPunch()) {
           setStartTime(pc->getStartData(tDuplicateLeg), false, changeType);
           tUseStartPunch = false;
         }
@@ -3514,8 +3594,8 @@ void oRunner::apply(ChangeType changeType, pRunner src) {
         int lastStart = 0;
 
         if (r && r->FinishTime > 0 && r->statusOK(false)) {
-          int rt = r->getRaceRunningTime(tDuplicateLeg - 1);
-          int timeAfter = rt - pc->getTotalLegLeaderTime(r->tDuplicateLeg, false, true);
+          int rt = r->getRaceRunningTime(false, tDuplicateLeg - 1);
+          int timeAfter = rt - pc->getTotalLegLeaderTime(oClass::AllowRecompute::No, r->tDuplicateLeg, false, true);
           if (rt > 0 && timeAfter >= 0)
             lastStart = pc->getStartData(tDuplicateLeg) + timeAfter;
         }
@@ -4282,12 +4362,12 @@ int oRunner::getTimeAfter(int leg) const
   if (!Class || Class->tLeaderTime.size()<=unsigned(leg))
     return -1;
 
-  int t=getRaceRunningTime(leg);
+  int t=getRaceRunningTime(true, leg);
 
   if (t<=0)
     return -1;
 
-  return t-Class->getTotalLegLeaderTime(leg, true, true);
+  return t-Class->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, leg, true, true);
 }
 
 int oRunner::getTimeAfter() const {
@@ -4305,7 +4385,7 @@ int oRunner::getTimeAfter() const {
   if (t<=0)
     return -1;
 
-  return t - Class->getBestLegTime(leg, true);
+  return t - Class->getBestLegTime(oClass::AllowRecompute::Yes, leg, true);
 }
 
 int oRunner::getTimeAfterCourse() const
@@ -4322,7 +4402,7 @@ int oRunner::getTimeAfterCourse() const
   if (t<=0)
     return -1;
 
-  int bt = Class->getBestTimeCourse(crs->getId());
+  int bt = Class->getBestTimeCourse(oClass::AllowRecompute::Yes, crs->getId());
 
   if (bt <= 0)
     return -1;
@@ -5882,7 +5962,7 @@ void oRunner::setInputData(const oRunner &r) {
           inputStatus = r.tInTeam->getTotalStatus();
       }
       inputPoints = r.getRogainingPoints(true, true);
-      inputPlace = r.tTotalPlace.value;
+      inputPlace = r.tTotalPlace.get(false);
     }
     else {
       // Copy input
@@ -6210,6 +6290,12 @@ oAbstractRunner::TempResult &oAbstractRunner::getTempResult()  {
 
 void oAbstractRunner::setTempResultZero(const TempResult &tr)  {
   tmpResult = tr;
+}
+
+void oAbstractRunner::updateComputedResultFromTemp() {
+  tComputedTime = tmpResult.getRunningTime();
+  tComputedPoints = tmpResult.getPoints();
+  tComputedStatus = tmpResult.getStatus();
 }
 
 const wstring &oAbstractRunner::TempResult::getStatusS(RunnerStatus inputStatus) const {
@@ -6618,7 +6704,7 @@ const pair<wstring, int> oRunner::getRaceInfo() {
         res.first = lang.tl("Placering: ") + itow(p) + L".";
     }
     else {
-      if (ok && rtComp != rtActual || pointsActual != pointsComp) {
+      if (ok) {
         res.first += lang.tl("Resultat: ");
         if (compStatus != baseStatus)
           res.first = oe->formatStatus(compStatus, true) + L", ";

@@ -573,6 +573,27 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
         currentResult->prepareCalculations(*rr[k], false);
         int rt = 0, pt = 0;
         RunnerStatus st = StatusUnknown;
+        
+        {
+          wstring err;
+          wstring str;
+          try {
+            rt = currentResult->deduceTime(*rr[k], rr[k]->getStartTime());
+            str = formatTime(rt);
+          }
+          catch (meosException &ex) {
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
+          }
+          TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi] - diff);
+          if (!err.empty()) {
+            ti.setColor(colorRed);
+            gdi.addToolTip("", err, 0, &ti.textRect);
+          }
+          txp += w[wi++];
+        }
+
         {
           wstring err;
           wstring str;
@@ -593,26 +614,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           }
           txp += w[wi++];
         }
-        {
-          wstring err;
-          wstring str;
-          try {
-            rt = currentResult->deduceTime(*rr[k], rr[k]->getStartTime());
-            str = formatTime(rt);
-          }
-          catch (meosException &ex) {
-            err = ex.wwhat();
-            errors.insert(ex.wwhat());
-            str = L"Error";
-          }
-          TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
-          if (!err.empty()) {
-            ti.setColor(colorRed);
-            gdi.addToolTip("", err, 0, &ti.textRect);
-          }
-          txp += w[wi++];
-        }
-
+        
         {
           wstring err;
           wstring str;
@@ -679,6 +681,26 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           wstring err;
           wstring str;
           try {
+            rt = currentResult->deduceTime(*tr[k]);
+            str = formatTime(rt);
+          }
+          catch (meosException &ex) {
+            err = ex.wwhat();
+            errors.insert(ex.wwhat());
+            str = L"Error";
+          }
+          TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi] - diff);
+          if (!err.empty()) {
+            ti.setColor(colorRed);
+            gdi.addToolTip("", err, 0, &ti.textRect);
+          }
+          txp += w[wi++];
+        }
+
+        {
+          wstring err;
+          wstring str;
+          try {
             st = currentResult->deduceStatus(*tr[k]);
             str = oe->formatStatus(st, false);
           }
@@ -694,26 +716,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
           }
           txp += w[wi++];
         }
-        {
-          wstring err;
-          wstring str;
-          try {
-            rt = currentResult->deduceTime(*tr[k]);
-            str = formatTime(rt);
-          }
-          catch (meosException &ex) {
-            err = ex.wwhat();
-            errors.insert(ex.wwhat());
-            str = L"Error";
-          }
-          TextInfo &ti = gdi.addStringUT(yp, txp, 0, str, w[wi]-diff);
-          if (!err.empty()) {
-            ti.setColor(colorRed);
-            gdi.addToolTip("", err, 0, &ti.textRect);
-          }
-          txp += w[wi++];
-        }
-
+        
         {
           wstring err;
           wstring str;
@@ -1009,6 +1012,18 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     int rt = 0, pt = 0;
     RunnerStatus st = StatusUnknown;
     gdi.dropLine();
+    
+    try {
+      rt = currentResult->deduceTime(r, r.getStartTime());
+      gdi.addStringUT(1, L"ComputedTime: " + formatTime(rt)).setColor(colorGreen);
+    }
+    catch (meosException &ex) {
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Time Calculation Failed: X#" + err).setColor(colorRed);
+    }
+    if (currentResult->hasMethod(DynamicResult::MDeduceRTime))
+      currentResult->debugDumpVariables(gdi, false);
+
     try {
       st = currentResult->deduceStatus(r);
       currentResult->debugDumpVariables(gdi, true);
@@ -1022,18 +1037,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceRStatus))
       currentResult->debugDumpVariables(gdi, false);
-    
-    try {
-      rt = currentResult->deduceTime(r, r.getStartTime());
-      gdi.addStringUT(1, L"ComputedTime: " + formatTime(rt)).setColor(colorGreen);
-    }
-    catch (meosException &ex) {
-      wstring err = lang.tl(ex.wwhat());
-      gdi.addString("", 0, L"Time Calculation Failed: X#" + err).setColor(colorRed);
-    }
-    if (currentResult->hasMethod(DynamicResult::MDeduceRTime))
-      currentResult->debugDumpVariables(gdi, false);
-    
+
     try {
       pt = currentResult->deducePoints(r);
       gdi.addStringUT(1, "ComputedPoints: " + itos(pt)).setColor(colorGreen);
@@ -1066,6 +1070,17 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     RunnerStatus st = StatusUnknown;
     gdi.dropLine();
     try {
+      rt = currentResult->deduceTime(t);
+      gdi.addStringUT(1, L"ComputedTime: " + formatTime(rt)).setColor(colorGreen);
+    }
+    catch (meosException &ex) {
+      wstring err = lang.tl(ex.wwhat());
+      gdi.addString("", 0, L"Time Calculation Failed: X#" + err).setColor(colorRed);
+    }
+    if (currentResult->hasMethod(DynamicResult::MDeduceRTime))
+      currentResult->debugDumpVariables(gdi, false);
+    
+    try {
       st = currentResult->deduceStatus(t);
       currentResult->debugDumpVariables(gdi, true);
 
@@ -1078,18 +1093,7 @@ void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {
     }
     if (currentResult->hasMethod(DynamicResult::MDeduceTStatus))
       currentResult->debugDumpVariables(gdi, false);
-    
-    try {
-      rt = currentResult->deduceTime(t);
-      gdi.addStringUT(1, L"ComputedTime: " + formatTime(rt)).setColor(colorGreen);
-    }
-    catch (meosException &ex) {
-      wstring err = lang.tl(ex.wwhat());
-      gdi.addString("", 0, L"Time Calculation Failed: X#" + err).setColor(colorRed);
-    }
-    if (currentResult->hasMethod(DynamicResult::MDeduceRTime))
-      currentResult->debugDumpVariables(gdi, false);
-    
+        
     try {
       pt = currentResult->deducePoints(t);
       gdi.addStringUT(1, "ComputedPoints: " + itos(pt)).setColor(colorGreen);

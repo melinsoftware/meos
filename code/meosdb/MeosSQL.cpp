@@ -1633,7 +1633,7 @@ OpFailStatus MeosSQL::storeRunner(const Row &row, oRunner &r,
   r.Removed = row["Removed"];
   r.sqlUpdated = row["Modified"];
   r.counter = row["Counter"];
-
+  int oldHeat = r.getDCI().getInt("Heat");
   storeData(r.getDI(), row, oe->dataRevision);
 
   if (oldSno != r.StartNo || oldBib != r.getBib())
@@ -1683,7 +1683,7 @@ OpFailStatus MeosSQL::storeRunner(const Row &row, oRunner &r,
   }
   else r.Class=0;
 
-  if (oldClass != r.Class)
+  if (oldClass != r.Class || oldHeat != r.getDCI().getInt("Heat"))
     oe->classIdToRunnerHash.reset();
 
   if (int(row["Club"])!=0){

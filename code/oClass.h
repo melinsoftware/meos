@@ -153,7 +153,8 @@ class Table;
 class oClass : public oBase
 {
 public:
-  enum ClassStatus {Normal, Invalid, InvalidRefund};
+  enum class ClassStatus {Normal, Invalid, InvalidRefund};
+  enum class AllowRecompute {Yes, No };
 
   static void getSplitMethods(vector< pair<wstring, size_t> > &methods);
   static void getSeedingMethods(vector< pair<wstring, size_t> > &methods);
@@ -168,21 +169,7 @@ protected:
   //First: best time on leg
   //Second: Total leader time (total leader)
   struct LeaderInfo {
-    LeaderInfo() { 
-      reset();
-    }
-    void reset() {
-      bestTimeOnLeg = 0; 
-      bestTimeOnLegComputed = 0;
-
-      totalLeaderTime = 0; 
-      totalLeaderTimeComputed = 0;
-
-      inputTime = 0;
-      totalLeaderTimeInput = 0;
-      totalLeaderTimeInputComputed = 0;
-    }
-
+  private:
     int bestTimeOnLeg;
     int bestTimeOnLegComputed; // Computed be default result module
     
@@ -193,21 +180,48 @@ protected:
     int totalLeaderTimeInputComputed; //Team total including input
 
     int inputTime;
+  public:
+    LeaderInfo() {
+      reset();
+    }
 
+    void reset() {
+      bestTimeOnLeg = -1;
+      bestTimeOnLegComputed = -1;
+
+      totalLeaderTime = -1;
+      totalLeaderTimeComputed = -1;
+
+      inputTime = -1;
+      totalLeaderTimeInput = -1;
+      totalLeaderTimeInputComputed = -1;
+    }
+    
     enum class Type {
       Leg,
       Total,
-      TotalInput
+      TotalInput,
+      Input,
     };
+
+    int getInputTime() const {
+      return inputTime;
+    }
+    
     void resetComputed(Type t);
-    void updateComputed(int rt, Type t);
+    
+    bool update(int rt, Type t);
+    bool updateComputed(int rt, Type t);
     int getLeader(Type t, bool computed) const;
   };
 
-  LeaderInfo &getLeaderInfo(int leg) const;
+  void updateLeaderTimes() const;
 
+  LeaderInfo &getLeaderInfo(AllowRecompute recompute, int leg) const;
+
+  mutable int leaderTimeVersion = -1;
   mutable vector<LeaderInfo> tLeaderTime;
-  map<int, int> tBestTimePerCourse;
+  mutable map<int, int> tBestTimePerCourse;
 
   int tSplitRevision;
   map<int, vector<int> > tSplitAnalysisData;
@@ -288,7 +302,7 @@ protected:
 
   /** Map to correct leg number for diff class/runner class (for example qual/final)*/
   int mapLeg(int inputLeg) const {
-    if (inputLeg > 0 && legInfo.size() == 1)
+    if (inputLeg > 0 && legInfo.size() <= 1)
       return 0; // The case with different class for team/runner. Leg is an index in another class.
     return inputLeg;
   }
@@ -475,11 +489,11 @@ public:
 
   void getStatistics(const set<int> &feeLock, int &entries, int &started) const;
 
-  int getBestInputTime(int leg) const;
-  int getBestLegTime(int leg, bool computedTime) const;
-  int getBestTimeCourse(int courseId) const;
+  int getBestInputTime(AllowRecompute recompute, int leg) const;
+  int getBestLegTime(AllowRecompute recompute, int leg, bool computedTime) const;
+  int getBestTimeCourse(AllowRecompute recompute, int courseId) const;
 
-  int getTotalLegLeaderTime(int leg, bool computedTime, bool includeInput) const;
+  int getTotalLegLeaderTime(AllowRecompute recompute, int leg, bool computedTime, bool includeInput) const;
 
   wstring getInfo() const;
   // Returns true if the class has a pool of courses
@@ -491,7 +505,8 @@ public:
   // Update changed course pool
   void updateChangedCoursePool();
 
-  void resetLeaderTime();
+  /** Reset cache of leader times */
+  void resetLeaderTime() const;
 
   ClassType getClassType() const;
 

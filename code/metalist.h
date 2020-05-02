@@ -364,6 +364,9 @@ public:
 
   virtual ~MetaListContainer();
 
+
+  void getFreeResultModules(vector<pair<string, shared_ptr<DynamicResult>>> &res) const;
+
   string getUniqueId(EStdListType code) const;
   EStdListType getCodeFromUnqiueId(const string &id) const;
   wstring makeUniqueParamName(const wstring &nameIn) const;

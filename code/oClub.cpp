@@ -540,7 +540,7 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
   if (res != definedPayModes.end())
     payMode = ", " + res->second;
   */
-  if (r->getClassRef(false) && r->getClassRef(false)->getClassStatus() == oClass::InvalidRefund) {
+  if (r->getClassRef(false) && r->getClassRef(false)->getClassStatus() == oClass::ClassStatus::InvalidRefund) {
     fee = 0;
     card = 0;
   }
@@ -587,7 +587,7 @@ void oClub::addTeamInvoiceLine(const pTeam t, const map<int, wstring> &definedPa
   }
 
 
-  if (t->getClassRef(false) && t->getClassRef(false)->getClassStatus() == oClass::InvalidRefund) {
+  if (t->getClassRef(false) && t->getClassRef(false)->getClassStatus() == oClass::ClassStatus::InvalidRefund) {
     fee = 0;
   }
 
@@ -1013,7 +1013,7 @@ void oEvent::setupClubInfoData() {
       int id = r.Club->Id;
       ++runners[id];
       oDataConstInterface di = r.getDCI();
-      bool skip = r.Class && r.Class->getClassStatus() == oClass::InvalidRefund;
+      bool skip = r.Class && r.Class->getClassStatus() == oClass::ClassStatus::InvalidRefund;
 
       if (!skip) {
         int cardFee = di.getInt("CardFee");
@@ -1033,7 +1033,7 @@ void oEvent::setupClubInfoData() {
     if (t.Club) {
       int id = t.Club->Id;
       oDataConstInterface di = t.getDCI();
-      bool skip = t.Class && t.Class->getClassStatus() == oClass::InvalidRefund;
+      bool skip = t.Class && t.Class->getClassStatus() == oClass::ClassStatus::InvalidRefund;
 
       if (!skip) {
         fee[id] += di.getInt("Fee");

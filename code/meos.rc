@@ -165,14 +165,14 @@ BEGIN
     BEGIN
         BLOCK "041d04b0"
         BEGIN
-            VALUE "CompanyName", " "
+            VALUE "CompanyName", "Melin Software HB"
             VALUE "FileDescription", "meos"
-            VALUE "FileVersion", "3.3.0.1"
+            VALUE "FileVersion", "3.7.0.1"
             VALUE "InternalName", "meos"
             VALUE "LegalCopyright", "Copyright © 2007-2020"
             VALUE "OriginalFilename", "meos.exe"
             VALUE "ProductName", "  meos"
-            VALUE "ProductVersion", "3.4.0.1"
+            VALUE "ProductVersion", "3.7.0.1"
         END
     END
     BLOCK "VarFileInfo"

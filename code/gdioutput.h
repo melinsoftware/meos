@@ -76,6 +76,10 @@ enum gdiFonts;
 #define START_YP 30
 #define NOTIMEOUT 0x0AAAAAAA
 
+constexpr int baseButtonWidth = 150;
+
+constexpr int GDI_BUTTON_SPACING = 8;
+
 typedef list<ToolInfo> ToolList;
 /*
 enum FontEncoding {

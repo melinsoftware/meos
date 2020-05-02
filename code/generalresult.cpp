@@ -476,15 +476,15 @@ pair<int, int> GeneralResult::score(oTeam &team, RunnerStatus st, int rt, int po
 }
 
 RunnerStatus GeneralResult::deduceStatus(oTeam &team) const {
-  return team.getStatus();
+  return team.deduceComputedStatus();
 }
 
 int GeneralResult::deduceTime(oTeam &team) const {
-  return team.getRunningTime(false);
+  return team.deduceComputedRunningTime();//team.getRunningTime(false);
 }
 
 int GeneralResult::deducePoints(oTeam &team) const {
-  return team.getRogainingPoints(false, false);
+  return team.deduceComputedPoints();//team.getRogainingPoints(false, false);
 }
 
 pair<int,int> GeneralResult::score(oRunner &runner, RunnerStatus st, int time, int points, bool asTeamMember) const {
@@ -1075,6 +1075,7 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
 }
 
 void DynamicResult::getSymbols(vector< pair<wstring, size_t> > &symb) const {
+  symb.clear();
   parser.getSymbols(symb);
 }
 
@@ -1162,7 +1163,7 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner, bool classResult) con
   parser.addSymbol("Start", runner.getStartTime());
   parser.addSymbol("Finish", ft);
   parser.addSymbol("Time", runner.getRunningTime(useComputed));
-  parser.addSymbol("Place", runner.getPlace());
+  parser.addSymbol("Place", runner.getPlace(false));
   parser.addSymbol("Points", runner.getRogainingPoints(useComputed, false));
   parser.addSymbol("PointReduction", runner.getRogainingReduction(useComputed));
   parser.addSymbol("PointOvertime", runner.getRogainingOvertime(useComputed));
@@ -1173,7 +1174,7 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner, bool classResult) con
 
   parser.addSymbol("TotalStatus", runner.getTotalStatus());
   parser.addSymbol("TotalTime", runner.getTotalRunningTime());
-  parser.addSymbol("TotalPlace", runner.getTotalPlace());
+  parser.addSymbol("TotalPlace", runner.getTotalPlace(false));
 
   parser.addSymbol("InputStatus", runner.getInputStatus());
   parser.addSymbol("InputTime", runner.getInputTime());
@@ -1233,6 +1234,10 @@ void DynamicResult::prepareCalculations(oTeam &team, bool classResult) const {
       start[k] = res.getStartTime();
       finish[k] = res.getFinishTime();
       points[k] = res.getPoints();
+      if (classResult) {
+        r->updateComputedResultFromTemp();
+      }
+
       runnerOutputTimes[k] = res.outputTimes;
       runnerOutputNumbers[k] = res.outputNumbers;
     }
@@ -1276,7 +1281,7 @@ void DynamicResult::prepareCalculations(oTeam &team, bool classResult) const {
   pClass cls = team.getClassRef(true);
   if (cls) {
     int nl = max<int>(1, cls->getNumStages() - 1);
-    parser.addSymbol("ShortestClassTime", cls->getTotalLegLeaderTime(nl, false, false));
+    parser.addSymbol("ShortestClassTime", cls->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, nl, false, false));
   }
 }
 
@@ -1389,7 +1394,7 @@ void DynamicResult::prepareCalculations(oRunner &runner, bool classResult) const
   pClass cls = runner.getClassRef(true);
   if (cls) {
     int nl = runner.getLegNumber();
-    parser.addSymbol("ShortestClassTime", cls->getBestLegTime(nl, false));
+    parser.addSymbol("ShortestClassTime", cls->getBestLegTime(oClass::AllowRecompute::Yes, nl, false));
   }
   vector<int> delta;
   vector<int> place;

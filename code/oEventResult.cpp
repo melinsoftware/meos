@@ -70,7 +70,7 @@ template<typename T, typename Apply> void calculatePlace(vector<ResultCalcData<T
       cScore = 0;
       pClass cls = it.dst->getClassRef(true);
       useResults = true;// cls ? cls->getNoTiming() == false : true;
-      invalidClass = cls ? cls->getClassStatus() != oClass::Normal : false;
+      invalidClass = cls ? cls->getClassStatus() != oClass::ClassStatus::Normal : false;
     }
 
     if (invalidClass) {
@@ -151,10 +151,10 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo) {
 
       cTime=it->tempRT;
 
-      it->tPlace.update(*this, vPlace); // XXX User other result container
+      it->tPlace.update(*this, vPlace, false); // XXX User other result container
     }
     else
-      it->tPlace.update(*this, 0);
+      it->tPlace.update(*this, 0, false);
   }
 }
 
@@ -263,7 +263,7 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
     for (auto &cls : Classes) {
       if (!cls.isRemoved() && (all || classes.count(cls.getId()))) {
         for (unsigned leg = 0; leg < cls.getNumStages(); leg++)
-          cls.getLeaderInfo(leg).resetComputed(oClass::LeaderInfo::Type::Leg);
+          cls.getLeaderInfo(oClass::AllowRecompute::No,leg).resetComputed(oClass::LeaderInfo::Type::Leg);
       }
     }
 
@@ -288,13 +288,12 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
         ge->calculateIndividualResults(resCalc.second, true, oListInfo::ResultType::Classwise, false, 0);
 
         for (pRunner r : resCalc.second) {
-          r->tComputedTime = r->getTempResult().getRunningTime();
-          r->tComputedPoints = r->getTempResult().getPoints();
-          r->tComputedStatus = r->getTempResult().getStatus();
-          r->tPlace.update(*oe, r->getTempResult().getPlace());
+          r->updateComputedResultFromTemp();
+          r->tPlace.update(*oe, r->getTempResult().getPlace(), false);
           if (r->tComputedStatus == StatusOK && r->tComputedTime>0) {
             pClass cls = r->getClassRef(true);
-            cls->getLeaderInfo(cls->mapLeg(r->getLegNumber())).updateComputed(r->tComputedTime, oClass::LeaderInfo::Type::Leg);
+            cls->getLeaderInfo(oClass::AllowRecompute::No, 
+                               cls->mapLeg(r->getLegNumber())).updateComputed(r->tComputedTime, oClass::LeaderInfo::Type::Leg);
           }
         }
       }
@@ -367,14 +366,16 @@ void oEvent::calculateRunnerResults(ResultType resultType,
     resData.emplace_back(groupId, score, it);
   }
 
+  bool useStdResultCtr = resultType == ResultType::ClassResultDefault || resultType == ResultType::TotalResultDefault;
+
   if (courseResults)
-    calculatePlace(resData, [this](DT &res, int value) {res.dst->tCoursePlace.update(*this, value); });
+    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tCoursePlace.update(*this, value, useStdResultCtr); });
   else if (classCourseResults)
-    calculatePlace(resData, [this](DT &res, int value) {res.dst->tCourseClassPlace.update(*this, value); });
+    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tCourseClassPlace.update(*this, value, useStdResultCtr); });
   else if (totalResults)
-    calculatePlace(resData, [this](DT &res, int value) {res.dst->tTotalPlace.update(*this, value); });
+    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tTotalPlace.update(*this, value, useStdResultCtr); });
   else
-    calculatePlace(resData, [this](DT &res, int value) {res.dst->tPlace.update(*this, value); });
+    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tPlace.update(*this, value, useStdResultCtr); });
 }
 
 bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultType resType) {
@@ -405,7 +406,7 @@ bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultTy
       cPlace = 0;
       vPlace = 0;
       cTime = 0;
-      invalidClass = it->Class->getClassStatus() != oClass::Normal;
+      invalidClass = it->Class->getClassStatus() != oClass::ClassStatus::Normal;
     }
 
     int sleg;
@@ -435,11 +436,13 @@ bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultTy
       p = 0;
     }
 
-    if (resType == ResultType::TotalResult)
-      it->getTeamPlace(sleg).totalP.update(*this, p);
+    bool tmpDefaultResult = resType == ResultType::ClassResultDefault || resType == ResultType::TotalResultDefault;
+    if (resType == ResultType::TotalResult || resType == ResultType::TotalResultDefault) {
+      it->getTeamPlace(sleg).totalP.update(*this, p, tmpDefaultResult);
+    }
     else {
-      it->getTeamPlace(sleg).p.update(*this, p);
-      res.version = dataRevision;
+      it->getTeamPlace(sleg).p.update(*this, p, tmpDefaultResult);
+      res.version = tmpDefaultResult ? -1 : dataRevision;
       res.status = it->_cachedStatus;
       res.time = it->_sortTime;
       it->setComputedResult(sleg, res);
@@ -560,8 +563,8 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
     if (c->isRogaining())
       rgClasses.insert(id);
     for (unsigned leg = 0; leg < c->getNumStages(); leg++) {
-      c->getLeaderInfo(leg).resetComputed(oClass::LeaderInfo::Type::Total);
-      c->getLeaderInfo(leg).resetComputed(oClass::LeaderInfo::Type::TotalInput);
+      c->getLeaderInfo(oClass::AllowRecompute::No, leg).resetComputed(oClass::LeaderInfo::Type::Total);
+      c->getLeaderInfo(oClass::AllowRecompute::No, leg).resetComputed(oClass::LeaderInfo::Type::TotalInput);
     }
 
     cls2Mod[c->Id] = c->getResultModuleTag();
@@ -605,8 +608,8 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
       resData.emplace_back(clsId, totScore, t);
 
       for  (int i = 0; i < t->getNumRunners(); i++) {
-        t->getTeamPlace(i).p.update(*this, t->getTempResult().getPlace());
-        t->getTeamPlace(i).totalP.update(*this, t->getTempResult().getPlace());
+        t->getTeamPlace(i).p.update(*this, t->getTempResult().getPlace(), false);
+        t->getTeamPlace(i).totalP.update(*this, t->getTempResult().getPlace(), false);
         oTeam::ComputedLegResult res;
         res.version = dataRevision;
         int legTime = 0;
@@ -624,7 +627,7 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
             else if (lt != LTIgnore && lt != LTExtra)
               timePar = res.time;
 
-            teamClass->getLeaderInfo(i).updateComputed(res.time, oClass::LeaderInfo::Type::Leg);
+            teamClass->getLeaderInfo(oClass::AllowRecompute::No, i).updateComputed(res.time, oClass::LeaderInfo::Type::Leg);
           }
           else {
             ok = false;
@@ -635,8 +638,8 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
               legTime = t->tComputedTime;
             else
               legTime = timeAcc + timePar;
-            teamClass->getLeaderInfo(i).updateComputed(legTime, oClass::LeaderInfo::Type::Total);
-            teamClass->getLeaderInfo(i).updateComputed(t->getInputTime() + legTime, oClass::LeaderInfo::Type::TotalInput);
+            teamClass->getLeaderInfo(oClass::AllowRecompute::No, i).updateComputed(legTime, oClass::LeaderInfo::Type::Total);
+            teamClass->getLeaderInfo(oClass::AllowRecompute::No, i).updateComputed(t->getInputTime() + legTime, oClass::LeaderInfo::Type::TotalInput);
           }
           
           auto ltNext = teamClass->getLegType(i + 1);
@@ -680,13 +683,13 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
     }
 
     calculatePlace(legResultsData, [this](DR &res, int value) {
-      res.dst->tPlace.update(*this, value);
-      res.dst->tTotalPlace.update(*this, value); });
+      res.dst->tPlace.update(*this, value, false);
+      res.dst->tTotalPlace.update(*this, value, false); });
     
     // Calculate and store total result
     calculatePlace(resData, [this](DT &res, int value) {
       for (int i = 0; i < res.dst->getNumRunners(); i++) {
-        res.dst->getTeamPlace(i).totalP.update(*this, value);
+        res.dst->getTeamPlace(i).totalP.update(*this, value, false);
       }});
   }
 }

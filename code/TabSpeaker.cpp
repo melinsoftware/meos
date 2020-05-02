@@ -268,7 +268,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     loadPage(gdi);
   }
   else if (bu.id == "LiveResult") {
-    gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - Live"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+    gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - Live"), gdi.getWidth() + 64 + gdi.scaleLength(baseButtonWidth));
        
     gdi_new->clearPage(false);
     gdi_new->addString("", boldLarge, "Liveresultat");
@@ -316,7 +316,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
   else if (bu.id == "Window") {
     oe->setupTimeLineEvents(0);
 
-    gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+    gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(baseButtonWidth));
     if (gdi_new) {
       TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
       tl.ownWindow = true;
@@ -355,7 +355,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     if (speakerSettings.empty())
       throw meosException("Inställningarna är ogiltiga");
     for (size_t k = 1; k < speakerSettings.size(); k++) {
-      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(120));
+      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(baseButtonWidth));
       if (gdi_new) {
         TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
         tl.ownWindow = true;

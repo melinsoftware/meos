@@ -144,12 +144,12 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
           oClub::definedPayModes(*oe, dpm);
           pc->generateInvoice(gdi, pay, paid, dpm, ppm);
         }
-        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(15), gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(15), gdi.scaleLength(baseButtonWidth),
                       "Cancel", "Återgå", ClubsCB, "", true, false);
-        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(45),  gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(45),  gdi.scaleLength(baseButtonWidth),
                       "Print", "Skriv ut...", ClubsCB,
                       "Skriv ut fakturan", true, false);
-        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(75),  gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, gdi.scaleLength(75),  gdi.scaleLength(baseButtonWidth),
                       "PDF", "PDF...", ClubsCB,
                       "Spara som PDF.", true, false);
         gdi.refresh();
@@ -190,14 +190,14 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
 
       oe->printInvoices(gdi, oEvent::InvoicePrintType(lbi.data), path, false);
 
-      gdi.addButton(gdi.getWidth()+20, 15, gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth()+20, 15, gdi.scaleLength(baseButtonWidth),
                     "Cancel", "Återgå", ClubsCB, "", true, false);
 
       if (lbi.data>10) { // To file
-        gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(baseButtonWidth),
                       "Print", "Skriv ut...", ClubsCB,
                       "", true, false);
-        gdi.addButton(gdi.getWidth()+20, 75,  gdi.scaleLength(120),
+        gdi.addButton(gdi.getWidth()+20, 75,  gdi.scaleLength(baseButtonWidth),
                       "PDF", "PDF...", ClubsCB,
                       "Spara som PDF.", true, false);
         gdi.refresh();
@@ -249,9 +249,9 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       gdi.clearPage(false);
       wstring nn;
       oe->printInvoices(gdi, oEvent::IPTAllPrint, nn, true);
-      gdi.addButton(gdi.getWidth()+20, 15,  gdi.scaleLength(120), "Cancel",
+      gdi.addButton(gdi.getWidth()+20, 15,  gdi.scaleLength(baseButtonWidth), "Cancel",
                     "Återgå", ClubsCB, "", true, false);
-      gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(120), "Print",
+      gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(baseButtonWidth), "Print",
                     "Skriv ut...", ClubsCB, "Skriv ut fakturan", true, false);
 
       gdi.refresh();

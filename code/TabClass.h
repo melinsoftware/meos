@@ -87,7 +87,7 @@ class TabClass :
   bool warnDrawStartTime(gdioutput &gdi, const wstring &firstStart);
 
   void static clearPage(gdioutput &gdi, bool autoRefresh);
-
+  void hideEditResultModule(gdioutput &gdi, int ix) const;
   bool hasWarnedStartTime;
   bool hasWarnedDirect;
   bool tableMode;

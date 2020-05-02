@@ -272,6 +272,9 @@ public:
  
   void setTempResultZero(const TempResult &tr);
 
+  /** Set the class computed result from tmp result.*/
+  void updateComputedResultFromTemp();
+  
   // Time
   void setInputTime(const wstring &time);
   wstring getInputTimeS() const;
@@ -378,14 +381,17 @@ public:
 
   virtual int getPrelRunningTime() const;
   
+  virtual const pair<wstring, int> getRaceInfo() = 0;
+
+
   wstring getPlaceS() const;
   wstring getPrintPlaceS(bool withDot) const;
 
   wstring getTotalPlaceS() const;
   wstring getPrintTotalPlaceS(bool withDot) const;
 
-  virtual int getPlace() const = 0;
-  virtual int getTotalPlace() const = 0;
+  virtual int getPlace(bool allowUpdate = true) const = 0;
+  virtual int getTotalPlace(bool allowUpdate = true) const = 0;
 
   RunnerStatus getStatusComputed() const { return tComputedStatus != StatusUnknown ? tComputedStatus : tStatus; }
   virtual RunnerStatus getStatus() const { return tStatus;}
@@ -444,10 +450,16 @@ public:
   virtual ~oAbstractRunner() {};
 
   struct DynamicValue {
-    int dataRevision;
-    int value;
+  private:
+    int dataRevision = -1;
+    int value = -1;
+    int valueStd = -1; // Value without result module
+  public:
+    void reset();
     bool isOld(const oEvent &oe) const;
-    void update(const oEvent &oe, int v);
+    DynamicValue &update(const oEvent &oe, int v, bool setStd);
+    void invalidate(bool invalid) { if (invalid) dataRevision = -1; }
+    int get(bool preferStd) const; 
   };
 
   friend class oListInfo;
@@ -741,7 +753,7 @@ public:
   int getTotalRunningTime() const override;
 
   //Get total running time after leg
-  int getRaceRunningTime(int leg) const;
+  int getRaceRunningTime(bool computedTime, int leg) const;
 
   // Get the complete name, including team and club.
   wstring getCompleteIdentification(bool includeExtra = true) const;
@@ -758,7 +770,7 @@ public:
   int getRogainingOvertime(bool computed) const override;
 
   const wstring &getProblemDescription() const {return tProblemDescription;}
-  const pair<wstring, int> getRaceInfo();
+  const pair<wstring, int> getRaceInfo() override;
   // Leg statistics access methods
   wstring getMissedTimeS() const;
   wstring getMissedTimeS(int ctrlNo) const;
@@ -842,9 +854,9 @@ public:
                          oSpeakerObject &spk) const;
 
   bool needNoCard() const;
-  int getPlace() const;
+  int getPlace(bool allowUpdate = true) const override;
   int getCoursePlace(bool perClass) const;
-  int getTotalPlace() const;
+  int getTotalPlace(bool allowUpdate = true) const override;
 
   // Normalized = true means permuted to the unlooped version of the course
   const vector<SplitData> &getSplitTimes(bool normalized) const;

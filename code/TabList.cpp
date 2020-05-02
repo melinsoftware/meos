@@ -154,25 +154,25 @@ int ListsCB(gdioutput *gdi, int type, void *data)
 }
 
 int TabList::baseButtons(gdioutput &gdi, int extraButtons) {
-  gdi.addButton(gdi.getWidth()+20, 15,  gdi.scaleLength(120),
+  gdi.addButton(gdi.getWidth()+20, 15,  gdi.scaleLength(baseButtonWidth),
                 "Cancel", ownWindow ? "Stäng" : "Återgå", ListsCB, "", true, false);
 
-  gdi.addButton(gdi.getWidth()+20, 18+gdi.getButtonHeight(), gdi.scaleLength(120),
+  gdi.addButton(gdi.getWidth()+20, 18+gdi.getButtonHeight(), gdi.scaleLength(baseButtonWidth),
                 "Print", "Skriv ut...", ListsCB, "Skriv ut listan.", true, false);
   if (!ownWindow) {
-    gdi.addButton(gdi.getWidth() + 20, 21 + 2 * gdi.getButtonHeight(), gdi.scaleLength(120),
+    gdi.addButton(gdi.getWidth() + 20, 21 + 2 * gdi.getButtonHeight(), gdi.scaleLength(baseButtonWidth),
                   "HTMLDesign", "Webb...", ListsCB, "Spara för webben.", true, false);
   }
-  gdi.addButton(gdi.getWidth()+20, 24+3*gdi.getButtonHeight(), gdi.scaleLength(120),
+  gdi.addButton(gdi.getWidth()+20, 24+3*gdi.getButtonHeight(), gdi.scaleLength(baseButtonWidth),
                 "PDF", "PDF...", ListsCB, "Spara som PDF.", true, false);
-  gdi.addButton(gdi.getWidth()+20, 27+4*gdi.getButtonHeight(), gdi.scaleLength(120),
+  gdi.addButton(gdi.getWidth()+20, 27+4*gdi.getButtonHeight(), gdi.scaleLength(baseButtonWidth),
                 "Copy", "Kopiera", ListsCB, "Kopiera till urklipp.", true, false);
 
   int ypos = 30+5*gdi.getButtonHeight();
 
   if (extraButtons == 1) {
     int w, h;
-    gdi.addButton(gdi.getWidth()+20, ypos, gdi.scaleLength(120),
+    gdi.addButton(gdi.getWidth()+20, ypos, gdi.scaleLength(baseButtonWidth),
               "EditInForest", "edit_in_forest", ListsCB, "", true, false).getDimension(gdi, w, h);
     ypos += h + 3;
   }
@@ -187,11 +187,11 @@ void TabList::generateList(gdioutput &gdi, bool forceUpdate)
 
     int baseY = 15;
     if (!gdi.isFullScreen()) {
-      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(baseButtonWidth),
         "Cancel", ownWindow ? "Stäng" : "Återgå", ListsCB, "", true, false);
 
       baseY += 3 + gdi.getButtonHeight();
-      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(baseButtonWidth),
         "FullScreenLive", "Fullskärm", ListsCB, "Visa listan i fullskärm", true, false);
     }
     SelectedList = "GeneralList";
@@ -257,10 +257,10 @@ void TabList::generateList(gdioutput &gdi, bool forceUpdate)
     int baseY = baseButtons(gdi, extra);
 
     if (!ownWindow) {
-      gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth()+20, baseY, gdi.scaleLength(baseButtonWidth),
               "Window", "Eget fönster", ListsCB, "Öppna i ett nytt fönster.", true, false);
 
-      gdi.addButton(gdi.getWidth()+20, baseY + 3 + 1*gdi.getButtonHeight(), gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth()+20, baseY + 3 + 1*gdi.getButtonHeight(), gdi.scaleLength(baseButtonWidth),
                     "Automatic", "Automatisera", ListsCB, "Skriv ut eller exportera listan automatiskt.", true, false);
 
       baseY += 2*(3+gdi.getButtonHeight());
@@ -268,16 +268,16 @@ void TabList::generateList(gdioutput &gdi, bool forceUpdate)
     
     if (currentList.supportUpdateClasses()) {
       baseY += 3 + gdi.getButtonHeight();
-      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(baseButtonWidth),
                     "ClassSelection", "Klassval...", ListsCB, "Välj klasser", true, false);
     }
     baseY += 3 + gdi.getButtonHeight();
-    gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(120),
+    gdi.addButton(gdi.getWidth() + 20, baseY, gdi.scaleLength(baseButtonWidth),
       "ListDesign", "Utseende...", ListsCB, "Justera visningsinställningar", true, false);
 
     if (!currentList.getParam().saved && !oe->isReadOnly()) {
       baseY += 3 + gdi.getButtonHeight();
-      gdi.addButton(gdi.getWidth()+20, baseY,  gdi.scaleLength(120),
+      gdi.addButton(gdi.getWidth()+20, baseY,  gdi.scaleLength(baseButtonWidth),
                     "Remember", "Kom ihåg listan...", ListsCB, "Spara den här listan som en favoritlista", true, false);
     }
   }
@@ -1266,7 +1266,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
 }
 
 pair<gdioutput *, TabList *> TabList::makeOwnWindow(gdioutput &gdi) {
-  gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - ") + currentList.getName(), gdi.getWidth() + 64 + gdi.scaleLength(120));
+  gdioutput *gdi_new = createExtraWindow(uniqueTag("list"), makeDash(L"MeOS - ") + currentList.getName(), gdi.getWidth() + 64 + gdi.scaleLength(baseButtonWidth));
   TabList *tl_new = 0;
   if (gdi_new) {
     TabList &tl = dynamic_cast<TabList &>(*gdi_new->getTabs().get(TListTab));
@@ -2125,9 +2125,9 @@ void TabList::loadClassSettings(gdioutput &gdi, string targetTag) {
   gdi.fillDown();
   gdi.addSelection("AgeFilter", 200, 150, nullptr, L"Åldersfiltrering:");
   vector<pair<wstring, size_t>> ages;
-  ages.emplace_back(L"Alla", size_t(oListParam::AgeFilter::All));
-  ages.emplace_back(L"Ungdom", size_t(oListParam::AgeFilter::OnlyYouth));
-  ages.emplace_back(L"Vuxna", size_t(oListParam::AgeFilter::ExludeYouth));
+  ages.emplace_back(lang.tl("Alla"), size_t(oListParam::AgeFilter::All));
+  ages.emplace_back(lang.tl("Ungdom"), size_t(oListParam::AgeFilter::OnlyYouth));
+  ages.emplace_back(lang.tl("Vuxna"), size_t(oListParam::AgeFilter::ExludeYouth));
   gdi.addItem("AgeFilter", ages);
   gdi.selectItemByData("AgeFilter", int(currentList.getParam().ageFilter));
 

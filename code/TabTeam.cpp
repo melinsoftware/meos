@@ -257,6 +257,7 @@ void TabTeam::updateTeamStatus(gdioutput &gdi, pTeam t)
     gdi.selectItemByData("Status", 0);
     gdi.setText("TimeAdjust", makeDash(L"-"));
     gdi.setText("PointAdjust", makeDash(L"-"));
+    gdi.setText("TeamInfo", L"", true);
 
     return;
   }
@@ -278,6 +279,19 @@ void TabTeam::updateTeamStatus(gdioutput &gdi, pTeam t)
   gdi.setText("TimeAdjust", getTimeMS(t->getTimeAdjustment()));
   gdi.setText("PointAdjust", -t->getPointAdjustment());
   gdi.selectItemByData("Status", t->getStatus());
+
+  auto ri = t->getRaceInfo();
+  BaseInfo *bi = gdi.setText("TeamInfo", ri.first, true);
+  TextInfo *ti = dynamic_cast<TextInfo*>(bi);
+  assert(ti);
+  if (ti) {
+    if (ri.second > 0)
+      ti->setColor(GDICOLOR::colorGreen);
+    else if (ri.second < 0)
+      ti->setColor(GDICOLOR::colorRed);
+    else
+      ti->setColor(GDICOLOR::colorDefault);
+  }
 }
 
 bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
@@ -1442,7 +1456,10 @@ bool TabTeam::loadPage(gdioutput &gdi)
 
   gdi.popX();
   gdi.selectItemByData("Status", 0);
-  
+
+  gdi.addString("TeamInfo", 0, "").setColor(colorRed);
+  gdi.dropLine(0.4);
+
   if (oe->hasAnyRestartTime()) {
     gdi.addCheckbox("NoRestart", "Förhindra omstart", 0, false, "Förhindra att laget deltar i någon omstart");
   }

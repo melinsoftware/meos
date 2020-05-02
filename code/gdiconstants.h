@@ -47,7 +47,4 @@ enum FlowOperation {
   FlowAborted
 };
 
-
-
-const int GDI_BUTTON_SPACING = 8;
 #endif

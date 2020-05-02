@@ -2706,13 +2706,14 @@ void IOF30Interface::writeResultList(xmlparser &xml, const set<int> &classes,
 
   vector<pClass> c;
   oe.getClasses(c, false);
+  vector<pRunner> rToUse;
+  vector<pTeam> tToUse;
 
   for (size_t k = 0; k < c.size(); k++) {
-
     if (classes.empty() || classes.count(c[k]->getId())) {
-      vector<pRunner> rToUse;
-      vector<pTeam> tToUse;
       getRunnersToUse(c[k], rToUse, tToUse, leg, false);
+      oe.sortRunners(SortOrder::ClassResult, rToUse);
+      oe.sortTeams(SortOrder::ClassResult, -1, false, tToUse);
 
       if (!rToUse.empty() || !tToUse.empty()) {
         writeClassResult(xml, *c[k], rToUse, tToUse);
@@ -2778,9 +2779,9 @@ void IOF30Interface::writeClass(xmlparser &xml, const oClass &c) {
   xml.write("Name", c.getName());
 
   oClass::ClassStatus stat = c.getClassStatus();
-  if (stat == oClass::Invalid)
+  if (stat == oClass::ClassStatus::Invalid)
     xml.write("Status", L"Invalidated");
-  else if (stat == oClass::InvalidRefund)
+  else if (stat == oClass::ClassStatus::InvalidRefund)
     xml.write("Status", L"InvalidatedNoFee");
 
   xml.endTag();
@@ -2990,7 +2991,8 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
       int tleg = r.getLegNumber() >= 0 ? r.getLegNumber() : 0;
 
       if (stat == StatusOK && hasTiming) {
-        int after = r.getTotalRunningTime() - r.getClassRef(true)->getTotalLegLeaderTime(tleg, true, true);
+        int after = r.getTotalRunningTime() - 
+          r.getClassRef(true)->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, tleg, true, true);
         if (after >= 0)
           xml.write("TimeBehind", after);
       }
@@ -3284,13 +3286,14 @@ void IOF30Interface::writeStartList(xmlparser &xml, const set<int> &classes, boo
 
   vector<pClass> c;
   oe.getClasses(c, false);
+  vector<pRunner> rToUse;
+  vector<pTeam> tToUse;
 
   for (size_t k = 0; k < c.size(); k++) {
-
     if (classes.empty() || classes.count(c[k]->getId())) {
-      vector<pRunner> rToUse;
-      vector<pTeam> tToUse;
       getRunnersToUse(c[k], rToUse, tToUse, -1, true);
+      oe.sortRunners(SortOrder::ClassStartTime, rToUse);
+      oe.sortTeams(SortOrder::ClassStartTime, 0, false, tToUse);
       if (!rToUse.empty() || !tToUse.empty()) {
         writeClassStartList(xml, *c[k], rToUse, tToUse);
       }
@@ -3793,7 +3796,24 @@ pCourse IOF30Interface::readCourse(const xmlobject &xcrs) {
   if (!xcrs)
     return 0;
 
-  int cid = xcrs.getObjectInt("Id");
+  string sId;
+  xcrs.getObjectString("Id", sId);
+  int cid = 0;
+  if (sId.length() > 0) {
+    sId = trim(sId);
+    if (isNumber(sId))
+      cid = atoi(sId.c_str());
+    else {
+      // Handle non-numeric id. Hash. Uniqeness ensured below.
+      for (size_t j = 0; j < sId.length(); j++)
+        cid = 31 * cid + sId.at(j);
+
+      cid = cid & 0xFFFFFFF;
+    }
+  }
+  
+  if (!readCrsIds.insert(cid).second)
+    cid = 0; // Ignore for duplicates
 
   wstring name = constructCourseName(xcrs);
   /*, family;
@@ -3867,6 +3887,8 @@ pCourse IOF30Interface::readCourse(const xmlobject &xcrs) {
     pc = oe.getCourse(name);
     if (pc == 0)
       pc = oe.addCourse(name);
+
+    readCrsIds.insert(pc->getId());
   }
 
   if (pc) {

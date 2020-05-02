@@ -1714,11 +1714,12 @@ int oClass::getNumDistinctRunnersMinimal() const
   return max(ndist, 1);
 }
 
-void oClass::resetLeaderTime() {
+void oClass::resetLeaderTime() const {
   for (size_t k = 0; k<tLeaderTime.size(); k++)
     tLeaderTime[k].reset();
 
   tBestTimePerCourse.clear();
+  leaderTimeVersion = -1;
 }
 
 bool oClass::hasCoursePool() const
@@ -1839,7 +1840,10 @@ void oClass::updateChangedCoursePool() {
   tCoursesChanged = false;
 }
 
-oClass::LeaderInfo &oClass::getLeaderInfo(int leg) const {
+oClass::LeaderInfo &oClass::getLeaderInfo(AllowRecompute recompute, int leg) const {
+  if (recompute == AllowRecompute::Yes && leaderTimeVersion != oe->dataRevision)
+    updateLeaderTimes();
+
   leg = mapLeg(leg);
   if (leg < 0)
     throw meosException();
@@ -1849,23 +1853,75 @@ oClass::LeaderInfo &oClass::getLeaderInfo(int leg) const {
   return tLeaderTime[leg];
 }
 
-void oClass::LeaderInfo::updateComputed(int rt, Type t) {
+bool oClass::LeaderInfo::updateComputed(int rt, Type t) {
+  bool update = false;
+
   switch (t) {
   case Type::Leg:
-    if (bestTimeOnLegComputed == 0 || bestTimeOnLegComputed > rt)
-      bestTimeOnLegComputed = rt;
+    if (bestTimeOnLegComputed <= 0 || bestTimeOnLegComputed > rt)
+      bestTimeOnLegComputed = rt, update = true;
     break;
 
   case Type::Total:
-    if (totalLeaderTimeComputed == 0 || totalLeaderTimeComputed > rt)
-      totalLeaderTimeComputed = rt;
+    if (totalLeaderTimeComputed <= 0 || totalLeaderTimeComputed > rt)
+      totalLeaderTimeComputed = rt, update = true;
     break;
 
   case Type::TotalInput:
-    if (totalLeaderTimeInputComputed == 0 || totalLeaderTimeInputComputed > rt)
-      totalLeaderTimeInputComputed = rt;
+    if (totalLeaderTimeInputComputed <= 0 || totalLeaderTimeInputComputed > rt)
+      totalLeaderTimeInputComputed = rt, update = true;
     break;
+  default:
+    assert(false);
   }
+  return update;
+}
+
+bool oClass::LeaderInfo::update(int rt, Type t) {
+  bool update = false;
+  switch (t) {
+  case Type::Leg:
+    if (rt >= 0 && (bestTimeOnLeg < 0 || bestTimeOnLeg > rt))
+      bestTimeOnLeg = rt, update = true;
+    break;
+
+  case Type::Total:
+    if (rt >= 0 && (totalLeaderTime < 0 || totalLeaderTime > rt))
+      totalLeaderTime = rt, update = true;
+    break;
+
+  case Type::TotalInput:
+    if (rt >= 0 && (totalLeaderTimeInput < 0 || totalLeaderTimeInput > rt))
+      totalLeaderTimeInput = rt, update = true;
+    break;
+  
+  case Type::Input:
+    if (rt >= 0 && (inputTime < 0 || inputTime > rt))
+      inputTime = rt, update = true;
+    break;
+  default:
+    assert(false);
+  }
+  return update;
+}
+
+void oClass::updateLeaderTimes() const {
+  resetLeaderTime();
+  vector<pRunner> runners;
+  oe->getRunners(Id, 0, runners, false);
+  bool needupdate = true;
+  int leg = 0;
+  while (needupdate) {
+    needupdate = false;
+    for (auto r : runners) {
+      if (r->tLeg == leg)
+        r->storeTimes();
+      else if (r->tLeg > leg)
+        needupdate = true;
+    }
+    leg++;
+  }
+  leaderTimeVersion = oe->dataRevision;
 }
 
 void oClass::LeaderInfo::resetComputed(Type t) {
@@ -1908,14 +1964,22 @@ int oClass::LeaderInfo::getLeader(Type t, bool computed) const {
   return 0;
 }
 
-int oClass::getBestLegTime(int leg,  bool computedTime) const {
+int oClass::getBestLegTime(AllowRecompute recompute, int leg,  bool computedTime) const {
   leg = mapLeg(leg);
   if (unsigned(leg) >= tLeaderTime.size())
     return 0;
-  return getLeaderInfo(leg).getLeader(LeaderInfo::Type::Leg, computedTime);
+  int bt = getLeaderInfo(recompute, leg).getLeader(LeaderInfo::Type::Leg, computedTime);
+  if (bt == -1 && recompute == AllowRecompute::Yes) {
+    updateLeaderTimes();
+    bt = tLeaderTime[leg].getInputTime();
+  }
+  return bt;
 }
 
-int oClass::getBestTimeCourse(int courseId) const {
+int oClass::getBestTimeCourse(AllowRecompute recompute, int courseId) const {
+  if (recompute == AllowRecompute::Yes && leaderTimeVersion != oe->dataRevision)
+    updateLeaderTimes();
+
   map<int, int>::const_iterator res = tBestTimePerCourse.find(courseId);
   if (res == tBestTimePerCourse.end())
     return 0;
@@ -1923,24 +1987,40 @@ int oClass::getBestTimeCourse(int courseId) const {
     return res->second;
 }
 
-int oClass::getBestInputTime(int leg) const {
+int oClass::getBestInputTime(AllowRecompute recompute, int leg) const {
   leg = mapLeg(leg);
 
   if (unsigned(leg)>=tLeaderTime.size())
     return 0;
-  else 
-    return tLeaderTime[leg].inputTime;
+  else {
+    int it = getLeaderInfo(recompute, leg).getInputTime();
+    if (it == -1 && recompute == AllowRecompute::Yes) {
+      updateLeaderTimes();
+      it = getLeaderInfo(AllowRecompute::No, leg).getInputTime();
+    }
+    return -1;
+  }
 }
 
-int oClass::getTotalLegLeaderTime(int leg, bool computedTime, bool includeInput) const {
+int oClass::getTotalLegLeaderTime(AllowRecompute recompute, int leg, bool computedTime, bool includeInput) const {
   leg = mapLeg(leg);
-  if (unsigned(leg)>=tLeaderTime.size())
+  if (unsigned(leg) >= tLeaderTime.size())
     return 0;
 
-  if (includeInput)
-    return getLeaderInfo(leg).getLeader(LeaderInfo::Type::TotalInput, computedTime);
-  else
-    return getLeaderInfo(leg).getLeader(LeaderInfo::Type::Total, computedTime);
+  int res = -1;
+  int iter = -1;
+  while (res == -1 && ++iter<2) {
+    if (includeInput)
+      res = getLeaderInfo(recompute, leg).getLeader(LeaderInfo::Type::TotalInput, computedTime);
+    else
+      res = getLeaderInfo(recompute, leg).getLeader(LeaderInfo::Type::Total, computedTime);
+
+    if (res == -1 && recompute == AllowRecompute::Yes) {
+      recompute = AllowRecompute::No;
+      updateLeaderTimes();
+    }
+  }
+  return res;
 }
 
 void oClass::mergeClass(int classIdSec) {
@@ -3619,11 +3699,11 @@ oClass::ClassStatus oClass::getClassStatus() const {
   if (tStatusRevision != oe->dataRevision) {
     wstring s = getDCI().getString("Status");
     if (s == L"I")
-      tStatus =  Invalid;
+      tStatus =  ClassStatus::Invalid;
     else if (s == L"IR")
-      tStatus = InvalidRefund;
+      tStatus = ClassStatus::InvalidRefund;
     else
-      tStatus = Normal;
+      tStatus = ClassStatus::Normal;
 
     tStatusRevision = oe->dataRevision;
   }

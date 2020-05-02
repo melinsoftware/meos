@@ -310,6 +310,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   lang.get().addLangResource(L"Dansk", L"106");
   lang.get().addLangResource(L"Český", L"108");
   lang.get().addLangResource(L"Français", L"110");
+  lang.get().addLangResource(L"Español", L"111");
   lang.get().addLangResource(L"Russian", L"107");
 
   if (fileExist(L"extra.lng")) {
@@ -424,8 +425,23 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   else
     return ANSI;
 }*/
-
-  gdi_main->setFont(gEvent->getPropertyInt("TextSize", 0),
+  int defSize = 0;
+  {
+    RECT desktop;
+    const HWND hDesktop = GetDesktopWindow();
+    // Get the size of screen to the variable desktop
+    GetWindowRect(hDesktop, &desktop);
+    int d = max(desktop.right, desktop.bottom);
+    if (d <= 1024)
+      defSize = 0;
+    else if (d <= 2000)
+      defSize = 1;
+    else if (d <= 2500)
+      defSize = 2;
+    else
+      defSize = 3;
+  }
+  gdi_main->setFont(gEvent->getPropertyInt("TextSize", defSize),
                     gEvent->getPropertyString("TextFont", L"Arial"));
 
   if (hSplash != nullptr) {
@@ -765,8 +781,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
   int xp = gEvent->getPropertyInt("xpos", 50);
   int yp = gEvent->getPropertyInt("ypos", 20);
 
-  int xs = gEvent->getPropertyInt("xsize", max(850, min(int(rc.right)-yp, 1124)));
-  int ys = gEvent->getPropertyInt("ysize", max(650, min(int(rc.bottom)-yp-40, 800)));
+  int xs = gEvent->getPropertyInt("xsize", max(850, min<int>(int(rc.right)-yp, (rc.right*9)/10)));
+  int ys = gEvent->getPropertyInt("ysize", max(650, min<int>(int(rc.bottom)-yp-40, (rc.bottom*8)/10)));
 
   gEvent->setProperty("ypos", yp + 16);
   gEvent->setProperty("xpos", xp + 32);

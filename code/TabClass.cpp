@@ -2138,10 +2138,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "Module") {
       size_t ix = gdi.getSelectedItem("Module").first;
-      if (ix < currentResultModuleTags.size()) {
-        const string &mtag = currentResultModuleTags[ix];
-        gdi.hideWidget("EditModule", mtag.empty());
-      }
+      hideEditResultModule(gdi, ix);
     }
     else if (bi.id=="Courses")
       EditChanged=true;
@@ -2186,6 +2183,16 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     return true;
   }
   return 0;
+}
+
+void TabClass::hideEditResultModule(gdioutput &gdi, int ix) const {
+  if (size_t(ix) < currentResultModuleTags.size()) {
+    const string &mtag = currentResultModuleTags[ix];
+
+    wstring srcFile;
+    gdi.hideWidget("EditModule", mtag.empty() ||
+                   dynamic_cast<DynamicResult *>(oe->getGeneralResult(mtag, srcFile).get()) == nullptr);
+  }
 }
 
 void TabClass::readClassSettings(gdioutput &gdi)
@@ -2554,10 +2561,11 @@ void TabClass::selectClass(gdioutput &gdi, int cid)
     pc->getDCI().fillInput("Status", out, selected);
     gdi.addItem("Status", out);
     gdi.selectItemByData("Status", selected);
-
-    fillResultModules(gdi, pc);
   }
 
+  if (gdi.hasWidget("Module")) {
+    fillResultModules(gdi, pc);
+  }
   gdi.check("AllowQuickEntry", pc->getAllowQuickEntry());
   if (gdi.hasWidget("NoTiming"))
    gdi.check("NoTiming", pc->getNoTiming());
@@ -3244,7 +3252,7 @@ bool TabClass::loadPage(gdioutput &gdi)
 
     gdi.addSelection("StartBlock", 80, 300, 0, L"Startblock:");
 
-    for (int k=1;k<=100;k++) {
+    for (int k = 1; k <= 100; k++) {
       gdi.addItem("StartBlock", itow(k), k);
     }
 
@@ -3258,8 +3266,19 @@ bool TabClass::loadPage(gdioutput &gdi)
       st.emplace_back(lang.tl(sc.second), st.size());
     gdi.addItem("Status", st);
     gdi.autoGrow("Status");
-
     gdi.popX();
+  }
+
+  bool hasResultModuleClasses = false;
+  vector<pClass> cls;
+  oe->getClasses(cls, false);
+  for (pClass c : cls) {
+    if (c->getResultModuleTag().size() > 0) {
+      hasResultModuleClasses = true;
+      break;
+    }
+  }
+  if (showAdvanced || hasResultModuleClasses) {
     gdi.dropLine(3);
     gdi.addSelection("Module", 100, 400, ClassesCB, L"Resultatuträkning:");
     fillResultModules(gdi, nullptr);
@@ -4882,5 +4901,5 @@ void TabClass::fillResultModules(gdioutput &gdi, pClass pc) {
   gdi.addItem("Module", st);
   gdi.autoGrow("Module");
   gdi.selectItemByData("Module", current);
-  gdi.hideWidget("EditModule", current == 0);
+  hideEditResultModule(gdi, current);
 }

@@ -636,7 +636,7 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
   const wstring *wsptr = 0;
   bfw[0] = 0;
   pClass pc = r ? r->getClassRef(true) : 0;
-  bool invalidClass = pc && pc->getClassStatus() != oClass::Normal;
+  bool invalidClass = pc && pc->getClassStatus() != oClass::ClassStatus::Normal;
   oCounter counter(counterIn);
 
   static bool reentrantLock = false;
@@ -1014,7 +1014,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
   auto noTimingTeam = [&]() {
     return (pc ? pc->getNoTiming() : false) || (t ? t->getStatusComputed() == StatusNoTiming : false);
   };
-  bool invalidClass = pc && pc->getClassStatus() != oClass::Normal;
+  bool invalidClass = pc && pc->getClassStatus() != oClass::ClassStatus::Normal;
   int legIndex = pp.legIndex;
   if(pc && pp.type != lResultModuleNumber && pp.type != lResultModuleNumberTeam
         && pp.type != lResultModuleTime && pp.type != lResultModuleTimeTeam)
@@ -1363,7 +1363,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             int tleg = r->tLeg >= 0 ? r->tLeg:0;
             if (r->getTotalStatus()==StatusOK) {
               if ( (t && t->getNumShortening(tleg) == 0) || (!t && r->getNumShortening() == 0)) { 
-                int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true, true);
+                int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, tleg, true, true);
                 if (after > 0)
                   swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
               }
@@ -1376,7 +1376,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             int tleg=r->tLeg>=0 ? r->tLeg:0;
             if (r->tStatus==StatusOK && pc && !noTimingRunner()) {
               if (r->getNumShortening() == 0) {
-                int after = r->getRunningTime(true) - pc->getBestLegTime(tleg, true);
+                int after = r->getRunningTime(true) - pc->getBestLegTime(oClass::AllowRecompute::Yes, tleg, true);
                 if (after > 0)
                   swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
               }
@@ -1528,8 +1528,8 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (r && pc && !invalidClass) {
         int tleg = r->tLeg >= 0 ? r->tLeg:0;
         if (r->getTotalStatus() == StatusOK && pc && !noTimingRunner()) {
-          int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true, true);
-          int afterOld = r->inputTime - pc->getBestInputTime(tleg);
+          int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, tleg, true, true);
+          int afterOld = r->inputTime - pc->getBestInputTime(oClass::AllowRecompute::Yes, tleg);
           int ad = after - afterOld;
           if (ad > 0)
             swprintf_s(wbf, L"+%d:%02d", ad / 60, ad % 60);
@@ -1600,7 +1600,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         int after = 0;
         if (pp.resultModuleIndex == -1) {
           int tleg=r->tLeg>=0 ? r->tLeg:0;
-          int brt = pc->getBestLegTime(tleg, true);
+          int brt = pc->getBestLegTime(oClass::AllowRecompute::Yes, tleg, true);
           if (r->prelStatusOK(true, true) && brt > 0) {
             after=r->getRunningTime(true) - brt;
           }
@@ -1623,7 +1623,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         int tleg = r->tLeg >= 0 ? r->tLeg:0;
         if (r->getTotalStatus()==StatusOK &&  pc && !noTimingRunner()) {
           if ( (t && t->getNumShortening(tleg) == 0) || (!t && r->getNumShortening() == 0)) { 
-            int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true, true);
+            int after = r->getTotalRunningTime() - pc->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, tleg, true, true);
             if (after > 0)
               swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
           }
@@ -1637,7 +1637,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (r && pc && !invalidClass) {
         pCourse crs = r->getCourse(false);
         if (crs && r->tStatus==StatusOK && !noTimingRunner()) {
-          int after = r->getRunningTime(true) - pc->getBestTimeCourse(crs->getId());
+          int after = r->getRunningTime(true) - pc->getBestTimeCourse(oClass::AllowRecompute::Yes, crs->getId());
           if (after > 0)
             swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
@@ -1836,7 +1836,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       break;
     case lTeamGrossTime:
       if (t && !invalidClass) {
-        int tm = t->getLegRunningTimeUnadjusted(legIndex, false);
+        int tm = t->getLegRunningTimeUnadjusted(legIndex, false, false);
         wsptr = &formatTime(tm);
       }
       break;
@@ -2050,7 +2050,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (t && pc && !invalidClass) {
         int tleg = t->getNumRunners() - 1;
         if (t->getTotalStatus()==StatusOK &&  pc && !noTimingTeam()) {
-          int after = t->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true, true);
+          int after = t->getTotalRunningTime() - pc->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, tleg, true, true);
           if (after > 0)
             swprintf_s(wbf, L"+%d:%02d", after/60, after%60);
         }
@@ -2060,8 +2060,8 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (t && pc && !invalidClass) {
         int tleg = t->getNumRunners() - 1;
         if (t->getTotalStatus()==StatusOK &&  pc && !noTimingTeam()) {
-          int after = t->getTotalRunningTime() - pc->getTotalLegLeaderTime(tleg, true, true);
-          int afterOld = t->inputTime - pc->getBestInputTime(tleg);
+          int after = t->getTotalRunningTime() - pc->getTotalLegLeaderTime(oClass::AllowRecompute::Yes, tleg, true, true);
+          int afterOld = t->inputTime - pc->getBestInputTime(oClass::AllowRecompute::Yes, tleg);
           int ad = after - afterOld;
           if (ad > 0)
             swprintf_s(wbf, L"+%d:%02d", ad/60, ad%60);

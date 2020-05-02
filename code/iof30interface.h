@@ -271,6 +271,8 @@ class IOF30Interface {
 
   void readId(const xmlobject &person, int &pid, __int64 &extId) const;
 
+  set<int> readCrsIds;
+
 public:
   IOF30Interface(oEvent *oe, bool forceSplitFee);
   virtual ~IOF30Interface() {}

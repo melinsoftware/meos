@@ -485,7 +485,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oClassData->addVariableInt("Unordered", oDataContainer::oIS8U, "Oordnade parallella");
   oClassData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
   oClassData->addVariableInt("Locked", oDataContainer::oIS8U, "Låst gaffling", make_shared<DataBoolean>("Locked"));
-  oClassData->addVariableString("Qualification", "Kvalschema");
+  oClassData->addVariableString("Qualification", "Kvalschema", make_shared<DataHider>());
   oClassData->addVariableInt("NumberMaps", oDataContainer::oIS16, "Kartor");
   oClassData->addVariableString("Result", 24, "Result module", make_shared<ResultModuleFormatter>());
   oClassData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring", make_shared<DataHider>());
@@ -541,7 +541,6 @@ oEvent::~oEvent()
 }
 
 void oEvent::initProperties() {
-  setProperty("TextSize", getPropertyString("TextSize", L"0"));
   setProperty("Language", getPropertyString("Language", L"103"));
 
   setProperty("Interactive", getPropertyString("Interactive", L"1"));
@@ -1532,7 +1531,6 @@ pRunner oEvent::dbLookUpByName(const wstring &name, int clubId, int classId, int
 
   if (dbr) {
     sRunner.init(*dbr, false);
-    sRunner.setExtIdentifier(int(dbr->getExtId()));
     return &sRunner;
   }
 
@@ -1561,15 +1559,15 @@ bool oEvent::saveRunnerDatabase(const wchar_t *filename, bool onlyLocal)
 
 void oEvent::updateRunnerDatabase()
 {
-  if (Name==L"!TESTTÄVLING")
+  if (Name == L"!TESTTÄVLING")
     return;
 
   if (useRunnerDb()) {
     oRunnerList::iterator it;
     map<int, int> clubIdMap;
-    for (it=Runners.begin(); it != Runners.end(); ++it){
+    for (it = Runners.begin(); it != Runners.end(); ++it) {
       if (it->Card && it->Card->cardNo == it->cardNumber &&
-        it->getDI().getInt("CardFee")==0 && it->Card->getNumPunches()>5)
+          it->getDI().getInt("CardFee") == 0 && it->Card->getNumPunches() > 5)
         updateRunnerDatabase(&*it, clubIdMap);
     }
     runnerDB->refreshTables();
@@ -1584,6 +1582,16 @@ void oEvent::updateRunnerDatabase()
         if (!fileExist(file)) {
           ml.save(file, this);
         }
+      }
+    }vector<pair<string, shared_ptr<DynamicResult>>> freeMod;
+    listContainer->getFreeResultModules(freeMod);
+
+    for (size_t k = 0; k < freeMod.size(); k++) {
+      wstring uid = gdibase.widen(freeMod[k].first) + L".rules";
+      wchar_t file[260];
+      getUserFile(file, uid.c_str());
+      if (!fileExist(file)) {
+        freeMod[k].second->save(file);
       }
     }
   }
@@ -3755,6 +3763,9 @@ void oEvent::reEvaluateCourse(int CourseId, bool doSync)
 
 void oEvent::reEvaluateAll(const set<int> &cls, bool doSync)
 {
+  if (disableRecalculate)
+    return;
+
   if (doSync)
     autoSynchronizeLists(false);
 
@@ -3776,12 +3787,23 @@ void oEvent::reEvaluateAll(const set<int> &cls, bool doSync)
   }
   oRunnerList::iterator it;
 
-  for (it=Runners.begin(); it != Runners.end(); ++it) {
-    if (!cls.empty() && cls.count(it->getClassId(true)) == 0)
-      continue;
+  if (cls.size() < 5) {
+    vector<pRunner> runners;
+    getRunners(cls, runners);
+    for (pRunner it : runners) {
+      if (!it->tInTeam || it->Class != it->tInTeam->Class || (it->Class && it->Class->isQualificationFinalBaseClass())) {
+        it->apply(ChangeType::Quiet, nullptr);
+      }
+    }
+  }
+  else {
+    for (it = Runners.begin(); it != Runners.end(); ++it) {
+      if (!cls.empty() && cls.count(it->getClassId(true)) == 0)
+        continue;
 
-    if (!it->tInTeam || it->Class != it->tInTeam->Class || (it->Class && it->Class->isQualificationFinalBaseClass())) {
-      it->apply(ChangeType::Quiet, nullptr);
+      if (!it->tInTeam || it->Class != it->tInTeam->Class || (it->Class && it->Class->isQualificationFinalBaseClass())) {
+        it->apply(ChangeType::Quiet, nullptr);
+      }
     }
   }
 
@@ -3942,6 +3964,20 @@ void oEvent::reCalculateLeaderTimes(int classId)
 {
   if (disableRecalculate)
     return;
+
+  if (classId) {
+    pClass cls = getClass(classId);
+    if (cls)
+      cls->resetLeaderTime();
+  }
+  else {
+    for (auto &c : Classes) {
+      if (!c.isRemoved())
+        c.resetLeaderTime();
+    }
+  }
+  
+  /*
 #ifdef _DEBUG
   wchar_t bf[128];
   swprintf_s(bf, L"Calculate leader times %d\n", classId);
@@ -3964,7 +4000,7 @@ void oEvent::reCalculateLeaderTimes(int classId)
       }
     }
     leg++;
-  }
+  }*/
 }
 
 
@@ -5678,7 +5714,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
   for (oClassList::iterator it = Classes.begin(); it != Classes.end(); ++it) {
     if (it->isRemoved())
       continue;
-    if (it->getClassStatus() != oClass::Normal)
+    if (it->getClassStatus() != oClass::ClassStatus::Normal)
       continue;
 
     if (onlyThisClass > 0 && it->getId() != onlyThisClass)

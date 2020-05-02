@@ -30,18 +30,18 @@
 //V35: abcdef
 //V36: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 1004 $");
+  string revision("$Rev: 1014 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 //V37: a
 wstring getMeosDate() {
-  wstring date(L"$Date: 2020-02-25 21:05:03 +0100 (ti, 25 feb 2020) $");
+  wstring date(L"$Date: 2020-05-01 16:22:46 +0200 (fr, 01 maj 2020) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC1"; // No parantheses (...)
+  return L"RC2"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -145,6 +145,7 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Nyköpings OK");
   supp.emplace_back(L"Thomas Engberg, VK Uvarna");
   supp.emplace_back(L"LG Axmalm, Sävedalens AIK");
+  supp.emplace_back(L"Falköpings AIK OK");
 
   reverse(supp.begin(), supp.end());
 }

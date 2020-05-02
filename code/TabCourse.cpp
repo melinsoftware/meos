@@ -1009,10 +1009,10 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
     gdi.dropLine();
   }
 
-  gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(120),
+  gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(baseButtonWidth),
                 "Print", "Skriv ut...", CourseCB,
                 "Skriv ut listan.", true, false);
-  gdi.addButton(gdi.getWidth()+20, 75,  gdi.scaleLength(120),
+  gdi.addButton(gdi.getWidth()+20, 75,  gdi.scaleLength(baseButtonWidth),
                 "PDF", "PDF...", CourseCB,
                 "Spara som PDF.", true, false);
 
