@@ -209,7 +209,7 @@ public:
   bool fillCourse(gdioutput &gdi, const string &name);
 
   /** Returns true if changed. */
-  bool importControls(const string &cstring, bool updateLegLengths);
+  bool importControls(const string &cstring, bool setChanged, bool updateLegLengths);
   void importLegLengths(const string &legs, bool setChanged);
 
   /** Returns the length of the i:th leg (or 0 if unknown)*/
@@ -238,6 +238,8 @@ public:
 
   wstring getStart() const;
   void setStart(const wstring &start, bool sync);
+
+  void merge(const oBase &input) final;
 
   bool Write(xmlparser &xml);
 

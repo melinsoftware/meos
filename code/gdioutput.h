@@ -605,6 +605,9 @@ public:
   
   const wstring &getText(const char *id, bool acceptMissing = false) const;
   
+  BaseInfo &getBaseInfo(const string &id) const {
+    return getBaseInfo(id.c_str());
+  }
   BaseInfo &getBaseInfo(const char *id) const;
   BaseInfo &getBaseInfo(const wchar_t *id) const {
     return getBaseInfo(narrow(id).c_str());

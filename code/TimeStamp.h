@@ -37,8 +37,10 @@ class TimeStamp {
 public:
   void setStamp(const string &s);
   const string &getStamp() const;
-  
+  const string &getStamp(const string &sqlStampIn) const;
+
   wstring getStampString() const;
+  string getStampStringN() const;
   int getAge() const;
   unsigned int getModificationTime() const {return Time;}
 

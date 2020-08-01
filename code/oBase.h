@@ -114,6 +114,9 @@ protected:
 
   void setLocalObject() { localObject = true; }
 
+  // Merge into this entity
+  virtual void merge(const oBase &input) = 0;
+
 public:
 
   void update(SqlUpdated &info) const;
@@ -154,13 +157,15 @@ public:
 
   bool synchronize(bool writeOnly=false);
   wstring getTimeStamp() const;
-
+  string getTimeStampN() const;
+  const string &getStamp() const;
+    
   bool existInDB() const { return !sqlUpdated.empty(); }
 
   void setImplicitlyCreated() { implicitlyAdded = true; }
   bool isImplicitlyCreated() const { return implicitlyAdded; }
   bool isAddedToEvent() const { return addedToEvent; }
-  void addToEvent() { addedToEvent = true; }
+  void addToEvent(oEvent *e, const oBase *src);
 
   oDataInterface getDI();
 

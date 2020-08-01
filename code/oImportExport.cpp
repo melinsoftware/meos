@@ -1587,9 +1587,9 @@ bool oEvent::addXMLCourse(const xmlobject &xcrs, bool addClasses, set<wstring> &
 
     pc->setName(cname);
     pc->setLength(len);
-    pc->importControls("", false);
+    pc->importControls("", true, false);
     for (size_t i = 0; i<ctrlCode.size(); i++) {
-      if (ctrlCode[i]>30 && ctrlCode[i]<1000)
+      if (ctrlCode[i]>=30 && ctrlCode[i]<1024)
         pc->addControl(ctrlCode[i]);
     }
     if (pc->getNumControls() + 1 == legLen.size())

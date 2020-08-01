@@ -69,7 +69,7 @@ bool oTeam::write(xmlparser &xml)
   xml.startTag("Team");
   xml.write("Id", Id);
   xml.write("StartNo", StartNo);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.write("Name", sName);
   xml.write("Start", startTime);
   xml.write("Finish", FinishTime);
@@ -814,10 +814,10 @@ bool oTeam::compareResult(const oTeam &a, const oTeam &b)
     }
     else return false;
   }
-  else if (a._sortStatus!=b._sortStatus)
-    return a._sortStatus<b._sortStatus;
-  else if (a._sortTime!=b._sortTime)
-    return a._sortTime<b._sortTime;
+  else if (a.tmpSortStatus != b.tmpSortStatus)
+    return a.tmpSortStatus < b.tmpSortStatus;
+  else if (a.tmpSortTime != b.tmpSortTime)
+    return a.tmpSortTime < b.tmpSortTime;
 
   const wstring &as = a.getBib();
   const wstring &bs = b.getBib();
@@ -844,10 +844,10 @@ bool oTeam::compareResultNoSno(const oTeam &a, const oTeam &b)
     }
     else return false;
   }
-  else if (a._sortStatus != b._sortStatus)
-    return a._sortStatus<b._sortStatus;
-  else if (a._sortTime != b._sortTime)
-    return a._sortTime<b._sortTime;
+  else if (a.tmpSortStatus != b.tmpSortStatus)
+    return a.tmpSortStatus<b.tmpSortStatus;
+  else if (a.tmpSortTime != b.tmpSortTime)
+    return a.tmpSortTime<b.tmpSortTime;
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
                        a.sName.c_str(), a.sName.length(),

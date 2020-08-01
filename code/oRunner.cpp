@@ -368,7 +368,7 @@ bool oRunner::Write(xmlparser &xml)
   
   xml.startTag("Runner");
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.write("Name", sName);
   xml.write("Start", startTime);
   xml.write("Finish", FinishTime);

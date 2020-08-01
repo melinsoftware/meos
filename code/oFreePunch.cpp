@@ -66,7 +66,7 @@ bool oFreePunch::Write(xmlparser &xml)
   xml.write("Time", Time);
   xml.write("Type", Type);
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.endTag();
 
   return true;
@@ -446,7 +446,7 @@ pFreePunch oEvent::addFreePunch(int time, int type, int card, bool updateStartFi
 
   punches.push_back(ofp);
   pFreePunch fp=&punches.back();
-  fp->addToEvent();
+  fp->addToEvent(this, &ofp);
   oFreePunch::rehashPunches(*this, card, fp);
   insertIntoPunchHash(card, type, time);
 
@@ -516,7 +516,7 @@ pFreePunch oEvent::addFreePunch(oFreePunch &fp) {
   insertIntoPunchHash(fp.CardNo, fp.Type, fp.Time);
   punches.push_back(fp);
   pFreePunch fpz=&punches.back();
-  fpz->addToEvent();
+  fpz->addToEvent(this, &fp);
   oFreePunch::rehashPunches(*this, fp.CardNo, fpz);
 
   if (!fpz->existInDB() && HasDBConnection) {

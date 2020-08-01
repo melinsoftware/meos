@@ -1029,6 +1029,12 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.popX();
       gdi.fillRight();
       gdi.addButton("AutomaticDraw", "Automatisk lottning", ClassesCB);
+      
+      /*if (oe->getStartGroups(true).size() > 0) {
+        gdi.addButton("DrawStartGroups", "Lotta med startgrupper", ClassesCB);
+        gdi.popX();
+        gdi.dropLine(3);
+      }*/
       gdi.addButton("DrawAll", "Manuell lottning", ClassesCB).setExtra(1);
       gdi.addButton("Simultaneous", "Gemensam start", ClassesCB);
 
@@ -1268,7 +1274,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           EditChanged=false;
         }
         else {
-          firstStart = gdi.getText("FirstStart");
+          firstStart = gdi.getText("FirstStart", true);
           minInterval = gdi.getText("MinInterval");
           vacances = gdi.getText("Vacances");
           //pairwise = gdi.isChecked("Pairwise");
@@ -1299,8 +1305,18 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         by = gdi.getHeight();
         gdi.enableEditControls(true);
       }
+      bool hasGroups = oe->getStartGroups(true).size() > 0;
 
-      loadReadyToDistribute(gdi, bx, by);
+      if (!hasGroups) {
+        loadReadyToDistribute(gdi, bx, by);
+      }
+      else {
+        gdi.fillRight();
+        gdi.addButton("DrawGroupsManual", "Lotta", ClassesCB);
+        gdi.addButton("EraseStartAll", "Radera starttider...", ClassesCB);
+
+        gdi.refresh();
+      }
     }
     else if (bi.id == "HelpDraw") {
 
@@ -1363,9 +1379,61 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       }
 
       gdi.enableEditControls(false);
-      oe->optimizeStartOrder(gdi, drawInfo, cInfo);
+      vector<pair<int, wstring>> outLines;
+      oe->optimizeStartOrder(outLines, drawInfo, cInfo);
+      for (auto &ol : outLines)
+        gdi.addString("", ol.first, ol.second);
 
       showClassSettings(gdi);
+    }
+    else if (bi.id == "DrawGroupsManual") {
+      set<int> classes;
+      gdi.getSelection("Classes", classes);
+      if (classes.empty()) 
+        throw meosException("Ingen klass vald.");
+            
+      readDrawInfo(gdi, drawInfo);
+      if (drawInfo.baseInterval <= 0 || drawInfo.baseInterval == NOTIME)
+        throw meosException("Ogiltigt basintervall.");
+     
+      if (drawInfo.minClassInterval <= 0 || drawInfo.minClassInterval == NOTIME)
+        throw meosException("Ogiltigt minimalt intervall.");
+     
+      if (drawInfo.minClassInterval < drawInfo.baseInterval) {
+        throw meosException("Startintervallet får inte vara kortare än basintervallet.");
+      }
+
+      if (drawInfo.minClassInterval % drawInfo.baseInterval != 0) {
+        throw meosException("Ett startintervall måste vara en multipel av basintervallet.");
+      }
+
+      vector<ClassDrawSpecification> spec;
+      for (int id : classes) {
+        //int classID, int leg, int firstStart, int interval, int vacances, oEvent::VacantPosition vp)
+        int nVac = int(drawInfo.vacancyFactor * oe->getClass(id)->getNumRunners(true, true, true) + 0.5);
+        nVac = min(max(drawInfo.minVacancy, nVac), drawInfo.maxVacancy);
+
+        spec.emplace_back(id, 0, 0, 120, nVac, oEvent::VacantPosition::Mixed);
+      }
+
+      oEvent::DrawMethod method = (oEvent::DrawMethod)gdi.getSelectedItem("Method").first;
+
+      bool moveRunners = gdi.isChecked("MoveRunners");
+
+      oe->drawListStartGroups(spec, method, 1, oEvent::DrawType::DrawAll, moveRunners, &drawInfo);
+
+      oe->addAutoBib(); 
+
+      clearPage(gdi, false);
+      gdi.addButton("Cancel", "Återgå", ClassesCB);
+
+      oListParam par;
+      oListInfo info;
+      par.listCode = EStdStartList;
+      par.selection = classes;
+      oe->generateListInfo(par, info);
+      oe->generateList(gdi, false, info, true);
+      gdi.refresh();
     }
     else if (bi.id == "LoadSettings") {
       set<int> classes;
@@ -1434,7 +1502,11 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "DrawAdjust") {
       readClassSettings(gdi);
       gdi.restore("ReadyToDistribute");
-      oe->optimizeStartOrder(gdi, drawInfo, cInfo);
+      vector<pair<int, wstring>> outLines;
+      oe->optimizeStartOrder(outLines, drawInfo, cInfo);
+      for (auto &ol : outLines)
+        gdi.addString("", ol.first, ol.second);
+
       showClassSettings(gdi);
     }
     else if (bi.id == "DrawAllAdjust") {
@@ -1447,9 +1519,11 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       oe->addAutoBib();
       loadPage(gdi);
     }
-    else if (bi.id=="DoDraw" || bi.id=="DoDrawAfter"  || bi.id=="DoDrawBefore"){
+    else if (bi.id=="DoDraw" || bi.id=="DoDrawAfter"  || bi.id=="DoDrawBefore" || bi.id == "DoDrawGroups"){
       if (!checkClassSelected(gdi))
         return false;
+
+      bool withGroups = bi.id == "DoDrawGroups";
 
       DWORD cid=ClassId;
       pClass pc = oe->getClass(cid);
@@ -1517,8 +1591,10 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       if (method == oEvent::DrawMethod::Random || method == oEvent::DrawMethod::SOFT || method == oEvent::DrawMethod::MeOS) {
         vector<ClassDrawSpecification> spec;
         spec.emplace_back(cid, leg, t, interval, vacanses, vp);
-    
-        oe->drawList(spec, method, pairSize, dtype);
+        if (withGroups)
+          oe->drawListStartGroups(spec, method, pairSize, dtype);
+        else
+          oe->drawList(spec, method, pairSize, dtype);
       }
       else if (method == oEvent::DrawMethod::Clumped)
         oe->drawListClumped(cid, t, interval, vacanses);
@@ -1703,6 +1779,12 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         pc->synchronize(true);
         selectClass(gdi, pc->getId());
       }
+    }
+    else if (bi.id == "StartGroups") {
+      loadStartGroupSettings(gdi, true);
+    }
+    else if (bi.id == "DrawStartGroups") {
+      drawStartGroups(gdi);
     }
     else if (bi.id=="Bibs") {
       save(gdi, true);
@@ -3395,6 +3477,9 @@ bool TabClass::loadPage(gdioutput &gdi)
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces))
     func.push_back(ButtonData("QualificationFinal", "Kval/final-schema", false));
 
+  if (showAdvanced)
+    func.push_back(ButtonData("StartGroups", "Startgrupper", true));
+
   RECT funRect;
   funRect.right = gdi.getCX() - 7;
   funRect.top = gdi.getCY() - 2;
@@ -3411,14 +3496,20 @@ bool TabClass::loadPage(gdioutput &gdi)
   int xlimit = gdi.getWidth() - button_w/2;
 
   for (size_t k = 0; k < func.size(); k++) {
+    TextInfo ti;
+    ti.xp = 0;
+    ti.yp = 0;
+    ti.text = lang.tl(func[k].label);
+    gdi.calcStringSize(ti);
+    if (gdi.getCX() + ti.realWidth > xlimit) {
+      gdi.popX();
+      gdi.dropLine(2.5);
+    }
+
     ButtonInfo &bi = gdi.addButton(func[k].id, func[k].label, ClassesCB);
     if (!func[k].global)
       bi.isEdit(true);
     funRect.left = max<int>(funRect.left, gdi.getCX() + 7);
-    if ( gdi.getCX() > xlimit && k+1 < func.size()) {
-      gdi.popX();
-      gdi.dropLine(2.5);
-    }
   }
   gdi.dropLine(2.5);
 
@@ -3701,8 +3792,11 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
 
   gdi.fillRight();
 
-  if (method != oEvent::DrawMethod::Simultaneous)
+  if (method != oEvent::DrawMethod::Simultaneous) {
     gdi.addButton("DoDraw", "Lotta klassen", ClassesCB, "Lotta om hela klassen");
+    if (oe->getStartGroups(true).size() > 0)
+      gdi.addButton("DoDrawGroups", "Lotta med startgrupper", ClassesCB, "Lotta om hela klassen");
+  }
   else
     gdi.addButton("DoDraw", "Tilldela", ClassesCB, "Tilldela starttider");
 
@@ -4501,7 +4595,7 @@ void TabClass::readDrawInfo(gdioutput &gdi, DrawInfo &drawInfoOut) {
   int minVacancy = gdi.getTextNo("VacancesMin");
   setDefaultVacant(gdi.getText("Vacances"));
   double vacancyFactor = 0.01*_wtof(gdi.getText("Vacances").c_str());
-  double extraFactor = 0.01*_wtof(gdi.getText("Extra").c_str());
+  double extraFactor = 0.01*_wtof(gdi.getText("Extra", true).c_str());
 
 
   drawInfoOut.changedVacancyInfo = drawInfoOut.maxVacancy != maxVacancy || 
@@ -4522,9 +4616,9 @@ void TabClass::readDrawInfo(gdioutput &gdi, DrawInfo &drawInfoOut) {
   
   drawInfoOut.coursesTogether = gdi.isChecked("CoursesTogether");
   drawInfoOut.minClassInterval = convertAbsoluteTimeMS(gdi.getText("MinInterval"));
-  drawInfoOut.maxClassInterval = convertAbsoluteTimeMS(gdi.getText("MaxInterval"));
+  drawInfoOut.maxClassInterval = convertAbsoluteTimeMS(gdi.getText("MaxInterval", true));
   drawInfoOut.nFields = gdi.getTextNo("nFields");
-  drawInfoOut.firstStart = oe->getRelativeTime(gdi.getText("FirstStart"));
+  drawInfoOut.firstStart = oe->getRelativeTime(gdi.getText("FirstStart", true));
 }
 
 void TabClass::writeDrawInfo(gdioutput &gdi, const DrawInfo &drawInfoIn) {
@@ -4746,15 +4840,26 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
                                   const set<int> &clsId) {
 
   showClassSelection(gdi, bx, by, DrawClassesCB);
-  
+  bool hasGroups = oe->getStartGroups(true).size() > 0;
+
   gdi.setSelection("Classes", clsId);
+  
+  int xb = 0, yb = 0;
+
+  if (hasGroups) {
+    gdi.addString("", fontMediumPlus, "Lotta med startgrupper");
+    gdi.dropLine(1.5);
+    xb = gdi.getCX() - gdi.scaleLength(5);
+    yb = gdi.getCY() - gdi.scaleLength(5);
+  }
 
   gdi.addString("", 1, "Grundinställningar");
 
   gdi.pushX();
   gdi.fillRight();
 
-  gdi.addInput("FirstStart", firstStart, 10, 0, L"Första start:");
+  if (!hasGroups)
+    gdi.addInput("FirstStart", firstStart, 10, 0, L"Första start:");
   gdi.addInput("nFields", L"10", 10, 0, L"Max parallellt startande:");
   gdi.popX();
   gdi.dropLine(3);
@@ -4775,7 +4880,9 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   gdi.dropLine(4);
   gdi.fillDown();
   gdi.addCheckbox("AllowNeighbours", "Tillåt samma bana inom basintervall", 0, oe->getPropertyInt("DrawInterlace", 1) != 0);
-  gdi.addCheckbox("CoursesTogether", "Lotta klasser med samma bana gemensamt", 0, false);
+  
+  if (!hasGroups) 
+    gdi.addCheckbox("CoursesTogether", "Lotta klasser med samma bana gemensamt", 0, false);
 
   gdi.dropLine(0.5);
   gdi.addString("", 1, "Startintervall");
@@ -4783,7 +4890,9 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
   gdi.fillRight();
   gdi.addInput("BaseInterval", L"1:00", 10, 0, L"Basintervall (min):");
   gdi.addInput("MinInterval", minInterval, 10, 0, L"Minsta intervall i klass:");
-  gdi.addInput("MaxInterval", minInterval, 10, 0, L"Största intervall i klass:");
+
+  if (!hasGroups)
+    gdi.addInput("MaxInterval", minInterval, 10, 0, L"Största intervall i klass:");
 
   gdi.popX();
   gdi.dropLine(4);
@@ -4797,7 +4906,24 @@ void TabClass::loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstrin
 
   gdi.addInput("VacancesMin", zeroVac ? L"0" : L"1", 6, 0, L"Min. vakanser (per klass):");
   gdi.addInput("VacancesMax", zeroVac ? L"0" : L"10", 6, 0, L"Max. vakanser (per klass):");
-  gdi.addInput("Extra", L"0%", 6, 0, L"Förväntad andel efteranmälda:");
+  
+  if (!hasGroups)
+    gdi.addInput("Extra", L"0%", 6, 0, L"Förväntad andel efteranmälda:");
+  
+  if (hasGroups) {
+    gdi.fillDown();
+    gdi.popX();
+    gdi.dropLine(4);
+    gdi.addString("", 1, "Lottning");
+    gdi.dropLine(0.4);
+    createDrawMethod(gdi);
+    gdi.addCheckbox("MoveRunners", "Flytta deltagare från överfulla grupper", 0, true);
+
+    int xr = gdi.getWidth();
+    int bt = gdi.getCY();
+    RECT rc = { xb, yb, xr, bt };
+    gdi.addRectangle(rc, colorLightCyan);
+  }
 
   gdi.dropLine(4);
   gdi.fillDown();
@@ -4902,4 +5028,137 @@ void TabClass::fillResultModules(gdioutput &gdi, pClass pc) {
   gdi.autoGrow("Module");
   gdi.selectItemByData("Module", current);
   hideEditResultModule(gdi, current);
+}
+
+class StartGroupHandler : public GuiHandler {
+  oEvent &oe;
+  TabClass *tc;
+  bool lock = false;
+public:
+  StartGroupHandler(TabClass *tc, oEvent *oe) : oe(*oe), tc(tc) {}
+
+  void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) override {
+    if (type == GuiEventType::GUI_INPUT) {
+      int id = info.getExtraInt();
+      InputInfo &ii = dynamic_cast<InputInfo &>(info);
+
+      if (ii.id[0] == 'g') {
+        int idNew = _wtoi(ii.text.c_str());
+        if (idNew != id) {
+          if (oe.getStartGroup(idNew).first == -1) {
+            auto d = oe.getStartGroup(id);
+            oe.setStartGroup(idNew, d.first, d.second);
+            oe.setStartGroup(id, -1, -1);
+            string rowIx = ii.id.substr(5);
+            gdi.getBaseInfo("group" + rowIx).setExtra(idNew);
+            gdi.getBaseInfo("first" + rowIx).setExtra(idNew);
+            gdi.getBaseInfo("last" + rowIx).setExtra(idNew);
+            gdi.getBaseInfo("D" + rowIx).setExtra(idNew);
+            ii.setBgColor(colorDefault);
+          }
+          else {
+            ii.setBgColor(colorLightRed);
+          }
+        }
+      }
+      else if (ii.id[0] == 'f') {
+        auto d = oe.getStartGroup(id);
+        d.first = oe.getRelativeTime(ii.text);
+        oe.setStartGroup(id, d.first, d.second);
+      }
+      else if (ii.id[0] == 'l') {
+        auto d = oe.getStartGroup(id);
+        d.second = oe.getRelativeTime(ii.text);
+        oe.setStartGroup(id, d.first, d.second);
+      }
+    }
+    else if (type == GuiEventType::GUI_BUTTON) {
+      if (info.id == "AddGroup") {
+        int id = 1;
+        int firstStart = 3600;
+        int length = 3600;
+        for (auto &g : oe.getStartGroups(false)) {
+          id = max(id, g.first+1);
+          firstStart = max(firstStart, g.second.second);
+          if (g.second.first < g.second.second)
+            length = min(length, g.second.second - g.second.first);
+        }
+        oe.setStartGroup(id, firstStart, firstStart + length);
+        tc->loadStartGroupSettings(gdi, false);
+      }
+      else if (info.id[0] == 'D') {
+        int id = info.getExtraInt();
+        oe.setStartGroup(id, -1, -1);
+        tc->loadStartGroupSettings(gdi, false);
+      }
+      else if (info.id == "Save") {
+        oe.synchronize();
+        oe.updateStartGroups();
+        oe.synchronize(true);
+        tc->loadPage(gdi);
+      }
+      else if (info.id == "Cancel") {
+        tc->loadPage(gdi);
+      }
+    }
+  }
+};
+
+void TabClass::loadStartGroupSettings(gdioutput &gdi, bool reload) {
+  clearPage(gdi, false);
+  auto &sg = oe->getStartGroups(reload);
+
+  if (!startGroupHandler)
+    startGroupHandler = make_shared<StartGroupHandler>(this, oe);
+
+  GuiHandler *sgh = startGroupHandler.get();
+
+  gdi.addString("", boldLarge, "Startgrupper");
+  int row = 0;
+  gdi.dropLine(0.5);
+  gdi.addString("", 10, L"help:startgroup");
+
+  int idPos = gdi.getCX();
+  int firstPos = idPos + gdi.scaleLength(120);
+  int lastPos = firstPos + gdi.scaleLength(120);
+  int bPos = lastPos + gdi.scaleLength(120);
+  bool first = true;
+
+  for (auto &g : sg) {
+    if (first) {
+      int y = gdi.getCY();
+      gdi.addString("", y, idPos, 0, "Id");
+      gdi.addString("", y, firstPos, 0, "Start");
+      gdi.addString("", y, lastPos, 0, "Slut");
+      first = false;
+    }
+    int cy = gdi.getCY();
+    string srow = itos(row++);
+    gdi.addInput(idPos, cy, "group" + srow, itow(g.first), 8).setHandler(sgh).setExtra(g.first);
+    gdi.addInput(firstPos, cy, "first" + srow, oe->getAbsTime(g.second.first), 10).setHandler(sgh).setExtra(g.first);
+    gdi.addInput(lastPos, cy, "last" + srow, oe->getAbsTime(g.second.second), 8).setHandler(sgh).setExtra(g.first);
+    gdi.addButton(bPos, cy, "D" + srow, L"Ta bort").setHandler(sgh).setExtra(g.first);
+  }
+
+  if (sg.size() == 1)
+    gdi.addString("", 10, "Tips: ställ in rätt tid innan du lägger till fler grupper.");
+
+  gdi.dropLine();
+  gdi.fillRight();
+
+  gdi.addButton("AddGroup", "Ny startgrupp").setHandler(sgh);
+  gdi.addButton("Save", "Spara").setHandler(sgh);
+  gdi.addButton("Cancel", "Avbryt").setHandler(sgh);
+
+  gdi.refresh();
+}
+
+void TabClass::drawStartGroups(gdioutput &gdi) {
+  clearPage(gdi, false);
+  if (!startGroupHandler)
+    startGroupHandler = make_shared<StartGroupHandler>(this, oe);
+  gdi.addString("", boldLarge, "Lotta med startgrupper");
+
+  gdi.addButton("Cancel", "Stäng", ClassesCB);
+  gdi.refresh();
 }

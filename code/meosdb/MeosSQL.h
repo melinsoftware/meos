@@ -58,6 +58,7 @@ protected:
   mysqlpp::Connection con;
   string CmpDataBase;
   void alert(const string &s);
+  bool writeTime = false;
 
   vector<oBase *> missingObjects;
 

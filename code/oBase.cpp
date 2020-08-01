@@ -215,8 +215,33 @@ wstring oBase::getTimeStamp() const {
   else return Modified.getStampString();
 }
 
+string oBase::getTimeStampN() const {
+  if (oe && oe->isClient() && !sqlUpdated.empty()) {
+    return sqlUpdated;
+  }
+  else return Modified.getStampStringN();
+}
+
+
+const string &oBase::getStamp() const {
+  if (oe && oe->isClient() && !sqlUpdated.empty()) {
+    return Modified.getStamp(sqlUpdated);
+  }
+  else
+    return Modified.getStamp();
+}
+
 void oBase::changeId(int newId) {
   Id = newId;
+  oe->updateFreeId(this);
+}
+
+void oBase::addToEvent(oEvent *e, const oBase *src) { 
+  oe = e;
+  addedToEvent = true;
+  oe->updateFreeId(this);
+  if (src)
+    Modified = src->Modified;
 }
 
 oDataInterface oBase::getDI(void) {

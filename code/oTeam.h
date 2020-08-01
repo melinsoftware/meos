@@ -88,9 +88,11 @@ protected:
 
   mutable vector<ComputedLegResult> tComputedResults;
   
-  mutable int _sortTime;
-  mutable int _sortStatus;
-  mutable RunnerStatus _cachedStatus;
+  void setTmpTime(int t) const { tmpSortTime = tmpDefinedTime = t; }
+  mutable int tmpSortTime;
+  mutable int tmpDefinedTime;
+  mutable int tmpSortStatus;
+  mutable RunnerStatus tmpCachedStatus;
 
   mutable vector< vector< vector<int> > > resultCalculationCache;
   
@@ -276,6 +278,8 @@ public:
 
   void set(const xmlobject &xo);
   bool write(xmlparser &xml);
+
+  void merge(const oBase &input) final;
 
   oTeam(oEvent *poe, int id);
   oTeam(oEvent *poe);

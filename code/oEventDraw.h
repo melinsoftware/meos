@@ -25,7 +25,8 @@
 #include "oEvent.h"
 
 struct ClassDrawSpecification {
-  int classID; 
+  int classID;
+  int startGroup = 0;
   int leg;
   mutable int firstStart;
   mutable int interval;
@@ -42,10 +43,12 @@ struct ClassDrawSpecification {
 /** Struct with info to draw a class */
 struct ClassInfo {
   int classId;
+  int startGroupId;
   pClass pc;
 
   int firstStart;
   int interval;
+  int fixedInterval;
 
   int unique;
   int courseId;

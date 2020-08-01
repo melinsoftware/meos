@@ -107,7 +107,7 @@ bool oClass::Write(xmlparser &xml)
   xml.startTag("Class");
 
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.write("Name", Name);
 
   if (Course)
@@ -719,13 +719,13 @@ pClass oEvent::addClass(const wstring &pname, int CourseId, int classId)
     c.Course=getCourse(CourseId);
 
   Classes.push_back(c);
-  Classes.back().addToEvent();
+  Classes.back().addToEvent(this, &c);
   Classes.back().synchronize();
   updateTabs();
   return &Classes.back();
 }
 
-pClass oEvent::addClass(oClass &c)
+pClass oEvent::addClass(const oClass &c)
 {
   if (c.Id==0)
     return 0;
@@ -736,9 +736,9 @@ pClass oEvent::addClass(oClass &c)
   }
 
   Classes.push_back(c);
-  Classes.back().addToEvent();
+  Classes.back().addToEvent(this, &c);
 
-  if (!Classes.back().existInDB() && !c.isImplicitlyCreated()) {
+  if (HasDBConnection && !Classes.back().existInDB() && !c.isImplicitlyCreated()) {
     Classes.back().changed = true;
     Classes.back().synchronize();
   }

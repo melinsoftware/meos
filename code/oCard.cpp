@@ -70,7 +70,7 @@ bool oCard::Write(xmlparser &xml)
   xml.write("Punches", getPunchString());
   xml.write("ReadId", readId);
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.endTag();
 
   return true;
@@ -99,6 +99,17 @@ void oCard::Set(const xmlobject &xo)
       Modified.setStamp(it->getRaw());
     }
   }
+}
+
+pair<int, int> oCard::getCardHash() const {
+  int a = cardNo;
+  int b = readId;
+
+  for (auto &p : punches) {
+    a = a * 31 + p.getTimeInt() * 997 + p.getTypeCode();
+    b = b * 41 + p.getTimeInt() * 97 + p.getTypeCode();
+  }
+  return make_pair(a, b);
 }
 
 void oCard::setCardNo(int c)
@@ -520,8 +531,9 @@ pCard oEvent::addCard(const oCard &oc)
     return 0;
 
   Cards.push_back(oc);
-  Cards.back().addToEvent();
-
+  Cards.back().tOwner = nullptr;
+  Cards.back().addToEvent(this, &oc);
+  qFreeCardId = max(oc.Id, qFreeCardId);
   return &Cards.back();
 }
 

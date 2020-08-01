@@ -101,7 +101,7 @@ bool oControl::write(xmlparser &xml)
   xml.startTag("Control");
 
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.write("Name", Name);
   xml.write("Numbers", codeNumbers());
   xml.write("Status", Status);

@@ -177,6 +177,8 @@ public:
 
   void setName(const wstring &n);
 
+  void merge(const oBase &input) final;
+
   void set(const xmlobject &xo);
   bool write(xmlparser &xml);
 

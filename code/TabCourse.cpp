@@ -263,7 +263,7 @@ void TabCourse::save(gdioutput &gdi, int canSwitchViewMode) {
 
 
   pc->setName(name);
-  bool changedCourse = pc->importControls(gdi.narrow(gdi.getText("Controls")), true);
+  bool changedCourse = pc->importControls(gdi.narrow(gdi.getText("Controls")), true, true);
   pc->setLength(gdi.getTextNo("Length"));
   pc->getDI().setInt("Climb", gdi.getTextNo("Climb"));
   pc->setNumberMaps(gdi.getTextNo("NumberMaps"));

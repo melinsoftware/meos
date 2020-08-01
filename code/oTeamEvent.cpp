@@ -161,7 +161,7 @@ pTeam oEvent::addTeam(const wstring &pname, int ClubId, int ClassId)
   bibStartNoToRunnerTeam.clear();
   Teams.push_back(t);
   pTeam pt = &Teams.back();
-  pt->addToEvent();
+  pt->addToEvent(this, &t);
   teamById[t.Id] = pt;
 
   oe->updateTabs();
@@ -184,7 +184,7 @@ pTeam oEvent::addTeam(const oTeam &t, bool autoAssignStartNo) {
   Teams.push_back(t);
 
   pTeam pt = &Teams.back();
-  pt->addToEvent();
+  pt->addToEvent(this, &t);
 
   for (size_t i = 0; i < pt->Runners.size(); i++) {
     if (pt->Runners[i]) {
@@ -850,23 +850,24 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
       leg = 0;
     if (unsigned(leg) < Runners.size())
       hasRunner = true;
-    _cachedStatus = StatusUnknown;
-    _sortStatus = 0;
-    _sortTime = getLegStartTime(leg);
-    if (_sortTime <= 0)
-      _sortStatus = 1;
+    tmpCachedStatus = StatusUnknown;
+    tmpSortStatus = 0;
+    setTmpTime(getLegStartTime(leg));
+    if (tmpSortTime <= 0)
+      tmpSortStatus = 1;
     return;
   }
   else if (so == ClassPoints) {
     bool totalResult = so == ClassTotalResult;
-    _sortTime = getRunningTime(true) - 7 * 24 * 3600 * getRogainingPoints(true, totalResult);
-    _cachedStatus = getLegStatus(-1, true, totalResult);
+    setTmpTime(getRunningTime(true));
+    tmpSortTime -= 7 * 24 * 3600 * getRogainingPoints(true, totalResult);
+    tmpCachedStatus = getLegStatus(-1, true, totalResult);
   }
   else if (so == ClassKnockoutTotalResult) {
     hasRunner = true;
-    _cachedStatus = StatusUnknown;
-    _sortStatus = 0;
-    _sortTime = 0;
+    tmpCachedStatus = StatusUnknown;
+    tmpSortStatus = 0;
+    setTmpTime(0);
 
     // Count number of races with results
     int numResult = 0;
@@ -880,15 +881,15 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
 
         numResult++;
         lastClassHeat = r->getDCI().getInt("Heat");
-        _cachedStatus = r->tStatus;
-        _sortTime = r->getRunningTime(false);
+        tmpCachedStatus = r->tStatus;
+        setTmpTime(r->getRunningTime(false));
       }
     }
     if (lastClassHeat > 50 || lastClassHeat < 0)
       lastClassHeat = 0;
 
-    unsigned rawStatus = _cachedStatus;
-    _sortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0] - (numResult * 100 + lastClassHeat) * 1000;
+    unsigned rawStatus = tmpCachedStatus;
+    tmpSortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0] - (numResult * 100 + lastClassHeat) * 1000;
 
     return;
   }
@@ -926,36 +927,38 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
       pRunner r = getRunner(lg);
       if (r) {
         if (so == ClassDefaultResult) {
-          _sortTime = r->getRunningTime(false);
-          _cachedStatus = r->getStatus();
+          setTmpTime(r->getRunningTime(false));
+          tmpCachedStatus = r->getStatus();
         }
         else {
-          _sortTime = r->getRunningTime(true);
-          _cachedStatus = r->getStatusComputed();
+          setTmpTime(r->getRunningTime(true));
+          tmpCachedStatus = r->getStatusComputed();
         }
       }
       else {
-        _sortTime = 0;
-        _cachedStatus = StatusUnknown;
+        setTmpTime(0);
+        tmpCachedStatus = StatusUnknown;
       }
     }
     else {
       if (so == ClassDefaultResult) {
-        _sortTime = getLegRunningTime(lg, false, totalResult) + getNumShortening(lg) * 3600 * 24 * 10;
-        _cachedStatus = getLegStatus(lg, false, totalResult);
+        setTmpTime(getLegRunningTime(lg, false, totalResult));
+        tmpSortTime += getNumShortening(lg) * 3600 * 24 * 10;
+        tmpCachedStatus = getLegStatus(lg, false, totalResult);
       }
       else {
-        _sortTime = getLegRunningTime(lg, true, totalResult) + getNumShortening(lg) * 3600 * 24 * 10;
-        _cachedStatus = getLegStatus(lg, true, totalResult);
+        setTmpTime(getLegRunningTime(lg, true, totalResult));
+        tmpSortTime += getNumShortening(lg) * 3600 * 24 * 10;
+        tmpCachedStatus = getLegStatus(lg, true, totalResult);
       }
 
       // Ensure number of restarts has effect on final result
       if (lg == lastIndex)
-        _sortTime += tNumRestarts * 24 * 3600;
+        tmpSortTime += tNumRestarts * 24 * 3600;
     }
   }
-  unsigned rawStatus = _cachedStatus;
-  _sortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0];
+  unsigned rawStatus = tmpCachedStatus;
+  tmpSortStatus = RunnerStatusOrderMap[rawStatus < 100u ? rawStatus : 0];
 }
 
 bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg) {

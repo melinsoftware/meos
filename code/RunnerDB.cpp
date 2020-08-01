@@ -1211,7 +1211,7 @@ void RunnerDB::generateRunnerTableData(Table &table, oDBRunnerEntry *addEntry)
 
   table.reserve(rdb.size());
   oRDB.resize(rdb.size(), oDBRunnerEntry(oe));
-  for (size_t k = 0; k<rdb.size(); k++){
+  for (size_t k = 0; k < rdb.size(); k++) {
     if (!rdb[k].isRemoved()) {
       oRDB[k].init(this, k);
       oRDB[k].addTableRow(table);

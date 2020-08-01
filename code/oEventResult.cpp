@@ -422,13 +422,13 @@ bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultTy
     if (invalidClass) {
       p = 0;
     }
-    else if (it->_cachedStatus == StatusOK) {
+    else if (it->tmpCachedStatus == StatusOK) {
       cPlace++;
 
-      if (it->_sortTime > cTime)
+      if (it->tmpSortTime > cTime)
         vPlace = cPlace;
 
-      cTime = it->_sortTime;
+      cTime = it->tmpSortTime;
 
       p = vPlace;
     }
@@ -443,8 +443,8 @@ bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultTy
     else {
       it->getTeamPlace(sleg).p.update(*this, p, tmpDefaultResult);
       res.version = tmpDefaultResult ? -1 : dataRevision;
-      res.status = it->_cachedStatus;
-      res.time = it->_sortTime;
+      res.status = it->tmpCachedStatus;
+      res.time = it->tmpDefinedTime;
       it->setComputedResult(sleg, res);
     }
   }

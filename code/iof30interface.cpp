@@ -1064,6 +1064,10 @@ void IOF30Interface::readServiceRequestList(gdioutput &gdi, xmlobject &xo, int &
   xo.getObjects("PersonServiceRequest", req);
   entrySourceId = 0;
 
+  auto &sg = oe.getStartGroups(true);
+
+  bool importStartGroups = sg.size() > 0;
+
   for (auto &rx : req) {
     xmlobject xPers = rx.getObject("Person");
     pRunner r = 0;
@@ -1075,9 +1079,13 @@ void IOF30Interface::readServiceRequestList(gdioutput &gdi, xmlobject &xo, int &
       if (xreq) {
         auto xServ = xreq.getObject("Service");
         string type;
-        if (xServ && xServ.getObjectString("type", type)=="StartGroup") {
+        if (xServ && (xServ.getObjectString("type", type)=="StartGroup" || importStartGroups)) {
           int id = xServ.getObjectInt("Id");
-          r->getDI().setInt("Heat", id);
+          if (!importStartGroups)
+            r->getDI().setInt("Heat", id);
+
+          if (sg.count(id))
+            r->setStartGroup(id);
         }
       }
     }
@@ -1389,7 +1397,41 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
       DI.setString("LateEntryFactor", lf);
     }
   }
+
   oe.synchronize();
+  xmlList xService;
+  xo.getObjects("Service", xService);
+  services.clear();
+
+  for (auto &s : xService) {
+    int id = s.getObjectInt("Id");
+    if (id > 0) {      
+      xmlList nameList;
+      s.getObjects("Name", nameList);
+      for (auto s : nameList) {        
+        services.emplace_back(id, s.getw());
+      }
+    }
+  }
+
+  // This is a "hack" to interpret services of the from "XXXX 14:00 - 15:00 XXXX" as a start group.
+  for (auto &srv : services) {
+    vector<wstring> parts;
+    split(srv.name, L" -‒–—‐", parts);
+    vector<int> times;
+    for (auto &p : parts) {
+      for (auto &c : p) {
+        if (c == '.')
+          c = ':';
+      }
+      int t = oe.getRelativeTime(p);
+      if (t > 0)
+        times.push_back(t);
+    }
+    if (times.size() == 2 && times[0] < times[1])
+      oe.setStartGroup(srv.id, times[0], times[1]);
+  }
+  oe.updateStartGroups();
 }
 
 void IOF30Interface::setupClassConfig(int classId, const xmlobject &xTeam, map<int, vector<LegInfo> > &teamClassConfig) {
@@ -3894,7 +3936,7 @@ pCourse IOF30Interface::readCourse(const xmlobject &xcrs) {
   if (pc) {
     pc->setName(name);
     pc->setLength(len);
-    pc->importControls("", false);
+    pc->importControls("", true, false);
     for (size_t i = 0; i<ctrlCode.size(); i++) {
       pc->addControl(ctrlCode[i]->getId());
     }

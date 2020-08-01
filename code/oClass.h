@@ -707,6 +707,8 @@ public:
   void setResultModule(const string &tag);
   const string &getResultModuleTag() const;
 
+  void merge(const oBase &input) final;
+
   oClass(oEvent *poe);
   oClass(oEvent *poe, int id);
   virtual ~oClass();

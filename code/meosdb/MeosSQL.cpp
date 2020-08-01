@@ -755,82 +755,89 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
     if (syncUpdate(queryset, "oEvent", oe) == opStatusFail)
       return opStatusFail;
   }
+  writeTime = true;
+  try {
+    con.query().exec("DELETE FROM oCard");
+    {
+      list<oCard>::iterator it = oe->Cards.begin();
+      while (it != oe->Cards.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
+    }
 
-  con.query().exec("DELETE FROM oCard");
-  {
-    list<oCard>::iterator it=oe->Cards.begin();
-    while(it!=oe->Cards.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
+    con.query().exec("DELETE FROM oClub");
+    {
+      list<oClub>::iterator it = oe->Clubs.begin();
+      while (it != oe->Clubs.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
     }
-  }
+    con.query().exec("DELETE FROM oControl");
+    {
+      list<oControl>::iterator it = oe->Controls.begin();
+      while (it != oe->Controls.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
+    }
+    con.query().exec("DELETE FROM oCourse");
+    {
+      list<oCourse>::iterator it = oe->Courses.begin();
+      while (it != oe->Courses.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
+    }
+    con.query().exec("DELETE FROM oClass");
+    {
+      list<oClass>::iterator it = oe->Classes.begin();
+      while (it != oe->Classes.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
+    }
+    con.query().exec("DELETE FROM oRunner");
+    {
+      list<oRunner>::iterator it = oe->Runners.begin();
+      while (it != oe->Runners.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
+    }
 
-  con.query().exec("DELETE FROM oClub");
-  {
-    list<oClub>::iterator it=oe->Clubs.begin();
-    while(it!=oe->Clubs.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
+    con.query().exec("DELETE FROM oTeam");
+    {
+      list<oTeam>::iterator it = oe->Teams.begin();
+      while (it != oe->Teams.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
     }
-  }
-  con.query().exec("DELETE FROM oControl");
-  {
-    list<oControl>::iterator it=oe->Controls.begin();
-    while(it!=oe->Controls.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
-    }
-  }
-  con.query().exec("DELETE FROM oCourse");
-  {
-    list<oCourse>::iterator it=oe->Courses.begin();
-    while(it!=oe->Courses.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
-    }
-  }
-  con.query().exec("DELETE FROM oClass");
-  {
-    list<oClass>::iterator it=oe->Classes.begin();
-    while(it!=oe->Classes.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
-    }
-  }
-  con.query().exec("DELETE FROM oRunner");
-  {
-    list<oRunner>::iterator it=oe->Runners.begin();
-    while(it!=oe->Runners.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
-    }
-  }
 
-  con.query().exec("DELETE FROM oTeam");
-  {
-    list<oTeam>::iterator it=oe->Teams.begin();
-    while(it!=oe->Teams.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
+    con.query().exec("DELETE FROM oPunch");
+    {
+      list<oFreePunch>::iterator it = oe->punches.begin();
+      while (it != oe->punches.end()) {
+        if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
+          return opStatusFail;
+        ++it;
+      }
     }
   }
-
-  con.query().exec("DELETE FROM oPunch");
-  {
-    list<oFreePunch>::iterator it=oe->punches.begin();
-    while(it!=oe->punches.end()){
-      if (!it->isRemoved() && syncUpdate(&*it, true) == opStatusFail)
-        return opStatusFail;
-      ++it;
-    }
+  catch (...) {
+    writeTime = false;
+    throw;
   }
+  writeTime = false;
   return retValue;
 }
 
@@ -1566,7 +1573,7 @@ OpFailStatus MeosSQL::storeCourse(const Row &row, oCourse &c,
   OpFailStatus success = opStatusOK;
 
   c.Name = fromUTF((string)row["Name"]);
-  c.importControls(string(row["Controls"]), false);
+  c.importControls(string(row["Controls"]), false, false);
   c.Length = row["Length"];
   c.importLegLengths(string(row["Legs"]), false);
 
@@ -1997,8 +2004,12 @@ OpFailStatus MeosSQL::syncRead(bool forceRead, oRunner *r)
 }
 
 string MeosSQL::andWhereOld(oBase *ob) {
-  if (ob->sqlUpdated.empty())
-    return " AND Counter!=" + itos(ob->counter);
+  if (ob->sqlUpdated.empty()) {
+    if (ob->counter != 0)
+      return " AND Counter!=" + itos(ob->counter);
+    else
+      return "";
+  }
   else
     return " AND (Counter!=" + itos(ob->counter) + " OR Modified!='" + ob->sqlUpdated + "')";
 }
@@ -2804,11 +2815,14 @@ mysqlpp::ResNSel MeosSQL::updateCounter(const char *oTable, int id, mysqlpp::Que
     query.reset();
     query << "UPDATE " << oTable << " SET Counter=" << counter;
 
+    if (writeTime)
+      query << ", Modified=Modified";
+
     if (updateqry != 0)
       query << "," << updateqry->str();
 
     query << " WHERE Id=" << id;
-
+        
     mysqlpp::ResNSel res = query.execute();
 
     query.exec("UNLOCK TABLES");
@@ -2869,6 +2883,10 @@ OpFailStatus MeosSQL::syncUpdate(mysqlpp::Query &updateqry,
 
       if (setId)
         query << ", Id=" << ob->Id;
+
+      if (writeTime) {
+        query << ", Modified='" << ob->getTimeStampN() << "'";
+      }
 
       mysqlpp::ResNSel res=query.execute();
       if (res) {
@@ -3184,6 +3202,7 @@ bool MeosSQL::syncListClass(oEvent *oe) {
 
           if (!c) {
             oClass oc(oe, Id);
+            oc.setImplicitlyCreated();
             st = syncRead(true, &oc, false);
             c = oe->addClass(oc);
             if (c != 0) {

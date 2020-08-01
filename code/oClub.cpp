@@ -72,7 +72,7 @@ bool oClub::write(xmlparser &xml)
 
   xml.startTag("Club");
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.write("Name", name);
   for (size_t k=0;k<altNames.size(); k++)
     xml.write("AltName", altNames[k]);
@@ -251,7 +251,7 @@ pClub oEvent::addClub(const oClub &oc)
     return clubIdIndex[oc.Id];
 
   Clubs.push_back(oc);
-  Clubs.back().addToEvent();
+  Clubs.back().addToEvent(this, &oc);
 
   if (!oc.existInDB())
     Clubs.back().synchronize();

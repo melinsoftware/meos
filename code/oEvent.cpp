@@ -64,7 +64,7 @@
 #include "Table.h"
 
 //Version of database
-int oEvent::dbVersion = 83;
+int oEvent::dbVersion = 84;
 
 class RelativeTimeFormatter : public oDataDefiner {
   string name;
@@ -343,6 +343,10 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableString("PayModes", "Betalsätt");
   oEventData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring");
   oEventData->addVariableDate("InvoiceDate", "Fakturadatum");
+  oEventData->addVariableString("StartGroups", "Startgrupper");
+  oEventData->addVariableString("MergeTag", 12, "Tag");
+  oEventData->addVariableString("MergeInfo", "MergeInfo");
+  oEventData->addVariableString("ImportStamp", 14, "Stamp");
 
   oEventData->initData(this, dataSize);
 
@@ -407,6 +411,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableInt("Reference", oDataContainer::oIS32, "Referens", make_shared<oRunner::RunnerReference>());
   oRunnerData->addVariableInt("NoRestart", oDataContainer::oIS8U, "Ej omstart", make_shared<DataBoolean>("NoRestart"));
   oRunnerData->addVariableString("InputResult", "Tidigare resultat", make_shared<DataHider>());
+  oRunnerData->addVariableInt("StartGroup", oDataContainer::oIS32, "Startgrupp");
+  oRunnerData->addVariableInt("Family", oDataContainer::oIS32, "Familj");
 
   oControlData=new oDataContainer(oControl::dataSize);
   oControlData->addVariableInt("TimeAdjust", oDataContainer::oIS32, "Tidsjustering");
@@ -673,7 +679,7 @@ pControl oEvent::addControl(const oControl &oc)
   qFreeControlId = max (qFreeControlId, Id);
 
   Controls.push_back(oc);
-  oe->Controls.back().addToEvent();
+  oe->Controls.back().addToEvent(this, &oc);
 
   return &Controls.back();
 }
@@ -818,7 +824,7 @@ bool oEvent::writeCards(xmlparser &xml)
   return true;
 }
 
-void oEvent::duplicate() {
+void oEvent::duplicate(const wstring &annotationIn) {
   wchar_t file[260];
   wchar_t filename[64];
   wchar_t nameid[64];
@@ -853,18 +859,26 @@ void oEvent::duplicate() {
   swprintf_s(filename, L"%d/%d %d:%02d",
                       st.wDay, st.wMonth, st.wHour, st.wMinute);
 
-  wstring anno = lang.tl(L"Kopia (X)#" + wstring(filename));
-  anno = oldAnno.empty() ? anno : oldAnno + L" " + anno;
-  setAnnotation(anno);
-
+  if (annotationIn.empty()) {
+    wstring anno = lang.tl(L"Kopia (X)#" + wstring(filename));
+    anno = oldAnno.empty() ? anno : oldAnno + L" " + anno;
+    setAnnotation(anno);
+  }
+  else {
+    setAnnotation(annotationIn);
+  }
+  wstring oldTag = getMergeTag();
   try {
+    getMergeTag(true);
     save();
   }
   catch(...) {
+    getDI().setString("MergeTag", oldTag);
     // Restore in case of error
     wcscpy_s(CurrentFile, oldFile);
     currentNameId = oldId;
     setAnnotation(oldAnno);
+    synchronize(true);
     throw;
   }
 
@@ -872,6 +886,8 @@ void oEvent::duplicate() {
   wcscpy_s(CurrentFile, oldFile);
   currentNameId = oldId;
   setAnnotation(oldAnno);
+  getDI().setString("MergeTag", oldTag);
+  synchronize(true);
 }
 
 bool oEvent::save()
@@ -979,7 +995,7 @@ bool oEvent::save(const wstring &fileIn) {
   xml.write("NameId", currentNameId);
   xml.write("Annotation", Annotation);
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
 
   oEventData->write(this, xml);
 
@@ -1082,13 +1098,17 @@ bool oEvent::open(int id)
     if (it->Server.empty()) {
       if (id == it->Id) {
         CompetitionInfo ci=*it; //Take copy
-        return open(ci.FullPath.c_str());
+        return open(ci.FullPath.c_str(), false, false);
       }
     }
     else if (!it->Server.empty()) {
       if (id == (10000000+it->Id)) {
         CompetitionInfo ci=*it; //Take copy
-        return readSynchronize(ci);
+        if (readSynchronize(ci)) {
+          getMergeTag();
+          return true;
+        }
+        return false;
       }
     }
   }
@@ -1116,8 +1136,7 @@ static void toc(const string &str) {
 }
 
 
-bool oEvent::open(const wstring &file, bool Import)
-{
+bool oEvent::open(const wstring &file, bool Import, bool forMerge) {
   if (!Import)
     openFileLock->lockFile(file);
 
@@ -1159,6 +1178,13 @@ bool oEvent::open(const wstring &file, bool Import)
   bool res = open(xml);
   if (res && !Import)
     openFileLock->lockFile(file);
+
+  getMergeTag(Import && !forMerge);
+
+  if (Import && !forMerge) {
+    getDI().setString("ImportStamp", gdibase.widen(getLastModified()));
+  }
+
   return res;
 }
 
@@ -1265,7 +1291,7 @@ bool oEvent::open(const xmlparser &xml) {
         c.Set(&*it);
         if (c.Id>0 && knownClass.count(c.Id) == 0) {
           Classes.push_back(c);
-          Classes.back().addToEvent();
+          Classes.back().addToEvent(this, &c);
           knownClass.insert(c.Id);
         }
       }
@@ -1330,8 +1356,8 @@ bool oEvent::open(const xmlparser &xml) {
         oTeam t(this, 0);
         t.set(*it);
         if (t.Id>0){
-          Teams.push_back(t);
-          teamById[t.Id] = &Teams.back();
+          //Teams.push_back(t);
+          addTeam(t, false);
           Teams.back().apply(ChangeType::Quiet, nullptr);
         }
       }
@@ -1635,10 +1661,10 @@ pCourse oEvent::addCourse(const oCourse &oc)
   qFreeCourseId=max(qFreeCourseId, oc.getId());
 
   pCourse pc = &Courses.back();
-  pc->addToEvent();
+  pc->addToEvent(this, &oc);
 
-  if (!pc->existInDB() && !pc->isImplicitlyCreated()) {
-    pc->updateChanged();
+  if (HasDBConnection && !pc->existInDB() && !pc->isImplicitlyCreated()) {
+    pc->changed = true;
     pc->synchronize();
   }
   courseIdIndex[oc.Id] = pc;
@@ -1786,7 +1812,7 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
   
   Runners.push_back(r);
   pRunner pr=&Runners.back();
-  pr->addToEvent();
+  pr->addToEvent(this, &r);
 
   for (size_t i = 0; i < pr->multiRunner.size(); i++) {
     if (pr->multiRunner[i]) {
@@ -2112,7 +2138,7 @@ pCard oEvent::allocateCard(pRunner owner)
   c.tOwner = owner;
   Cards.push_back(c);
   pCard newCard = &Cards.back();
-  newCard->addToEvent();
+  newCard->addToEvent(this, &c);
   return newCard;
 }
 
@@ -3686,6 +3712,7 @@ void oEvent::newCompetition(const wstring &name)
   openFileLock->unlockFile();
   clear();
 
+
   SYSTEMTIME st;
   GetLocalTime(&st);
 
@@ -3694,6 +3721,9 @@ void oEvent::newCompetition(const wstring &name)
 
   Name = name;
   oEventData->initData(this, sizeof(oData));
+
+  if (!name.empty() && name != L"-")
+    getMergeTag();
 
   getDI().setString("Organizer", getPropertyString("Organizer", L""));
   getDI().setString("Street", getPropertyString("Street", L""));
@@ -5855,719 +5885,6 @@ void oEvent::setCurrency(int factor, const wstring &symbol, const wstring &separ
   }
 }
 
-wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
-                                 bool cloneCourses, bool cloneResult, bool addToDate) {
-
-  if (cloneResult) {
-    cloneTimes = true;
-    cloneCourses = true;
-  }
-  if (cloneTimes)
-    cloneRunners = true;
-
-  oEvent ce(gdibase);
-  ce.newCompetition(Name);
-  ce.ZeroTime = ZeroTime;
-  ce.Date = Date;
-
-  if (addToDate) {
-    SYSTEMTIME st;
-    convertDateYMS(Date, st, false);
-    __int64 absD = SystemTimeToInt64Second(st);
-    absD += 3600*24;
-    ce.Date = convertSystemDate(Int64SecondToSystemTime(absD));
-  }
-  int len = Name.length();
-  if (len > 2 && isdigit(Name[len-1]) && !isdigit(Name[len-2])) {
-    ++ce.Name[len-1]; // E1 -> E2
-  }
-  else
-    ce.Name += L" E2";
-
-  memcpy(ce.oData, oData, sizeof(oData));
-
-  for (oClubList::iterator it = Clubs.begin(); it != Clubs.end(); ++it) {
-    if (it->isRemoved())
-      continue;
-    pClub pc = ce.addClub(it->name, it->Id);
-    memcpy(pc->oData, it->oData, sizeof(pc->oData));
-  }
-
-  if (cloneCourses) {
-    for (oControlList::iterator it = Controls.begin(); it != Controls.end(); ++it) {
-      if (it->isRemoved())
-        continue;
-      pControl pc = ce.addControl(it->Id, 100, it->Name);
-      pc->setNumbers(it->codeNumbers());
-      pc->Status = it->Status;
-      memcpy(pc->oData, it->oData, sizeof(pc->oData));
-    }
-
-    for (oCourseList::iterator it = Courses.begin(); it != Courses.end(); ++it) {
-      if (it->isRemoved())
-        continue;
-      pCourse pc = ce.addCourse(it->Name, it->Length, it->Id);
-      pc->importControls(it->getControls(), false);
-      pc->legLengths = it->legLengths;
-      memcpy(pc->oData, it->oData, sizeof(pc->oData));
-    }
-  }
-
-  for (oClassList::iterator it = Classes.begin(); it != Classes.end(); ++it) {
-    if (it->isRemoved())
-      continue;
-    pClass pc = ce.addClass(it->Name, 0, it->Id);
-    memcpy(pc->oData, it->oData, sizeof(pc->oData));
-    pc->setNumStages(it->getNumStages());
-    pc->legInfo = it->legInfo;
-
-    if (cloneCourses) {
-      pc->Course = ce.getCourse(it->getCourseId());
-      pc->MultiCourse = it->MultiCourse; // Points to wrong competition, but valid for now...
-    }
-  }
-
-  if (cloneRunners) {
-    for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
-      if (it->isRemoved())
-        continue;
-
-      oRunner r(&ce, it->Id);
-      r.sName = it->sName;
-      r.getRealName(r.sName, r.tRealName);
-      r.StartNo = it->StartNo;
-      r.cardNumber = it->cardNumber;
-      r.Club = ce.getClub(it->getClubId());
-      r.Class = ce.getClass(it->getClassId(false));
-
-      if (cloneCourses)
-        r.Course = ce.getCourse(it->getCourseId());
-
-      pRunner pr = ce.addRunner(r, false);
-
-      pr->decodeMultiR(it->codeMultiR());
-      memcpy(pr->oData, it->oData, sizeof(pr->oData));
-
-      if (cloneTimes) {
-        pr->startTime = it->startTime;
-      }
-
-      if (cloneResult) {
-        if (it->Card) {
-          pr->Card = ce.addCard(*it->Card);
-          pr->Card->tOwner = pr;
-        }
-        pr->FinishTime = it->FinishTime;
-        pr->status = it->status;
-      }
-    }
-
-    for (oTeamList::iterator it = Teams.begin(); it != Teams.end(); ++it) {
-      if (it->skip())
-        continue;
-
-      oTeam t(&ce, it->Id);
-
-      t.sName = it->sName;
-      t.StartNo = it->StartNo;
-      t.Club = ce.getClub(it->getClubId());
-      t.Class = ce.getClass(it->getClassId(false));
-
-      if (cloneTimes)
-        t.startTime = it->startTime;
-
-      pTeam pt = ce.addTeam(t, false);
-      memcpy(pt->oData, it->oData, sizeof(pt->oData));
-
-      pt->Runners.resize(it->Runners.size());
-      for (size_t k = 0; k<it->Runners.size(); k++) {
-        int id = it->Runners[k] ? it->Runners[k]->Id : 0;
-        if (id)
-          pt->Runners[k] = ce.getRunner(id, 0);
-      }
-
-      t.apply(ChangeType::Update, nullptr);
-    }
-
-    for (oRunnerList::iterator it = ce.Runners.begin(); it != ce.Runners.end(); ++it) {
-      it->createMultiRunner(false, false);
-    }
-  }
-
-  vector<pRunner> changedClass, changedClassNoResult, assignedVacant, newEntries, notTransfered, noAssign;
-  set<int> dummy;
-  transferResult(ce, dummy, TransferAnyway, false, changedClass, changedClassNoResult, assignedVacant, newEntries, notTransfered, noAssign);
-
-  vector<pTeam> newEntriesT, notTransferedT, noAssignT;
-  transferResult(ce, TransferAnyway, newEntriesT, notTransferedT, noAssignT);
-
-  int eventNumberCurrent = getStageNumber();
-  if (eventNumberCurrent <= 0) {
-    eventNumberCurrent = 1;
-    setStageNumber(eventNumberCurrent);
-  }
-
-  ce.getDI().setString("PreEvent", currentNameId);
-  ce.setStageNumber(eventNumberCurrent + 1);
-  getDI().setString("PostEvent", ce.currentNameId);
-  
-  int nf = getMeOSFeatures().getNumFeatures();
-  for (int k = 0; k < nf; k++) {
-    MeOSFeatures::Feature f = getMeOSFeatures().getFeature(k);
-    if (getMeOSFeatures().hasFeature(f))
-      ce.getMeOSFeatures().useFeature(f, true, ce);
-  }
-  
-  // Transfer lists and list configurations.
-  if (listContainer) {
-    loadGeneralResults(false, false);
-    swap(ce.generalResults, generalResults);
-    try {
-      ce.listContainer = new MetaListContainer(&ce, *listContainer);
-      ce.save();
-    }
-    catch (...) {
-      swap(ce.generalResults, generalResults);
-      throw;
-    }
-
-    swap(ce.generalResults, generalResults);
-  }
-  return ce.CurrentFile;
-}
-
-void oEvent::transferListsAndSave(const oEvent &src) {
-  src.loadGeneralResults(false, false);
-  swap(src.generalResults, generalResults);
-  try {
-    src.getListContainer().synchronizeTo(getListContainer());
-    save();
-  }
-  catch (...) {
-    swap(src.generalResults, generalResults);
-    throw;
-  }
-
-  swap(src.generalResults, generalResults);
-}
-
-
-bool checkTargetClass(pRunner target, pRunner source,
-                      const oClassList &Classes,
-                      const vector<pRunner> &targetVacant,
-                      vector<pRunner> &changedClass,
-                      oEvent::ChangedClassMethod changeClassMethod) {
-  if (changeClassMethod == oEvent::TransferAnyway)
-    return true;
-
-  if (!compareClassName(target->getClass(false), source->getClass(false))) {
-    // Store all vacant positions in the right class
-    int targetClass = -1;
-
-    if (target->getStatus() == StatusOK) {
-      // There is already a result. Do not change class!
-      return false;
-    }
-
-    if (changeClassMethod == oEvent::TransferNoResult)
-      return false; // Do not allow change class, do not transfer result
-
-    for (oClassList::const_iterator cit = Classes.begin(); cit != Classes.end(); ++cit) {
-      if (cit->isRemoved())
-        continue;
-      if (compareClassName(cit->getName(), source->getClass(false))) {
-        targetClass = cit->getId();
-
-        if (targetClass == source->getClassId(false) || cit->getName() == source->getClass(false))
-          break; // Assume exact match
-      }
-    }
-
-    if (targetClass != -1) {
-      set<int> vacantIx;
-      for (size_t j = 0; j < targetVacant.size(); j++) {
-        if (!targetVacant[j])
-          continue;
-        if (targetVacant[j]->getClassId(false) == targetClass)
-          vacantIx.insert(j);
-      }
-      int posToUse = -1;
-      if (vacantIx.size() == 1)
-        posToUse = *vacantIx.begin();
-      else if (vacantIx.size() > 1) {
-        wstring srcBib = source->getBib();
-        if (srcBib.length() > 0) {
-          for (set<int>::iterator tit = vacantIx.begin(); tit != vacantIx.end(); ++tit) {
-            if (targetVacant[*tit]->getBib() == srcBib) {
-              posToUse = *tit;
-              break;
-            }
-          }
-        }
-
-        if (posToUse == -1)
-          posToUse = *vacantIx.begin();
-      }
-
-      if (posToUse != -1) {
-        // Change class or change class vacant
-        changedClass.push_back(target);
-
-        int oldStart = target->getStartTime();
-        wstring oldBib = target->getBib();
-        int oldSN = target->getStartNo();
-        int oldClass = target->getClassId(false);
-        pRunner tgt = targetVacant[posToUse];
-        target->cloneStartTime(tgt);
-        target->setBib(tgt->getBib(), 0, false);
-        target->setStartNo(tgt->getStartNo(), oBase::ChangeType::Update);
-        target->setClassId(tgt->getClassId(false), false);
-
-        tgt->setStartTime(oldStart, true, oBase::ChangeType::Update);
-        tgt->setBib(oldBib, 0, false);
-        tgt->setStartNo(oldSN, oBase::ChangeType::Update);
-        tgt->setClassId(oldClass, false);
-        return true; // Changed to correct class
-      }
-      else if (changeClassMethod == oEvent::ChangeClass) {
-        // Simpliy change class
-        target->setClassId(targetClass, false);
-        return true;
-      }
-    }
-    return false; // Wrong class, ChangeClass (but failed)
-  }
-
-  return true; // Same class, OK
-}
-
-void oEvent::transferResult(oEvent &ce,
-                            const set<int> &allowNewEntries,
-                            ChangedClassMethod changeClassMethod,
-                            bool transferAllNoCompete,
-                            vector<pRunner> &changedClass,
-                            vector<pRunner> &changedClassNoResult,
-                            vector<pRunner> &assignedVacant,
-                            vector<pRunner> &newEntries,
-                            vector<pRunner> &notTransfered,
-                            vector<pRunner> &noAssignmentTarget) {
-
-  inthashmap processed(ce.Runners.size());
-  inthashmap used(Runners.size());
-
-  changedClass.clear();
-  changedClassNoResult.clear();
-  assignedVacant.clear();
-  newEntries.clear();
-  notTransfered.clear();
-  noAssignmentTarget.clear();
-
-  vector<pRunner> targetRunners;
-  vector<pRunner> targetVacant;
-
-  targetRunners.reserve(ce.Runners.size());
-  for (oRunnerList::iterator it = ce.Runners.begin(); it != ce.Runners.end(); ++it) {
-    if (!it->skip()) {
-      if (!it->isVacant())
-        targetRunners.push_back(&*it);
-      else
-        targetVacant.push_back(&*it);
-    }
-  }
-
-  calculateResults({}, ResultType::TotalResult);
-  // Lookup by id
-  for (size_t k = 0; k < targetRunners.size(); k++) {
-    pRunner it = targetRunners[k];
-    pRunner r = getRunner(it->Id, 0);
-    if (!r)
-      continue;
-
-    __int64 id1 = r->getExtIdentifier();
-    __int64 id2 = it->getExtIdentifier();
-
-    if (id1>0 && id2>0 && id1 != id2)
-      continue;
-
-    wstring cnA = canonizeName(it->sName.c_str());
-    wstring cnB = canonizeName(r->sName.c_str());
-    wstring ccnA = canonizeName(it->getClub().c_str());
-    wstring ccnB = canonizeName(r->getClub().c_str());
-
-    if ((id1>0 && id1==id2) || 
-       (r->cardNumber>0 && r->cardNumber == it->cardNumber) ||
-       (it->sName == r->sName) || (cnA == cnB && ccnA == ccnB)) {
-      processed.insert(it->Id, 1);
-      used.insert(r->Id, 1);
-      if (checkTargetClass(it, r, ce.Classes, targetVacant, changedClass, changeClassMethod))
-        it->setInputData(*r);
-      else {
-        it->resetInputData();
-        changedClassNoResult.push_back(it);
-      }
-    }
-  }
-
-  if (processed.size() < int(targetRunners.size())) {
-    // Lookup by card
-    int v;
-    for (size_t k = 0; k < targetRunners.size(); k++) {
-      pRunner it = targetRunners[k];
-      if (processed.lookup(it->Id, v))
-        continue;
-      if (it->getCardNo() > 0) {
-        pRunner r = getRunnerByCardNo(it->getCardNo(), 0, CardLookupProperty::Any);
-
-        if (!r || used.lookup(r->Id, v))
-          continue;
-
-        __int64 id1 = r->getExtIdentifier();
-        __int64 id2 = it->getExtIdentifier();
-
-        if (id1>0 && id2>0 && id1 != id2)
-          continue;
-
-        if ((id1>0 && id1==id2) || (it->sName == r->sName && it->getClub() == r->getClub())) {
-          processed.insert(it->Id, 1);
-          used.insert(r->Id, 1);
-          if (checkTargetClass(it, r, ce.Classes, targetVacant, changedClass, changeClassMethod)) 
-            it->setInputData(*r);
-          else {
-            it->resetInputData();
-            changedClassNoResult.push_back(it);
-          }
-        }
-      }
-    }
-  }
-
-  int v = -1;
-
-  // Store remaining runners
-  vector<pRunner> remainingRunners;
-  for (oRunnerList::iterator it2 = Runners.begin(); it2 != Runners.end(); ++it2) {
-    if (it2->skip() || used.lookup(it2->Id, v))
-      continue;
-    if (it2->isVacant())
-      continue; // Ignore vacancies on source side
-
-    remainingRunners.push_back(&*it2);
-  }
-
-  if (processed.size() < int(targetRunners.size()) && !remainingRunners.empty()) {
-    // Lookup by name / ext id
-    vector<int> cnd;
-    for (size_t k = 0; k < targetRunners.size(); k++) {
-      pRunner it = targetRunners[k];
-      if (processed.lookup(it->Id, v))
-        continue;
-
-      __int64 id1 = it->getExtIdentifier();
-
-      cnd.clear();
-      for (size_t j = 0; j < remainingRunners.size(); j++) {
-        pRunner src = remainingRunners[j];
-        if (!src)
-          continue;
-
-        if (id1 > 0) {
-          __int64 id2 = src->getExtIdentifier();
-          if (id2 == id1) {
-            cnd.clear();
-            cnd.push_back(j);
-            break; //This is the one, if they have the same Id there will be a unique match below
-          }
-        }
-        if (it->sName == src->sName && it->getClub() == src->getClub())
-          cnd.push_back(j);
-      }
-
-      if (cnd.size() == 1) {
-        pRunner &src = remainingRunners[cnd[0]];
-        processed.insert(it->Id, 1);
-        used.insert(src->Id, 1);
-        if (checkTargetClass(it, src, ce.Classes, targetVacant, changedClass, changeClassMethod)) {
-          it->setInputData(*src);
-        }
-        else {
-          it->resetInputData();
-          changedClassNoResult.push_back(it);
-        }
-        src = 0;
-      }
-      else if (cnd.size() > 0) { // More than one candidate
-        int winnerIx = -1;
-        int point = -1;
-        for (size_t j = 0; j < cnd.size(); j++) {
-          pRunner src = remainingRunners[cnd[j]];
-          int p = 0;
-          if (src->getClass(false) == it->getClass(false))
-            p += 1;
-          if (src->getBirthYear() == it->getBirthYear())
-            p += 2;
-          if (p > point) {
-            winnerIx = cnd[j];
-            point = p;
-          }
-        }
-
-        if (winnerIx != -1) {
-          processed.insert(it->Id, 1);
-          pRunner winner = remainingRunners[winnerIx];
-          remainingRunners[winnerIx] = 0;
-
-          used.insert(winner->Id, 1);
-          if (checkTargetClass(it, winner, ce.Classes, targetVacant, changedClass, changeClassMethod)) {
-            it->setInputData(*winner);
-          }
-          else {
-            it->resetInputData();
-            changedClassNoResult.push_back(it);
-          }
-        }
-      }
-    }
-  }
-
-  // Transfer vacancies
-  for (size_t k = 0; k < remainingRunners.size(); k++) {
-    pRunner src = remainingRunners[k];
-    if (!src || used.lookup(src->Id, v))
-      continue;
-
-    bool forceSkip = src->hasFlag(oAbstractRunner::FlagTransferSpecified) && 
-                    !src->hasFlag(oAbstractRunner::FlagTransferNew);
-
-    if (forceSkip) {
-      notTransfered.push_back(src);
-      continue;
-    }
-
-    pRunner targetVacant = ce.getRunner(src->getId(), 0);
-    if (targetVacant && targetVacant->isVacant() && compareClassName(targetVacant->getClass(false), src->getClass(false)) ) {
-      targetVacant->setName(src->getName(), false);
-      targetVacant->setClub(src->getClub());
-      targetVacant->setCardNo(src->getCardNo(), false);
-      targetVacant->cloneData(src);
-      assignedVacant.push_back(targetVacant);
-    }
-    else {
-      pClass dstClass = ce.getClass(src->getClassId(false));
-      if (dstClass && compareClassName(dstClass->getName(), src->getClass(false))) {
-        if ( (!src->hasFlag(oAbstractRunner::FlagTransferSpecified) && allowNewEntries.count(src->getClassId(false)))
-            || src->hasFlag(oAbstractRunner::FlagTransferNew)) {
-          if (src->getClubId() > 0)
-            ce.getClubCreate(src->getClubId(), src->getClub());
-          pRunner dst = ce.addRunner(src->getName(), src->getClubId(), src->getClassId(false),
-                                     src->getCardNo(), src->getBirthYear(), true);
-          dst->cloneData(src);
-          dst->setInputData(*src);
-          newEntries.push_back(dst);
-        }
-        else if (transferAllNoCompete) {
-          if (src->getClubId() > 0)
-            ce.getClubCreate(src->getClubId(), src->getClub());
-          pRunner dst = ce.addRunner(src->getName(), src->getClubId(), src->getClassId(false),
-                                     0, src->getBirthYear(), true);
-          dst->cloneData(src);
-          dst->setInputData(*src);
-          dst->setStatus(StatusNotCompetiting, true, ChangeType::Update);
-          notTransfered.push_back(dst);
-        }
-        else
-          notTransfered.push_back(src);
-      }
-    }
-  }
-
-  // Runners on target side not assigned a result
-  for (size_t k = 0; k < targetRunners.size(); k++) {
-    if (targetRunners[k] && !processed.count(targetRunners[k]->Id)) {
-      noAssignmentTarget.push_back(targetRunners[k]);
-      if (targetRunners[k]->inputStatus == StatusUnknown ||
-           (targetRunners[k]->inputStatus == StatusOK && targetRunners[k]->inputTime == 0)) {
-        targetRunners[k]->inputStatus = StatusNotCompetiting;
-      }
-    }
-  }
-}
-
-void oEvent::transferResult(oEvent &ce,
-                            ChangedClassMethod changeClassMethod,
-                            vector<pTeam> &newEntries,
-                            vector<pTeam> &notTransfered,
-                            vector<pTeam> &noAssignmentTarget) {
-
-  inthashmap processed(ce.Teams.size());
-  inthashmap used(Teams.size());
-
-  newEntries.clear();
-  notTransfered.clear();
-  noAssignmentTarget.clear();
-
-  vector<pTeam> targetTeams;
-
-  targetTeams.reserve(ce.Teams.size());
-  for (oTeamList::iterator it = ce.Teams.begin(); it != ce.Teams.end(); ++it) {
-    if (!it->skip()) {
-      targetTeams.push_back(&*it);
-    }
-  }
-
-  calculateTeamResults(set<int>(), ResultType::TotalResult);
-  // Lookup by id
-  for (size_t k = 0; k < targetTeams.size(); k++) {
-    pTeam it = targetTeams[k];
-    pTeam t = getTeam(it->Id);
-    if (!t)
-      continue;
-
-    __int64 id1 = t->getExtIdentifier();
-    __int64 id2 = it->getExtIdentifier();
-
-    if (id1>0 && id2>0 && id1 != id2)
-      continue;
-
-    if ((id1>0 && id1==id2) || (it->sName == t->sName && it->getClub() == t->getClub())) {
-      processed.insert(it->Id, 1);
-      used.insert(t->Id, 1);
-      it->setInputData(*t);
-      //checkTargetClass(it, r, ce.Classes, targetVacant, changedClass);
-    }
-  }
-
-  int v = -1;
-
-  // Store remaining runners
-  vector<pTeam> remainingTeams;
-  for (oTeamList::iterator it2 = Teams.begin(); it2 != Teams.end(); ++it2) {
-    if (it2->skip() || used.lookup(it2->Id, v))
-      continue;
-    if (it2->isVacant())
-      continue; // Ignore vacancies on source side
-
-    remainingTeams.push_back(&*it2);
-  }
-
-  if (processed.size() < int(targetTeams.size()) && !remainingTeams.empty()) {
-    // Lookup by name / ext id
-    vector<int> cnd;
-    for (size_t k = 0; k < targetTeams.size(); k++) {
-      pTeam it = targetTeams[k];
-      if (processed.lookup(it->Id, v))
-        continue;
-
-      __int64 id1 = it->getExtIdentifier();
-
-      cnd.clear();
-      for (size_t j = 0; j < remainingTeams.size(); j++) {
-        pTeam src = remainingTeams[j];
-        if (!src)
-          continue;
-
-        if (id1 > 0) {
-          __int64 id2 = src->getExtIdentifier();
-          if (id2 == id1) {
-            cnd.clear();
-            cnd.push_back(j);
-            break; //This is the one, if they have the same Id there will be a unique match below
-          }
-        }
-
-        if (it->sName == src->sName && it->getClub() == src->getClub())
-          cnd.push_back(j);
-      }
-
-      if (cnd.size() == 1) {
-        pTeam &src = remainingTeams[cnd[0]];
-        processed.insert(it->Id, 1);
-        used.insert(src->Id, 1);
-        it->setInputData(*src);
-        //checkTargetClass(it, src, ce.Classes, targetVacant, changedClass);
-        src = 0;
-      }
-      else if (cnd.size() > 0) { // More than one candidate
-        int winnerIx = -1;
-        int point = -1;
-        for (size_t j = 0; j < cnd.size(); j++) {
-          pTeam src = remainingTeams[cnd[j]];
-          int p = 0;
-          if (src->getClass(false) == it->getClass(false))
-            p += 1;
-          if (p > point) {
-            winnerIx = cnd[j];
-            point = p;
-          }
-        }
-
-        if (winnerIx != -1) {
-          processed.insert(it->Id, 1);
-          pTeam winner = remainingTeams[winnerIx];
-          remainingTeams[winnerIx] = 0;
-
-          used.insert(winner->Id, 1);
-          it->setInputData(*winner);
-          //checkTargetClass(it, winner, ce.Classes, targetVacant, changedClass);
-        }
-      }
-    }
-  }
-/*
-  // Transfer vacancies
-  for (size_t k = 0; k < remainingRunners.size(); k++) {
-    pRunner src = remainingRunners[k];
-    if (!src || used.lookup(src->Id, v))
-      continue;
-
-    pRunner targetVacant = ce.getRunner(src->getId(), 0);
-    if (targetVacant && targetVacant->isVacant() && compareClassName(targetVacant->getClass(), src->getClass()) ) {
-      targetVacant->setName(src->getName());
-      targetVacant->setClub(src->getClub());
-      targetVacant->setCardNo(src->getCardNo(), false);
-      targetVacant->cloneData(src);
-      assignedVacant.push_back(targetVacant);
-    }
-    else {
-      pClass dstClass = ce.getClass(src->getClassId());
-      if (dstClass && compareClassName(dstClass->getName(), src->getClass())) {
-        if (allowNewEntries.count(src->getClassId())) {
-          if (src->getClubId() > 0)
-            ce.getClubCreate(src->getClubId(), src->getClub());
-          pRunner dst = ce.addRunner(src->getName(), src->getClubId(), src->getClassId(),
-                                     src->getCardNo(), src->getBirthYear(), true);
-          dst->cloneData(src);
-          dst->setInputData(*src);
-          newEntries.push_back(dst);
-        }
-        else if (transferAllNoCompete) {
-          if (src->getClubId() > 0)
-            ce.getClubCreate(src->getClubId(), src->getClub());
-          pRunner dst = ce.addRunner(src->getName(), src->getClubId(), src->getClassId(),
-                                     0, src->getBirthYear(), true);
-          dst->cloneData(src);
-          dst->setInputData(*src);
-          dst->setStatus(StatusNotCompetiting);
-          notTransfered.push_back(dst);
-        }
-        else
-          notTransfered.push_back(src);
-      }
-    }
-  }
-
-  // Runners on target side not assigned a result
-  for (size_t k = 0; k < targetRunners.size(); k++) {
-    if (targetRunners[k] && !processed.count(targetRunners[k]->Id)) {
-      noAssignmentTarget.push_back(targetRunners[k]);
-      if (targetRunners[k]->inputStatus == StatusUnknown ||
-           (targetRunners[k]->inputStatus == StatusOK && targetRunners[k]->inputTime == 0)) {
-        targetRunners[k]->inputStatus = StatusNotCompetiting;
-      }
-    }
-
-  }*/
-}
-
 MetaListContainer &oEvent::getListContainer() const {
   if (!listContainer)
     throw std::exception("Nullpointer exception");
@@ -6944,4 +6261,62 @@ void oEvent::setFlag(TransferFlags flag, bool onoff) {
   int cf = getDCI().getInt("TransferFlags");
   cf = onoff ? (cf | flag) : (cf & (~flag));
   getDI().setInt("TransferFlags", cf);
+}
+
+string oEvent::encodeStartGroups() const {
+  string ss;
+  string tmp;
+  for (auto &sg : startGroups) {
+    tmp = itos(sg.first) + "," +
+        itos(sg.second.first) + "," + itos(sg.second.second);
+    if (ss.empty())
+      ss = tmp;
+    else
+      ss += ";" + tmp;
+  }
+  return ss;
+}
+
+void oEvent::decodeStartGroups(const string &enc) const {
+  vector<string> g, sg;
+  split(enc, ";", g);
+  startGroups.clear();
+  for (string &grp : g) {
+    split(grp, ",", sg);
+    if (sg.size() == 3) {
+      int id = atoi(sg[0].c_str());
+      int start = atoi(sg[1].c_str());
+      int end = atoi(sg[2].c_str());
+      startGroups.emplace(id, make_pair(start, end));
+    }
+  }
+}
+
+void oEvent::setStartGroup(int id, int firstStart, int lastStart) {
+  if (firstStart < 0)
+    startGroups.erase(id);
+  else
+    startGroups[id] = make_pair(firstStart, lastStart);
+}
+
+void oEvent::updateStartGroups() {
+  getDI().setString("StartGroups", gdibase.widen(encodeStartGroups()));
+}
+
+void oEvent::readStartGroups() const {
+  auto &sg = getDCI().getString("StartGroups");
+  decodeStartGroups(gdibase.narrow(sg));
+}
+
+const map<int, pair<int, int>> &oEvent::getStartGroups(bool reload) const {
+  if (reload)
+    readStartGroups();
+  return startGroups;
+}
+
+pair<int, int> oEvent::getStartGroup(int id) const {
+  if (startGroups.count(id))
+    return startGroups.find(id)->second;
+  else
+    return make_pair(-1, -1);
 }

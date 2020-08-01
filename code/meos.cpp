@@ -116,7 +116,7 @@ HHOOK g_hhk; //- handle to the hook procedure.
 
 HWND hMainTab=NULL;
 
-list<TabObject> *tabList=0;
+list<TabObject> *tabList = nullptr;
 void scrollVertical(gdioutput *gdi, int yInc, HWND hWnd);
 static int currentFocusIx = 0;
 
@@ -481,7 +481,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   tabAutoRegister(0);
   tabList->clear();
   delete tabList;
-  tabList=0;
+  tabList = nullptr;
 
   delete autoTask;
   autoTask = 0;
@@ -994,6 +994,9 @@ void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
   if (!force && onlyMain==onlyMainP && skipTeam==skipTeamP && skipSpeaker==skipSpeakerP &&
       skipEconomy==skipEconomyP && skipLists==skipListsP &&
       skipRunners==skipRunnersP && skipControls==skipControlsP && skipCourses == skipCoursesP)
+    return;
+
+  if (!tabList)
     return;
 
   onlyMainP = onlyMain;

@@ -65,8 +65,6 @@ protected:
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
 
-  static bool comparePunchTime(oPunch *p1, oPunch *p2);
-
   void changedObject();
 
   mutable string punchString;
@@ -131,6 +129,9 @@ public:
   void setCardNo(int c);
   void importPunches(const string &s);
   const string &getPunchString() const;
+
+  void merge(const oBase &input) final;
+  pair<int, int> getCardHash() const;
 
   void Set(const xmlobject &xo);
   bool Write(xmlparser &xml);

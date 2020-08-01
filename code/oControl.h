@@ -219,6 +219,8 @@ public:
   int getFirstNumber() const;
   void getNumbers(vector<int> &numbers) const;
 
+  void merge(const oBase &input) final;
+
   void set(const xmlobject *xo);
   void set(int pId, int pNumber, wstring pName);
   bool write(xmlparser &xml);

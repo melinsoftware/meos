@@ -84,7 +84,7 @@ bool oCourse::Write(xmlparser &xml)
   xml.startTag("Course");
 
   xml.write("Id", Id);
-  xml.write("Updated", Modified.getStamp());
+  xml.write("Updated", getStamp());
   xml.write("Name", Name);
   xml.write("Length", Length);
   xml.write("Controls", getControls());
@@ -114,7 +114,7 @@ void oCourse::Set(const xmlobject *xo)
       Name=it->getw();
     }
     else if (it->is("Controls")){
-      importControls(it->getRaw(), false);
+      importControls(it->getRaw(), false, false);
     }
     else if (it->is("Legs")) {
       importLegLengths(it->getRaw(), false);
@@ -266,7 +266,7 @@ void oCourse::splitControls(const string &ctrls, vector<int> &nr) {
   }
 }
 
-bool oCourse::importControls(const string &ctrls, bool updateLegLengths) {
+bool oCourse::importControls(const string &ctrls, bool setChanged, bool updateLegLengths) {
   int oldNC = nControls;
   vector<int> oldC;
   for (int k = 0; k<nControls; k++)
@@ -325,7 +325,8 @@ bool oCourse::importControls(const string &ctrls, bool updateLegLengths) {
     changed |= oldC[k] != Controls[k]->getId();
 
   if (changed) {
-    updateChanged();
+    if (setChanged)
+      updateChanged();
 
     oe->punchIndex.clear();
   }

@@ -319,6 +319,7 @@
     <ClCompile Include="oEventResult.cpp" />
     <ClCompile Include="oEventSpeaker.cpp" />
     <ClCompile Include="oEventSQL.cpp" />
+    <ClCompile Include="oevent_transfer.cpp" />
     <ClCompile Include="oFreeImport.cpp" />
     <ClCompile Include="oFreePunch.cpp" />
     <ClCompile Include="oImportExport.cpp" />

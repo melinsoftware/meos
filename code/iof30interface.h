@@ -48,6 +48,14 @@ typedef oClub * pClub;
 typedef oTeam * pTeam;
 typedef oCourse *pCourse;
 
+struct XMLService {
+  int id;
+  wstring name;
+
+  XMLService(int id, const wstring &name) : id(id), name(name) {}
+  XMLService() {}
+};
+
 class IOF30Interface {
   oEvent &oe;
 
@@ -66,6 +74,8 @@ class IOF30Interface {
   void operator=(const IOF30Interface &);
 
   set<wstring> matchedClasses;
+
+  list<XMLService> services;
 
   struct LegInfo {
     int maxRunners;

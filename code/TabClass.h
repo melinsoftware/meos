@@ -163,8 +163,13 @@ class TabClass :
 
   vector<string> currentResultModuleTags;
   void fillResultModules(gdioutput &gdi, pClass pc);
+
+  shared_ptr<GuiHandler> startGroupHandler;
+
 public:
-  
+  void loadStartGroupSettings(gdioutput &gdi, bool reload);
+  void drawStartGroups(gdioutput &gdi);
+
   void clearCompetitionData();
 
   void closeWindow(gdioutput &gdi);

@@ -134,9 +134,10 @@ class TabCompetition :
 
   void listBackups(gdioutput &gdi);
 
-  
-  void checkRentCards(gdioutput &gdi);
-
+  shared_ptr<GuiHandler> mergeHandler;
+  shared_ptr<oEvent> mergeEvent;
+  void mergeCompetition(gdioutput &gdi);
+  wstring mergeFile;
 protected:
   void clearCompetitionData();
 
