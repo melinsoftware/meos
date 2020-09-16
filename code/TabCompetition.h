@@ -135,9 +135,11 @@ class TabCompetition :
   void listBackups(gdioutput &gdi);
 
   shared_ptr<GuiHandler> mergeHandler;
-  shared_ptr<oEvent> mergeEvent;
   void mergeCompetition(gdioutput &gdi);
   wstring mergeFile;
+
+  wstring constructBase(const wstring &r, const wstring &mt) const;
+
 protected:
   void clearCompetitionData();
 

@@ -824,7 +824,7 @@ bool oEvent::writeCards(xmlparser &xml)
   return true;
 }
 
-void oEvent::duplicate(const wstring &annotationIn) {
+void oEvent::duplicate(const wstring &annotationIn, bool keepTags) {
   wchar_t file[260];
   wchar_t filename[64];
   wchar_t nameid[64];
@@ -854,7 +854,8 @@ void oEvent::duplicate(const wstring &annotationIn) {
   wstring oldAnno = getAnnotation();
 
   wcscpy_s(CurrentFile, file);
-  currentNameId = nameid;
+  if (!keepTags)
+    currentNameId = nameid;
 
   swprintf_s(filename, L"%d/%d %d:%02d",
                       st.wDay, st.wMonth, st.wHour, st.wMinute);
@@ -869,7 +870,8 @@ void oEvent::duplicate(const wstring &annotationIn) {
   }
   wstring oldTag = getMergeTag();
   try {
-    getMergeTag(true);
+    if (!keepTags)
+      getMergeTag(true);
     save();
   }
   catch(...) {

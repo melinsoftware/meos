@@ -86,7 +86,7 @@ public:
   static void rehashPunches(oEvent &oe, int cardNo, pFreePunch newPunch);
   static bool disableHashing;
 
-  void merge(const oBase &input) final;
+  void merge(const oBase &input, const oBase *base) final;
 
   oFreePunch(oEvent *poe, int card, int time, int type);
   oFreePunch(oEvent *poe, int id);

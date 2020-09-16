@@ -115,7 +115,7 @@ protected:
   void setLocalObject() { localObject = true; }
 
   // Merge into this entity
-  virtual void merge(const oBase &input) = 0;
+  virtual void merge(const oBase &input, const oBase *base) = 0;
 
 public:
 

@@ -43,7 +43,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 
 
-void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
+void oEvent::merge(oEvent &src, oEvent *base, bool allowRemove, int &numAdd, int &numRemove, int &numUpdate) {
   numAdd = 0;
   numRemove = 0;
   numUpdate = 0;
@@ -76,26 +76,61 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
   auto updateNewItem = [&addMinTime, &numAdd](oBase *pNew, const oBase &src) {
     if (pNew) {
       numAdd++;
-      pNew->merge(src);
+      pNew->merge(src, nullptr);
       pNew->synchronize();
       if (pNew->Modified.getStamp() < addMinTime)
         pNew->Modified.setStamp(addMinTime);
     }
   };
 
-  auto mergeItem = [&numUpdate](oBase *pExisting, const oBase &src) {
+  auto mergeItem = [&numUpdate](oBase *pExisting, const oBase &src, const oBase *baseItem) {
     numUpdate++;
     string oldStamp = pExisting->Modified.getStamp();
-    pExisting->merge(src);
+    pExisting->merge(src, baseItem);
     if (pExisting->Modified.getStamp() < oldStamp)
       pExisting->Modified.setStamp(oldStamp);
   };
 
-  auto computeRemove = [&bt](const auto &list, const set<int> &existing, set<int> &remove) {
+  auto getBaseMap = [](auto &list) {
+    map<int, oBase *> ret;
+    for (auto &c : list) 
+      ret.emplace(c.getId(), &c);    
+    return ret;
+  };
+  map<int, oBase*> baseMap;
+
+  auto computeRemove = [&bt, &baseMap](const auto &list, const set<int> &existing, set<int> &remove) {
     for (auto &c : list) {
+      if (!baseMap.empty() && !baseMap.count(c.Id))
+        continue; // Did non exist in base -> not removed
       if (!c.isRemoved() && !existing.count(c.Id) && c.getStamp() < bt)
         remove.insert(c.Id);
     }
+  };
+  
+  // Swap id
+  auto changeBaseId = [&baseMap](int oldId, int newId) {
+    oBase *rOld = nullptr, *rNew = nullptr;
+    auto ob = baseMap.find(newId);
+    if (ob != baseMap.end() && ob->second) {
+      rOld = ob->second;
+      rOld->changeId(oldId);
+    }
+    ob = baseMap.find(oldId);
+    if (ob != baseMap.end() && ob->second) {
+      rNew = ob->second;
+      rNew->changeId(newId);
+    }
+    baseMap[newId] = rNew;
+    baseMap[oldId] = rOld;
+  };
+
+  auto getBaseObject = [&baseMap](const oBase &src) {
+    auto res = baseMap.find(src.getId());
+    if (res != baseMap.end())
+      return res->second;
+    else
+      return (oBase*)nullptr;
   };
 
   {
@@ -105,8 +140,12 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         ctrl[c.Id] = &c;
     }
 
+    if (base)
+      baseMap = getBaseMap(base->Controls);
+
     set<int> srcControl;
     for (const oControl &c : src.Controls) {
+      const oBase *baseObj = getBaseObject(c);
       const string &stmp = c.getStamp();
       if (!c.isRemoved()) {
         if (stmp > previousMergeTime) {
@@ -114,7 +153,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
             thisMergeTime = stmp;
           auto mc = ctrl.find(c.Id);
           if (mc != ctrl.end()) {
-            mergeItem(mc->second, c);
+            mergeItem(mc->second, c, baseObj);
           }
           else {
             pControl pNew = addControl(c);
@@ -135,8 +174,12 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         crs[c.Id] = &c;
     }
 
+    if (base)
+      baseMap = getBaseMap(base->Courses);
+
     set<int> srcCourse;
     for (const oCourse &c : src.Courses) {
+      const oBase *baseObj = getBaseObject(c);
       const string &stmp = c.getStamp();
       if (!c.isRemoved()) {
         bool okMerge = stmp > previousMergeTime;
@@ -145,7 +188,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         auto mc = crs.find(c.Id);
         if (mc != crs.end()) {
           if (okMerge)
-            mergeItem(mc->second, c);
+            mergeItem(mc->second, c, baseObj);
         }
         else if (okMerge) {
           pCourse pNew = addCourse(c);          
@@ -168,9 +211,13 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         clsN[c.Name] = &c;
       }
     }
+    
+    if (base)
+      baseMap = getBaseMap(base->Classes);
 
     set<int> srcClass;
     for (oClass &c : src.Classes) {
+      oBase *baseObj = getBaseObject(c);
       const string &stmp = c.getStamp();
       bool merged = false;
       if (!c.isRemoved()) {
@@ -183,23 +230,24 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         if (mc != cls.end()) {
           if (compareClassName(mc->second->Name, c.Name)) {
             if (okMerge)
-              mergeItem(mc->second, c);
+              mergeItem(mc->second, c, baseObj);
             merged = true;
           }
         }
 
         auto updateIdCls = [&](int id) {
-          pClass other = src.getClass(id);
-          if (other)
+          changeBaseId(c.Id, id);
+          pClass other = src.getClass(id);          
+          if (other) 
             other->changeId(c.Id);
-          c.changeId(id);
+          c.changeId(id);          
         };
 
         if (!merged) {
           auto mcN = clsN.find(c.Name);
           if (mcN != clsN.end()) {
             if (okMerge)
-              mergeItem(mcN->second, c);
+              mergeItem(mcN->second, c, baseObj);
             merged = true;
             updateIdCls(mcN->second->Id);
           }
@@ -230,8 +278,12 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         crdByHash[c.getCardHash()] = &c;
       }
     }
+    
+    if (base)
+      baseMap = getBaseMap(base->Cards);
 
     for (oCard &c : src.Cards) {
+      const oBase *baseObj = getBaseObject(c);
       const string &stmp = c.getStamp();
       if (!c.isRemoved() && stmp > previousMergeTime) {
         if (stmp > thisMergeTime)
@@ -244,12 +296,13 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
           auto c2 = mc->second;
           auto p2 = c2->getNumPunches() > 0 ? c2->getPunchByIndex(c2->getNumPunches() - 1)->getTimeInt() : 0;
           if (p1 == p2)
-            mergeItem(mc->second, c), merged = true;
+            mergeItem(mc->second, c, baseObj), merged = true;
         }
         
         auto updateIdCrd = [&](int id) {
+          changeBaseId(c.Id, id);
           pCard other = src.getCard(id);
-          if (other)
+          if (other) 
             other->changeId(c.Id);
           c.changeId(id);
         };
@@ -257,7 +310,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         if (!merged) {
           auto mcN = crdByHash.find(c.getCardHash());
           if (mcN != crdByHash.end()) {
-            mergeItem(mcN->second, c);
+            mergeItem(mcN->second, c, baseObj);
             merged = true;
             updateIdCrd(mcN->second->Id);
           }
@@ -288,9 +341,13 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         clbByName[c.getName()] = &c;
       }
     }
+    
+    if (base)
+      baseMap = getBaseMap(base->Clubs);
 
     set<int> srcClub;
     for (oClub &c : src.Clubs) {
+      const oBase *baseObj = getBaseObject(c);
       const string &stmp = c.getStamp();
       if (!c.isRemoved()) {
         bool okMerge = stmp > previousMergeTime;
@@ -304,12 +361,13 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
           if ((c.getExtIdentifier() != 0 && c.getExtIdentifier() == mc->second->getExtIdentifier())
               || c.getName() == mc->second->getName()) {
             if (okMerge)
-              mergeItem(mc->second, c);
+              mergeItem(mc->second, c, baseObj);
             merged = true;
           }
         }
 
         auto updateIdClb = [&](int id) {
+          changeBaseId(c.Id, id);
           pClub other = src.getClub(id);
           if (other)
             other->changeId(c.Id);
@@ -320,7 +378,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
           auto mcN = clbByExt.find(c.getExtIdentifier());
           if (mcN != clbByExt.end()) {
             if (okMerge)
-              mergeItem(mcN->second, c);
+              mergeItem(mcN->second, c, baseObj);
             merged = true;
             updateIdClb(mcN->second->Id);
           }
@@ -330,7 +388,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
           auto mcN = clbByName.find(c.getName());
           if (mcN != clbByName.end()) {
             if (okMerge)
-              mergeItem(mcN->second, c);
+              mergeItem(mcN->second, c, baseObj);
             merged = true;
             updateIdClb(mcN->second->Id);
           }
@@ -356,6 +414,9 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
     map<int, pRunner> rn;
     map<int64_t, pRunner> rnByExt;
     map<pair<int, wstring>, pRunner> rnByCardName;
+    
+    if (base)
+      baseMap = getBaseMap(base->Runners);
 
     for (oRunner &r : Runners) {
       if (!r.isRemoved()) {
@@ -367,6 +428,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
     }
     set<int> srcRunner;
     for (oRunner &r : src.Runners) {
+      const oBase *baseObj = getBaseObject(r);
       const string &stmp = r.getStamp();
       if (!r.isRemoved()) {
         bool okMerge = stmp > previousMergeTime;
@@ -382,15 +444,16 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
               || mc->second->isVacant()) {
 
             if (okMerge)
-              mergeItem(mc->second, r);
+              mergeItem(mc->second, r, baseObj);
             merged = true;
           }
         }
 
         auto updateIdR = [&](int id) {
-          pRunner other = src.getRunner(id, 0);
-          if (other)
-            other->changeId(src.Id);
+          changeBaseId(r.Id, id);
+          pRunner other = src.getRunner(id, 0);          
+          if (other) 
+            other->changeId(r.Id);
           r.changeId(id);
         };
 
@@ -398,7 +461,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
           auto mcN = rnByExt.find(r.getExtIdentifier());
           if (mcN != rnByExt.end()) {
             if (okMerge)
-              mergeItem(mcN->second, r);
+              mergeItem(mcN->second, r, baseObj);
             merged = true;
             updateIdR(mcN->second->Id);
           }
@@ -408,7 +471,7 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
           auto mcN = rnByCardName.find(make_pair(r.getCardNo(), r.sName));
           if (mcN != rnByCardName.end()) {
             if (okMerge)
-              mergeItem(mcN->second, r);
+              mergeItem(mcN->second, r, baseObj);
             merged = true;
             updateIdR(mcN->second->Id);
           }
@@ -441,8 +504,12 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
       }
     }
 
+    if (base)
+      baseMap = getBaseMap(base->Teams);
+
     set<int> srcTeam;
     for (oTeam &t : src.Teams) {
+      const oBase *baseObj = getBaseObject(t);
       const string &stmp = t.getStamp();
       if (!t.isRemoved()) {
         bool okMerge = stmp > previousMergeTime;
@@ -454,24 +521,24 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
         if (mc != tm.end()) {
           if (t.getClubId() == mc->second->getClubId()) {
             if (okMerge)
-              mergeItem(mc->second, t);
+              mergeItem(mc->second, t, baseObj);
             merged = true;
           }
         }
 
         auto updateIdT = [&](int id) {
+          changeBaseId(t.Id, id);
           pTeam other = src.getTeam(id);
           if (other)
-            other->changeId(src.Id);
+            other->changeId(t.Id);
           t.changeId(id);
         };
-
-  
+          
         if (!merged) {
           auto mcN = tmByClassName.find(make_pair(t.getClassId(false), t.getName()));
           if (mcN != tmByClassName.end()) {
             if (okMerge)
-              mergeItem(mcN->second, t);
+              mergeItem(mcN->second, t, baseObj);
             merged = true;
             updateIdT(mcN->second->Id);
           }
@@ -503,12 +570,14 @@ void oEvent::merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate) {
     }
   };
 
-  removeEnts(rTeam, [this](int id) -> pBase {return getTeam(id); });
-  removeEnts(rRunner, [this](int id) -> pBase {return getRunner(id, 0); });
-  removeEnts(rClub, [this](int id) -> pBase {return getClub(id); });
-  removeEnts(rClass, [this](int id) -> pBase {return getClass(id); });
-  removeEnts(rCourse, [this](int id) -> pBase {return getCourse(id); });
-  removeEnts(rControl, [this](int id) -> pBase {return getControl(id); });
+  if (allowRemove) {
+    removeEnts(rTeam, [this](int id) -> pBase {return getTeam(id); });
+    removeEnts(rRunner, [this](int id) -> pBase {return getRunner(id, 0); });
+    removeEnts(rClub, [this](int id) -> pBase {return getClub(id); });
+    removeEnts(rClass, [this](int id) -> pBase {return getClass(id); });
+    removeEnts(rCourse, [this](int id) -> pBase {return getCourse(id); });
+    removeEnts(rControl, [this](int id) -> pBase {return getControl(id); });
+  }
 
   wstring mtOut(thisMergeTime.begin(), thisMergeTime.end());
   addMergeInfo(mergeTag, mtOut);
@@ -1228,102 +1297,149 @@ void oEvent::transferResult(oEvent &ce,
   }*/
 }
 
-void oAbstractRunner::merge(const oBase &input) {
+void oAbstractRunner::merge(const oBase &input, const oBase *baseIn) {
   const oAbstractRunner &src = dynamic_cast<const oAbstractRunner&>(input);
-  setName(src.sName, false);
+  const oAbstractRunner *base = dynamic_cast<const oAbstractRunner*>(baseIn);
 
-  setStartTime(src.startTime, true, ChangeType::Update, false);
-  setFinishTime(src.FinishTime);
-  setStatus(src.status, true, ChangeType::Update);
-  setStartNo(src.StartNo, ChangeType::Update);
-  setClubId(src.getClubId());
-  setClassId(src.getClassId(false), false);
+  if (base == nullptr || base->sName != src.sName)
+    setName(src.sName, false);
+
+  if (base == nullptr || base->startTime != src.startTime)
+    setStartTime(src.startTime, true, ChangeType::Update, false);
+
+  if (base == nullptr || base->FinishTime != src.FinishTime)
+    setFinishTime(src.FinishTime);
+
+  if (base == nullptr || base->status != src.status)
+    setStatus(src.status, true, ChangeType::Update);
+
+  if (base == nullptr || base->StartNo != src.StartNo)
+    setStartNo(src.StartNo, ChangeType::Update);
+
+  if (base == nullptr || base->getClub() != src.getClub())
+    setClubId(src.getClubId());
+
+  if (base == nullptr || base->getClass(false) != src.getClass(false))
+    setClassId(src.getClassId(false), false);
   
-  setInputPlace(src.inputPlace);
-  if (inputTime != src.inputTime) {
-    inputTime = src.inputTime;
-    updateChanged();
+  if (base == nullptr || base->inputPlace != src.inputPlace)
+    setInputPlace(src.inputPlace);
+
+  if (base == nullptr || base->inputTime != src.inputTime) {
+    if (inputTime != src.inputTime) {
+      inputTime = src.inputTime;
+      updateChanged();
+    }
   }
-  setInputStatus(src.inputStatus);
-  setInputPoints(src.inputPoints);
+  if (base == nullptr || base->inputStatus != src.inputStatus)
+    setInputStatus(src.inputStatus);
+  
+  if (base == nullptr || base->inputPoints != src.inputPoints)
+   setInputPoints(src.inputPoints);
 }
 
-void oRunner::merge(const oBase &input) {
-  oAbstractRunner::merge(input);
+void oRunner::merge(const oBase &input, const oBase *baseIn) {
+  oAbstractRunner::merge(input, baseIn);
 
   const oRunner &src = dynamic_cast<const oRunner&>(input);
-  setCourseId(src.getCourseId());
-  if (src.getCardId() != 0)
-    setCard(src.getCardId());
-  setCardNo(src.getCardNo(), false);
+  const oRunner *base = dynamic_cast<const oRunner*>(baseIn);
 
-  if (memcmp(oData, src.oData, sizeof(oData)) != 0) {
-    memcpy(oData, src.oData, sizeof(oData));
+  if (base == nullptr || base->getCourseId() != src.getCourseId())
+    setCourseId(src.getCourseId());
+  
+  if ((base == nullptr && src.getCardId() != 0) || (base != nullptr && base->getCardId() != src.getCardId()))
+    setCard(src.getCardId());
+
+  if (base == nullptr || base->getCardNo() != src.getCardNo())
+    setCardNo(src.getCardNo(), false);
+
+  if (getDI().merge(input, base))
     updateChanged();
-  }
+
   synchronize(true);
 }
 
-void oTeam::merge(const oBase &input) {
-  oAbstractRunner::merge(input);
+void oTeam::merge(const oBase &input, const oBase *baseIn) {
+  oAbstractRunner::merge(input, baseIn);
 
   const oTeam &src = dynamic_cast<const oTeam&>(input);
+  const oTeam *base = dynamic_cast<const oTeam*>(baseIn);
 
-  bool same = src.Runners.size() == Runners.size();
-  vector<int> r(src.Runners.size());
-  for (size_t i = 0; i < src.Runners.size(); i++) {
-    if (src.Runners[i]) {
-      r[i] = src.Runners[i]->Id;
-      src.Runners[i]->tInTeam = nullptr;
-    }
-    if (same) {
-      int rc = Runners[i] ? Runners[i]->Id : 0;
-      if (rc != r[i])
-        same = false;
-    }
-  }
-
-  importRunners(r);
-  if (!same)
-    updateChanged();
+  auto getRId = [](const oTeam &t, int ix) {
+    pRunner r = t.getRunner(ix);
+    return r ? r->getId() : 0;
+  };
   
-  if (memcmp(oData, src.oData, sizeof(oData)) != 0) {
-    memcpy(oData, src.oData, sizeof(oData));
-    updateChanged();
+  bool chR;
+  if (base) {
+    chR = base->Runners.size() != src.Runners.size();
+    if (!chR) {
+      for (size_t i = 0; i < src.Runners.size(); i++) {
+        if (getRId(src, i) != getRId(*base, i))
+          chR = true;
+      }
+    }
   }
+  else chR = true;
+
+  if (chR) {
+    bool same = src.Runners.size() == Runners.size();
+    vector<int> r(src.Runners.size());
+    for (size_t i = 0; i < src.Runners.size(); i++) {
+      if (src.Runners[i]) {
+        r[i] = src.Runners[i]->Id;
+        src.Runners[i]->tInTeam = nullptr;
+      }
+      if (same) {
+        int rc = Runners[i] ? Runners[i]->Id : 0;
+        if (rc != r[i])
+          same = false;
+      }
+    }
+    
+    if (!same) {
+      importRunners(r);
+      updateChanged();
+    }
+  }
+  
+  if (getDI().merge(input, base))
+    updateChanged();
+
   synchronize(true);
 }
 
-void oControl::merge(const oBase &input) {
+void oControl::merge(const oBase &input, const oBase *base) {
   const oControl &src = dynamic_cast<const oControl&>(input);
   if (src.Name.length() > 0)
     setName(src.Name);
   setNumbers(src.codeNumbers());
   setStatus(src.getStatus());
-  if (memcmp(oData, src.oData, sizeof(oData)) != 0) {
-    memcpy(oData, src.oData, sizeof(oData));
+  if (getDI().merge(input, base))
     updateChanged();
-  }
+
   synchronize(true);
 }
 
-void oCourse::merge(const oBase &input) {
+void oCourse::merge(const oBase &input, const oBase *baseIn) {
   const oCourse &src = dynamic_cast<const oCourse&>(input);
+  const oCourse *base = dynamic_cast<const oCourse*>(baseIn);
 
-  if (src.Name.length() > 0)
+  if ((base == nullptr || base->Name != src.Name) && (src.Name.length() > 0))
     setName(src.Name);
-  setLength(src.Length);
+  if (!base || base->Length != src.Length)
+    setLength(src.Length);
+
   importControls(src.getControls(), true, false);
   importLegLengths(src.getLegLengths(), true);
 
-  if (memcmp(oData, src.oData, sizeof(oData)) != 0) {
-    memcpy(oData, src.oData, sizeof(oData));
+  if (getDI().merge(input, base))
     updateChanged();
-  }
+
   synchronize(true);
 }
 
-void oClass::merge(const oBase &input) {
+void oClass::merge(const oBase &input, const oBase *base) {
   const oClass &src = dynamic_cast<const oClass&>(input);
 
   if (src.Name.length() > 0)
@@ -1351,25 +1467,23 @@ void oClass::merge(const oBase &input) {
     }
   }
 
-  if (memcmp(oData, src.oData, sizeof(oData)) != 0) {
-    memcpy(oData, src.oData, sizeof(oData));
+  if (getDI().merge(input, base))
     updateChanged();
-  }
+
   synchronize(true);
 }
 
-void oClub::merge(const oBase &input) {
+void oClub::merge(const oBase &input, const oBase *base) {
   const oClub &src = dynamic_cast<const oClub&>(input);
 
   setName(src.getName());
-  if (memcmp(oData, src.oData, sizeof(oData)) != 0) {
-    memcpy(oData, src.oData, sizeof(oData));
+  if (getDI().merge(input, base))
     updateChanged();
-  }
+
   synchronize(true);
 }
 
-void oCard::merge(const oBase &input) {
+void oCard::merge(const oBase &input, const oBase *base) {
   const oCard &src = dynamic_cast<const oCard&>(input);
 
   setCardNo(src.getCardNo());
@@ -1384,19 +1498,19 @@ void oCard::merge(const oBase &input) {
   synchronize(true);
 }
 
-void oPunch::merge(const oBase &input) {
+void oPunch::merge(const oBase &input, const oBase *base) {
   const oPunch &src = dynamic_cast<const oPunch&>(input);
 // Not implemented
 }
 
 
-void oFreePunch::merge(const oBase &input) {
+void oFreePunch::merge(const oBase &input, const oBase *base) {
   const oFreePunch &src = dynamic_cast<const oFreePunch&>(input);
   // Not implemented
 }
 
 
-void oEvent::merge(const oBase &srcIn) {
+void oEvent::merge(const oBase &srcIn, const oBase *base) {
 }
 
 

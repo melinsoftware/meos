@@ -845,6 +845,7 @@ namespace {
     return &bfData[0];
   }
 }
+
 string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
   void *data, *oldData;
   vector< vector<wstring> > *strptr;
@@ -914,6 +915,73 @@ string oDataContainer::generateSQLSet(const oBase *ob, bool forceSetAll) const {
   return sql;
 }
 
+bool oDataContainer::merge(oBase &destination, const oBase &source, const oBase *base) const {
+  bool modified = false;
+  void *destdata, *oldDataDmy;
+  vector< vector<wstring> > *deststrptr;
+  destination.getDataBuffers(destdata, oldDataDmy, deststrptr);
+
+  void *srcdata;
+  vector< vector<wstring> > *srcstrptr;
+  source.getDataBuffers(srcdata, oldDataDmy, srcstrptr);
+
+  void *basedata = nullptr;
+  vector< vector<wstring> > *basestrptr = nullptr;
+  if (base)
+    base->getDataBuffers(basedata, oldDataDmy, basestrptr);
+ 
+  auto setData = [](void *d, void *s, void *b, int off, int size) {
+    LPBYTE vd = LPBYTE(d) + off;
+    LPBYTE vs = LPBYTE(s) + off;
+    if (memcmp(vd, vs, size) != 0) {
+      if (b == nullptr || memcmp(LPBYTE(b) + off, vs, size) != 0) {
+        memcpy(vd, vs, size);
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  for (size_t kk = 0; kk < ordered.size(); kk++) {
+    const oDataInfo &di = ordered[kk];
+    if (di.Type == oDTInt) {
+      if (di.SubType != oIS64) {
+        if (setData(destdata, srcdata, basedata, di.Index, sizeof(int)))
+          modified = true;
+      }
+      else {
+        if (setData(destdata, srcdata, basedata, di.Index, sizeof(int64_t)))
+          modified = true;
+      }
+    }
+    else if (di.Type == oDTString) {
+      if (setData(destdata, srcdata, basedata, di.Index, di.Size))
+        modified = true;
+    }
+    else if (di.Type == oDTStringDynamic) {
+      const wstring &s = (*srcstrptr)[0][di.Index];
+      wstring &d = (*deststrptr)[0][di.Index];
+      if (s != d) {
+        if (basestrptr == nullptr || (*basestrptr)[0][di.Index] != s) {
+          d = s;
+          modified = true;
+        }
+      }
+    }
+    else if (di.Type == oDTStringArray) {
+      const auto &s = (*srcstrptr)[di.Index];
+      auto &d = (*deststrptr)[di.Index];
+      if (s != d) {
+        if (basestrptr == nullptr || (*basestrptr)[di.Index] != s) {
+          d = s;
+          modified = true;
+        }
+      }
+    }
+  }
+
+  return modified;
+}
 
 void oDataContainer::getVariableInt(const void *data,
                                     list<oVariableInt> &var) const {

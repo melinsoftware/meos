@@ -1169,9 +1169,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
   int nParallel = -1;
   if (diIn)
     nParallel = diIn->nFields;
-
-  pRunner alice = getRunner(155227, 0);
-
+    
   constexpr bool logOutput = false;
   auto &sgMap = getStartGroups(true);
   if (sgMap.empty())
@@ -1218,6 +1216,8 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
         ++rPerGroupTotal[idRes->second].first;
       }
       else {
+        if (id > 0)
+          throw meosException(L"Startgrupp med id X tilldelad Y finns inte.#" + itow(id) + L"#" + r.getCompleteIdentification());
         ++res->second.unassigned;
         unassigned.push_back(&r);
       }
@@ -1591,8 +1591,9 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
         ClassInfo &ci = di.classes[spec[k].classID];
         ci.startGroupId = groupId;
         if (gi.firstStart > firstStart) {
-          ci.firstStart = (gi.firstStart - firstStart) / di.baseInterval;
-          ci.hasFixedTime = true;
+         // Handled by distributor
+         // ci.firstStart = (gi.firstStart - firstStart) / di.baseInterval;
+         // ci.hasFixedTime = true;
         }
         ci.nVacant = gi.vacantPerGroup[j];
         ci.nVacantSpecified = true;

@@ -2520,3 +2520,7 @@ Tjänstebeställningar (IOF XML) = Service Requests (IOF XML)
 Tjänster (IOF XML) = Services (IOF XML)
 Flytta deltagare från överfulla grupper = Move competitors from full groups
 Lotta med startgrupper = Draw with Starting Groups
+Startgrupp med id X tilldelad Y finns inte = Starting group with ID X defined for Y does not exist
+Använd om möjligt samma dator som användes vid senaste importen = If possible, use the same computer that was used to import the last time
+Tillåt borttagning av löpare (med mera) som raderats i den importerade tävlingen = Allow removal of competitors (etc) that has was deleted in the imported version.
+Varning: Kunde inte hitta föregående version av tävlingen (X) = Warning: Could not find the previous version of the competition (X)

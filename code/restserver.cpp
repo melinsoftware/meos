@@ -1113,7 +1113,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       xml.write("Card", r->getCardNo());
       xml.write("Status", {make_pair("code", itow(r->getStatusComputed()))}, r->getStatusS(true, true));
       xml.write("Start", r->getStartTimeS());
-      if (r->getFinishTime() > 0 && r->getStatusComputed() != StatusNoTiming) {
+      if (r->getFinishTime() > 0 && r->getStatusComputed() != StatusNoTiming && !r->noTiming()) {
         xml.write("Finish", r->getFinishTimeS());
         xml.write("RunningTime", r->getRunningTimeS(true));
         xml.write("Place", r->getPlaceS());
@@ -1127,7 +1127,8 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       }
       if ((r->getFinishTime() > 0 || r->getCard() != nullptr) && 
           r->getCourse(false) &&
-          r->getStatusComputed() != StatusNoTiming) {
+          r->getStatusComputed() != StatusNoTiming &&
+          !r->noTiming()) {
         auto &sd = r->getSplitTimes(false);
         vector<int> after;
         r->getLegTimeAfter(after);

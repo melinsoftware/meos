@@ -130,7 +130,7 @@ public:
   void importPunches(const string &s);
   const string &getPunchString() const;
 
-  void merge(const oBase &input) final;
+  void merge(const oBase &input, const oBase *base) final;
   pair<int, int> getCardHash() const;
 
   void Set(const xmlobject &xo);

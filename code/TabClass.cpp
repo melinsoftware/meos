@@ -3477,7 +3477,7 @@ bool TabClass::loadPage(gdioutput &gdi)
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces))
     func.push_back(ButtonData("QualificationFinal", "Kval/final-schema", false));
 
-  if (showAdvanced)
+  if (showAdvanced || oe->getStartGroups(true).size() > 0) 
     func.push_back(ButtonData("StartGroups", "Startgrupper", true));
 
   RECT funRect;

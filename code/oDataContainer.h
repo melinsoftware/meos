@@ -104,8 +104,6 @@ protected:
   size_t stringIndexPointer;
   size_t stringArrayIndexPointer;
 
-  //map<string, oDataInfo> index;
-  //vector<string> ordered;
   inthashmap index;
   vector<oDataInfo> ordered;
 
@@ -139,6 +137,8 @@ public:
   string generateSQLDefinition() const {
     return generateSQLDefinition(std::set<string>());
   }
+
+  bool merge(oBase &destination, const oBase &source, const oBase *base) const;
 
   string generateSQLSet(const oBase *ob, bool forceSetAll) const;
 
@@ -210,6 +210,10 @@ private:
   oDataContainer *oDC;
   oBase *oB;
 public:
+  
+  bool merge(const oBase &source, const oBase *base) {
+    return oDC->merge(*oB, source, base);
+  }
 
   inline bool setInt(const char *Name, int Value)
   {

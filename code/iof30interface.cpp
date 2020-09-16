@@ -1413,7 +1413,7 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
       }
     }
   }
-
+  bool anySG = false;
   // This is a "hack" to interpret services of the from "XXXX 14:00 - 15:00 XXXX" as a start group.
   for (auto &srv : services) {
     vector<wstring> parts;
@@ -1428,10 +1428,15 @@ void IOF30Interface::readEvent(gdioutput &gdi, const xmlobject &xo,
       if (t > 0)
         times.push_back(t);
     }
-    if (times.size() == 2 && times[0] < times[1])
-      oe.setStartGroup(srv.id, times[0], times[1]);
+    int ts = times.size();
+    if (ts >= 2 && times[ts - 2] < times[ts - 1]) {
+      oe.setStartGroup(srv.id, times[ts - 2], times[ts - 1]);
+      anySG = true;
+    }
   }
-  oe.updateStartGroups();
+
+  if (anySG)
+    oe.updateStartGroups();
 }
 
 void IOF30Interface::setupClassConfig(int classId, const xmlobject &xTeam, map<int, vector<LegInfo> > &teamClassConfig) {
@@ -2950,7 +2955,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
     xml.write("StartTime", oe.getAbsDateTimeISO(r.getStartTime(), true, useGMT));
 
   bool hasTiming = (!r.getClassRef(false) || r.getClassRef(true)->getNoTiming() == false) &&
-                    r.getStatusComputed() != RunnerStatus::StatusNoTiming;
+                    r.getStatusComputed() != RunnerStatus::StatusNoTiming && !r.noTiming();
 
   int finishTime, runningTime, place, after;
   RunnerStatus status;

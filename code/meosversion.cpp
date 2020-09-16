@@ -30,18 +30,18 @@
 //V35: abcdef
 //V36: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 1031 $");
+  string revision("$Rev: 1047 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 //V37: ab
 wstring getMeosDate() {
-  wstring date(L"$Date: 2020-08-01 10:38:11 +0200 (lö, 01 aug 2020) $");
+  wstring date(L"$Date: 2020-09-06 08:57:56 +0200 (sö, 06 sep 2020) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC1"; // No parantheses (...)
+  return L""; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -67,29 +67,13 @@ wstring getMeosCompectVersion() {
 
 void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
 {
-  supp.emplace_back(L"Sergio Yañez, ABC TRAIL");
-  supp.emplace_back(L"Western Race Services");
-  supp.emplace_back(L"IK Gandvik, Skara");
-  supp.emplace_back(L"IK Stern");
-  supp.emplace_back(L"OK Roslagen");
-  supp.emplace_back(L"TSV Malente");
-  supp.emplace_back(L"Emmaboda Verda OK");
-  supp.emplace_back(L"KOB ATU Košice");
-  supp.emplace_back(L"Gävle OK");
-  supp.emplace_back(L"Kenneth Gattmalm, Jönköpings OK");
-  supp.emplace_back(L"Søllerød OK");
-  supp.emplace_back(L"Bengt Bengtsson");
-  supp.emplace_back(L"OK Landehof");
-  supp.emplace_back(L"OK Orinto");
-  supp.emplace_back(L"Bredaryds SOK");
-  supp.emplace_back(L"Thore Nilsson, Uddevalla OK");
-  supp.emplace_back(L"Timrå SOK");
-  supp.emplace_back(L"Åke Larsson, OK Hedströmmen");
-  supp.emplace_back(L"Avesta OK");
+  supp.emplace_back(L"Tjalve IF");
+  supp.emplace_back(L"Nyköpings Orienteringsklubb");
   supp.emplace_back(L"Motionsorientering Göteborg");
   supp.emplace_back(L"OK Måsen");
   supp.emplace_back(L"IF Thor");
   supp.emplace_back(L"SOS Jindřichův Hradec");
+  supp.emplace_back(L"KOB ATU Košice");
   supp.emplace_back(L"Mats Holmberg, OK Gränsen");
   supp.emplace_back(L"Christoffer Ohlsson, Uddevalla OK");
   supp.emplace_back(L"KOB ATU Košice");
@@ -114,6 +98,7 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Tolereds AIK");
   supp.emplace_back(L"OK Snab");
   supp.emplace_back(L"OK 73");
+  supp.emplace_back(L"Herlufsholm OK");
   supp.emplace_back(L"Helsingborgs SOK");
   supp.emplace_back(L"Sala OK");
   supp.emplace_back(L"OK Roskilde");
@@ -139,14 +124,19 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Nässjö OK");
   supp.emplace_back(L"Ringsjö OK");
   supp.emplace_back(L"Big Foot Orienteers");
+  supp.emplace_back(L"Erik Hulthen, Mölndal Outdoor IF");
   supp.emplace_back(L"Bay Area Orienteering Club");
   supp.emplace_back(L"Finspångs SOK");
   supp.emplace_back(L"OK Gorm, Denmark");
   supp.emplace_back(L"Nyköpings OK");
   supp.emplace_back(L"Thomas Engberg, VK Uvarna");
   supp.emplace_back(L"LG Axmalm, Sävedalens AIK");
+  supp.emplace_back(L"Martin Ivarsson");
   supp.emplace_back(L"Falköpings AIK OK");
   developSupp.push_back(L"Karlskrona SOK");
-
+  supp.emplace_back(L"Kristian Toustrup, OK Syd");
+  supp.emplace_back(L"Patrick NG, HKAYP");
+  supp.emplace_back(L"Lars Ove Karlsson, Västerås SOK");
+  supp.emplace_back(L"OK Milan");
   reverse(supp.begin(), supp.end());
 }

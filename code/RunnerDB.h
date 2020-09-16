@@ -368,7 +368,7 @@ protected:
   int getDISize() const {return 0;}
   void changedObject() {}
 public:
-  void merge(const oBase &input) final {}
+  void merge(const oBase &input, const oBase * base) final {}
 
   int getIndex() const {return index;}
   void init(RunnerDB *db_, int index_) {db=db_, index=index_; Id = index;}

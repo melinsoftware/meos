@@ -239,7 +239,7 @@ public:
   wstring getStart() const;
   void setStart(const wstring &start, bool sync);
 
-  void merge(const oBase &input) final;
+  void merge(const oBase &input, const oBase *base) final;
 
   bool Write(xmlparser &xml);
 

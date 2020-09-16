@@ -279,7 +279,7 @@ public:
   void set(const xmlobject &xo);
   bool write(xmlparser &xml);
 
-  void merge(const oBase &input) final;
+  void merge(const oBase &input, const oBase *base) final;
 
   oTeam(oEvent *poe, int id);
   oTeam(oEvent *poe);

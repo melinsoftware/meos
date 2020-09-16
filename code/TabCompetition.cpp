@@ -166,6 +166,12 @@ bool TabCompetition::importFile(HWND hWnd, gdioutput &gdi)
   if (oe->open(fileName, true, false)) {
     gdi.setWindowTitle(oe->getTitleName());
     resetSaveTimer();
+
+    // Save base copy
+    wstring base = constructBase(L"base", L"");
+    wchar_t newBase[_MAX_PATH];
+    getUserFile(newBase, base.c_str());
+    oe->save(newBase);
     return true;
   }
 
@@ -762,6 +768,13 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       if (oe->isClient() && oe->getPropertyInt("UseDirectSocket", true) != 0) {
         oe->getDirectSocket().startUDPSocketThread(gdi.getHWNDMain());
       }
+
+      // Save base copy
+      wstring base = constructBase(L"base", L"");
+      wchar_t newBase[_MAX_PATH];
+      getUserFile(newBase, base.c_str());
+      if (!fileExist(newBase))
+        oe->save(newBase);
 
       loadConnectionPage(gdi);
     }
@@ -4167,10 +4180,23 @@ void TabCompetition::checkReadyForResultExport(gdioutput &gdi, const set<int> &c
   }
 }
 
+wstring TabCompetition::constructBase(const wstring &r, const wstring &mt) const {
+  wstring ret = oe->getNameId(0) + L"-";
+  if (!mt.empty())
+    ret += mt + L"-";
+  ret += r + L".meosdiff";
+  return ret;
+};
+
 void TabCompetition::mergeCompetition(gdioutput &gdi) {  
 
   class MergeHandler : public GuiHandler {
     TabCompetition *tc;
+    shared_ptr<oEvent> mergeEvent;
+    shared_ptr<oEvent> baseEvent;
+    wstring thisFile;
+    wstring baseFile;
+
   public:
 
     MergeHandler(TabCompetition *tc) : tc(tc) {}
@@ -4180,19 +4206,29 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
         ButtonInfo bi = dynamic_cast<ButtonInfo &>(info);
 
         if (bi.id == "Cancel") {
-          if (tc->mergeEvent)
-            tc->mergeEvent->clear();
+          if (mergeEvent)
+            mergeEvent->clear();
           tc->loadPage(gdi);
         }
         else if (bi.id == "Merge") {
-          if (!tc->mergeEvent)
+          if (!mergeEvent)
             return;
           int numAdd, numRemove, numUpdate;
+          bool allowRemove = true;
 
-          wstring anno = lang.tl(L"Kopia (X)#MRG " + wstring(getLocalTime()));
-          tc->oe->duplicate(anno);
+          if (gdi.hasWidget("AllowRemove"))
+            allowRemove = gdi.isChecked("AllowRemove");
 
-          tc->oe->merge(*tc->mergeEvent, numAdd, numRemove, numUpdate);
+          wstring anno = lang.tl(L"Kopia (X)#MRG " + getLocalTime());
+          tc->oe->duplicate(anno, true);
+
+          if (!thisFile.empty()) {
+            wchar_t newBase[_MAX_PATH];
+            getUserFile(newBase, thisFile.c_str());
+            mergeEvent->save(newBase);
+          }
+
+          tc->oe->merge(*mergeEvent, baseEvent.get(), allowRemove, numAdd, numRemove, numUpdate);
           
 
           gdi.clearPage(true);
@@ -4207,7 +4243,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
           gdi.dropLine();
           gdi.addString("", 0, L"Skapade lokal säkerhetskopia (X) innan sammanslagning#" + anno);
 
-          tc->mergeEvent->clear();
+          mergeEvent->clear();
 
           gdi.dropLine(3);
           gdi.addButton("Cancel", "Återgå").setHandler(this);
@@ -4223,29 +4259,33 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
           gdi.enableInput("Read");
         }
         else if (bi.id == "Read") {
-          tc->mergeEvent = make_shared<oEvent>(gdi);
+          mergeEvent = make_shared<oEvent>(gdi);
 
-          if (!tc->mergeEvent->open(tc->mergeFile, true, true))
+          if (!mergeEvent->open(tc->mergeFile, true, true))
             return;
 
           gdi.restore("merge", false);
           gdi.fillDown();
-          gdi.addStringUT(1, tc->mergeEvent->getName());
-
+          gdi.addStringUT(1, mergeEvent->getName());
+          
           gdi.dropLine();
           bool error = false;
-          if (tc->mergeEvent->getNameId(0) == tc->oe->getNameId(0)) {
-            if (tc->mergeEvent->getMergeTag() == tc->oe->getMergeTag()) {
+          bool sameBase = false;
+          if (mergeEvent->getNameId(0) == tc->oe->getNameId(0)) {
+            if (mergeEvent->getMergeTag() == tc->oe->getMergeTag()) {
               gdi.addString("", 1, "Fel: En tävling kan inte slås ihop med sig själv.").setColor(colorRed);
               error = true;
             }
             else {
+              sameBase = true;
               gdi.addString("", 1, "Samma bastävling").setColor(colorDarkGreen);
-              wstring info = tc->oe->getMergeInfo(tc->mergeEvent->getMergeTag());
-              string mod = tc->mergeEvent->getLastModified();
+              wstring info = tc->oe->getMergeInfo(mergeEvent->getMergeTag());
+              string mod = mergeEvent->getLastModified();
+              
 
               if (info.empty()) {
                 gdi.addString("", 0, "Denna datakälla är aldrig tidigare infogad");
+                baseFile = tc->constructBase(L"base", L"");
               }
               else {
                 string merged = gdi.narrow(info);
@@ -4258,6 +4298,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
                   TimeStamp ts;
                   ts.setStamp(merged);
                   gdi.addString("", 0, "Tidigare infogad version: X#" + ts.getStampStringN());
+                  baseFile = tc->constructBase(info, mergeEvent->getMergeTag());
                 }
               }
 
@@ -4265,6 +4306,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
                 TimeStamp ts;
                 ts.setStamp(mod);
                 gdi.addString("", 0, "Infoga version: X#" + ts.getStampStringN());
+                thisFile = tc->constructBase(gdi.widen(mod), mergeEvent->getMergeTag());
               }
             }
           }
@@ -4281,7 +4323,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
             gdi.addString("", 1, "Klasser: ");
 
             vector<pClass> cls;
-            tc->mergeEvent->getClasses(cls, false);
+            mergeEvent->getClasses(cls, false);
             int xw, yw;
             gdi.getTargetDimension(xw, yw);
             int limit = (xw * 2) / 3;
@@ -4298,14 +4340,39 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
             gdi.popX();
             gdi.dropLine();
 
-            gdi.addString("", 1, "Antal deltagare: X#" + itos(tc->mergeEvent->getNumRunners()));
+            gdi.addString("", 1, "Antal deltagare: X#" + itos(mergeEvent->getNumRunners()));
+          }
+
+          if (!baseFile.empty()) {
+            wchar_t base[_MAX_PATH];
+            getUserFile(base, baseFile.c_str());
+            baseEvent = make_shared<oEvent>(gdi);
+            bool ok = false;
+            try {
+              ok = baseEvent->open(base, true, true);
+              ok = true;
+            }
+            catch (...) {
+            }
+
+            if (!ok) {
+              baseEvent.reset();
+              gdi.dropLine();
+              gdi.addString("", 0, L"Varning: Kunde inte hitta föregående version av tävlingen (X).#" + baseFile).setColor(GDICOLOR::colorRed);
+              gdi.addString("", 0, L"Använd om möjligt samma dator som användes vid senaste importen.");
+            }
+          }
+
+          if (sameBase) {
+            gdi.dropLine();
+            gdi.addCheckbox("AllowRemove", "Tillåt borttagning av löpare (med mera) som raderats i den importerade tävlingen");
           }
 
           gdi.dropLine();
           gdi.fillRight();
           if (!error)
-            gdi.addButton("Merge", "Slå ihop").setHandler(tc->mergeHandler.get());
-          gdi.addButton("Cancel", "Avbryt").setHandler(tc->mergeHandler.get());
+            gdi.addButton("Merge", "Slå ihop").setHandler(this);
+          gdi.addButton("Cancel", "Avbryt").setHandler(this);
 
           gdi.refresh();
         }

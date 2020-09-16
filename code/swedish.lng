@@ -2527,3 +2527,7 @@ Tjänstebeställningar (IOF XML) = Tjänstebeställningar (IOF XML)
 Tjänster (IOF XML) = Tjänster (IOF XML)
 Flytta deltagare från överfulla grupper = Flytta deltagare från överfulla grupper
 Lotta med startgrupper = Lotta med startgrupper
+Startgrupp med id X tilldelad Y finns inte = Startgrupp med id X definierad för Y finns inte
+Använd om möjligt samma dator som användes vid senaste importen = Använd om möjligt samma dator som användes vid senaste importen
+Tillåt borttagning av löpare (med mera) som raderats i den importerade tävlingen = Tillåt borttagning av löpare (med mera) som raderats i den importerade tävlingen
+Varning: Kunde inte hitta föregående version av tävlingen (X) = Varning: Kunde inte hitta föregående version av tävlingen (X)

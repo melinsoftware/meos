@@ -201,7 +201,7 @@ public:
   bool preventRestart() const;
   void preventRestart(bool state);
 
-  void merge(const oBase &input) override;
+  void merge(const oBase &input, const oBase *base) override;
 
   /** Call this method after doing something to just this
       runner/team that changed the time/status etc, that effects
@@ -243,6 +243,9 @@ public:
 
   bool hasFlag(TransferFlags flag) const;
   void setFlag(TransferFlags flag, bool state);
+
+  /** Return true if no timing is requested. */
+  bool noTiming() const { return hasFlag(FlagNoTiming); }
 
   // Get the runners team or the team itself
   virtual cTeam getTeam() const = 0;
@@ -958,7 +961,7 @@ public:
   /** Formats extra line for runner []-syntax, or if r is null, checks validity and throws on error.*/
   static wstring formatExtraLine(pRunner r, const wstring &input);
 
-  void merge(const oBase &input) final;
+  void merge(const oBase &input, const oBase *base) final;
   
   virtual ~oRunner();
 

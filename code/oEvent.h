@@ -963,7 +963,7 @@ public:
 
   bool exportOECSV(const wchar_t *file, int LanguageTypeIndex, bool includeSplits);
   bool save();
-  void duplicate(const wstring &annotation);
+  void duplicate(const wstring &annotation, bool keepTags = false);
   void newCompetition(const wstring &Name);
   void clearListedCmp();
   bool enumerateCompetitions(const wchar_t *path, const wchar_t *extension);
@@ -1301,7 +1301,7 @@ protected:
   /** type: 0 control, 1 start, 2 finish*/
   bool addXMLControl(const xmlobject &xcontrol, int type);
 
-  void merge(const oBase &src) final;
+  void merge(const oBase &src, const oBase *base) final;
 
 public:
 
@@ -1313,7 +1313,7 @@ public:
 
   void getPredefinedClassTypes(map<wstring, ClassMetaType> &types) const;
 
-  void merge(oEvent &src, int &numAdd, int &numRemove, int &numUpdate);
+  void merge(oEvent &src, oEvent *base, bool allowRemove, int &numAdd, int &numRemove, int &numUpdate);
   string getLastModified() const;
 
   wstring cloneCompetition(bool cloneRunners, bool cloneTimes,

@@ -1009,10 +1009,10 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
   wbf[0]=0;
 
   auto noTimingRunner = [&]() {
-    return (pc ? pc->getNoTiming() : false) || (r ? r->getStatusComputed() == StatusNoTiming : false);
+    return (pc ? pc->getNoTiming() : false) || (r ? (r->getStatusComputed() == StatusNoTiming || r->noTiming()) : false);
   };
   auto noTimingTeam = [&]() {
-    return (pc ? pc->getNoTiming() : false) || (t ? t->getStatusComputed() == StatusNoTiming : false);
+    return (pc ? pc->getNoTiming() : false) || (t ? (t->getStatusComputed() == StatusNoTiming || t->noTiming()): false);
   };
   bool invalidClass = pc && pc->getClassStatus() != oClass::ClassStatus::Normal;
   int legIndex = pp.legIndex;
@@ -2459,7 +2459,7 @@ void oEvent::listGeneratePunches(const oListInfo &listInfo, gdioutput &gdi,
 
   if (cls && cls->getNoTiming())
     return;
-  if (r && r->getStatusComputed() == StatusNoTiming)
+  if (r && (r->getStatusComputed() == StatusNoTiming || r->noTiming()))
     return;
 
   int h = gdi.getLineHeight();
