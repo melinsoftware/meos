@@ -2844,10 +2844,11 @@ void TabSI::assignCard(gdioutput &gdi, const SICard &sic)
         return;
       }
       if (r->getCardNo() == 0 ||
-          gdi.ask(L"Skriv över existerande bricknummer?")) {
+          gdi.ask(L"Skriv över existerande bricknummer?")) {	  // Overwrite existing card number?
 
         r->setCardNo(sic.CardNumber, false);
-        r->getDI().setInt("CardFee", oe->getBaseCardFee());
+        if (oe->isHiredCard(sic.CardNumber) || oe->hasHiredCardData() == false)
+            r->getDI().setInt("CardFee", oe->getBaseCardFee());
         r->synchronize();
         gdi.setText(ii->id, sicode);
       }
