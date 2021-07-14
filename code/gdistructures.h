@@ -59,12 +59,15 @@ public:
 
   BaseInfo &setExtra(const wchar_t *e) {extra=(void *)e; dataString = true; return *this;}
 
-  BaseInfo &setExtra(int e) {extra = (void *)(e); return *this;}
+  BaseInfo &setExtra(int e) {extra = (void *)size_t(e); return *this;}
   BaseInfo &setExtra(size_t e) {extra = (void *)(e); return *this;}
+#ifdef _M_X64
+  BaseInfo &setExtra(unsigned int e) { extra = (void *)size_t(e); return *this; }
+#endif 
 
   bool isExtraString() const {return dataString;}
   wchar_t *getExtra() const {assert(extra == 0 || dataString); return (wchar_t *)extra;}
-  int getExtraInt() const {return int(extra);}
+  int getExtraInt() const {return (int)size_t(extra);}
   size_t getExtraSize() const {return size_t(extra);}
 
   GuiHandler &getHandler() const;
@@ -293,6 +296,8 @@ public:
               updateLastData(0) {}
   wstring text;
   size_t data;
+  int getDataInt() const { return (int)data; }
+
   int index;
   bool changed() const {return text!=original;}
   void ignore(bool ig) {ignoreCheck=ig;}

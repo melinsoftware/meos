@@ -471,7 +471,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       }
     }
     else if (bi.id == "DoRenameSaved") {
-      int ix = int(gdi.getData("ParamIx"));
+      int ix = gdi.getDataInt("ParamIx");
       oListParam &par = oe->getListContainer().getParam(ix);
       wstring name = gdi.getText("Name");
       par.setName(name);
@@ -501,7 +501,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ListBoxInfo lbi;
       if (gdi.getSelectedItem("Merge", lbi)) {
         int mergeWidth = lbi.data;
-        int base = (int)gdi.getData("ParamIx");
+        int base = gdi.getDataInt("ParamIx");
         oe->synchronize(false);
         bool showTitle = gdi.isChecked("ShowTitle");
         oe->getListContainer().mergeParam(mergeWidth, base, showTitle);

@@ -24,6 +24,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <tuple>
 
 class oEvent;
 class xmlobject;
@@ -140,6 +141,8 @@ class IOF30Interface {
   };
 
   vector<FeeStatistics> feeStatistics;
+
+  map<int, vector<tuple<int, int, pCourse>>> classToBibLegCourse;
 
   static void getAgeLevels(const vector<FeeInfo> &fees, const vector<int> &ix,
                            int &normalIx, int &redIx, wstring &youthLimit, wstring &seniorLimit);
@@ -266,7 +269,7 @@ class IOF30Interface {
   void teamCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
                             const map<wstring, pCourse> &courses);
 
-  void assignTeamCourse(gdioutput &gdi, oTeam &t, xmlList &xAssignment,
+  void assignTeamCourse(gdioutput &gdi, oTeam *t, int iClass, int iBib, xmlList &xAssignment,
                         const map<wstring, pCourse> &courses);
 
   pCourse findCourse(gdioutput &gdi, const map<wstring, pCourse> &courses,

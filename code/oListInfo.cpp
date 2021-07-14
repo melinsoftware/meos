@@ -371,6 +371,9 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lRunnerTime:
       case lRunnerGrossTime:
       case lRunnerTimeStatus:
+      case lRunnerStageTime:
+      case lRunnerStageTimeStatus:
+      case lRunnerStageStatus:
       case lRunnerTimePlaceFixed:
       case lPunchLostTime:
       case lPunchTotalTime:
@@ -400,10 +403,11 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lPunchControlPlaceAcc:
       case lResultModuleNumber:
       case lResultModuleNumberTeam:
-        extra = L"199.";
+      case lRunnerStagePlace:           
+        extra = L"99.";
         break;
       case lRunnerGeneralPlace:
-        extra = L"199. (99.)";
+        extra = L"99. (99.)";
         break;
     }
 
@@ -1451,12 +1455,63 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (invalidClass)
           wsptr = &lang.tl("Struken");
       else if (r) {
-        if (r->tempStatus==StatusOK && !noTimingRunner())
+        if (showResultTime(r->tempStatus, r->tempRT) && !noTimingRunner())
           wcscpy_s(wbf, formatTime(r->tempRT).c_str());
         else
           wcscpy_s(wbf, formatStatus(r->tempStatus, true).c_str() );
       }
       break;
+
+    case lRunnerStageNumber:
+      if (pp.legIndex >= 0)
+        swprintf_s(wbf, L"%d", pp.legIndex + 1);
+      break;
+
+    case lRunnerStageTimeStatus:
+      if (invalidClass)
+        wsptr = &lang.tl("Struken");
+      else if (r) {
+        wstring tmp;
+        int time, d;
+        RunnerStatus st = r->getStageResult(pp.legIndex, time, d, d);
+        if (showResultTime(st, time) && !noTimingRunner())
+          wcscpy_s(wbf, formatTime(time).c_str());
+        else
+          wcscpy_s(wbf, formatStatus(st, true).c_str());
+      }
+      break;
+
+    case lRunnerStageTime:
+      if (invalidClass)
+        wsptr = &lang.tl("Struken");
+      else if (r) {
+        wstring tmp;
+        int time, d;
+        RunnerStatus st = r->getStageResult(pp.legIndex, time, d, d);
+        if (time > 0 && !noTimingRunner())
+          wcscpy_s(wbf, formatTime(time).c_str());
+      }
+      break;
+
+    case lRunnerStageStatus:
+      if (invalidClass)
+        wsptr = &lang.tl("Struken");
+      else if (r) {
+        wstring tmp;
+        int time, d;
+        RunnerStatus st = r->getStageResult(pp.legIndex, time, d, d);
+        wcscpy_s(wbf, formatStatus(st, true).c_str());
+      }
+      break;
+
+    case lRunnerStagePoints:
+      if (!invalidClass && r) {
+        int points, d;
+        RunnerStatus st = r->getStageResult(pp.legIndex, d, points, d);
+        swprintf_s(wbf, L"%d", points);
+      }
+      break;
+
     case lRunnerPlace:
       if (r && !invalidClass && !noTimingRunner()) {
         if (pp.resultModuleIndex == -1)
@@ -1469,7 +1524,19 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (r && !invalidClass && !noTimingRunner())
         wcscpy_s(wbf, r->getPrintTotalPlaceS(pp.text.empty()).c_str() );
       break;
-
+    case lRunnerStagePlace:
+      if (r && !invalidClass && !noTimingRunner()) {
+        int d, place;
+        wstring tmp;
+        r->getStageResult(pp.legIndex, d, d, place);
+        if (place > 0) {
+          tmp = itow(place);
+          if (pp.text.empty())
+            tmp += L".";
+        }
+        wcscpy_s(wbf, tmp.c_str());
+      }
+      break;
     case lRunnerGeneralPlace:
       if (r && !invalidClass && pc && !noTimingRunner()) {
         if (pp.resultModuleIndex == -1) {
@@ -2659,7 +2726,10 @@ void oEvent::generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, 
 }
 
 bool oListInfo::filterRunner(const oRunner &r) const {
-  if (r.isRemoved() || r.tStatus == StatusNotCompetiting)
+  if (r.isRemoved()) 
+    return true;
+
+  if (r.tStatus == StatusNotCompetiting && !filter(EFilterIncludeNotParticipating))
     return true;
 
   if (!lp.selection.empty() && lp.selection.count(r.getClassId(true)) == 0)

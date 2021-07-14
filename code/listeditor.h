@@ -33,8 +33,9 @@ enum EPostType;
 class TabBase;
 
 #include <vector>
+#include "autocompletehandler.h"
 
-class ListEditor {
+class ListEditor : public AutoCompleteHandler {
 private:
   enum SaveType {NotSaved, SavedInside, SavedFile};
   oEvent *oe;
@@ -49,10 +50,14 @@ private:
 
   void showLine(gdioutput &gdi, const vector<MetaListPost> &line, int ix) const;
   int editList(gdioutput &gdi, int type, BaseInfo &data);
+  void updateType(int iType, gdioutput &gdi);
+
   ButtonInfo &addButton(gdioutput &gdi, const MetaListPost &mlp, int x, int y,
                        int lineIx, int ix) const;
 
   void editListPost(gdioutput &gdi, const MetaListPost &mlp, int id);
+  void showExample(gdioutput &gdi, int margin, const MetaListPost &mlp);
+
   void editListProp(gdioutput &gdi, bool newList);
 
   enum DirtyFlag {MakeDirty, ClearDirty, NoTouch};
@@ -68,6 +73,8 @@ private:
 
   void makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside);
 
+  void updateAlign(gdioutput &gdi, int val);
+
   TabBase *origin = nullptr;
   void show(gdioutput &gdi);
 
@@ -75,16 +82,11 @@ public:
   ListEditor(oEvent *oe);
   virtual ~ListEditor();
 
-  //void load(MetaList *list);
   void load(const MetaListContainer &mlc, int index);
-
   void show(TabBase *dst, gdioutput &gdi);
-
   bool isShown(TabBase *tab) const { return origin == tab; }
-
   MetaList *getCurrentList() const {return currentList;};
-
+  void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) final;
 
   friend int editListCB(gdioutput*, int, void *);
-
 };

@@ -789,7 +789,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
     mlen = max(allCrs[k]->getControlsUI().length()/2+5, mlen);
   }
 
-  gdi.addInput("Controls", L"", max(48u, mlen), CourseCB, L"Kontroller:");
+  gdi.addInput("Controls", L"", max<int>(48, mlen), CourseCB, L"Kontroller:");
   gdi.dropLine(0.3);
   gdi.addString("CourseExpanded", 0, "...").setColor(colorDarkGreen);
   gdi.dropLine(0.5);

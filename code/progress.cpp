@@ -66,7 +66,7 @@ void ProgressWindow::init()
   GetClientRect(hWnd, &rc);
   hWnd=CreateWindowEx(WS_EX_TOPMOST, L"STATIC", L"",  WS_VISIBLE|WS_CHILD,
     (rc.right-p_width)/2, rc.bottom/2, p_width, p_height+1, hWnd, NULL,
-      (HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), NULL);
+      (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE), NULL);
 
   ShowWindow(hWnd, SW_SHOW);
   SetWindowPos(hWnd, HWND_TOPMOST, 0,0,0,0, SWP_NOSIZE|SWP_NOMOVE);

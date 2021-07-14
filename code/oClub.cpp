@@ -1144,6 +1144,7 @@ int oClub::getFirstInvoiceNumber(oEvent &oe) {
 void oClub::changedObject() {
   if (oe)
     oe->globalModification = true;
+  oe->sqlClubs.changed = true;
 }
 
 bool oClub::operator<(const oClub &c) const {
@@ -1164,4 +1165,12 @@ wstring oClub::getInvoiceDate(oEvent &oe) {
 
 void oClub::setInvoiceDate(oEvent &oe, const wstring &id) {
   oe.getDI().setDate("InvoiceDate", id);
+}
+
+int oClub::getStartGroup() const {
+  return getDCI().getInt("StartGroup");
+}
+
+void oClub::setStartGroup(int sg) {
+  getDI().setInt("StartGroup", sg);
 }

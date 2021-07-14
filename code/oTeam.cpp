@@ -25,7 +25,6 @@
 #include "oEvent.h"
 #include <assert.h>
 #include <algorithm>
-#include "meosdb/sqltypes.h"
 #include "Table.h"
 #include "localizer.h"
 #include "meosException.h"
@@ -227,8 +226,8 @@ void oEvent::removeTeam(int Id)
   oTeamList::iterator it;
   for (it = Teams.begin(); it != Teams.end(); ++it) {
     if (it->getId() == Id) {
-      if (HasDBConnection && !it->isRemoved())
-        msRemove(&*it);
+      if (hasDBConnection() && !it->isRemoved())
+        sqlRemove(&*it);
       dataRevision++;
       it->prepareRemove();
       Teams.erase(it);
@@ -2117,19 +2116,27 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
       break;
 
     case TID_CLASSNAME:
+      if (inputId == -1) {
+        pClass c = oe->getClass(input);
+        if (c)
+          inputId = c->getId();
+      }
       setClassId(inputId, true);
       synchronize(true);
       output = getClass(true);
       break;
 
     case TID_STATUS: {
-      RunnerStatus sIn = RunnerStatus(inputId);
-      if (!isResultStatus(sIn))
-        setTeamMemberStatus(sIn);
-      else  
-        setStatus(sIn, true, ChangeType::Update);
-      
-      apply(ChangeType::Update, nullptr);
+      RunnerStatus sIn = getStatus();
+      if (inputId >= 0) {
+        sIn = RunnerStatus(inputId);
+        if (!isResultStatus(sIn))
+          setTeamMemberStatus(sIn);
+        else
+          setStatus(sIn, true, ChangeType::Update);
+
+        apply(ChangeType::Update, nullptr);
+      }
       RunnerStatus sOut = getStatus();
       if (sOut != sIn)
         throw meosException("Status matchar inte deltagarnas status.");
@@ -2144,7 +2151,8 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
       break;
 
     case TID_INPUTSTATUS:
-      setInputStatus(RunnerStatus(inputId));
+      if (inputId >= 0)
+        setInputStatus(RunnerStatus(inputId));
       synchronize(true);
       output = getInputStatusS();
       break;
@@ -2522,4 +2530,10 @@ const pair<wstring, int> oTeam::getRaceInfo() {
   }
 
   return res;
+}
+
+void oTeam::changedObject() {
+  markClassChanged(-1);
+  sqlChanged = true;
+  oe->sqlTeams.changed = true;
 }

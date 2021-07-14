@@ -26,7 +26,7 @@
 #include "TabAuto.h"
 #include "meos_util.h"
 #include "gdiconstants.h"
-#include "meosdb/sqltypes.h"
+#include "MeosSQL.h"
 #include <process.h>
 
 MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-daemon", Machines::mMySQLReconnect), error(errorIn) {
@@ -71,8 +71,8 @@ unsigned __stdcall reconnectThread(void *v) {
     mysqlConnecting=1;
     mysqlStatus=0;
   LeaveCriticalSection(&CS_MySQL);
-
-  bool res = msReConnect();
+  oEvent *oe = (oEvent *)v;
+  bool res = oe->reConnectRaw();
 
   EnterCriticalSection(&CS_MySQL);
     if (res)
@@ -100,9 +100,9 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       hThread=0;
     }
     mysqlStatus=0;
-    char bf[256];
-    if (!oe->reConnect(bf)) {
-      gdi.addInfoBox("", L"warning:dbproblem#" + gdi.widen(bf), 9000);
+    string err;
+    if (!oe->reConnect(err)) {
+      gdi.addInfoBox("", L"warning:dbproblem#" + gdi.widen(err), 9000);
       interval = 10;
     }
     else {
@@ -122,15 +122,15 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     interval = 10;//Wait ten seconds for next attempt
 
     gdi.setDBErrorState(true);
-    char bf[256];
-    if (oe->HasDBConnection) {
-      msGetErrorState(bf);
+    string err;
+    if (oe->hasDBConnection()) {
+      oe->sqlConnection->getErrorMessage(err);
     }
     return;
   }
   else {
     mysqlConnecting = 1;
-    hThread = (HANDLE) _beginthreadex (0, 0, &reconnectThread, 0, 0, 0);
+    hThread = (HANDLE) _beginthreadex(0, 0, &reconnectThread, oe, 0, 0);
     interval = 1;
   }
 }

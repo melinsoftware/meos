@@ -64,7 +64,7 @@ SI_StationInfo::SI_StationInfo()
   localZeroTime=0;
 }
 
-SportIdent::SportIdent(HWND hWnd, DWORD Id)
+SportIdent::SportIdent(HWND hWnd, DWORD Id, bool readVoltage) : readVoltage(readVoltage)
 {
   ClassId=Id;
   hWndNotify=hWnd;
@@ -1301,6 +1301,7 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
   BYTE b[128*5];
   memset(b, 0, 128*5);
   BYTE c[16];
+  int miliVolt = 0;
 //	STX, 0xE1, 0x01, BN, CRC1,
 //CRC0, ETX
   debugLog(L"STARTREAD9 EXT-");
@@ -1309,7 +1310,7 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
   int blocks_10_11_SIAC[5]={0,4,5,6,7};
   int limit = 1;
   int *blocks = blocks_8_9_p_t;
-
+  bool readBattery = false;
   DWORD written=0;
 
   for(int k=0; k < limit; k++){
@@ -1339,13 +1340,17 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
       if (bf[0]==STX && bf[1]==0xEf) {
         if (checkCRC(bf+1, 200)) {
           memcpy(b+k*128, bf+6, 128);
-
         if (k == 0) {
           int series = b[24] & 15;
           if (series == 15) {
             int nPunch = min(int(b[22]), 128);
             blocks = blocks_10_11_SIAC;
             limit = 1 + (nPunch+31) / 32;
+
+            int cardNo = GetExtCardNumber(b);
+            if (cardNo > 8000000 && cardNo < 9000000) {
+              readBattery = readVoltage;
+            }
           }
           else {
             limit = 2; // Card 8, 9, p, t
@@ -1365,14 +1370,95 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
     }
   }
 
+  if (readBattery) {
+    c[0] = STX;
+    c[1] = 0xEA;
+    c[2] = 0x05;
+    c[3] = 0x7E;
+    c[4] = 0x05;
+    c[5] = 0x05;
+    c[6] = 0x05;
+    c[7] = 0x05;
+    c[10] = ETX;
+    setCRC(c + 1);
+
+    written = 0;
+    WriteFile(hComm, c, 11, &written, NULL); // Measure batt voltage
+
+    if (written == 11) {
+      BYTE bf[256];
+      int read = readBytes(bf, 9, hComm);
+      if (read == 0) {
+        debugLog(L"TIMING");
+        Sleep(300);
+        read = readBytes(bf, 9, hComm);
+      }
+
+      if (read == 9) {
+        /*for (int i = 0; i < read; i++) {
+          char xx[20];
+          sprintf_s(xx, "%02x ", bf[i]);
+          OutputDebugStringA(xx);
+        }
+        OutputDebugStringA("\n\n");*/
+
+        c[0] = STX;
+        c[1] = 0xEF;
+        c[2] = 0x01;
+        c[3] = 3;
+        setCRC(c + 1);
+        c[6] = ETX;
+
+        written = 0;
+        WriteFile(hComm, c, 7, &written, NULL);
+        
+        memset(bf, 0, 256);
+        int read = readBytes(bf, 128 + 9, hComm);
+        if (read == 0) {
+          debugLog(L"TIMING");
+          Sleep(300);
+          read = readBytes(bf, 128 + 9, hComm);
+        }
+
+        if (bf[0] == STX && bf[1] == 0xEf) {
+          /*
+          for (int i = 0; i < read; i++) {
+            char xx[20];
+            sprintf_s(xx, "%02x ", bf[i]);
+            OutputDebugStringA(xx);
+            if (i%20==19)
+              OutputDebugStringA("\n");
+          }
+          OutputDebugStringA("\n\n");
+          */
+          if (checkCRC(bf + 1, 200)) {
+            BYTE battVoltageRow = bf[77];
+            double voltage = 1.9 + (battVoltageRow * 0.09);
+            miliVolt = int(1000 * voltage);
+
+            /*char xx[30];
+            sprintf_s(xx, "V = %f\n\n", voltage);
+            OutputDebugStringA(xx);*/
+          }
+        }
+      }
+
+    }
+    //02 EA 05 7E 05 05 05 05 B2 31 03
+
+  }
+
+
   c[0]=ACK;
   WriteFile(hComm, c, 1, &written, NULL);
 
   debugLog(L"-ACK-");
 
   SICard card(ConvertedTimeStatus::Hour24);
-  if (getCard9Data(b, card))
+  if (getCard9Data(b, card)) {
+    card.miliVolt = miliVolt;
     addCard(card);
+  }
 }
 
 bool SportIdent::readSI6Block(HANDLE hComm, BYTE *data)
@@ -1588,7 +1674,7 @@ bool SportIdent::getCard5Data(BYTE *data, SICard &card)
   return true;
 }
 
-DWORD SportIdent::GetExtCardNumber(BYTE *data) const {
+DWORD SportIdent::GetExtCardNumber(const BYTE *data) const {
   DWORD cnr = 0;
   BYTE *p = (BYTE *)&cnr;
   p[0] = data[27];
@@ -2073,7 +2159,7 @@ void checkport_si_thread(void *ptr)
   int *port=(int *)ptr;
   wchar_t bf[16];
   swprintf_s(bf, 16, L"COM%d", *port);
-  SportIdent si(NULL, *port);
+  SportIdent si(NULL, *port, false);
 
   if (!si.openCom(bf))
     *port=0; //No SI found here
@@ -2360,7 +2446,7 @@ vector<string> SICard::logHeader()
   return log;
 }
 
-unsigned SICard::calculateHash() const {
+unsigned int SICard::calculateHash() const {
   unsigned h = nPunch * 100000 + FinishPunch.Time;
   for (unsigned i = 0; i < nPunch; i++) {
     h = h * 31 + Punch[i].Code;

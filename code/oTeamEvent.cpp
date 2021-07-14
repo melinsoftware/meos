@@ -719,7 +719,9 @@ void oTeam::adjustMultiRunners() {
 
   // Create multi runners.
   for (size_t i = 0; i < Runners.size(); i++) {
-    if (!Runners[i] && Class) {
+    if (!Class)
+      continue;
+    if (!Runners[i]) {
       unsigned lr = Class->getLegRunner(i);
 
       if (lr < i && Runners[lr]) {
@@ -727,6 +729,9 @@ void oTeam::adjustMultiRunners() {
         int dup = Class->getLegRunnerIndex(i);
         Runners[i] = Runners[lr]->getMultiRunner(dup);
       }
+    }
+    else if (Runners[i]->tParentRunner == nullptr && !Runners[i]->multiRunner.empty()) {
+      Runners[i]->createMultiRunner(true, true); // Delete any non-needed extra runners
     }
   }
 

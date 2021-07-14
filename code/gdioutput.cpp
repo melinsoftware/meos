@@ -1167,12 +1167,12 @@ ButtonInfo &gdioutput::addButton(int x, int y, int w, const string &id,
     }
     bi.hWnd=CreateWindow(L"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |style|BS_NOTIFY,
       x-OffsetX, y, w, height, hWndTarget, NULL,
-      (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+      (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
   }
   else {
     bi.hWnd=CreateWindow(L"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |style|BS_NOTIFY,
       x-OffsetX, y-OffsetY-1, w,  height, hWndTarget, NULL,
-      (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+      (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
   }
   
   SendMessage(bi.hWnd, WM_SETFONT, (WPARAM) getGUIFont(), 0);
@@ -1265,12 +1265,6 @@ ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const wstring
     oy=0;
   }
 
-  /*
-  bi.hWnd=CreateWindowEx(0,"BUTTON", ttext.c_str(),  WS_TABSTOP|WS_VISIBLE|
-          WS_CHILD|BS_AUTOCHECKBOX|BS_NOTIFY,
-          x-ox, y-oy, size.cx+30, size.cy+5, hWndTarget, NULL,
-          (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
-  */
   int h = size.cy;
   SelectObject(hDC, getGUIFont());
   GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
@@ -1279,7 +1273,7 @@ ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const wstring
   bi.hWnd=CreateWindowEx(0,L"BUTTON", L"",  WS_TABSTOP|WS_VISIBLE|
           WS_CHILD | WS_CLIPSIBLINGS |BS_AUTOCHECKBOX|BS_NOTIFY,
           x-ox, y-oy + (size.cy-h)/2, h, h, hWndTarget, NULL,
-          (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+          (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
   TextInfo &desc = addStringUT(y , x + (3*h)/2, 0, ttext, 0, checkBoxCallback);
   desc.id = "T" + id;
@@ -1384,7 +1378,7 @@ InputInfo &gdioutput::addInput(int x, int y, const string &id, const wstring &te
   ii.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", text.c_str(),
     WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS | ES_AUTOHSCROLL | WS_BORDER,
     x-ox, y-oy, dim.first, dim.second,
-    hWndTarget, NULL, (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+    hWndTarget, NULL, (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
   int mrg = scaleLength(4);
   updatePos(x, y, dim.first+mrg, dim.second+mrg);
 
@@ -1438,7 +1432,7 @@ InputInfo &gdioutput::addInputBox(const string &id, int x, int y, int width, int
   ii.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"EDIT", text.c_str(), WS_HSCROLL|WS_VSCROLL|
     WS_TABSTOP|WS_VISIBLE|WS_CHILD | WS_CLIPSIBLINGS |ES_AUTOHSCROLL|ES_MULTILINE|ES_AUTOVSCROLL|WS_BORDER,
     x-ox, y-oy, width, height, hWndTarget, NULL,
-    (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+    (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
   updatePos(x, y, width, height);
 
@@ -1470,7 +1464,7 @@ ListBoxInfo &gdioutput::addListBox(const string &id, int width, int height, GUIC
 }
 
 LRESULT CALLBACK GetMsgProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam) {
-  ListBoxInfo *lbi = (ListBoxInfo *)(GetWindowLongPtr(hWnd, GWL_USERDATA));
+  ListBoxInfo *lbi = (ListBoxInfo *)(GetWindowLongPtr(hWnd, GWLP_USERDATA));
   if (!lbi) {
     throw std::exception("Internal GDI error");
   }
@@ -1501,14 +1495,14 @@ void gdioutput::synchronizeListScroll(const string &id1, const string &id2)
 
   a->lbiSync = b;
   b->lbiSync = a;
-  SetWindowLongPtr(a->hWnd, GWL_USERDATA, LONG_PTR(a));
-  SetWindowLongPtr(b->hWnd, GWL_USERDATA, LONG_PTR(b));
+  SetWindowLongPtr(a->hWnd, GWLP_USERDATA, LONG_PTR(a));
+  SetWindowLongPtr(b->hWnd, GWLP_USERDATA, LONG_PTR(b));
 
-  a->originalProc = WNDPROC(GetWindowLongPtr(a->hWnd, GWL_WNDPROC));
-  b->originalProc = WNDPROC(GetWindowLongPtr(b->hWnd, GWL_WNDPROC));
+  a->originalProc = WNDPROC(GetWindowLongPtr(a->hWnd, GWLP_WNDPROC));
+  b->originalProc = WNDPROC(GetWindowLongPtr(b->hWnd, GWLP_WNDPROC));
 
-  SetWindowLongPtr(a->hWnd, GWL_WNDPROC, LONG_PTR(GetMsgProc));
-  SetWindowLongPtr(b->hWnd, GWL_WNDPROC, LONG_PTR(GetMsgProc));
+  SetWindowLongPtr(a->hWnd, GWLP_WNDPROC, LONG_PTR(GetMsgProc));
+  SetWindowLongPtr(b->hWnd, GWLP_WNDPROC, LONG_PTR(GetMsgProc));
 }
 
 ListBoxInfo &gdioutput::addListBox(int x, int y, const string &id, int width, int height, GUICALLBACK cb, 
@@ -1528,7 +1522,7 @@ ListBoxInfo &gdioutput::addListBox(int x, int y, const string &id, int width, in
 
   lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"LISTBOX", L"",  style,
     x-ox, y-oy, int(width*scale), int(height*scale), hWndTarget, NULL,
-    (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+    (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
   updatePos(x, y, int(scale*(width+5)), int(scale * (height+2)));
   SendMessage(lbi.hWnd, WM_SETFONT, (WPARAM) getGUIFont(), 0);
@@ -1617,7 +1611,7 @@ ListBoxInfo &gdioutput::addSelection(int x, int y, const string &id, int width, 
 
   lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",  WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS |WS_BORDER|CBS_DROPDOWNLIST|WS_VSCROLL ,
     x-ox, y-oy, int(scale*width), int(scale*height), hWndTarget, NULL,
-    (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+    (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
   updatePos(x, y, int(scale*(width+5)), int(scale*30));
 
@@ -1659,7 +1653,7 @@ ListBoxInfo &gdioutput::addCombo(int x, int y, const string &id, int width, int 
 
   lbi.hWnd=CreateWindowEx(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",  WS_TABSTOP|WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS |WS_BORDER|CBS_DROPDOWN |CBS_AUTOHSCROLL,
     x-ox, y-oy, int(scale*width), int(scale*height), hWndTarget, NULL,
-    (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+    (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
   updatePos(x, y, int(scale * (width+5)), getButtonHeight()+scaleLength(5));
 
@@ -1791,7 +1785,7 @@ bool gdioutput::getSelectedItem(const string &id, ListBoxInfo &lbi) {
 pair<int, bool> gdioutput::getSelectedItem(const string &id) {
   ListBoxInfo lbi;
   bool ret = getSelectedItem(id, lbi);
-  return make_pair(lbi.data, ret);
+  return make_pair(lbi.getDataInt(), ret);
 }
 
 pair<int, bool> gdioutput::getSelectedItem(const char *id) {
@@ -2116,7 +2110,7 @@ LRESULT gdioutput::ProcessMsg(UINT iMessage, LPARAM lParam, WPARAM wParam)
   return 0;
 }
 
-void gdioutput::processButtonMessage(ButtonInfo &bi, DWORD wParam)
+void gdioutput::processButtonMessage(ButtonInfo &bi, WPARAM wParam)
 {
   WORD hwParam = HIWORD(wParam);
 
@@ -2164,7 +2158,7 @@ void gdioutput::processButtonMessage(ButtonInfo &bi, DWORD wParam)
   }
 }
 
-void gdioutput::processEditMessage(InputInfo &bi, DWORD wParam)
+void gdioutput::processEditMessage(InputInfo &bi, WPARAM wParam)
 {
   WORD hwParam = HIWORD(wParam);
 
@@ -2208,7 +2202,7 @@ void gdioutput::processEditMessage(InputInfo &bi, DWORD wParam)
   }
 }
 
-void gdioutput::processComboMessage(ListBoxInfo &bi, DWORD wParam)
+void gdioutput::processComboMessage(ListBoxInfo &bi, WPARAM wParam)
 {
   WORD hwParam = HIWORD(wParam);
   int index;
@@ -2325,7 +2319,7 @@ void gdioutput::keyCommand(KeyCommandCode code) {
 
 #endif
 
-void gdioutput::processListMessage(ListBoxInfo &bi, DWORD wParam)
+void gdioutput::processListMessage(ListBoxInfo &bi, WPARAM wParam)
 {
   WORD hwParam = HIWORD(wParam);
   int index;
@@ -5415,7 +5409,7 @@ wstring gdioutput::browseForSave(const vector< pair<wstring, wstring> > &filter,
 
   of.lStructSize       = sizeof(of);
   of.hwndOwner         = hWndTarget;
-  of.hInstance         = (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE);
+  of.hInstance         = (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE);
   of.lpstrFilter       = sFilter.c_str();
   of.lpstrCustomFilter = NULL;
   of.nMaxCustFilter    = 0;
@@ -5477,7 +5471,7 @@ wstring gdioutput::browseForOpen(const vector< pair<wstring, wstring> > &filter,
   
   of.lStructSize       = sizeof(of);
   of.hwndOwner         = hWndTarget;
-  of.hInstance         = (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE);
+  of.hInstance         = (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE);
   of.lpstrFilter       = sFilter.c_str();
   of.lpstrCustomFilter = NULL;
   of.nMaxCustFilter    = 0;
@@ -5587,7 +5581,7 @@ void gdioutput::init(HWND hWnd, HWND hMain, HWND hTab)
 
   hWndToolTip = CreateWindow(TOOLTIPS_CLASS, (LPWSTR) NULL, TTS_ALWAYSTIP,
       CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-      NULL, (HMENU) NULL, (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+      NULL, (HMENU) NULL, (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 }
 
 ToolInfo &gdioutput::addToolTip(const string &tipId, const wstring &tip, HWND hWnd, RECT *rc) {
@@ -5615,7 +5609,7 @@ ToolInfo &gdioutput::addToolTip(const string &tipId, const wstring &tip, HWND hW
   }
 
   ti.hwnd = hWndTarget;
-  ti.hinst = (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE);
+  ti.hinst = (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE);
   info.name = tipId;
   ti.lpszText = (LPWSTR)toolTips.back().tip.c_str();
 
@@ -7094,7 +7088,7 @@ AutoCompleteInfo &gdioutput::addAutoComplete(const string &key) {
 
   HWND hWnd = CreateWindowEx(WS_EX_CLIENTEDGE, L"AUTOCOMPLETE", L"", WS_VISIBLE | WS_CHILD | WS_CLIPSIBLINGS| WS_BORDER ,
     pt.x, pt.y, scaleLength(350), height, hWndTarget, NULL,
-    (HINSTANCE)GetWindowLong(hWndTarget, GWL_HINSTANCE), NULL);
+    (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
   autoCompleteInfo.reset(new AutoCompleteInfo(hWnd, key, *this));
   

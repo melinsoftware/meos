@@ -256,8 +256,21 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
     }
   }
   oe->fillCourses(gdi, "RCourse", true);
-  wstring crsName = r->getCourse(false) ? r->getCourse(false)->getName() + L" " : L"";
-  gdi.addItem("RCourse", crsName + lang.tl("[Klassens bana]"), 0);
+  wstring crsName;
+  if (r->getCourse(false))
+    crsName = r->getCourse(false)->getName();
+
+  wstring courseType = lang.tl("[Klassens bana]");
+  pClass cClass = r->getClassRef(false);
+  if (cClass && (cClass->hasCoursePool() || r->getClassRef(true)->hasCoursePool())) {
+    if (!crsName.empty())
+      courseType = L", ... ";
+    courseType += L"[" + lang.tl("Banpool") + L"]";
+  }
+  else if (crsName.empty())
+    crsName += L" ";
+
+  gdi.addItem("RCourse", crsName + courseType, 0);
   gdi.selectItemByData("RCourse", r->getCourseId());
   updateNumShort(gdi, r->getCourse(false), r);
 
@@ -2136,7 +2149,7 @@ void TabRunner::listRunners(gdioutput &gdi, const vector<pRunner> &r, bool filte
     if (filterVacant && r[k]->isVacant())
       continue;
     out.clear();
-    sprintf_s(bf, "%d.", k+1);
+    sprintf_s(bf, "%d.", int(k+1));
     gdi.addStringUT(yp, xp, 0, bf);
     gdi.addStringUT(yp, xp+gdi.scaleLength(40), 0, r[k]->getNameAndRace(true), gdi.scaleLength(190));
     gdi.addStringUT(yp, xp+gdi.scaleLength(200), 0, r[k]->getClass(true), gdi.scaleLength(140));

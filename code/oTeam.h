@@ -138,6 +138,8 @@ protected:
                       map<int, int> &classId2Linear, 
                       bool &hasRunner) const;
 
+  void changedObject() final;
+
 public:
 
   /** Deduce from computed runner times.*/

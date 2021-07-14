@@ -891,7 +891,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       if (r == 0) {
         throw meosException("Ingen deltagare vald.");
       }
-      int leg = (int)gdi.getData("Leg");
+      int leg = gdi.getDataInt("Leg");
       
       pTeam t = oe->getTeam(teamId);
       processChangeRunner(gdi, t, leg, r);
@@ -987,7 +987,7 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
   else if (type == GUI_LINK) {
     TextInfo ti = dynamic_cast<TextInfo &>(*(BaseInfo *)data);
     if (ti.id == "SelectR") {
-      int leg = (int)gdi.getData("Leg");
+      int leg = gdi.getDataInt("Leg");
       pTeam t = oe->getTeam(teamId);
       int rid = ti.getExtraInt();
       pRunner r = oe->getRunner(rid, 0);

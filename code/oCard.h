@@ -53,9 +53,11 @@ class oCard : public oBase {
 protected:
   oPunchList punches;
   int cardNo;
-  DWORD readId; //Identify a specific read-out
+  int miliVolt = 0; // Measured voltage of SIAC, if not zero.
 
-  const static DWORD ConstructedFromPunches = 1;
+  unsigned int readId; //Identify a specific read-out
+
+  const static int ConstructedFromPunches = 1;
 
   pRunner tOwner;
   oPunch *getPunch(const pPunch punch);
@@ -70,6 +72,10 @@ protected:
   mutable string punchString;
 
 public:
+
+  void setMeasuredVoltage(int miliVolt) { this->miliVolt = miliVolt; }
+  wstring getCardVoltage() const;
+  bool isCriticalCardVoltage() const;
 
   static const shared_ptr<Table> &getTable(oEvent *oe);
 

@@ -58,6 +58,13 @@ vector<RunnerStatus> getAllRunnerStatus() {
            StatusUnknown, StatusNotCompetiting , StatusNoTiming};
 }
 
+
+template<int dummy = 0>
+bool showResultTime(RunnerStatus st, int time) {
+  return st == StatusOK || (st == StatusOutOfCompetition && time > 0);
+}
+
+
 #include "oSpeaker.h"
 
 extern char RunnerStatusOrderMap[100];
@@ -191,8 +198,6 @@ protected:
 
   bool sqlChanged;
   bool tEntryTouched;
-
-  void changedObject();
 
   mutable pair<bool, int> tPreventRestartCache = { false, -1 };
 public:
@@ -431,8 +436,9 @@ public:
   /// Get total status for this running (including team/earlier races)
   virtual RunnerStatus getTotalStatus() const;
 
+  RunnerStatus getStageResult(int stage, int &time, int &point, int &place) const;
   // Get results from all previous stages
-  void getInputResults(vector<RunnerStatus> &st, vector<int> &times, vector<int> &points, vector<int> &places);
+  void getInputResults(vector<RunnerStatus> &st, vector<int> &times, vector<int> &points, vector<int> &places) const;
   // Add current result to input result. Only use when transferring to next stage. ThisStageNumber is zero indexed.
   void addToInputResult(int thisStageNo, const oAbstractRunner *src);
 
@@ -548,6 +554,8 @@ protected:
 
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
+
+  void changedObject() final;
 
   bool storeTimes(); // Returns true if best times were updated
   
@@ -667,15 +675,8 @@ protected:
 public:
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
-  int getStartGroup(bool useTmpStartGroup) const {
-    if (useTmpStartGroup && tmpStartGroup)
-      return tmpStartGroup;
-    return getDCI().getInt("StartGroup");
-  }
-
-  void setStartGroup(int sg) {
-    getDI().setInt("StartGroup", sg);
-  }
+  int getStartGroup(bool useTmpStartGroup) const;
+  void setStartGroup(int sg);
 
   // Get the leg defineing parallel results for this runner (in a team)
   int getParResultLeg() const;
@@ -965,6 +966,7 @@ public:
   
   virtual ~oRunner();
 
+  friend class oCard;
   friend class MeosSQL;
   friend class oEvent;
   friend class oTeam;

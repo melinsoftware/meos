@@ -870,6 +870,28 @@ bool checkTargetClass(pRunner target, pRunner source,
   return true; // Same class, OK
 }
 
+
+size_t levenshtein_distance(const wstring &s, const wstring &t) {
+  size_t n = s.length() + 1;
+  size_t m = t.length() + 1;
+  vector<size_t> d(n * m);
+   
+  for (size_t i = 1, im = 0; i < m; ++i, ++im) {
+    for (size_t j = 1, jn = 0; j < n; ++j, ++jn)  {
+      if (s[jn] == t[im]) {
+        d[(i * n) + j] = d[((i - 1) * n) + (j - 1)];
+      }
+      else {
+        d[(i * n) + j] = min(d[(i - 1) * n + j] + 1, /* A deletion. */
+                             min(d[i * n + (j - 1)] + 1, /* An insertion. */
+                             d[(i - 1) * n + (j - 1)] + 1)); /* A substitution. */
+      }
+    }
+  }
+
+  return d[n * m - 1];
+}
+
 void oEvent::transferResult(oEvent &ce,
                             const set<int> &allowNewEntries,
                             ChangedClassMethod changeClassMethod,
@@ -890,6 +912,19 @@ void oEvent::transferResult(oEvent &ce,
   newEntries.clear();
   notTransfered.clear();
   noAssignmentTarget.clear();
+
+  // Setup class map this id -> dst id
+  map<int, int> classMap;
+  for (auto &c : Classes) {
+    pClass dCls = ce.getClass(c.Id);
+    if (dCls && compareClassName(dCls->getName(), c.getName())) {
+      classMap[c.Id] = c.Id;
+      continue;
+    }
+    dCls = ce.getClass(c.getName());
+    if (dCls)
+      classMap[c.Id] = dCls->getId();
+  }
 
   vector<pRunner> targetRunners;
   vector<pRunner> targetVacant;
@@ -918,14 +953,17 @@ void oEvent::transferResult(oEvent &ce,
     if (id1>0 && id2>0 && id1 != id2)
       continue;
 
-    wstring cnA = canonizeName(it->sName.c_str());
-    wstring cnB = canonizeName(r->sName.c_str());
+    wstring cnA = canonizeName(it->getName().c_str());
+    wstring cnB = canonizeName(r->getName().c_str());
     wstring ccnA = canonizeName(it->getClub().c_str());
     wstring ccnB = canonizeName(r->getClub().c_str());
 
+    if (levenshtein_distance(cnA, cnB) > 3)
+      continue; // Too different
+
     if ((id1>0 && id1 == id2) ||
       (r->cardNumber>0 && r->cardNumber == it->cardNumber) ||
-        (it->sName == r->sName) || (cnA == cnB && ccnA == ccnB)) {
+        (it->getName() == r->getName()) || (cnA == cnB && ccnA == ccnB)) {
       processed.insert(it->Id, 1);
       used.insert(r->Id, 1);
       if (checkTargetClass(it, r, ce.Classes, targetVacant, changedClass, changeClassMethod))
@@ -956,7 +994,7 @@ void oEvent::transferResult(oEvent &ce,
         if (id1>0 && id2>0 && id1 != id2)
           continue;
 
-        if ((id1>0 && id1 == id2) || (it->sName == r->sName && it->getClub() == r->getClub())) {
+        if ((id1>0 && id1 == id2) || (it->getName() == r->getName() && it->getClub() == r->getClub())) {
           processed.insert(it->Id, 1);
           used.insert(r->Id, 1);
           if (checkTargetClass(it, r, ce.Classes, targetVacant, changedClass, changeClassMethod))
@@ -1007,7 +1045,7 @@ void oEvent::transferResult(oEvent &ce,
             break; //This is the one, if they have the same Id there will be a unique match below
           }
         }
-        if (it->sName == src->sName && it->getClub() == src->getClub())
+        if (it->getName() == src->getName() && it->getClub() == src->getClub())
           cnd.push_back(j);
       }
 
@@ -1058,6 +1096,35 @@ void oEvent::transferResult(oEvent &ce,
     }
   }
 
+  vector<pair<wstring, pRunner>> remainingNamesSource;
+  vector<pair<wstring, pRunner>> remainingNamesDest;
+  for (auto &r : Runners) {
+    if (r.skip() || used.lookup(r.Id, v))
+      continue;
+    if (r.isVacant())
+      continue; // Ignore vacancies on source side
+
+    remainingNamesSource.emplace_back(canonizeName(r.getName().c_str()), &r);
+  }
+
+  for (auto &r : ce.Runners) {
+    if (r.skip() || processed.lookup(r.Id, v))
+      continue;
+    if (r.isVacant())
+      continue; // Ignore vacancies on source side
+
+    remainingNamesDest.emplace_back(canonizeName(r.getName().c_str()), &r);
+  }
+  
+  if (!remainingNamesSource.empty() && remainingNamesDest.empty()) {
+    sort(remainingNamesSource.begin(), remainingNamesSource.end());
+    sort(remainingNamesDest.begin(), remainingNamesDest.end());
+
+    int srcPointer = 0;
+    int dstPointer = 0;
+  }
+  
+
   // Transfer vacancies
   for (size_t k = 0; k < remainingRunners.size(); k++) {
     pRunner src = remainingRunners[k];
@@ -1074,7 +1141,7 @@ void oEvent::transferResult(oEvent &ce,
 
     pRunner targetVacant = ce.getRunner(src->getId(), 0);
     if (targetVacant && targetVacant->isVacant() && compareClassName(targetVacant->getClass(false), src->getClass(false))) {
-      targetVacant->setName(src->getName(), false);
+      targetVacant->setName(src->sName, false);
       targetVacant->setClub(src->getClub());
       targetVacant->setCardNo(src->getCardNo(), false);
       targetVacant->cloneData(src);
@@ -1087,7 +1154,11 @@ void oEvent::transferResult(oEvent &ce,
             || src->hasFlag(oAbstractRunner::FlagTransferNew)) {
           if (src->getClubId() > 0)
             ce.getClubCreate(src->getClubId(), src->getClub());
-          pRunner dst = ce.addRunner(src->getName(), src->getClubId(), src->getClassId(false),
+
+          if (!classMap.count(src->getClassId(false)))
+            continue;
+
+          pRunner dst = ce.addRunner(src->sName, src->getClub(), classMap[src->getClassId(false)],
                                      src->getCardNo(), src->getBirthYear(), true);
           dst->cloneData(src);
           dst->setInputData(*src);
@@ -1096,7 +1167,11 @@ void oEvent::transferResult(oEvent &ce,
         else if (transferAllNoCompete) {
           if (src->getClubId() > 0)
             ce.getClubCreate(src->getClubId(), src->getClub());
-          pRunner dst = ce.addRunner(src->getName(), src->getClubId(), src->getClassId(false),
+
+          if (!classMap.count(src->getClassId(false)))
+            continue;
+
+          pRunner dst = ce.addRunner(src->sName, src->getClub(), classMap[src->getClassId(false)],
                                      0, src->getBirthYear(), true);
           dst->cloneData(src);
           dst->setInputData(*src);

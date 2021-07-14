@@ -44,7 +44,6 @@
 #include "RunnerDB.h"
 #include "gdifonts.h"
 #include "meosException.h"
-#include "meosdb/sqltypes.h"
 #include "socket.h"
 #include "iof30interface.h"
 #include "MeOSFeatures.h"
@@ -54,6 +53,7 @@
 #include "importformats.h"
 #include "HTMLWriter.h"
 #include "metalist.h"
+#include "MeosSQL.h"
 
 #include <Shellapi.h>
 #include <algorithm>
@@ -255,7 +255,12 @@ void TabCompetition::loadConnectionPage(gdioutput &gdi)
     gdi.addString("", 1, "Ansluten till:");
     gdi.addStringUT(1, oe->getServerName()).setColor(colorGreen);
     gdi.popX();
-    gdi.dropLine(2);
+    gdi.dropLine(1.1);
+    string version = oe->sql().serverVersion();
+    gdi.addString("", 0, "Server version: X#" + version);
+    gdi.dropLine(2.0);
+    gdi.popX();
+
     gdi.addInput("ClientName", oe->getClientName(), 16, 0, L"Klientnamn:");
     gdi.dropLine();
     gdi.addButton("SaveClient", "Ändra", CompetitionCB);
@@ -291,6 +296,7 @@ void TabCompetition::loadConnectionPage(gdioutput &gdi)
     }
     gdi.dropLine(2);
     gdi.popX();
+
     if (oe->empty()) {
       wchar_t bf[260];
       getUserFile(bf, L"");
@@ -746,7 +752,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       wstring nameId = oe->getNameId(id);
       vector<string> output;
-      repairTables(gdi.narrow(nameId), output);
+      oe->sql().repairTables(gdi.narrow(nameId), output);
       gdi.clearPage(true);
       gdi.addString("", boldLarge, "Reparerar tävlingsdatabasen");
       gdi.dropLine();
@@ -895,7 +901,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         allTransfer.clear();
         transferNoCompet = false;
       }
-      int id = (int)gdi.getData("PostEvent");
+      int id = gdi.getDataInt("PostEvent");
       oEvent::ChangedClassMethod method = oEvent::ChangedClassMethod(gdi.getSelectedItem("ChangeClassType").first);
       lastChangeClassType = method;
 
@@ -1551,7 +1557,6 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
           }
         }
 
-        bool drawn = false;
         if (createNew && startType>0) {
           gdi.scrollToBottom();
           gdi.dropLine();
@@ -1561,7 +1566,6 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
               oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", 
                                    L"0", oEvent::VacantPosition::Mixed,
                                    false, false, oEvent::DrawMethod::Random, 1);
-              drawn = true;
               break;
 
             case SMDrawn:
@@ -1588,7 +1592,6 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
                 oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", 
                                      L"2", oEvent::VacantPosition::Mixed,
                                      true, false, oEvent::DrawMethod::MeOS, 1);
-              drawn = true;
               break;
           }
         }
@@ -2147,7 +2150,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oe->getRunnerDatabase().clearClubs();
         oe->saveRunnerDatabase(L"database", true);
         if (oe->isClient()) {
-          msUploadRunnerDB(oe);
+          oe->sql().uploadRunnerDB(oe);
         }
         loadRunnerDB(gdi, 0, false);
       }

@@ -166,7 +166,7 @@ void Toolbar::createToolbar(const string &id, const wstring &title)
                   WS_POPUP | WS_THICKFRAME | WS_CAPTION,
                   rc.right-300, rc.top+10, 600, 64, hParent, NULL, GetModuleHandle(0), NULL);
 
-    SetWindowLongPtr(hwndFloater, GWL_USERDATA, LONG_PTR(this));
+    SetWindowLongPtr(hwndFloater, GWLP_USERDATA, LONG_PTR(this));
   }
   else  {
     SetWindowText(hwndFloater, t.c_str());
@@ -278,7 +278,7 @@ LRESULT CALLBACK ToolProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       return DefWindowProc(hWnd, message, wParam, lParam);
 
     case WM_NCACTIVATE: {
-      Toolbar *tb = (Toolbar *)GetWindowLongPtr(hWnd, GWL_USERDATA);
+      Toolbar *tb = (Toolbar *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
       if (tb) {
         //DefWindowProc(tb->gdi.getHWND(), message, wParam, lParam);
         SendMessage(tb->gdi.getHWNDMain(), message, wParam, lParam);
@@ -295,7 +295,7 @@ LRESULT CALLBACK ToolProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
 
     case WM_COMMAND: {
-      Toolbar *tb = (Toolbar *)GetWindowLongPtr(hWnd, GWL_USERDATA);
+      Toolbar *tb = (Toolbar *)GetWindowLongPtr(hWnd, GWLP_USERDATA);
       int id = LOWORD(wParam);
       int code = HIWORD(wParam);
       if (tb) {

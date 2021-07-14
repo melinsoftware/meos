@@ -218,12 +218,19 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
       gdi.setInputStatus("CommonStartTime", gdi.isChecked(bi.id));
     }
     else if (bi.id == "CoursePool") {
+      int nlegs = 1;
+      if (oe->getClass(ClassId))
+        nlegs = max(1u, oe->getClass(ClassId)->getNumStages());
+
       string strId = "StageCourses_label";
       gdi.setTextTranslate(strId, getCourseLabel(gdi.isChecked(bi.id)), true);
-      setLockForkingState(gdi, gdi.isChecked("CoursePool"), gdi.isChecked("LockForking"));
+      setLockForkingState(gdi, gdi.isChecked("CoursePool"), gdi.isChecked("LockForking"), nlegs);
     }
     else if (bi.id == "LockForking") {
-      setLockForkingState(gdi, gdi.isChecked("CoursePool"), gdi.isChecked(bi.id));
+      int nlegs = 1;
+      if (oe->getClass(ClassId))
+        nlegs = max(1u, oe->getClass(ClassId)->getNumStages());
+      setLockForkingState(gdi, gdi.isChecked("CoursePool"), gdi.isChecked(bi.id), nlegs);
     }
     else if (bi.id == "DefineForking") {
       if (!checkClassSelected(gdi))
@@ -2714,7 +2721,7 @@ void TabClass::selectClass(gdioutput &gdi, int cid)
 
     if (gdi.hasWidget("LockForking")) {
       gdi.check("LockForking", pc->lockedForking());
-      setLockForkingState(gdi, pc->hasCoursePool(), pc->lockedForking());
+      setLockForkingState(gdi, *pc);
     }
 
     if (gdi.hasWidget("MCourses")) {
@@ -4640,10 +4647,10 @@ void TabClass::writeDrawInfo(gdioutput &gdi, const DrawInfo &drawInfoIn) {
 }
 
 void TabClass::setLockForkingState(gdioutput &gdi, const oClass &c) {
-  setLockForkingState(gdi, c.hasCoursePool(), c.lockedForking());
+  setLockForkingState(gdi, c.hasCoursePool(), c.lockedForking(), max(1u, c.getNumStages()));
 }
 
-void TabClass::setLockForkingState(gdioutput &gdi, bool poolState, bool lockState) {
+void TabClass::setLockForkingState(gdioutput &gdi, bool poolState, bool lockState, int nLegs) {
   if (gdi.hasWidget("DefineForking"))
     gdi.setInputStatus("DefineForking", !lockState && !poolState);
 
@@ -4652,7 +4659,7 @@ void TabClass::setLockForkingState(gdioutput &gdi, bool poolState, bool lockStat
 
   int legno = 0;
   while (gdi.hasWidget("@Course" + itos(legno))) {
-    gdi.setInputStatus("@Course" + itos(legno++), !lockState || poolState);
+    gdi.setInputStatus("@Course" + itos(legno++), (!lockState || poolState) && legno < nLegs);
   }
 
   for (string s : {"MCourses", "StageCourses", "MAdd", "MRemove"}) {
@@ -5045,14 +5052,15 @@ public:
       if (ii.id[0] == 'g') {
         int idNew = _wtoi(ii.text.c_str());
         if (idNew != id) {
-          if (oe.getStartGroup(idNew).first == -1) {
+          if (oe.getStartGroup(idNew).firstStart == -1) {
             auto d = oe.getStartGroup(id);
-            oe.setStartGroup(idNew, d.first, d.second);
-            oe.setStartGroup(id, -1, -1);
+            oe.setStartGroup(idNew, d.firstStart, d.lastStart, d.name);
+            oe.setStartGroup(id, -1, -1, L"");
             string rowIx = ii.id.substr(5);
             gdi.getBaseInfo("group" + rowIx).setExtra(idNew);
             gdi.getBaseInfo("first" + rowIx).setExtra(idNew);
             gdi.getBaseInfo("last" + rowIx).setExtra(idNew);
+            gdi.getBaseInfo("gname" + rowIx).setExtra(idNew);
             gdi.getBaseInfo("D" + rowIx).setExtra(idNew);
             ii.setBgColor(colorDefault);
           }
@@ -5063,13 +5071,18 @@ public:
       }
       else if (ii.id[0] == 'f') {
         auto d = oe.getStartGroup(id);
-        d.first = oe.getRelativeTime(ii.text);
-        oe.setStartGroup(id, d.first, d.second);
+        d.firstStart = oe.getRelativeTime(ii.text);
+        oe.setStartGroup(id, d.firstStart, d.lastStart, d.name);
       }
       else if (ii.id[0] == 'l') {
         auto d = oe.getStartGroup(id);
-        d.second = oe.getRelativeTime(ii.text);
-        oe.setStartGroup(id, d.first, d.second);
+        d.lastStart = oe.getRelativeTime(ii.text);
+        oe.setStartGroup(id, d.firstStart, d.lastStart, d.name);
+      }
+      else if (ii.id[0] == 'n') {
+        auto d = oe.getStartGroup(id);
+        d.name = ii.text;
+        oe.setStartGroup(id, d.firstStart, d.lastStart, d.name);
       }
     }
     else if (type == GuiEventType::GUI_BUTTON) {
@@ -5079,16 +5092,16 @@ public:
         int length = 3600;
         for (auto &g : oe.getStartGroups(false)) {
           id = max(id, g.first+1);
-          firstStart = max(firstStart, g.second.second);
-          if (g.second.first < g.second.second)
-            length = min(length, g.second.second - g.second.first);
+          firstStart = max(firstStart, g.second.lastStart);
+          if (g.second.firstStart < g.second.lastStart)
+            length = min(length, g.second.lastStart - g.second.firstStart);
         }
-        oe.setStartGroup(id, firstStart, firstStart + length);
+        oe.setStartGroup(id, firstStart, firstStart + length, L"");
         tc->loadStartGroupSettings(gdi, false);
       }
       else if (info.id[0] == 'D') {
         int id = info.getExtraInt();
-        oe.setStartGroup(id, -1, -1);
+        oe.setStartGroup(id, -1, -1, L"");
         tc->loadStartGroupSettings(gdi, false);
       }
       else if (info.id == "Save") {
@@ -5121,7 +5134,8 @@ void TabClass::loadStartGroupSettings(gdioutput &gdi, bool reload) {
   int idPos = gdi.getCX();
   int firstPos = idPos + gdi.scaleLength(120);
   int lastPos = firstPos + gdi.scaleLength(120);
-  int bPos = lastPos + gdi.scaleLength(120);
+  int namePos = lastPos + gdi.scaleLength(120);
+  int bPos = namePos + gdi.scaleLength(240);
   bool first = true;
 
   for (auto &g : sg) {
@@ -5130,13 +5144,16 @@ void TabClass::loadStartGroupSettings(gdioutput &gdi, bool reload) {
       gdi.addString("", y, idPos, 0, "Id");
       gdi.addString("", y, firstPos, 0, "Start");
       gdi.addString("", y, lastPos, 0, "Slut");
+      gdi.addString("", y, namePos, 0, "Namn");
       first = false;
     }
     int cy = gdi.getCY();
     string srow = itos(row++);
     gdi.addInput(idPos, cy, "group" + srow, itow(g.first), 8).setHandler(sgh).setExtra(g.first);
-    gdi.addInput(firstPos, cy, "first" + srow, oe->getAbsTime(g.second.first), 10).setHandler(sgh).setExtra(g.first);
-    gdi.addInput(lastPos, cy, "last" + srow, oe->getAbsTime(g.second.second), 8).setHandler(sgh).setExtra(g.first);
+    gdi.addInput(firstPos, cy, "first" + srow, oe->getAbsTime(g.second.firstStart), 10).setHandler(sgh).setExtra(g.first);
+    gdi.addInput(lastPos, cy, "last" + srow, oe->getAbsTime(g.second.lastStart), 8).setHandler(sgh).setExtra(g.first);
+    gdi.addInput(namePos, cy, "name" + srow, g.second.name, 20).setHandler(sgh).setExtra(g.first);
+
     gdi.addButton(bPos, cy, "D" + srow, L"Ta bort").setHandler(sgh).setExtra(g.first);
   }
 

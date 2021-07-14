@@ -546,7 +546,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   gdi.setData("TotalResult", totalResults ? 1 : 0);
   gdi.setData("ShortNames", shortNames ? 1 : 0);
 
-  gdi.setData("oEvent", DWORD(this));
+  gdi.setData("oEvent", this);
 
   gdi.registerEvent("DataUpdate", SpeakerCB);
   gdi.setData("DataSync", 1);

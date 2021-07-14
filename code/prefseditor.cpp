@@ -140,7 +140,7 @@ void PrefsEditor::handle(gdioutput &gdi, BaseInfo &data, GuiEventType type) {
       else
         value = gdi.getText("Value");
 
-      PropertyType type = (PropertyType)int(gdi.getData("EditPrefs"));
+      PropertyType type = (PropertyType)(gdi.getDataInt("EditPrefs"));
       oe->setProperty(pref.c_str(), value);
       dynamic_cast<TextInfo *>(gdi.setText("value" + pref, codeValue(value, type)))->
              setColor(selectColor(value, type));

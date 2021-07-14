@@ -125,7 +125,7 @@ bool oBase::synchronize(bool writeOnly)
     oe->dataRevision++;
   }
   transientChanged = false;
-  if (oe && oe->HasDBConnection && (changed || !writeOnly)) {
+  if (oe && oe->hasDBConnection() && (changed || !writeOnly)) {
     correctionNeeded = false;
     if (localObject)
       return false;
@@ -133,7 +133,7 @@ bool oBase::synchronize(bool writeOnly)
   }
   else {
     if (changed) {
-      if (!oe->HasPendingDBConnection) // True if we are trying to reconnect to mysql
+      if (!oe->hasPendingDBConnection) // True if we are trying to reconnect to mysql
         changed = false;
     }
   }

@@ -86,7 +86,10 @@ private:
   EPostType alignType;
   int leg;
   int minimalIndent;
-  bool alignBlock; // True if the next item should also be align (table style block)
+  bool alignBlock; //Legacy: not used. True if the next item should also be align (table style block)
+  
+  bool packPrevious = false;
+  bool limitWidth = false;
   int blockWidth;
   bool mergeWithPrevious;
   gdiFonts font;
@@ -104,6 +107,9 @@ public:
   MetaListPost &align(bool alignBlock_ = true) {return align(lAlignNext, alignBlock_);}
   MetaListPost &alignText(const wstring &t) {alignWithText = t; return *this;}
   MetaListPost &mergePrevious(bool m_=true) {mergeWithPrevious = m_; return *this;}
+  MetaListPost &limitBlockWidth(bool lim = true) { limitWidth = lim; return *this; }
+  MetaListPost &packWithPrevious(bool pack = true) { packPrevious = pack; return *this; }
+
 
   MetaListPost &indent(int ind) {minimalIndent = ind; return *this;}
 
@@ -111,6 +117,7 @@ public:
 
   const wstring &getType() const;
   MetaListPost &setType(EPostType type_) {type = type_; return *this;}
+  EPostType getTypeRaw() const { return type; }
 
   const wstring &getText() const {return text;}
   const string &getResultModule() const {return resultModule;}
@@ -120,10 +127,12 @@ public:
   void setLeg(int leg_) {leg = leg_;}
 
   int getMinimalIndent() const {return minimalIndent;}
-  bool getAlignBlock() const {return alignBlock;}
+  //bool getAlignBlock() const {return alignBlock;}
   bool isMergePrevious() const {return mergeWithPrevious;}
 
   int getBlockWidth() const {return blockWidth;}
+  bool getLimitBlockWidth() const { return limitWidth; }
+  bool getPackWithPrevious() const { return packPrevious; }
 
   const string &getFont() const;
   void setFont(gdiFonts font_) {font = font_;}
@@ -151,6 +160,8 @@ struct DynamicResultRef {
   wstring getAnnotation() const;
 };
 
+struct AutoCompleteRecord;
+
 class MetaList {
 private:
 
@@ -170,7 +181,7 @@ private:
     }
   };
 
-  vector< vector< vector<MetaListPost> > > data;
+  vector<vector<vector<MetaListPost>>> data;
   vector<FontInfo> fontFaces;
 
   wstring listName;
@@ -227,6 +238,9 @@ private:
   mutable map<string, int> resultToIndex;
 
 public:
+
+  static void getAutoComplete(const wstring &w, vector<AutoCompleteRecord> &records);
+
   MetaList();
   virtual ~MetaList() {}
 
@@ -330,6 +344,8 @@ public:
   vector< vector<MetaListPost> > &getSubList() {return data[MLSubList];}
   vector< vector<MetaListPost> > &getHead() {return data[MLHead];}
   vector< vector<MetaListPost> > &getSubHead() {return data[MLSubHead];}
+
+  int getNumPostsOnLine(int groupIx, int lineIx) const { return data[groupIx][lineIx].size(); }
 
   void newListRow() {addRow(MLList);}
   void newSubListRow() {addRow(MLSubList);}

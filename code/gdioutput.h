@@ -225,10 +225,10 @@ protected:
 
   void initCommon(double scale, const wstring &font);
 
-  void processButtonMessage(ButtonInfo &bi, DWORD wParam);
-  void processEditMessage(InputInfo &bi, DWORD wParam);
-  void processComboMessage(ListBoxInfo &bi, DWORD wParam);
-  void processListMessage(ListBoxInfo &bi, DWORD wParam);
+  void processButtonMessage(ButtonInfo &bi, WPARAM wParam);
+  void processEditMessage(InputInfo &bi, WPARAM wParam);
+  void processComboMessage(ListBoxInfo &bi, WPARAM wParam);
+  void processListMessage(ListBoxInfo &bi, WPARAM wParam);
 
   void doEnter();
   void doEscape();
@@ -543,6 +543,8 @@ public:
   void setData(const string &id, const string &data);
 
   void *getData(const string &id) const;
+  int getDataInt(const string &id) const { return int(size_t(getData(id))); }
+
   bool getData(const string &id, string &out) const;
 
 

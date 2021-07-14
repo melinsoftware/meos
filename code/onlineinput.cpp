@@ -233,7 +233,7 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     dwl.downloadFile(url + q, result, key);
     dwl.downLoadNoThread();
 
-    if (!useROCProtocol) {
+      if (!useROCProtocol) {
       xmlobject res;
       xmlparser xml;
       try {
@@ -442,6 +442,9 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
       hiredCard = card.getObjectBool("hired");
     }
 
+    if (!hiredCard && oe.hasHiredCardData())
+      hiredCard = oe.isHiredCard(cardNo);
+
     pRunner r = nullptr;
     int id = entry.getObjectInt("id");
     if (id > 0) {
@@ -469,6 +472,7 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
       r->setClub(club);
       r->setBirthYear(birthyear);
       r->setCardNo(cardNo, false, false);
+      r->setClassId(cls->getId(), true);
     }
 
     if (fee == 0)

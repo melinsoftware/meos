@@ -1324,6 +1324,7 @@ bool oCourse::constructLoopKeys(int cc, vector< vector<pControl> > &loopKeys, ve
 void oCourse::changedObject() {
   if (oe)
     oe->globalModification = true;
+  oe->sqlCourses.changed = true;
 }
 
 int oCourse::getCourseControlId(int controlIx) const {

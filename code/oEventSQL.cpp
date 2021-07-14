@@ -36,9 +36,9 @@
 
 #include "random.h"
 #include "SportIdent.h"
-#include "meosdb/sqltypes.h"
 #include "meosexception.h"
 #include "meos_util.h"
+#include "MeosSQL.h"
 
 #include "meos.h"
 #include <cassert>
@@ -60,32 +60,31 @@ void oEvent::startReconnectDaemon()
   if (isThreadReconnecting())
     return;
 
-  char bf[256];
-  msGetErrorState(bf);
+  string err;
+  sqlConnection->getErrorMessage(err);
 
-  MySQLReconnect msqlr(lang.tl("warning:dbproblem#" + string(bf)));
+  MySQLReconnect msqlr(lang.tl("warning:dbproblem#" + err));
   msqlr.interval=5;
-  HasDBConnection = false;
-  HasPendingDBConnection = true;
+  hasPendingDBConnection = true;
   tabAutoAddMachinge(msqlr);
 
   gdibase.setDBErrorState(false);
   gdibase.setWindowTitle(oe->getTitleName());
   if (!isReadOnly()) {
     // Do not show in kiosk-mode
-    gdibase.alert("warning:dbproblem#" + string(bf));
+    gdibase.alert("warning:dbproblem#" + err);
   }
 }
 
 bool oEvent::msSynchronize(oBase *ob)
 {
-  if (!HasDBConnection && !HasPendingDBConnection)
+  if (!hasDBConnection() && !hasPendingDBConnection)
     return true;
 
-  int ret = msSynchronizeRead(ob);
+  int ret = sqlConnection->syncRead(false, ob);
 
-  char err[256];
-  if (msGetErrorState(err))
+  string err;
+  if (sqlConnection->getErrorMessage(err))
     gdibase.addInfoBox("sqlerror", gdibase.widen(err), 15000);
 
   if (ret==0) {
@@ -104,13 +103,18 @@ bool oEvent::msSynchronize(oBase *ob)
   return ret!=0;
 }
 
-bool MEOSDB_API msSynchronizeList(oEvent *, oListId lid);
-
 bool oEvent::synchronizeList(initializer_list<oListId> types) {
-  if (!HasDBConnection)
+  if (!hasDBConnection())
     return true;
 
-  resetSynchTimes();
+  unsigned int ct = GetTickCount();
+  if (ct < lastTimeConsistencyCheck || (ct - lastTimeConsistencyCheck) > 1000 * 60) {
+    // Make autoSynch instead
+    autoSynchronizeLists(true);
+    return true;
+  }
+
+  sqlConnection->clearReadTimes();
   msSynchronize(this);
   resetSQLChanged(true, false);
 
@@ -131,7 +135,7 @@ bool oEvent::synchronizeList(initializer_list<oListId> types) {
   }
 
   for (oListId t : toSync) {
-    if (!msSynchronizeList(this, t)) {
+    if (!sqlConnection->synchronizeList(this, t)) {
       verifyConnection();
       return false;
     }
@@ -146,11 +150,20 @@ bool oEvent::synchronizeList(initializer_list<oListId> types) {
 }
 
 bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) {
-  if (!HasDBConnection)
+  if (!hasDBConnection())
     return true;
 
+  if (postSyncEvent) {
+    unsigned int ct = GetTickCount();
+    if (ct < lastTimeConsistencyCheck || (ct - lastTimeConsistencyCheck) > 1000 * 60) {
+      // Make autoSynch instead
+      autoSynchronizeLists(true);
+      return true;
+    }
+  }
+
   if (preSyncEvent && postSyncEvent && id == oListId::oLRunnerId) {
-    resetSynchTimes();
+    sqlConnection->clearReadTimes();
     synchronizeList(oListId::oLCardId, true, false);
     preSyncEvent = false;
   }
@@ -160,7 +173,7 @@ bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) 
     resetSQLChanged(true, false);
   }
 
-  if ( !msSynchronizeList(this, id) ) {
+  if ( !sqlConnection->synchronizeList(this, id) ) {
     verifyConnection();
     return false;
   }
@@ -176,6 +189,24 @@ bool oEvent::synchronizeList(oListId id, bool preSyncEvent, bool postSyncEvent) 
 
   return true;
 }
+
+bool oEvent::checkDatabaseConsistency(bool force) {
+  if (!hasDBConnection())
+    return false;
+
+  if (!force) {
+    unsigned int ct = GetTickCount();
+    if (ct < lastTimeConsistencyCheck || (ct - lastTimeConsistencyCheck) > 1000 * 60) {
+      lastTimeConsistencyCheck = ct;
+    }
+    else
+      return false; // Skip check
+  }
+
+  sqlConnection->checkConsistency(this, force);
+  return true; // Did check
+}
+
 
 bool oEvent::needReEvaluate() {
   return sqlRunners.changed |
@@ -223,19 +254,18 @@ namespace {
   }
 }
 //Returns true if data is changed.
-bool oEvent::autoSynchronizeLists(bool SyncPunches)
+bool oEvent::autoSynchronizeLists(bool synchPunches)
 {
-  if (!HasDBConnection)
+  if (!hasDBConnection())
     return false;
 
   bool changed=false;
   string ot;
 
-  int mask = getListMask(*this);
-  if (mask == 0)
-    return false;
+  int mask = sqlConnection->getModifiedMask(*this);
+  if (mask != 0)
+    sqlConnection->clearReadTimes();
 
-  resetSynchTimes();
   // Reset change data and store update status on objects
   // (which might be incorrectly changed during sql update)
   resetSQLChanged(true, false);
@@ -250,79 +280,42 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
     }
   }
 
-  //Controls
-  if (isSet(mask, oListId::oLControlId)) {
-    int oc = sqlControls.counter;
-    ot = sqlControls.updated;
-    synchronizeList(oListId::oLControlId, false, false);
-    changed |= oc != sqlControls.counter;
-    changed |= ot != sqlControls.updated;
-  }
+  int dr = dataRevision;
 
+  //Controls
+  if (isSet(mask, oListId::oLControlId)) 
+    synchronizeList(oListId::oLControlId, false, false);
+  
   //Courses
-  if (isSet(mask, oListId::oLCourseId)) {
-    int oc = sqlCourses.counter;
-    ot = sqlCourses.updated;
+  if (isSet(mask, oListId::oLCourseId)) 
     synchronizeList(oListId::oLCourseId, false, false);
-    changed |= oc != sqlCourses.counter;
-    changed |= ot != sqlCourses.updated;
-  }
 
   //Classes
-  if (isSet(mask, oListId::oLClassId)) {
-    int oc = sqlClasses.counter;
-    ot = sqlClasses.updated;
+  if (isSet(mask, oListId::oLClassId)) 
     synchronizeList(oListId::oLClassId, false, false);
-    changed |= oc != sqlClasses.counter;
-    changed |= ot != sqlClasses.updated;
-  }
 
   //Clubs
-  if (isSet(mask, oListId::oLClubId)) {
-    int oc = sqlClubs.counter;
-    ot = sqlClubs.updated;
+  if (isSet(mask, oListId::oLClubId)) 
     synchronizeList(oListId::oLClubId, false, false);
-    changed |= oc != sqlClubs.counter;
-    changed |= ot != sqlClubs.updated;
-  }
 
   //Cards
-  if (isSet(mask, oListId::oLCardId)) {
-    int oc = sqlCards.counter;
-    ot = sqlCards.updated;
+  if (isSet(mask, oListId::oLCardId)) 
     synchronizeList(oListId::oLCardId, false, false);
-    changed |= oc != sqlCards.counter;
-    changed |= ot != sqlCards.updated;
-  }
 
   //Runners
-  if (isSet(mask, oListId::oLRunnerId)) {
-    int oc = sqlRunners.counter;
-    ot = sqlRunners.updated;
+  if (isSet(mask, oListId::oLRunnerId)) 
     synchronizeList(oListId::oLRunnerId, false, false);
-    changed |= oc != sqlRunners.counter;
-    changed |= ot != sqlRunners.updated;
-  }
 
   //Teams
-  if (isSet(mask, oListId::oLTeamId)) {
-    int oc = sqlTeams.counter;
-    ot = sqlTeams.updated;
+  if (isSet(mask, oListId::oLTeamId)) 
     synchronizeList(oListId::oLTeamId, false, false);
-    changed |= oc != sqlTeams.counter;
-    changed |= ot != sqlTeams.updated;
-  }
 
-  if (SyncPunches && isSet(mask, oListId::oLPunchId)) {
-    //Punches
-    int oc = sqlPunches.counter;
-    ot = sqlPunches.updated;
+  if (isSet(mask, oListId::oLPunchId)) 
     synchronizeList(oListId::oLPunchId, false, false);
-    changed |= oc != sqlPunches.counter;
-    changed |= ot != sqlPunches.updated;
-  }
 
-  if (changed) {
+  checkDatabaseConsistency(false);
+
+  if (changed || dr != dataRevision) {
     if (needReEvaluate())
       reEvaluateChanged();
 
@@ -338,9 +331,6 @@ bool oEvent::autoSynchronizeLists(bool SyncPunches)
 
 bool oEvent::connectToMySQL(const string &server, const string &user, const string &pwd, int port)
 {
-  if (isThreadReconnecting())
-    return false;
-
   if (!connectToServer())
     return false;
 
@@ -348,6 +338,8 @@ bool oEvent::connectToMySQL(const string &server, const string &user, const stri
   MySQLPassword=pwd;
   MySQLPort=port;
   MySQLUser=user;
+
+  sqlConnection = make_shared<MeosSQL>();
 
   //Delete non-server competitions.
   list<CompetitionInfo> saved;
@@ -358,10 +350,10 @@ bool oEvent::connectToMySQL(const string &server, const string &user, const stri
   }
   cinfo = saved;
 
-  if (!msConnectToServer(this)) {
-    char bf[256];
-    msGetErrorState(bf);
-    gdibase.alert(bf);
+  if (!sqlConnection->listCompetitions(this, false)) {
+    string err;
+    sqlConnection->getErrorMessage(err);
+    gdibase.alert(err);
     return false;
   }
 
@@ -409,42 +401,37 @@ bool oEvent::uploadSynchronize()
     }
   }
 
-  HasDBConnection=false;
+  isConnectedToServer = false;
 
-#ifdef BUILD_DB_DLL
-  if (!msSynchronizeUpdate)
-    throw std::exception("Internt fel. Starta om MeOS");
-#endif
-
-  if ( !msOpenDatabase(this) ){
-    char bf[256];
-    msGetErrorState(bf);
-    string error = string("Kunde inte öppna databasen (X).#") + bf;
+  if ( !sqlConnection->openDB(this) ){
+    string err;
+    sqlConnection->getErrorMessage(err);
+    string error = string("Kunde inte öppna databasen (X).#") + err;
     throw std::exception(error.c_str());
   }
 
-  if ( !msSynchronizeUpdate(this) ) {
-    char bf[256];
-    msGetErrorState(bf);
-    string error = string("Kunde inte ladda upp tävlingen (X).#") + bf;
+  if ( !sqlConnection->synchronizeUpdate(this) ) {
+    string err;
+    sqlConnection->getErrorMessage(err);
+    string error = string("Kunde inte ladda upp tävlingen (X).#") + err;
     throw std::exception(error.c_str());
   }
 
-  OpFailStatus stat = (OpFailStatus)msUploadRunnerDB(this);
+  OpFailStatus stat = (OpFailStatus)sqlConnection->uploadRunnerDB(this);
 
   if (stat == opStatusFail) {
-    char bf[256];
-    msGetErrorState(bf);
-    string error = string("Kunde inte ladda upp löpardatabasen (X).#") + bf;
+    string err;
+    sqlConnection->getErrorMessage(err);
+    string error = string("Kunde inte ladda upp löpardatabasen (X).#") + err;
     throw meosException(error);
   }
   else if (stat == opStatusWarning) {
-    char bf[256];
-    msGetErrorState(bf);
-    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
+    string err;
+    sqlConnection->getErrorMessage(err);
+    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), 5000);
   }
 
-  HasDBConnection=true;
+  isConnectedToServer = true;
 
   // Save local version of database
   saveRunnerDatabase(currentNameId.c_str(), false);
@@ -461,12 +448,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
   if (isThreadReconnecting())
     return false;
 
-  HasDBConnection=false;
-
-#ifdef BUILD_DB_DLL
-  if (!msConnectToServer)
-    return false;
-#endif
+  isConnectedToServer = false;
 
   MySQLServer=ci.Server;
   MySQLPassword=ci.ServerPassword;
@@ -482,10 +464,10 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
   }
   cinfo=saved;
 
-  if (!msConnectToServer(this)) {
-    char bf[256];
-    msGetErrorState(bf);
-    throw std::exception(bf);
+  if (!sqlConnection->listCompetitions(this, false)) {
+    string err;
+    sqlConnection->getErrorMessage(err);
+    throw meosException(err);
     return false;
   }
 
@@ -501,37 +483,37 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
   wchar_t file[260];
   swprintf_s(file, L"%s.dbmeos", currentNameId.c_str());
   getUserFile(CurrentFile, file);
-  if ( !msOpenDatabase(this) ) {
-    char bf[256];
-    msGetErrorState(bf);
-    throw std::exception(bf);
+  if ( !sqlConnection->openDB(this) ) {
+    string err;
+    sqlConnection->getErrorMessage(err);
+    throw meosException(err);
   }
 
   updateFreeId();
-  HasDBConnection=false;
+  isConnectedToServer = false;
 
   openRunnerDatabase(currentNameId.c_str());
 
-  int ret = msSynchronizeRead(this);
+  int ret = sqlConnection->syncRead(false, this);
   if (ret == 0) {
-    char bf[256];
-    msGetErrorState(bf);
+    string err;
+    sqlConnection->getErrorMessage(err);
 
-    string err = string("Kunde inte öppna tävlingen (X)#") + bf;
-    throw std::exception(err.c_str());
+    err = string("Kunde inte öppna tävlingen (X)#") + err;
+    throw meosException(err);
   }
   else if (ret == 1) {
     // Warning
-    char bf[256];
-    msGetErrorState(bf);
-    wstring info = L"Databasvarning: X#" + lang.tl(bf);
+    string err;
+    sqlConnection->getErrorMessage(err);
+    wstring info = L"Databasvarning: X#" + lang.tl(err);
     gdibase.addInfoBox("sqlerror", info, 15000);
   }
 
   // Cache database locally
   saveRunnerDatabase(currentNameId.c_str(), false);
 
-  HasDBConnection=true;
+  isConnectedToServer = true;
 
   // Setup multirunner links
   for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it)
@@ -628,26 +610,38 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
   return true;
 }
 
-bool oEvent::reConnect(char *errorMsg256)
+bool oEvent::reConnectRaw() {
+  if (!sqlConnection)
+    return false;
+  return sqlConnection->reConnect();
+}
+
+bool oEvent::sqlRemove(oBase *obj) {
+  if (!sqlConnection)
+    return false;
+  return sqlConnection->remove(obj);
+}
+
+MeosSQL &oEvent::sql() {
+  if (!sqlConnection)
+    throw meosException("Internal SQL error");
+
+  return *sqlConnection;
+}
+
+bool oEvent::reConnect(string &err)
 {
-  if (HasDBConnection)
+  if (hasDBConnection())
     return true;
 
   if (isThreadReconnecting()){
-    strcpy_s(errorMsg256, 256, "Synkroniseringsfel.");
+    err = "Synkroniseringsfel.";
     return false;
   }
 
-#ifdef BUILD_DB_DLL
-  if (!msReConnect) {
-    strcpy_s(errorMsg256, 256, "Inte ansluten mot meosdb.dll");
-    return false;
-  }
-#endif
-
-  if (msReConnect()) {
-    HasDBConnection = true;
-    HasPendingDBConnection = false;
+  if (sqlConnection->reConnect()) {
+    isConnectedToServer = true;
+    hasPendingDBConnection = false;
     //synchronize changed objects
     for (list<oCard>::iterator it=oe->Cards.begin();
           it!=oe->Cards.end(); ++it)
@@ -694,7 +688,7 @@ bool oEvent::reConnect(char *errorMsg256)
     return true;
   }
 
-  msGetErrorState(errorMsg256);
+  sqlConnection->getErrorMessage(err);
   return false;
 }
 
@@ -780,18 +774,13 @@ int oEvent::checkChanged(vector<wstring> &out) const
 
 bool oEvent::verifyConnection()
 {
-  if (!HasDBConnection)
+  if (!hasDBConnection())
     return false;
 
   if (isThreadReconnecting())
     return false;
 
-#ifdef BUILD_DB_DLL
-  if (!msMonitor)
-    return false;
-#endif
-
-  if (!msMonitor(this)) {
+  if (!sqlConnection->checkConnection(this)) {
     startReconnectDaemon();
     return false;
   }
@@ -805,23 +794,19 @@ const string &oEvent::getServerName() const
 
 void oEvent::closeDBConnection()
 {
-  bool hadDB=HasDBConnection;
+  bool hadDB=hasDBConnection();
 
   if (isThreadReconnecting()) {
     //Don't know what to do?!
   }
   gdibase.setWaitCursor(true);
-  if (HasDBConnection) {
+  if (hasDBConnection()) {
     autoSynchronizeLists(true);
   }
-  HasDBConnection=false;
+  isConnectedToServer = false;
 
-  #ifdef BUILD_DB_DLL
-    if (msResetConnection)
-      msResetConnection();
-  #else
-    msResetConnection();
-  #endif
+  
+  sqlConnection->closeDB();
   Id=0;
 
   if (!oe->empty() && hadDB) {
@@ -845,7 +830,7 @@ void oEvent::listConnectedClients(gdioutput &gdi)
   gdi.fillRight();
   gdi.pushX();
   int x=gdi.getCX();
-  for (size_t k=0;k<connectedClients.size();k++) {
+  for (int k=0;k<connectedClients.size();k++) {
     sprintf_s(bf, "%d.", k+1);
     gdi.addStringUT(0, bf);
     gdi.addStringUT(gdi.getCY(), x+30, 0, connectedClients[k]);
@@ -879,20 +864,20 @@ bool oEvent::hasClientChanged() const
 void oEvent::dropDatabase()
 {
   bool dropped = false;
-  if (HasDBConnection) {
-    HasDBConnection=false;
+  if (hasDBConnection()) {
+    isConnectedToServer = false;
 
-    dropped = msDropDatabase(this)!=0;
+    dropped = sqlConnection->dropDatabase(this)!=0;
   }
-  else throw std::exception("Inte ansluten");
+  else throw std::exception("Not connected");
 
   if (!dropped) {
-    char bf[256];
-    msGetErrorState(bf);
-    if (strlen(bf)>0)
-      throw std::exception(bf);
+    string err;
+    sqlConnection->getErrorMessage(err);
+    if (!err.empty())
+      throw meosException(err);
 
-    throw std::exception("Operationen misslyckades. Orsak okänd.");
+    throw meosException("Operation failed. Unknown reason");
   }
   clear();
 }

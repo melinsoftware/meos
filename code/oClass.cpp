@@ -738,7 +738,7 @@ pClass oEvent::addClass(const oClass &c)
   Classes.push_back(c);
   Classes.back().addToEvent(this, &c);
 
-  if (HasDBConnection && !Classes.back().existInDB() && !c.isImplicitlyCreated()) {
+  if (hasDBConnection() && !Classes.back().existInDB() && !c.isImplicitlyCreated()) {
     Classes.back().changed = true;
     Classes.back().synchronize();
   }
@@ -3762,6 +3762,7 @@ void oClass::changedObject() {
   markSQLChanged(-1,-1);
   tNoTiming = -1;
   tIgnoreStartPunch = -1;
+  oe->sqlClasses.changed = true;
 }
 
 static void checkMissing(const map< pair<int, int>, int > &master,
@@ -4121,7 +4122,7 @@ pair<int, int> oClass::autoForking(const vector< vector<int> > &inputCourses) {
     }
   }
 
-  return make_pair(generatedForkKeys.size(), coursesUsed.size());
+  return make_pair<int, int>(generatedForkKeys.size(), coursesUsed.size());
 }
 
 int oClass::extractBibPattern(const wstring &bibInfo, wchar_t pattern[32]) {
@@ -4157,7 +4158,7 @@ int oClass::extractBibPattern(const wstring &bibInfo, wchar_t pattern[32]) {
 }
 
 AutoBibType oClass::getAutoBibType() const {
-  wstring bib = getDCI().getString("Bib");
+  const wstring &bib = getDCI().getString("Bib");
   if (bib.empty()) // Manual
     return AutoBibManual;
   else if (bib == L"*") // Consecutive
@@ -4427,7 +4428,7 @@ void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart,
   
   if (noClubNb) {
     set<int> pushed_back;
-    for (size_t k = 1; k < startOrder.size(); k++) {
+    for (int k = 1; k < startOrder.size(); k++) {
       int idMe = startOrder[k]->getClubId();
       if (idMe != 0 && idMe == startOrder[k-1]->getClubId()) {
         // Make sure the runner with worst ranking is moved back. (Swedish SM rules)
@@ -4437,11 +4438,11 @@ void oClass::drawSeeded(ClassSeedMethod seed, int leg, int firstStart,
         pushed_back.insert(startOrder[k]->getId());
         vector<pair<int, pRunner> > rqueue;
         rqueue.push_back(make_pair(k, startOrder[k]));
-        for (size_t j = k + 1; j < startOrder.size(); j++) {
+        for (int j = k + 1; j < startOrder.size(); j++) {
           if (idMe != startOrder[j]->getClubId()) {
             pushed_back.insert(startOrder[j]->getId());
             swap(startOrder[j], startOrder[k]); // k-1 now has a non-club nb behind
-            rqueue.push_back(make_pair(j, pRunner(0)));
+            rqueue.push_back(make_pair(j, nullptr));
             // Shift the queue
             for (size_t q = 1; q < rqueue.size(); q++) {
               startOrder[rqueue[q].first] = rqueue[q-1].second;

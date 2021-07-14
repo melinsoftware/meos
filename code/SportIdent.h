@@ -91,6 +91,7 @@ struct SICard
   wchar_t firstName[21];
   wchar_t lastName[21];
   wchar_t club[41];
+  int miliVolt; // SIAC voltage
   char readOutTime[32];
   bool punchOnly;
   ConvertedTimeStatus convertedTime;
@@ -99,11 +100,10 @@ struct SICard
   int relativeFinishTime;
   bool statusOK;
   bool statusDNF;
-
   vector<string> codeLogData(gdioutput &converter, int row) const;
   static vector<string> logHeader();
 
-  unsigned calculateHash() const;
+  unsigned int calculateHash() const;
   bool isManualInput() const {return runnerId != 0;}
 
   string serializePunches() const;
@@ -185,7 +185,7 @@ protected:
   bool getCard6Data(BYTE *data, SICard &card);
   bool getCard9Data(BYTE *data, SICard &card);
 
-  DWORD GetExtCardNumber(BYTE *data) const;
+  DWORD GetExtCardNumber(const BYTE *data) const;
 
   void getSI5Data(HANDLE hComm);
   void getSI5DataExt(HANDLE hComm);
@@ -204,7 +204,7 @@ protected:
   DWORD ClassId;
 
   volatile int tcpPortOpen;
-  volatile unsigned int serverSocket;
+  volatile size_t serverSocket;
 
   bool MonitorTEST(SI_StationInfo &si);
   bool MonitorSI(SI_StationInfo &si);
@@ -224,6 +224,8 @@ protected:
   };
 
   set<TestCard> testCards;
+
+  bool readVoltage;
 
 public:
   SI_StationInfo *findStation(const wstring &com);
@@ -251,7 +253,7 @@ public:
 
   bool openComListen(const wchar_t *com, DWORD BaudRate);
 
-  SportIdent(HWND hWnd, DWORD Id);
+  SportIdent(HWND hWnd, DWORD Id, bool readVoltage);
   virtual ~SportIdent();
   friend void start_si_thread(void *ptr);
 

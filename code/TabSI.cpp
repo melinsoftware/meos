@@ -191,7 +191,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       ListBoxInfo lbi;
       if (gdi.getSelectedItem("ComPort", lbi)) {
 
-        swprintf_s(bf, 64, L"COM%d", lbi.data);
+        swprintf_s(bf, 64, L"COM%d", lbi.getDataInt());
         wstring port = bf;
 
         if (lbi.text.substr(0, 3) == L"TCP")
@@ -306,7 +306,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         if (lbi.text.substr(0, 3) == L"TCP")
           swprintf_s(bf, 64, L"TCP");
         else
-          swprintf_s(bf, 64, L"COM%d", lbi.data);
+          swprintf_s(bf, 64, L"COM%d", lbi.getDataInt());
         gdi.fillDown();
         gdi.addStringUT(0, lang.tl(L"Hämtar information om ") + wstring(bf) + L".");
         printSIInfo(gdi, bf);
@@ -1214,7 +1214,7 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       wchar_t bf[64];
 
       if (bi.text.substr(0,3)!=L"TCP")
-        swprintf_s(bf, 64, L"COM%d", bi.data);
+        swprintf_s(bf, 64, L"COM%d", bi.getDataInt());
       else
         wcscpy_s(bf, L"TCP");
 
@@ -1631,7 +1631,7 @@ void TabSI::showReadPunches(gdioutput &gdi, vector<PunchInfo> &punches, set<stri
   int xp = gdi.getCX();
   dates.clear();
   for (size_t k=0;k<punches.size(); k++) {
-    sprintf_s(bf, "%d.", k+1);
+    sprintf_s(bf, "%d.", int(k+1));
     gdi.addStringUT(yp, xp, 0, bf);
 
     pRunner r = oe->getRunnerByCardNo(punches[k].card, punches[k].time, oEvent::CardLookupProperty::Any);
@@ -1660,7 +1660,7 @@ void TabSI::showReadCards(gdioutput &gdi, vector<SICard> &cards)
   int yp = gdi.getCY();
   int xp = gdi.getCX();
   for (size_t k=0;k<cards.size(); k++) {
-    sprintf_s(bf, "%d.", k+1);
+    sprintf_s(bf, "%d.", int(k+1));
     gdi.addStringUT(yp, xp, 0, bf);
 
     pRunner r = oe->getRunnerByCardNo(cards[k].CardNumber, 0, oEvent::CardLookupProperty::Any);
@@ -1678,7 +1678,7 @@ void TabSI::showReadCards(gdioutput &gdi, vector<SICard> &cards)
 SportIdent &TabSI::getSI(const gdioutput &gdi) {
   if (!gSI) {
     HWND hWnd=gdi.getHWNDMain();
-    gSI = new SportIdent(hWnd, 0);
+    gSI = new SportIdent(hWnd, 0, gEvent->getPropertyInt("ReadVoltageExp", 0) != 0);
   }
   return *gSI;
 }
@@ -2343,6 +2343,7 @@ void TabSI::processInsertCard(const SICard &sic)
   pCard card = oe->allocateCard(runner);
   card->setReadId(sic);
   card->setCardNo(sic.CardNumber);
+  card->setMeasuredVoltage(sic.miliVolt);
 
   if (sic.CheckPunch.Code!=-1)
     card->addPunch(oPunch::PunchCheck, sic.CheckPunch.Time, 0);
@@ -2372,7 +2373,7 @@ bool TabSI::processUnmatched(gdioutput &gdi, const SICard &csic, bool silent)
 
   card->setReadId(csic);
   card->setCardNo(csic.CardNumber);
-
+  card->setMeasuredVoltage(csic.miliVolt);
   
   wstring info=lang.tl(L"Okänd bricka ") + itow(sic.CardNumber) + L".";
   wstring warnings;
@@ -2456,6 +2457,7 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
 
   // Choose course from pool
   pClass cls = runner->getClassRef(false);
+  pClass pclass = runner->getClassRef(true);
   if (cls && cls->hasCoursePool()) {
     unsigned leg=runner->legToRun();
 
@@ -2464,6 +2466,11 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
       if (c)
         runner->setCourseId(c->getId());
     }
+  }
+  else if (pclass && pclass != cls && pclass->hasCoursePool()) {
+    pCourse c = pclass->selectCourseFromPool(0, csic);
+    if (c)
+      runner->setCourseId(c->getId());
   }
 
   if (cls && cls->hasUnorderedLegs()) {
@@ -2474,7 +2481,6 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
     }
   }
 
-  pClass pclass = runner->getClassRef(true);
   if (!runner->getCourse(false) && !csic.isManualInput() && !oe->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
 
     if (pclass && !pclass->hasMultiCourse() && !pclass->hasDirectResult()) {
@@ -2522,6 +2528,7 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
 
     card->setReadId(csic);
     card->setCardNo(sic.CardNumber);
+    card->setMeasuredVoltage(sic.miliVolt);
 
     cardno = itow(sic.CardNumber);
 
@@ -3738,7 +3745,7 @@ wstring TabSI::getCardInfo(bool param, vector<int> &count) const {
 
 void TabSI::showRegisterHiredCards(gdioutput &gdi) {
   gdi.disableInput("Interactive");
-  gdi.disableInput("Database");
+  gdi.disableInput("Database", true);
   gdi.disableInput("PrintSplits");
   gdi.disableInput("UseManualInput");
 

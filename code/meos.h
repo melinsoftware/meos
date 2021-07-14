@@ -1,11 +1,3 @@
-﻿#if !defined(AFX_MEOS_H__7F8E5F23_ADD4_45AB_9626_7378FEA38D49__INCLUDED_)
-#define AFX_MEOS_H__7F8E5F23_ADD4_45AB_9626_7378FEA38D49__INCLUDED_
-
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+﻿#pragma once
 
 #include "resource.h"
-
-#endif // !defined(AFX_MEOS_H__7F8E5F23_ADD4_45AB_9626_7378FEA38D49__INCLUDED_)

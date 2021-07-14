@@ -107,6 +107,13 @@ enum EPostType
   lRunnerTimeAdjustment,
   lRunnerPointAdjustment,
 
+  lRunnerStageTime,
+  lRunnerStageStatus,
+  lRunnerStageTimeStatus,
+  lRunnerStagePlace,
+  lRunnerStagePoints,
+  lRunnerStageNumber,
+
   lRunnerUMMasterPoint,
   lRunnerTimePlaceFixed,
   lRunnerLegNumberAlpha,
@@ -264,6 +271,7 @@ enum EFilterList
   EFilterAnyResult, // With any (radio) punch on a leg
   EFilterAPIEntry, // Entry via API
   EFilterWrongFee,
+  EFilterIncludeNotParticipating,
   _EFilterMax
 };
 

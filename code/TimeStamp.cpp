@@ -130,6 +130,15 @@ string TimeStamp::getStampStringN() const
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
 
+  if (st.wYear > 2021 || st.wYear < 2009) {
+    st.wYear = 2021;
+    st.wDay = 1;
+    st.wMonth = 1;
+    st.wHour = 2;
+    st.wMinute = 0;
+    st.wSecond = 0;
+  }
+  
   char bf[32];
   sprintf_s(bf, "%d-%02d-%02d %02d:%02d:%02d", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 

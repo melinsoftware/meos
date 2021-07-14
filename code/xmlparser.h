@@ -259,6 +259,7 @@ public:
 
   int getInt() const {const char *d = parser->xmlinfo[index].data;
                       return d ? atoi(d) : 0;}
+
   __int64 getInt64() const {const char *d = parser->xmlinfo[index].data;
                            return d ? _atoi64(d) : 0;}
 

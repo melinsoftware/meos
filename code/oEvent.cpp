@@ -46,13 +46,12 @@
 #include "localizer.h"
 #include "progress.h"
 #include "intkeymapimpl.hpp"
-#include "meosdb/sqltypes.h"
 #include "socket.h"
 
 #include "MeOSFeatures.h"
 #include "generalresult.h"
 #include "oEventDraw.h"
-
+#include "MeosSQL.h"
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -64,7 +63,7 @@
 #include "Table.h"
 
 //Version of database
-int oEvent::dbVersion = 84;
+int oEvent::dbVersion = 86;
 
 class RelativeTimeFormatter : public oDataDefiner {
   string name;
@@ -153,6 +152,116 @@ public:
     return table->addColumn(description, max(minWidth, 90), true, true);
   }
 };
+
+class StartGroupFormatter : public oDataDefiner {
+  mutable long rev = -1;
+  mutable map<int, wstring> sgmap;
+  mutable wstring out;
+
+  int static getGroup(const oBase *ob) {
+    const oRunner *r = dynamic_cast<const oRunner *>(ob);
+    int sg = 0;
+    if (r)
+      sg = r->getStartGroup(false);
+    else {
+      const oClub *c = dynamic_cast<const oClub *>(ob);
+      if (c)
+        sg = c->getStartGroup();
+    }
+    return sg;
+  }
+
+public:
+  StartGroupFormatter() {}
+
+  void prepare(oEvent *oe) const override {
+    auto &sg = oe->getStartGroups(true);
+    for (auto &g : sg) {
+      int t = g.second.firstStart;
+      sgmap[g.first] = oe->getAbsTimeHM(t);
+    }
+  }
+  
+  const wstring &formatData(const oBase *ob) const override {
+    if (ob->getEvent()->getRevision() != rev)
+      prepare(ob->getEvent());
+    int sg = getGroup(ob);
+    if (sg > 0) {
+      auto res = sgmap.find(sg);
+      if (res != sgmap.end())
+        out = itow(sg) + L" (" + res->second + L")";
+      else
+        out = itow(sg) + L" (??)";
+
+      return out;
+    }
+    else
+      return _EmptyWString;
+  }
+
+  pair<int, bool> setData(oBase *ob, const wstring &input, wstring &output, int inputId) const override {
+    int g = inputId;
+    if (inputId <= 0 && !input.empty()) {
+      vector<wstring> sIn;
+      split(input, L" ", sIn);
+      for (wstring &in : sIn) {
+        int num = _wtoi(in.c_str());
+        if (in.find_first_of(':') != input.npos) {
+          int t = ob->getEvent()->convertAbsoluteTime(input);
+          if (t > 0) {
+            for (auto &sg : ob->getEvent()->getStartGroups(false)) {
+              if (sg.second.firstStart == t) {
+                g = sg.first;
+                break;
+              }
+            }
+          }
+        }
+        else if (sgmap.count(num)) {
+          g = num;
+          break;
+        }
+      }
+    }
+    oRunner *r = dynamic_cast<oRunner *>(ob);
+    if (r) {
+      r->setStartGroup(g);
+    }
+    else {
+      oClub *c = dynamic_cast<oClub *>(ob);
+      if (c)
+        c->setStartGroup(g);
+    }
+    output = formatData(ob);
+    return make_pair(0, false);
+  }
+
+  int addTableColumn(Table *table, const string &description, int minWidth) const override {
+    return table->addColumn(description, max(minWidth, 90), true, false);
+  }
+
+  // Return the desired cell type
+  CellType getCellType() const {
+    return CellType::cellSelection;
+  }
+
+  void fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const final {
+    if (obj->getEvent()->getRevision() != rev)
+      prepare(obj->getEvent());
+
+    int sg = getGroup(obj);
+
+    out.emplace_back(_EmptyWString, 0);
+    selected = 0;
+    for (auto &v : sgmap) {
+      out.emplace_back(v.second, v.first);
+
+      if (sg == v.first)
+        selected = sg;
+    }
+  }
+};
+
 
 class DataHider : public oDataDefiner {
 public:
@@ -258,23 +367,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   GetComputerName(cp, &size);
   clientName = cp;
 
-  HasDBConnection = false;
-  HasPendingDBConnection = false;
-
-#ifdef BUILD_DB_DLL
-  msSynchronizeList=0;
-  msSynchronizeRead=0;
-  msSynchronizeUpdate=0;
-  msOpenDatabase=0;
-  msRemove=0;
-  msMonitor=0;
-  msUploadRunnerDB = 0;
-
-  msGetErrorState=0;
-  msResetConnection=0;
-  msReConnect=0;
-#endif
-
+  isConnectedToServer = false;
+  hasPendingDBConnection = false;
   currentNameMode = FirstLast;
 
   nextTimeLineEvent = 0;
@@ -373,6 +467,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   eInvoice.push_back(make_pair(L"", makeDash(L"-")));
   oClubData->addVariableEnum("Invoice", 1, "Faktura", eInvoice);
   oClubData->addVariableInt("InvoiceNo", oDataContainer::oIS16U, "Fakturanummer");
+  oClubData->addVariableInt("StartGroup", oDataContainer::oIS32, "Startgrupp", make_shared<StartGroupFormatter>());
 
   oRunnerData=new oDataContainer(oRunner::dataSize);
   oRunnerData->addVariableCurrency("Fee", "Anm. avgift");
@@ -383,8 +478,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableInt("BirthYear", oDataContainer::oIS32, "Födelseår");
   oRunnerData->addVariableString("Bib", 8, "Nummerlapp").zeroSortPadding = 5;
   oRunnerData->addVariableInt("Rank", oDataContainer::oIS16U, "Ranking");
-  //oRunnerData->addVariableInt("VacRank", oDataContainer::oIS16U, "Vak. ranking");
-
+  
   oRunnerData->addVariableDate("EntryDate", "Anm. datum");
   oRunnerData->addVariableInt("EntryTime", oDataContainer::oIS32, "Anm. tid",  make_shared<AbsoluteTimeFormatter>("EntryTime"));
 
@@ -411,7 +505,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableInt("Reference", oDataContainer::oIS32, "Referens", make_shared<oRunner::RunnerReference>());
   oRunnerData->addVariableInt("NoRestart", oDataContainer::oIS8U, "Ej omstart", make_shared<DataBoolean>("NoRestart"));
   oRunnerData->addVariableString("InputResult", "Tidigare resultat", make_shared<DataHider>());
-  oRunnerData->addVariableInt("StartGroup", oDataContainer::oIS32, "Startgrupp");
+  oRunnerData->addVariableInt("StartGroup", oDataContainer::oIS32, "Startgrupp", make_shared<StartGroupFormatter>());
   oRunnerData->addVariableInt("Family", oDataContainer::oIS32, "Familj");
 
   oControlData=new oDataContainer(oControl::dataSize);
@@ -558,6 +652,9 @@ void oEvent::initProperties() {
   getPropertyInt("UseHourFormat", 1);
   getPropertyInt("UseDirectSocket", true);
   getPropertyInt("UseEventorUTC", 0);
+  getPropertyInt("UseHourFormat", 1);
+  getPropertyInt("NameMode", FirstLast);
+  getPropertyInt("ReadVoltageExp", 0);
 }
 
 void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> > &propNames) const {
@@ -605,6 +702,8 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   b.insert("FirstTime");
   b.insert("ExportCSVSplits");
   b.insert("DrawInterlace");
+  b.insert("ReadVoltageExp");
+
   // Integers
   i.insert("YouthFee");
   i.insert("YouthAge");
@@ -959,7 +1058,7 @@ bool oEvent::save()
   bool res;
   if (finalRenameTarget.empty()) {
     res = save(CurrentFile);
-    if (!(HasDBConnection || HasPendingDBConnection))
+    if (!(hasDBConnection() || hasPendingDBConnection))
       openFileLock->lockFile(CurrentFile);
   }
   else {
@@ -970,7 +1069,7 @@ bool oEvent::save()
       _wrename(CurrentFile, finalRenameTarget.c_str());
       _wrename(tmpName.c_str(), CurrentFile);
   
-      if (!(HasDBConnection || HasPendingDBConnection))
+      if (!(hasDBConnection() || hasPendingDBConnection))
         openFileLock->lockFile(CurrentFile);
     }
   }
@@ -1665,7 +1764,7 @@ pCourse oEvent::addCourse(const oCourse &oc)
   pCourse pc = &Courses.back();
   pc->addToEvent(this, &oc);
 
-  if (HasDBConnection && !pc->existInDB() && !pc->isImplicitlyCreated()) {
+  if (hasDBConnection() && !pc->existInDB() && !pc->isImplicitlyCreated()) {
     pc->changed = true;
     pc->synchronize();
   }
@@ -1736,7 +1835,8 @@ pRunner oEvent::addRunner(const wstring &name, int clubId, int classId,
     return addRunnerFromDB(db_r, classId, autoAdd);
   }
   oRunner r(this);
-  r.sName = name;
+  //r.sName = name;
+  r.setName(name, false);
   r.getRealName(r.sName, r.tRealName);
   r.Club = getClub(clubId);
   r.Class = getClass(classId);
@@ -1841,7 +1941,7 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
   if (pr->Card)
     pr->Card->tOwner = pr;
 
-  if (HasDBConnection) {
+  if (hasDBConnection()) {
     if (!pr->existInDB() && !pr->isImplicitlyCreated())
       pr->synchronize();
   }
@@ -2213,7 +2313,7 @@ void oEvent::setAnnotation(const wstring &m)
 wstring oEvent::getTitleName() const {
   if (empty())
     return L"";
-  if (HasPendingDBConnection)
+  if (hasPendingDBConnection)
     return getName() + lang.tl(L" (på server)") + lang.tl(L" DATABASE ERROR");
   else if (isClient())
     return getName() + lang.tl(L" (på server)");
@@ -2529,9 +2629,19 @@ void oEvent::removeRunner(const vector<int> &ids)
 
     if (r==0)
       continue;
-
-    r = r->tParentRunner ? r->tParentRunner : r;
-
+    
+    if (r->tInTeam) // XXX
+      r = r->tParentRunner ? r->tParentRunner : r;
+    else if (r->tParentRunner) {      
+      r->tParentRunner->createMultiRunner(true, true);
+      r = getRunner(Id, 0);
+      if (r == nullptr)
+        continue;
+      else {
+        auto &mlr = r->tParentRunner->multiRunner;
+        mlr.erase(std::remove(mlr.begin(), mlr.end(), r), mlr.end());
+      }
+    }
     if (toRemove.count(r->getId()))
       continue; //Already found.
 
@@ -2554,8 +2664,8 @@ void oEvent::removeRunner(const vector<int> &ids)
     if (toRemove.count(cr.getId())> 0) {
       if (cr.Class)
         affectedCls.insert(cr.Class);
-      if (HasDBConnection)
-        msRemove(&cr);
+      if (hasDBConnection())
+        sqlRemove(&cr);
       toRemove.erase(cr.getId());
       runnerById.erase(cr.getId());
       if (cr.Card) {
@@ -2596,8 +2706,8 @@ void oEvent::removeCourse(int Id)
 
   for (it=Courses.begin(); it != Courses.end(); ++it){
     if (it->Id==Id){
-      if (HasDBConnection)
-        msRemove(&*it);
+      if (hasDBConnection())
+        sqlRemove(&*it);
       dataRevision++;
       Courses.erase(it);
       courseIdIndex.erase(Id);
@@ -2619,8 +2729,8 @@ void oEvent::removeClass(int Id)
             subRemove.push_back(pc->getId());
         }
       }
-      if (HasDBConnection)
-        msRemove(&*it);
+      if (hasDBConnection())
+        sqlRemove(&*it);
       Classes.erase(it);
       dataRevision++;
       updateTabs();
@@ -2638,8 +2748,8 @@ void oEvent::removeControl(int Id)
 
   for (it=Controls.begin(); it != Controls.end(); ++it){
     if (it->Id==Id){
-      if (HasDBConnection)
-        msRemove(&*it);
+      if (hasDBConnection())
+        sqlRemove(&*it);
       Controls.erase(it);
       dataRevision++;
       return;
@@ -2653,8 +2763,8 @@ void oEvent::removeClub(int Id)
 
   for (it=Clubs.begin(); it != Clubs.end(); ++it){
     if (it->Id==Id) {
-      if (HasDBConnection)
-        msRemove(&*it);
+      if (hasDBConnection())
+        sqlRemove(&*it);
       Clubs.erase(it);
       clubIdIndex.erase(Id);
       dataRevision++;
@@ -2678,8 +2788,8 @@ void oEvent::removeCard(int Id)
         if (it->tOwner->Card == &*it)
           it->tOwner->Card = 0;
       }
-      if (HasDBConnection)
-        msRemove(&*it);
+      if (hasDBConnection())
+        sqlRemove(&*it);
       Cards.erase(it);
       dataRevision++;
       return;
@@ -3321,7 +3431,7 @@ bool oEvent::enumerateCompetitions(const wchar_t *file, const wchar_t *filetype)
   FindClose(h);
 
   if (!getServerName().empty())
-    msListCompetitions(this);
+    sqlConnection->listCompetitions(this, true);
 
   for (list<CompetitionInfo>::iterator it=cinfo.begin(); it!=cinfo.end(); ++it) {
     if (it->Name.size() > 1 && it->Name[0] == '%')
@@ -3564,7 +3674,7 @@ void tabAutoKillMachines();
 
 void oEvent::checkDB()
 {
-  if (HasDBConnection) {
+  if (hasDBConnection()) {
     vector<wstring> err;
     int k=checkChanged(err);
 
@@ -3590,11 +3700,11 @@ void oEvent::clear()
 {
   checkDB();
 
-  if (HasDBConnection)
-    msMonitor(0);
+  if (hasDBConnection())
+    sqlConnection->checkConnection(0);
 
-  HasDBConnection=false;
-  HasPendingDBConnection = false;
+  isConnectedToServer = false;
+  hasPendingDBConnection = false;
 
   destroyExtraWindows();
 
@@ -3699,7 +3809,7 @@ void oEvent::setTable(const string &key, const shared_ptr<Table> &table) {
 
 bool oEvent::deleteCompetition()
 {
-  if (!empty() && !HasDBConnection) {
+  if (!empty() && !hasDBConnection()) {
     wstring removed = wstring(CurrentFile)+L".removed";
     ::_wremove(removed.c_str()); //Delete old removed file
     openFileLock->unlockFile();
@@ -4141,7 +4251,7 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
   sic.convertedTime = ConvertedTimeStatus::Done;
 
   if (sic.CheckPunch.Code!=-1){
-    if (sic.CheckPunch.Time<ZeroTime)
+    if (sic.CheckPunch.Time<unsigned(ZeroTime))
       sic.CheckPunch.Time+=(24*3600);
 
     sic.CheckPunch.Time-=ZeroTime;
@@ -4198,7 +4308,7 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
   }
 
   if (sic.StartPunch.Code != -1) {
-    if (sic.StartPunch.Time<ZeroTime)
+    if (sic.StartPunch.Time<unsigned(ZeroTime))
       sic.StartPunch.Time+=(24*3600);
 
     sic.StartPunch.Time-=ZeroTime;
@@ -4206,7 +4316,7 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
 
   for (unsigned k = 0; k < sic.nPunch; k++){
     if (sic.Punch[k].Code!=-1){
-      if (sic.Punch[k].Time<ZeroTime)
+      if (sic.Punch[k].Time<unsigned(ZeroTime))
         sic.Punch[k].Time+=(24*3600);
 
       sic.Punch[k].Time-=ZeroTime;
@@ -4214,7 +4324,7 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
   }
 
   if (sic.FinishPunch.Code!=-1){
-    if (sic.FinishPunch.Time<ZeroTime)
+    if (sic.FinishPunch.Time<unsigned(ZeroTime))
       sic.FinishPunch.Time+=(24*3600);
 
     sic.FinishPunch.Time-=ZeroTime;
@@ -4850,9 +4960,9 @@ void oEvent::calcUseStartSeconds()
 
 const wstring &oEvent::formatStatus(RunnerStatus status, bool forPrint)
 {
-  const static wstring stats[11] = { L"?", L"Godkänd", L"Ej start", L"Felst.", L"Utg.", L"Disk.",
+  const static wstring stats[12] = { L"?", L"Godkänd", L"Ej start", L"Felst.", L"Utg.", L"Disk.",
                                  L"Maxtid", L"Deltar ej", L"Återbud[status]", L"Utom tävlan",
-                                 L"Utan tidtagning" };
+                                 L"Utan tidtagning", L"\u2014" };
   switch (status) {
   case StatusOK:
     return lang.tl(stats[1]);
@@ -4869,7 +4979,10 @@ const wstring &oEvent::formatStatus(RunnerStatus status, bool forPrint)
   case StatusMAX:
     return lang.tl(stats[6]);
   case StatusNotCompetiting:
-    return lang.tl(stats[7]);
+    if (forPrint)
+      return stats[11];
+    else
+      return lang.tl(stats[7]);
   case StatusOutOfCompetition:
     return lang.tl(stats[9]);
   case StatusUnknown: {
@@ -6270,7 +6383,17 @@ string oEvent::encodeStartGroups() const {
   string tmp;
   for (auto &sg : startGroups) {
     tmp = itos(sg.first) + "," +
-        itos(sg.second.first) + "," + itos(sg.second.second);
+      itos(sg.second.firstStart) + "," + itos(sg.second.lastStart);
+    if (!sg.second.name.empty()) {
+      wstring name = sg.second.name;
+      for (int j = 0; j < name.length(); j++) {
+        if (name[j] == L',')
+          name[j] = L'|';
+        if (name[j] == L';')
+          name[j] = L'^';
+      }
+      tmp += "," + gdioutput::toUTF8(name);
+    }
     if (ss.empty())
       ss = tmp;
     else
@@ -6285,20 +6408,30 @@ void oEvent::decodeStartGroups(const string &enc) const {
   startGroups.clear();
   for (string &grp : g) {
     split(grp, ",", sg);
-    if (sg.size() == 3) {
+    if (sg.size() == 3 || sg.size() == 4) {
       int id = atoi(sg[0].c_str());
       int start = atoi(sg[1].c_str());
       int end = atoi(sg[2].c_str());
-      startGroups.emplace(id, make_pair(start, end));
+      wstring name;
+      if (sg.size() == 4) {
+        name = gdioutput::fromUTF8(sg[3]);
+        for (int j = 0; j < name.length(); j++) {
+          if (name[j] == L'|')
+            name[j] = L',';
+          if (name[j] == L'^')
+            name[j] = L';';
+        }
+      }
+      startGroups.emplace(id, StartGroupInfo(name, start, end));
     }
   }
 }
 
-void oEvent::setStartGroup(int id, int firstStart, int lastStart) {
+void oEvent::setStartGroup(int id, int firstStart, int lastStart, const wstring &name) {
   if (firstStart < 0)
     startGroups.erase(id);
   else
-    startGroups[id] = make_pair(firstStart, lastStart);
+    startGroups[id] = StartGroupInfo(name, firstStart, lastStart);
 }
 
 void oEvent::updateStartGroups() {
@@ -6310,15 +6443,16 @@ void oEvent::readStartGroups() const {
   decodeStartGroups(gdibase.narrow(sg));
 }
 
-const map<int, pair<int, int>> &oEvent::getStartGroups(bool reload) const {
+const map<int, StartGroupInfo> &oEvent::getStartGroups(bool reload) const {
   if (reload)
     readStartGroups();
   return startGroups;
 }
 
-pair<int, int> oEvent::getStartGroup(int id) const {
-  if (startGroups.count(id))
-    return startGroups.find(id)->second;
+StartGroupInfo oEvent::getStartGroup(int id) const {
+  auto res = startGroups.find(id);
+  if (res != startGroups.end())
+    return res->second;
   else
-    return make_pair(-1, -1);
+    return StartGroupInfo(L"", -1, -1);
 }

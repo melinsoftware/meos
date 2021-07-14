@@ -1485,7 +1485,8 @@ pair<int, bool>  oDBRunnerEntry::inputData(int id, const wstring &input,
       break;
 
     case TID_CLUB:
-      rd.clubNo = inputId;
+      if (inputId != -1) 
+        rd.clubNo = inputId;
       output = input;
       break;
   }

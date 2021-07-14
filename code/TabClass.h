@@ -150,7 +150,7 @@ class TabClass :
 
   static vector< pair<wstring, size_t> > getPairOptions();
 
-  void setLockForkingState(gdioutput &gdi, bool poolState, bool lockState);
+  void setLockForkingState(gdioutput &gdi, bool poolState, bool lockState, int nLegs);
   void setLockForkingState(gdioutput &gdi, const oClass &c);
 
   void loadBasicDrawSetup(gdioutput &gdi, int &bx, int &by, const wstring& firstStart, 

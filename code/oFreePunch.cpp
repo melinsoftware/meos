@@ -31,7 +31,6 @@
 #include "Localizer.h"
 #include "intkeymapimpl.hpp"
 #include "socket.h"
-#include "meosdb/sqltypes.h"
 #include "gdioutput.h"
 
 bool oFreePunch::disableHashing = false;
@@ -519,7 +518,7 @@ pFreePunch oEvent::addFreePunch(oFreePunch &fp) {
   fpz->addToEvent(this, &fp);
   oFreePunch::rehashPunches(*this, fp.CardNo, fpz);
 
-  if (!fpz->existInDB() && HasDBConnection) {
+  if (!fpz->existInDB() && hasDBConnection()) {
     fpz->changed = true;
     fpz->synchronize();
   }
@@ -537,8 +536,8 @@ void oEvent::removeFreePunch(int Id) {
         classChanged(r->Class, true);
       }
       pFreePunch fp = &*it;
-      if (HasDBConnection)
-        msRemove(fp);
+      if (hasDBConnection())
+        sqlRemove(fp);
       //punchIndex[it->itype].remove(it->CardNo);
       PunchIndexType &ix = punchIndex[it->iHashType];
       pair<PunchConstIterator, PunchConstIterator> res = ix.equal_range(it->CardNo);
@@ -719,6 +718,7 @@ void oFreePunch::changedObject() {
   pRunner r = getTiedRunner();
   if (r && tMatchControlId>0)
     r->markClassChanged(tMatchControlId);
+  oe->sqlPunches.changed = true;
 }
 
 bool oEvent::hasHiredCardData() {
@@ -753,8 +753,8 @@ void oEvent::setHiredCard(int cardNo, bool flag) {
       hiredCardHash.erase(cardNo);
       for (auto it = punches.begin(); it != punches.end();) {
         if (!it->isRemoved() && it->isHiredCard() && it->CardNo == cardNo) {
-          if (HasDBConnection)
-            msRemove(&*it);
+          if (hasDBConnection())
+            sqlRemove(&*it);
 
           auto toErase = it;
           ++it;
@@ -779,8 +779,8 @@ void oEvent::clearHiredCards() {
   vector<int> toRemove;
   for (auto it = punches.begin(); it != punches.end();) {
     if (!it->isRemoved() && it->isHiredCard()) {
-      if (HasDBConnection)
-        msRemove(&*it);
+      if (hasDBConnection())
+        sqlRemove(&*it);
 
       auto toErase = it;
       ++it;

@@ -301,7 +301,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
       else if (info[k].ti.format & textCenter) {
         float w = float(info[k].ti.xlimit) * scale;
         float sw = HPDF_Page_TextWidth(page, nt.c_str());
-        HPDF_Page_TextOut (page, info[k].xp + (w - sw) *0.5, h - info[k].yp,
+        HPDF_Page_TextOut (page, info[k].xp + (w - sw) *0.5f, h - info[k].yp,
                             nt.c_str());
       }
       else {

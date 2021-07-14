@@ -955,6 +955,8 @@ void oControl::getNumbers(vector<int> &numbers) const {
 void oControl::changedObject() {
   if (oe)
     oe->globalModification = true;
+
+  oe->sqlControls.changed = true;
 }
 
 int oControl::getNumberDuplicates() const {

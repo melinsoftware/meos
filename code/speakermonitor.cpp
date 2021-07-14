@@ -760,7 +760,7 @@ int SpeakerMonitor::getDynamicLeaderTime(const ResultKey &res, int time) {
 
 int SpeakerMonitor::getResultIx(const ResultInfo &rinfo) {
   if (timeToResultIx.empty()) {
-    for (size_t k = 0; k < results.size(); k++) {
+    for (int k = 0; k < results.size(); k++) {
       timeToResultIx.insert(make_pair(results[k].time, k));
     }
   }

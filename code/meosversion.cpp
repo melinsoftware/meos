@@ -24,37 +24,38 @@
 #include "meos_util.h"
 
 //ABCDEFGHIJKLMNO
-//V2: ABCDEFGHIHJKMN
-//V31: a
-//V33: abcde
-//V35: abcdef
-//V36: abcdef
 int getMeosBuild() {
-  string revision("$Rev: 1047 $");
+  string revision("$Rev: 1081 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
-//V37: ab
 wstring getMeosDate() {
-  wstring date(L"$Date: 2020-09-06 08:57:56 +0200 (sö, 06 sep 2020) $");
+  wstring date(L"$Date: 2021-07-12 17:51:51 +0200 (mån, 12 jul 2021) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L""; // No parantheses (...)
+  return L"Beta"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
-  return L"3.7SD";
+  return L"3.8";
 }
 
 wstring getMeosFullVersion() {
   wchar_t bf[256];
+
+#ifdef _WIN64
+  const wchar_t *bits = L"64-bit";
+#else
+  const wchar_t *bits = L"32-bit";
+#endif
+
   wstring maj = getMajorVersion();
   if (getBuildType().empty())
-    swprintf_s(bf, L"Version X#%s.%d, %s", maj.c_str(), getMeosBuild(), getMeosDate().c_str());
+    swprintf_s(bf, L"Version X#%s.%d (%s), %s", maj.c_str(), getMeosBuild(), bits, getMeosDate().c_str());
   else
-    swprintf_s(bf, L"Version X#%s.%d, %s, %s", maj.c_str(), getMeosBuild(), getBuildType().c_str(), getMeosDate().c_str());
+    swprintf_s(bf, L"Version X#%s.%d (%s), %s, %s", maj.c_str(), getMeosBuild(), bits, getBuildType().c_str(), getMeosDate().c_str());
   return bf;
 }
 
@@ -73,10 +74,8 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"OK Måsen");
   supp.emplace_back(L"IF Thor");
   supp.emplace_back(L"SOS Jindřichův Hradec");
-  supp.emplace_back(L"KOB ATU Košice");
   supp.emplace_back(L"Mats Holmberg, OK Gränsen");
   supp.emplace_back(L"Christoffer Ohlsson, Uddevalla OK");
-  supp.emplace_back(L"KOB ATU Košice");
   supp.emplace_back(L"O-Ringen AB");
   supp.emplace_back(L"Hans Carlstedt, Sävedalens AIK");
   supp.emplace_back(L"IFK Mora OK");
@@ -93,7 +92,6 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"O-Travel");
   supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
   developSupp.emplace_back(L"KOB Kysak");
-  supp.emplace_back(L"Richard HEYRIES");
   supp.emplace_back(L"Ingemar Carlsson");
   supp.emplace_back(L"Tolereds AIK");
   supp.emplace_back(L"OK Snab");
@@ -113,12 +111,10 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"JWOC 2019");
   developSupp.emplace_back(L"OK Nackhe");
   supp.emplace_back(L"OK Rodhen");
-  supp.emplace_back(L"HEYRIES");
   developSupp.emplace_back(L"SongTao Wang / Henan Zhixing Exploration Sports Culture Co., Ltd.");
   developSupp.emplace_back(L"Australian and Oceania Orienteering Championships 2019");
   supp.emplace_back(L"Järfälla OK");
   supp.emplace_back(L"TJ Slávia Farmaceut Bratislava");
-  supp.emplace_back(L"OK Tyr, Karlstad");
   supp.emplace_back(L"Magnus Thornell, Surahammars SOK");
   supp.emplace_back(L"Mariager Fjord OK");
   supp.emplace_back(L"Nässjö OK");
@@ -138,5 +134,21 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Patrick NG, HKAYP");
   supp.emplace_back(L"Lars Ove Karlsson, Västerås SOK");
   supp.emplace_back(L"OK Milan");
+  supp.emplace_back(L"Åke Larsson, OK Hedströmmen");
+  developSupp.push_back(L"Västmanlands OF");
+  supp.emplace_back(L"OK Tyr, Karlstad");
+  developSupp.push_back(L"OK Orion");
+  supp.emplace_back(L"Mjölby OK");
+  supp.emplace_back(L"Malmö OK");
+  supp.emplace_back(L"OK Vilse 87");
+  supp.emplace_back(L"Rehns BK");
+  supp.emplace_back(L"Fredrik Magnusson, Laholms IF");
+  supp.emplace_back(L"KOB ATU Košice");
+  supp.emplace_back(L"Alfta-Ösa OK");
+  supp.emplace_back(L"HEYRIES, ACA Aix en Provence");
+  supp.emplace_back(L"IFK Kiruna");
+  supp.emplace_back(L"Smedjebackens OK");
+  supp.emplace_back(L"Gunnar Persson, Svanesunds GIF");
+
   reverse(supp.begin(), supp.end());
 }

@@ -2118,13 +2118,14 @@ void Table::importClipboard(gdioutput &gdi)
               index = out[i].second;
           }
         }
+
         try {
           if (index != -1) {
             if (cell.hasOwner())
               cell.getOwner()->inputData(cell.id, table[k][j], index, output, false);
             cell.contents = output;
           }
-          else if (cell.type == cellCombo) {
+          else /*if (cell.type == cellCombo)*/ {
             if (cell.hasOwner())
              cell.getOwner()->inputData(cell.id, table[k][j], index, output, false);
             cell.contents = output;

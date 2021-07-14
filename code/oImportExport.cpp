@@ -32,7 +32,6 @@
 #include "oEvent.h"
 #include "gdioutput.h"
 #include "gdifonts.h"
-#include "meosdb/sqltypes.h"
 #include "meosexception.h"
 #include "inthashmap.h"
 
@@ -53,7 +52,7 @@
 #include "iof30interface.h"
 #include "gdiconstants.h"
 
-#include "meosdb/sqltypes.h"
+#include "MeosSQL.h"
 
 FlowOperation importFilterGUI(oEvent *oe,
                               gdioutput & gdi,
@@ -1197,22 +1196,22 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
   // Save DB
   saveRunnerDatabase(L"database", true);
 
-  if (HasDBConnection) {
+  if (hasDBConnection()) {
     gdibase.addString("", 0, "Uppdaterar serverns databas...");
     gdibase.refresh();
 
-    OpFailStatus stat = (OpFailStatus)msUploadRunnerDB(this);
+    OpFailStatus stat = sqlConnection->uploadRunnerDB(this);
 
     if (stat == opStatusFail) {
-      char bf[256];
-      msGetErrorState(bf);
-      string error = string("Kunde inte ladda upp löpardatabasen (X).#") + bf;
+      string err;
+      sqlConnection->getErrorMessage(err);
+      string error = string("Kunde inte ladda upp löpardatabasen (X).#") + err;
       throw meosException(error);
     }
     else if (stat == opStatusWarning) {
-      char bf[256];
-      msGetErrorState(bf);
-      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
+      string err;
+      sqlConnection->getErrorMessage(err);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -1326,22 +1325,22 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
 
   saveRunnerDatabase(L"database", true);
 
-  if (HasDBConnection) {
+  if (hasDBConnection()) {
     gdibase.addString("", 0, "Uppdaterar serverns databas...");
     gdibase.refresh();
 
-    OpFailStatus stat = (OpFailStatus)msUploadRunnerDB(this);
+    OpFailStatus stat = (OpFailStatus)sqlConnection->uploadRunnerDB(this);
 
     if (stat == opStatusFail) {
-      char bf[256];
-      msGetErrorState(bf);
-      string error = string("Kunde inte ladda upp löpardatabasen (X).#") + bf;
+      string err;
+      sqlConnection->getErrorMessage(err);
+      string error = string("Kunde inte ladda upp löpardatabasen (X).#") + err;
       throw meosException(error);
     }
     else if (stat == opStatusWarning) {
-      char bf[256];
-      msGetErrorState(bf);
-      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + gdibase.widen(bf), 5000);
+      string err;
+      sqlConnection->getErrorMessage(err);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), 5000);
     }
 
     gdibase.addString("", 0, "Klart");

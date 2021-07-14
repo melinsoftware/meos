@@ -68,7 +68,8 @@ bool oCard::Write(xmlparser &xml)
   xml.startTag("Card");
   xml.write("CardNo", cardNo);
   xml.write("Punches", getPunchString());
-  xml.write("ReadId", readId);
+  xml.write("ReadId", int(readId));
+  xml.write("Voltage", miliVolt);
   xml.write("Id", Id);
   xml.write("Updated", getStamp());
   xml.endTag();
@@ -86,11 +87,14 @@ void oCard::Set(const xmlobject &xo)
     if (it->is("CardNo")){
       cardNo = it->getInt();
     }
+    if (it->is("Voltage")) {
+      miliVolt = it->getInt();
+    }
     else if (it->is("Punches")){
       importPunches(it->getRaw());
     }
     else if (it->is("ReadId")){
-      readId = it->getInt();
+      readId = it->getInt(); // COded as signed int
     }
     else if (it->is("Id")){
       Id = it->getInt();
@@ -576,6 +580,7 @@ const shared_ptr<Table> &oCard::getTable(oEvent *oe) {
 
     table->addColumn("Bricka", 120, true);
     table->addColumn("Deltagare", 200, false);
+    table->addColumn("Spänning", 70, false);
 
     table->addColumn("Starttid", 70, false);
     table->addColumn("Måltid", 70, false);
@@ -621,6 +626,8 @@ void oCard::addTableRow(Table &table) const {
   table.set(row++, it, TID_CARD, getCardNoString(), true, cellAction);
 
   table.set(row++, it, TID_RUNNER, runner, true, cellAction);
+
+  table.set(row++, it, TID_VOLTAGE, getCardVoltage(), false, cellAction);
 
   oPunch *p=getPunchByType(oPunch::PunchStart);
   wstring time;
@@ -724,7 +731,9 @@ void oCard::setupFromRadioPunches(oRunner &r) {
 
 void oCard::changedObject() {
   if (tOwner)
-    tOwner->markClassChanged(-1);
+    tOwner->changedObject();
+
+  oe->sqlCards.changed = true;
 }
 
 int oCard::getNumControlPunches(int startPunchType, int finishPunchType) const {
@@ -777,3 +786,19 @@ void oCard::adaptTimes(int startTime) {
     updateChanged();
   }
 }
+
+wstring oCard::getCardVoltage() const {
+  if (miliVolt == 0)
+    return L"";
+  int vi = miliVolt / 1000;
+  int vd = (miliVolt % 1000)/10;
+
+  wchar_t bf[64];
+  swprintf_s(bf, L"%d.%02d V", vi, vd);
+  return bf;
+}
+
+bool oCard::isCriticalCardVoltage() const {
+  return miliVolt > 0 && miliVolt < 2445;
+}
+

@@ -303,7 +303,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     getUserFile(oldSettings, L"meospref.xml");
     gEvent->loadProperties(oldSettings);
   }
-  
+  gEvent->clear();
+
   lang.get().addLangResource(L"English", L"104");
   lang.get().addLangResource(L"Svenska", L"103");
   lang.get().addLangResource(L"Deutsch", L"105");
@@ -922,7 +923,7 @@ gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x,
   else {
     gdi->initRecorder(&gdi_main->getRecorder());
   }
-  SetWindowLong(hWnd, GWL_USERDATA, gdi_extra.size());
+  SetWindowLongPtr(hWnd, GWLP_USERDATA, gdi_extra.size());
   currentFocusIx = gdi_extra.size();
   gdi_extra.push_back(gdi);
 
@@ -1413,9 +1414,9 @@ LRESULT CALLBACK WorkSpaceWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
   PAINTSTRUCT ps;
   HDC hdc;
 
-  LONG ix = GetWindowLong(hWnd, GWL_USERDATA);
+  LONG_PTR ix = GetWindowLongPtr(hWnd, GWLP_USERDATA);
   gdioutput *gdi = 0;
-  if (ix < LONG(gdi_extra.size()))
+  if (ix < LONG_PTR(gdi_extra.size()))
     gdi = gdi_extra[ix];
 
   if (gdi) {

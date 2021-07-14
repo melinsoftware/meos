@@ -438,7 +438,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 
         bool moreToWrite = true;
         string tmp;
-        const int total = max(xmlbuff.size(), 1u);
+        const int total = max<int>(xmlbuff.size(), 1u);
 
         while(moreToWrite) {
 

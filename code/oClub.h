@@ -143,6 +143,9 @@ public:
 
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
+  int getStartGroup() const;
+  void setStartGroup(int sg);
+
   /** Assign invoice numbers to all clubs. */
   static void assignInvoiceNumber(oEvent &oe, bool reset);
 

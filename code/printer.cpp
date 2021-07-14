@@ -511,7 +511,7 @@ bool gdioutput::doPrint(PrinterObject &po, PageInfo &pageInfo, pEvent oe, bool r
   return true;
 }
 
-UINT CALLBACK PagePaintHook(HWND, UINT uiMsg, WPARAM wParam, LPARAM lParam) {
+UINT_PTR  CALLBACK PagePaintHook(HWND, UINT uiMsg, WPARAM wParam, LPARAM lParam) {
   return false;
 }
 

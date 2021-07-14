@@ -180,7 +180,7 @@ namespace {
 
     //Find the largest group
     for (size_t k = 1; k < runnerGroups.size(); k++)
-      maxGroup = max(maxGroup, runnerGroups[k].size());
+      maxGroup = max<int>(maxGroup, runnerGroups[k].size());
 
     if (handleBlanks) {
       //Give all groups same size (fill with 0)
@@ -273,7 +273,7 @@ namespace {
     if (groups.size() > 10)
       takeMaxGroupInterval = groups.size() / 4;
     else
-      takeMaxGroupInterval = max(2u, groups.size() - 2);
+      takeMaxGroupInterval = max<int>(2u, groups.size() - 2);
 
     deque<int> recentGroups;
 
@@ -1177,8 +1177,42 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
 
   map<int, GroupInfo> gInfo;
   vector<pair<int, int>> orderedStartGroups;
+
+  auto overlap = [](const StartGroupInfo &a, const StartGroupInfo &b) {
+    if (a.firstStart >= b.firstStart && a.firstStart < b.lastStart)
+      return true;
+    if (a.lastStart > b.firstStart && a.lastStart <= b.lastStart)
+      return true;
+    if (b.firstStart >= a.firstStart && b.firstStart < a.lastStart)
+      return true;
+    if (b.lastStart > a.firstStart && b.lastStart <= a.lastStart)
+      return true;
+    return false;
+  };
+
+  auto formatSG = [this](int id, const StartGroupInfo &a) {
+    wstring w = itow(id);
+    if (!a.name.empty())
+      w += L"/" + a.name;
+
+    w += L" (" + getAbsTime(a.firstStart) + makeDash(L"-") + getAbsTime(a.lastStart) + L")";
+    return w;
+  };
+
   for (auto &sg : sgMap) {
-    orderedStartGroups.emplace_back(sg.second.first, sg.first);
+    orderedStartGroups.emplace_back(sg.second.firstStart, sg.first);
+    // Check overlaps
+    for (auto &sgOther : sgMap) {
+      if (sg.first == sgOther.first)
+        continue;
+
+      if (overlap(sg.second, sgOther.second)) {
+        wstring s1 = formatSG(sg.first, sg.second), s2 = formatSG(sgOther.first, sgOther.second);
+        throw meosException(L"Startgrupperna X och Y överlappar.#" + s1 + L"#" + s2);
+      }
+
+    }
+
   }
   // Order by start time
   sort(orderedStartGroups.begin(), orderedStartGroups.end());
@@ -1326,7 +1360,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
     auto &countGroupClub = countClassGroupClub[k];
     int cls = spec[k].classID;
     getRunners(cls, 0, rl, false);
-    classFractions[cls] = rl.size();
+    classFractions[cls] = (double)rl.size();
     rTot += rl.size();
     for (pRunner r : rl) {
       int gid = r->getStartGroup(true);
@@ -1502,7 +1536,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
     for (size_t j = 0; j < orderedStartGroups.size(); j++) {
       auto &sg = orderedStartGroups[j];
       int groupId = sg.second;
-      int firstStart = getStartGroup(groupId).first;
+      int firstStart = getStartGroup(groupId).firstStart;
 
       vector<ClassDrawSpecification> specLoc = spec;
       for (size_t k = 0; k < specLoc.size(); k++) {
@@ -1561,9 +1595,9 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
       auto &sg = orderedStartGroups[j];
       int groupId = sg.second;
       
-      int firstStart = getStartGroup(groupId).first;
+      int firstStart = getStartGroup(groupId).firstStart;
 
-      int nspos = (oe->getStartGroup(groupId).second - firstStart) / di.baseInterval;
+      int nspos = (oe->getStartGroup(groupId).lastStart - firstStart) / di.baseInterval;
       int optimalParallel = rPerGroup[groupId] / nspos;
 
       if (nParallel <= 0)
@@ -1578,7 +1612,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
       vector<pair<int, wstring>> outLines;
       di.vacancyFactor = 0;
       auto &group = sgMap.find(groupId);
-      int length = max(300, group->second.second - group->second.first);
+      int length = max(300, group->second.lastStart - group->second.firstStart);
       int slots = length / di.baseInterval;
       di.classes.clear();
       for (size_t k = 0; k < spec.size(); k++) {
@@ -2275,7 +2309,16 @@ void oEvent::automaticDrawAll(gdioutput &gdi,
 
       if (spec.size() == 0)
         continue;
-      drawListStartGroups(spec, method, pairSize, DrawType::DrawAll);
+      try {
+        drawListStartGroups(spec, method, pairSize, DrawType::DrawAll);
+      }
+      catch (meosException &ex) {
+        gdi.addString("", 1, ex.wwhat()).setColor(colorRed);
+        // Relay classes?
+        gdi.dropLine();
+        gdi.refreshFast();
+        return;
+      }
     }
   }
 
