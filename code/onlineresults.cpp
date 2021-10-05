@@ -435,6 +435,14 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         key.push_back(mk1);
 		    pair<wstring, wstring> mk2(L"pwd", passwd);
         key.push_back(mk2);
+		if (zipFile) {
+				pair<wstring, wstring> mk3(L"Content-Type", L"application/zip");
+			key.push_back(mk3);
+		} else {
+				pair<wstring, wstring> mk3(L"Content-Type", L"application/xml");
+			key.push_back(mk3);
+		}
+
 
         bool moreToWrite = true;
         string tmp;
