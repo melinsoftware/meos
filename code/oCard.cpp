@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -798,7 +798,12 @@ wstring oCard::getCardVoltage() const {
   return bf;
 }
 
-bool oCard::isCriticalCardVoltage() const {
-  return miliVolt > 0 && miliVolt < 2445;
+oCard::BatteryStatus oCard::isCriticalCardVoltage() const {
+  if (miliVolt > 0 && miliVolt < 2445)
+    return BatteryStatus::Bad;
+  else if (miliVolt > 0 && miliVolt <= 2710)
+    return BatteryStatus::Warning;
+
+  return BatteryStatus::OK;
 }
 

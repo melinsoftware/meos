@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,6 +91,13 @@ oClass::oClass(oEvent *poe, int id): oBase(poe)
   tShowMultiDialog = false;
 
   parentClass = 0;
+}
+
+void oClass::clearDuplicate() {
+  int id = oe->getFreeClassId();
+  clearDuplicateBase(id);
+  oe->qFreeClassId = max(id % MaxClassId, oe->qFreeClassId);
+  getDI().setInt("SortIndex", tSortIndex);
 }
 
 oClass::~oClass()
@@ -1715,8 +1722,12 @@ int oClass::getNumDistinctRunnersMinimal() const
 }
 
 void oClass::resetLeaderTime() const {
-  for (size_t k = 0; k<tLeaderTime.size(); k++)
+  tLeaderTimeOld.resize(tLeaderTime.size());
+
+  for (size_t k = 0; k < tLeaderTime.size(); k++) {
+    tLeaderTimeOld[k].updateFrom(tLeaderTime[k]); // During apply we may reset but still want to use the computed value (for pursuit)
     tLeaderTime[k].reset();
+  }
 
   tBestTimePerCourse.clear();
   leaderTimeVersion = -1;
@@ -1847,6 +1858,10 @@ oClass::LeaderInfo &oClass::getLeaderInfo(AllowRecompute recompute, int leg) con
   leg = mapLeg(leg);
   if (leg < 0)
     throw meosException();
+
+  if (recompute == AllowRecompute::NoUseOld && size_t(leg) < tLeaderTimeOld.size())
+    return tLeaderTimeOld[leg];
+
   if (size_t(leg) >= tLeaderTime.size())
     tLeaderTime.resize(leg + 1);
 
@@ -1919,6 +1934,7 @@ void oClass::updateLeaderTimes() const {
       else if (r->tLeg > leg)
         needupdate = true;
     }
+    tLeaderTime[leg].setComplete();
     leg++;
   }
   leaderTimeVersion = oe->dataRevision;
@@ -1957,8 +1973,10 @@ int oClass::LeaderInfo::getLeader(Type t, bool computed) const {
   case Type::TotalInput:
     if (computed && totalLeaderTimeInputComputed > 0)
       return totalLeaderTimeInputComputed;
-    else
+    else if (totalLeaderTimeInput > 0)
       return totalLeaderTimeInput;
+    else
+      return inputTime;
   }
 
   return 0;
@@ -2009,6 +2027,10 @@ int oClass::getTotalLegLeaderTime(AllowRecompute recompute, int leg, bool comput
 
   int res = -1;
   int iter = -1;
+  bool mayUseOld = recompute == AllowRecompute::NoUseOld;
+  if (mayUseOld)
+    recompute = AllowRecompute::No;
+
   while (res == -1 && ++iter<2) {
     if (includeInput)
       res = getLeaderInfo(recompute, leg).getLeader(LeaderInfo::Type::TotalInput, computedTime);
@@ -2019,6 +2041,8 @@ int oClass::getTotalLegLeaderTime(AllowRecompute recompute, int leg, bool comput
       recompute = AllowRecompute::No;
       updateLeaderTimes();
     }
+    else if (res == -1 && mayUseOld)
+      recompute = AllowRecompute::NoUseOld;
   }
   return res;
 }

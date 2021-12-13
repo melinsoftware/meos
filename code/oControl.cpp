@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -369,30 +369,32 @@ const vector< pair<wstring, size_t> > &oEvent::fillControls(vector< pair<wstring
     if (!it->Removed){
       b.clear();
 
-      if (type==oEvent::CTAll) {
+      if (type == oEvent::CTAll) {
         if (it->Status == oControl::StatusFinish || it->Status == oControl::StatusStart) {
           b += it->Name;
         }
         else {
           if (it->Status == oControl::StatusOK || it->Status == oControl::StatusNoTiming)
             b += L"[OK]\t";
-          else if (it->Status==oControl::StatusMultiple)
+          else if (it->Status == oControl::StatusMultiple)
             b += L"[M]\t";
-          else if (it->Status==oControl::StatusRogaining)
+          else if (it->Status == oControl::StatusRogaining)
             b += L"[R]\t";
-          else if (it->Status==oControl::StatusBad)
+          else if (it->Status == oControl::StatusBad)            
             b += makeDash(L"[-]\t");
-          else if (it->Status==oControl::StatusOptional)
-            b += makeDash(L"[O]\t");
+          else if (it->Status == oControl::StatusBadNoTiming)
+            b += L"[!]\t";
+          else if (it->Status == oControl::StatusOptional)
+            b += L"[O]\t";
           else b += L"[ ]\t";
 
           swprintf_s(bf, L" %s", it->codeNumbers(' ').c_str());
-          b+=bf;
+          b += bf;
 
-          if (it->Status==oControl::StatusRogaining)
-            b+=L"\t(" + itow(it->getRogainingPoints()) + L"p)";
-          else if (it->Name.length()>0) {
-            b+=L"\t(" + it->Name + L")";
+          if (it->Status == oControl::StatusRogaining)
+            b += L"\t(" + itow(it->getRogainingPoints()) + L"p)";
+          else if (it->Name.length() > 0) {
+            b += L"\t(" + it->Name + L")";
           }
         }
         out.push_back(make_pair(b, it->Id));
@@ -474,7 +476,7 @@ void oControl::setupCache() const {
 
 int oControl::getMinTime() const
 {
-  if (Status == StatusNoTiming)
+  if (Status == StatusNoTiming || Status == StatusBadNoTiming)
     return 0;
   setupCache();
   return tCache.minTime;
@@ -768,6 +770,8 @@ const wstring oControl::getStatusS() const {
       return lang.tl("Mål");
     case StatusNoTiming:
       return lang.tl("Utan tidtagning");
+    case StatusBadNoTiming:
+      return lang.tl("Försvunnen");
     default:
       return lang.tl("Okänd");
   }
@@ -791,6 +795,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillControlStatus(vector< pair<ws
     out.push_back(make_pair(lang.tl(L"Rogaining"), oControl::StatusRogaining));
   out.push_back(make_pair(lang.tl(L"Utan tidtagning"), oControl::StatusNoTiming));
   out.push_back(make_pair(lang.tl(L"Trasig"), oControl::StatusBad));
+  out.push_back(make_pair(lang.tl(L"Försvunnen"), oControl::StatusBadNoTiming));
   out.push_back(make_pair(lang.tl(L"Valfri"), oControl::StatusOptional));
 
   return out;

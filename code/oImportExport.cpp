@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -430,6 +430,25 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
       gdi.addString("", 0, "Antal som inte importerades: X#" + itos(fail)).setColor(colorRed);
     gdi.dropLine();
     gdi.refreshFast();
+  }
+
+  xo = xml.getObject("ResultList");
+
+  if (xo) {
+
+    int ent = 0, fail = 0;
+    if (xo.getAttrib("iofVersion")) {
+      gdi.addString("", 0, "Importerar resultat (IOF, xml)");
+      gdi.refreshFast();
+      IOF30Interface reader(this, false);
+      reader.readResultList(gdi, xo, ent, fail);
+    }
+    gdi.addString("", 0, "Klart. Antal importerade: X#" + itos(ent));
+    if (fail>0)
+      gdi.addString("", 0, "Antal som inte importerades: X#" + itos(fail)).setColor(colorRed);
+    gdi.dropLine();
+    gdi.refreshFast();
+
   }
 
   xo = xml.getObject("ClassData");

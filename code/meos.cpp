@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -198,7 +198,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   int       nCmdShow)
 {
   hInst = hInstance; // Store instance handle in our global variable
-  
+    
   atexit(dumpLeaks);	//
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
@@ -294,7 +294,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     return 0;
   }
 
-  if (fileExist(settings)) {
+  if (fileExists(settings)) {
     gEvent->loadProperties(settings);
   }
   else {
@@ -314,13 +314,13 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   lang.get().addLangResource(L"Español", L"111");
   lang.get().addLangResource(L"Russian", L"107");
 
-  if (fileExist(L"extra.lng")) {
+  if (fileExists(L"extra.lng")) {
     lang.get().addLangResource(L"Extraspråk", L"extra.lng");
   }
   else {
     wchar_t lpath[260];
     getUserFile(lpath, L"extra.lng");
-    if (fileExist(lpath))
+    if (fileExists(lpath))
       lang.get().addLangResource(L"Extraspråk", lpath);
   }
 
@@ -479,7 +479,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   // Main message loop:
   mainMessageLoop(hAccelTable, 0);
 
-  tabAutoRegister(0);
+  TabAuto::tabAutoRegister(nullptr);
   tabList->clear();
   delete tabList;
   tabList = nullptr;
@@ -729,6 +729,14 @@ LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
       else
         gdi->keyCommand(KC_FINDBACK);
     }
+  }
+  else if (wParam == 'A' && ctrlPressed) {
+    if (gdi)
+      gdi->keyCommand(KC_MARKALL);
+  }
+  else if (wParam == 'D' && ctrlPressed) {
+    if (gdi)
+      gdi->keyCommand(KC_CLEARALL);
   }
   else if (wParam == VK_DELETE) {
     if (gdi)
@@ -1072,6 +1080,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   int wmId, wmEvent;
   PAINTSTRUCT ps;
   HDC hdc;
+  static bool connectionAlert = false;
 
   switch (message)
   {
@@ -1084,7 +1093,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       {
         TabAuto *ta = (TabAuto *)gdi_main->getTabs().get(TAutoTab);
         tabList->push_back(TabObject(ta, "Automater"));
-        tabAutoRegister(ta);
+        TabAuto::tabAutoRegister(ta);
       }
       tabList->push_back(TabObject(gdi_main->getTabs().get(TSpeakerTab), "Speaker"));
       tabList->push_back(TabObject(gdi_main->getTabs().get(TClassTab), "Klasser"));
@@ -1248,9 +1257,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_USER + 5:
       if (gdi_main)
         gdi_main->addInfoBox("ainfo", L"info:advanceinfo", 10000);
-
       break;
-    
+
+    case WM_USER + 6:
+      if (gdi_main && lParam) {
+        gdioutput* g = (gdioutput*)lParam;
+        wstring msg = g->getDelayedAlert();
+        if (!connectionAlert) {
+          connectionAlert = true;
+          gdi_main->alert(msg);
+          connectionAlert = false;
+        }
+      }
+      break;
+
     case WM_COMMAND:
       wmId    = LOWORD(wParam);
       wmEvent = HIWORD(wParam);

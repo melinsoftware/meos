@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -455,7 +455,8 @@ int oCourse::distance(const SICard &card)
   for (int k=0;k<nControls;k++) {
     if (Controls[k]->isRogaining(hasRogaining()) || 
         Controls[k]->getStatus() == oControl::StatusBad || 
-        Controls[k]->getStatus() == oControl::StatusOptional)
+        Controls[k]->getStatus() == oControl::StatusOptional ||
+        Controls[k]->getStatus() == oControl::StatusBadNoTiming)
       continue;
 
     if (Controls[k]->getStatus() == oControl::StatusMultiple) {

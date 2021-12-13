@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -163,10 +163,12 @@ protected:
   size_t dataPointer; // Insertation pointer
   vector<TableSortIndex> sortIndex;
   vector<int> columns;
+  mutable vector<int> dataRowToIndex;
   inthashmap idToRow;
-  //highlight
   int highRow;
   int highCol;
+
+  bool isFullColumnSelected() const;
 
   // Selected columns. For drag/drop and sort
   int colSelected;
@@ -178,16 +180,37 @@ protected:
   int editCol;
 
   // Selected rectangle
-  int upperRow;
-  int lowerRow;
-  int upperCol;
-  int lowerCol;
+  struct Range {
+    int upperRow;
+    int lowerRow;
+    int upperCol;
+    int lowerCol;
+    void reset() {
+      upperRow = -1;
+      lowerRow = -1;
+      upperCol = -1;
+      lowerCol = -1;
+    }
+    bool emptyRow() const { return upperRow < 0 || lowerRow < 0; }
+    bool emptyCol() const { return upperCol < 0 || lowerCol < 0; }
+    bool empty() const { return emptyRow() || emptyCol(); }
 
-  int upperRowOld;
+    Range() { reset(); }
+    ~Range() = default;
+    bool operator!=(const Range &other) const {
+      return upperRow != other.upperRow || lowerCol != other.lowerCol ||
+        lowerRow != other.lowerRow || upperCol != other.upperCol;
+    }
+  };
+
+  Range sel;
+  mutable Range selScreen;
+  Range oldSel;
+/*  int upperRowOld;
   int lowerRowOld;
   int upperColOld;
   int lowerColOld;
-
+*/
   bool startSelect;
 
   HWND hEdit;
@@ -205,9 +228,9 @@ protected:
   bool partialCell;
 
   //static bool filterMatchString(const string &c, const char *filt);
-  void highlightCell(HDC hDC, gdioutput &gdi, const TableCell &cell, DWORD color, int dx, int dy);
+  void highlightCell(HDC hDC, gdioutput &gdi, int col, const TableCell &cell, DWORD color, int dx, int dy);
 
-  void moveCell(HDC hDC, gdioutput &gdi, const TableCell &cell, int dx, int dy);
+  void moveCell(HDC hDC, gdioutput &gdi, int col, const TableCell &cell, int dx, int dy);
   void startMoveCell(HDC hDC, const TableCell &cell);
   void stopMoveCell(HDC hDC, const TableCell &cell, int dx, int dy);
   void restoreCell(HDC hDC, const TableCell &cell);
@@ -337,11 +360,19 @@ public:
   bool mouseLeftUp(gdioutput &gdi, int x, int y);
   bool mouseLeftDblClick(gdioutput &gdi, int x, int y);
 
+  bool mouseRightDown(gdioutput &gdi, int x, int y);
+  bool mouseRightUp(gdioutput &gdi, int x, int y);
+  bool mouseMidDown(gdioutput &gdi, int x, int y);
+  bool mouseMidUp(gdioutput &gdi, int x, int y);
+
+
   bool editCell(gdioutput &gdi, int row, int col);
 
   bool keyCommand(gdioutput &gdi, KeyCommandCode code);
-  void sort(int col);
+  void sort(int col, bool forceDirection);
   void filter(int col, const wstring &filt, bool forceFilter=false);
+
+  void showFilter(gdioutput &gdi);
 
   int addColumn(const string &Title, int width, bool isnum, bool formatRight = false);
   int addColumn(const wstring &translatedTitle, int width, bool isnum, bool formatRight = false);
@@ -354,6 +385,8 @@ public:
   void addRow(int rowId, oBase *object);
   void set(int column, oBase &owner, int id, const wstring &data,
            bool canEdit=true, CellType type=cellEdit);
+
+  void markAll(bool doSelect);
 
   //Reload a row from data
   void reloadRow(int rowId);
@@ -374,12 +407,9 @@ public:
 };
 
 struct TableSortIndex {
-  //TableSortIndex(const Table &t) : table(&t) {}
   const static Table *table;
   int index;
   bool operator<(const TableSortIndex &t) const {return table->compareRow(index,t.index);}
-  //{return table->Data[index].key < table->Data[t.index].key;}
-  //bool operator<=(const TableSortIndex &t) const {return table->Data[index].key <= table->Data[t.index].key;}
 };
 
 enum {TID_CLASSNAME, TID_COURSE, TID_NUM, TID_ID, TID_MODIFIED,

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,10 +48,12 @@
 #include "intkeymapimpl.hpp"
 #include "socket.h"
 
+#include "machinecontainer.h"
 #include "MeOSFeatures.h"
 #include "generalresult.h"
 #include "oEventDraw.h"
 #include "MeosSQL.h"
+#include "TabAuto.h"
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -63,7 +65,7 @@
 #include "Table.h"
 
 //Version of database
-int oEvent::dbVersion = 86;
+int oEvent::dbVersion = 87;
 
 class RelativeTimeFormatter : public oDataDefiner {
   string name;
@@ -410,6 +412,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
 
   oEventData->addVariableString("PreEvent", 64, "");
   oEventData->addVariableString("PostEvent", 64, "");
+  oEventData->addVariableString("ImportStamp", 14, "Stamp");
 
   // Positive number -> stage number, negative number -> no stage number. Zero = unknown
   oEventData->addVariableInt("EventNumber", oDataContainer::oIS8, "");
@@ -440,8 +443,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableString("StartGroups", "Startgrupper");
   oEventData->addVariableString("MergeTag", 12, "Tag");
   oEventData->addVariableString("MergeInfo", "MergeInfo");
-  oEventData->addVariableString("ImportStamp", 14, "Stamp");
-
+  
   oEventData->initData(this, dataSize);
 
   oClubData=new oDataContainer(oClub::dataSize);
@@ -654,7 +656,6 @@ void oEvent::initProperties() {
   getPropertyInt("UseEventorUTC", 0);
   getPropertyInt("UseHourFormat", 1);
   getPropertyInt("NameMode", FirstLast);
-  getPropertyInt("ReadVoltageExp", 0);
 }
 
 void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> > &propNames) const {
@@ -675,6 +676,7 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
     filter.insert("Email"); 
     filter.insert("TextSize");
     filter.insert("PayModes");
+    filter.insert("ReadVoltageExp");
   }
 
   // Boolean and integer properties
@@ -702,8 +704,7 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   b.insert("FirstTime");
   b.insert("ExportCSVSplits");
   b.insert("DrawInterlace");
-  b.insert("ReadVoltageExp");
-
+  
   // Integers
   i.insert("YouthFee");
   i.insert("YouthAge");
@@ -729,6 +730,8 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   propNames.clear();
   for(map<string, wstring>::const_iterator it = eventProperties.begin(); 
       it != eventProperties.end(); ++it) {
+    if (it->first.size() > 1 && it->first[0] == '@')
+      continue;
     if (!filter.count(it->first)) {
       if (b.count(it->first)) {
         assert(!i.count(it->first));
@@ -1146,6 +1149,12 @@ bool oEvent::save(const wstring &fileIn) {
   listContainer->save(MetaListContainer::ExternalList, xml, this);
   xml.endTag();
 
+  if (machineContainer) {
+    xml.startTag("Machines");
+    machineContainer->save(xml);
+    xml.endTag();
+  }
+
   xml.closeOut();
   pw.setProgress(p[i++]);
   updateRunnerDatabase();
@@ -1236,6 +1245,34 @@ static void toc(const string &str) {
   timer = t;
 }
 
+namespace {
+  void getNewFileName(wstring &fn, wstring &nameId) {
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+
+    wchar_t file[260];
+    wchar_t filename[64];
+    swprintf_s(filename, 64, L"meos_%d%02d%02d_%02d%02d%02d_%X.meos",
+               st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+
+    //strcpy_s(CurrentNameId, filename);
+    getUserFile(file, filename);
+
+    wchar_t CurrentNameId[64];
+    _wsplitpath_s(file, NULL, 0, NULL, 0, CurrentNameId, 64, NULL, 0);
+    int i = 0;
+    while (CurrentNameId[i]) {
+      if (CurrentNameId[i] == '.') {
+        CurrentNameId[i] = 0;
+        break;
+      }
+      i++;
+    }
+
+    fn = file;
+    nameId = CurrentNameId;
+  }
+}
 
 bool oEvent::open(const wstring &file, bool Import, bool forMerge) {
   if (!Import)
@@ -1246,6 +1283,21 @@ bool oEvent::open(const wstring &file, bool Import, bool forMerge) {
   tic();
   string log;
   xml.read(file);
+
+  string tag = xml.getObject(0).getName();
+  wstring iof;
+  xml.getObject(0).getObjectString("iofVersion", iof);
+  if (tag == "EntryList" || tag == "StartList" || iof.length() > 0)
+    throw meosException(L"Filen (X) innehåller IOF-XML tävlingsdata och kan importeras i en existerande tävling#" + file);
+
+  if (tag == "MeOSListDefinition")
+    throw meosException(L"Filen (X) är en listdefinition#" + file);
+
+  if (tag == "MeOSResultCalculationSet")
+    throw meosException(L"Filen (X) är en resultatmodul#" + file);
+
+  if (tag != "meosdata")
+    throw meosException(L"Filen (X) är inte en MeOS-tävling#" + file);
 
   xmlattrib ver = xml.getObject(0).getAttrib("version");
   if (ver) {
@@ -1279,6 +1331,18 @@ bool oEvent::open(const wstring &file, bool Import, bool forMerge) {
   bool res = open(xml);
   if (res && !Import)
     openFileLock->lockFile(file);
+
+  if (Import) {
+    for (auto &cmp : cinfo) {
+      if (cmp.NameId == currentNameId) {
+        if (!gdibase.ask(L"ask:importcopy#" + cmp.Name + L", " + cmp.Date)) {
+          wstring fn;
+          getNewFileName(fn, currentNameId);
+        }
+        break;
+      }
+    }
+  }
 
   getMergeTag(Import && !forMerge);
 
@@ -1540,7 +1604,25 @@ bool oEvent::open(const xmlparser &xml) {
     if (err.empty())
       err = gdibase.widen(ex.what());
   }
+
   getMeOSFeatures().deserialize(getDCI().getString("Features"), *this);
+
+
+  try {
+    xmlobject xMachine = xml.getObject("Machines");
+    if (xMachine) {
+      getMachineContainer().load(xMachine);
+    }
+  }
+  catch (const meosException &ex) {
+    if (err.empty())
+      err = ex.wwhat();
+  }
+  catch (const std::exception &ex) {
+    if (err.empty())
+      err = gdibase.widen(ex.what());
+  }
+
 
   if (!err.empty())
     throw meosException(err);
@@ -1571,13 +1653,13 @@ bool oEvent::openRunnerDatabase(const wchar_t* filename)
   wcscat_s(fwrunner, L".wpersons");
 
   try {
-    if ((fileExist(fwclub) || fileExist(fclub)) && (fileExist(frunner) || fileExist(fwrunner)) ) {
-      if (fileExist(fwclub))
+    if ((fileExists(fwclub) || fileExists(fclub)) && (fileExists(frunner) || fileExists(fwrunner)) ) {
+      if (fileExists(fwclub))
         runnerDB->loadClubs(fwclub);
       else
         runnerDB->loadClubs(fclub);
 
-      if (fileExist(fwrunner))
+      if (fileExists(fwrunner))
         runnerDB->loadRunners(fwrunner);
       else
         runnerDB->loadRunners(frunner);
@@ -1706,7 +1788,7 @@ void oEvent::updateRunnerDatabase()
         wstring uid = gdibase.widen(ml.getUniqueId()) + L".meoslist";
         wchar_t file[260];
         getUserFile(file, uid.c_str());
-        if (!fileExist(file)) {
+        if (!fileExists(file)) {
           ml.save(file, this);
         }
       }
@@ -1717,7 +1799,7 @@ void oEvent::updateRunnerDatabase()
       wstring uid = gdibase.widen(freeMod[k].first) + L".rules";
       wchar_t file[260];
       getUserFile(file, uid.c_str());
-      if (!fileExist(file)) {
+      if (!fileExists(file)) {
         freeMod[k].second->save(file);
       }
     }
@@ -3396,7 +3478,7 @@ bool oEvent::enumerateCompetitions(const wchar_t *file, const wchar_t *filetype)
       xmlparser xp;
 
       try {
-        xp.read(FullPathFile, 8);
+        xp.read(FullPathFile, 30);
 
         const xmlobject date=xp.getObject("Date");
 
@@ -3419,6 +3501,20 @@ bool oEvent::enumerateCompetitions(const wchar_t *file, const wchar_t *filetype)
         if (nameid)
           ci.NameId = nameid.getw();
 
+        auto oData = xp.getObject("oData");
+        if (oData) {
+          auto preEvent = oData.getObject("PreEvent");
+          if (preEvent)
+            ci.preEvent = preEvent.getw();
+
+          auto postEvent = oData.getObject("PostEvent");
+          if (postEvent)
+            ci.postEvent = postEvent.getw();
+
+          auto importStamp = oData.getObject("ImportStamp");
+          if (importStamp)
+            ci.importTimeStamp = importStamp.getw();
+        }
         cinfo.push_front(ci);
       }
       catch (std::exception &) {
@@ -3438,6 +3534,19 @@ bool oEvent::enumerateCompetitions(const wchar_t *file, const wchar_t *filetype)
       it->Name = lang.tl(it->Name.substr(1));
   }
 
+/*
+  vector<pair<wstring, wstring>> cc;
+  for (auto &c : cinfo) {
+    cc.emplace_back(c.NameId, c.Date + L": " + c.Name);
+  }
+  sort(cc.begin(), cc.end());
+  for (auto &c : cc) {
+    OutputDebugString(c.first.c_str());
+    OutputDebugString(L", ");
+    OutputDebugString(c.second.c_str());
+    OutputDebugString(L"\n");
+  }
+*/
   return true;
 }
 
@@ -3635,10 +3744,32 @@ bool oEvent::fillCompetitions(gdioutput &gdi,
   cinfo.sort();
   cinfo.reverse();
   list<CompetitionInfo>::iterator it;
+  const CompetitionInfo *bestMatch = nullptr; 
+
+  auto accept = [this, &bestMatch](const CompetitionInfo &ci) {
+    if (bestMatch == nullptr)
+      bestMatch = &ci;
+    else {
+      bool matchPrevNextId = bestMatch->preEvent == currentNameId || bestMatch->postEvent == currentNameId;
+      bool ciMatchPrevNextId = ci.preEvent == currentNameId || ci.postEvent == currentNameId;
+      if (matchPrevNextId != ciMatchPrevNextId) {
+        if (ciMatchPrevNextId)
+          bestMatch = &ci;
+      }
+      else {
+        if (ci.Date > bestMatch->Date) {
+          bestMatch = &ci;
+        }
+        else {
+          if (ci.importTimeStamp > bestMatch->importTimeStamp)
+            bestMatch = &ci;
+        }
+      }
+    }
+  };
 
   gdi.clearList(name);
   string b;
-  int idSel = -1;
   //char bf[128];
   for (it=cinfo.begin(); it!=cinfo.end(); ++it) {
     wstring annotation;
@@ -3647,14 +3778,14 @@ bool oEvent::fillCompetitions(gdioutput &gdi,
     if (it->Server.length()==0) {
       if (type==0 || type==1) {
         if (it->NameId == select && !select.empty())
-          idSel = it->Id;
+          accept(*it);
         wstring bf = L"[" + it->Date + L"] " + it->Name;
         gdi.addItem(name, bf + annotation, it->Id);
       }
     }
     else if (type==0 || type==2) {
       if (it->NameId == select && !select.empty())
-        idSel = it->Id;
+        accept(*it);
       wstring bf;
       if (type==0)
         bf = lang.tl(L"Server: [X] Y#" + it->Date + L"#" + it->Name);
@@ -3665,12 +3796,11 @@ bool oEvent::fillCompetitions(gdioutput &gdi,
     }
   }
 
-  if (idSel != -1)
-    gdi.selectItemByData(name.c_str(), idSel);
+  if (bestMatch)
+    gdi.selectItemByData(name.c_str(), bestMatch->Id);
+
   return true;
 }
-
-void tabAutoKillMachines();
 
 void oEvent::checkDB()
 {
@@ -3723,7 +3853,7 @@ void oEvent::clear()
   Annotation.clear();
 
   //Make sure no daemon is hunting us.
-  tabAutoKillMachines();
+  TabAuto::tabAutoKillMachines();
 
   delete directSocket;
   directSocket = 0;
@@ -3790,6 +3920,8 @@ void oEvent::clear()
   // Cleanup user interface
   gdibase.getTabs().clearCompetitionData();
   
+  machineContainer.release();
+
   MeOSUtil::useHourFormat = getPropertyInt("UseHourFormat", 1) != 0;
 
   currentNameMode = (NameMode) getPropertyInt("NameMode", FirstLast);
@@ -3823,7 +3955,6 @@ void oEvent::newCompetition(const wstring &name)
 {
   openFileLock->unlockFile();
   clear();
-
 
   SYSTEMTIME st;
   GetLocalTime(&st);
@@ -3862,26 +3993,10 @@ void oEvent::newCompetition(const wstring &name)
 
   setCurrency(-1, L"", L"", 0);
 
-  wchar_t file[260];
-  wchar_t filename[64];
-  swprintf_s(filename, 64, L"meos_%d%02d%02d_%02d%02d%02d_%X.meos",
-    st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+  wstring file;
+  getNewFileName(file, currentNameId);
+  wcscpy_s(CurrentFile, MAX_PATH, file.c_str());
 
-  //strcpy_s(CurrentNameId, filename);
-  getUserFile(file, filename);
-
-  wcscpy_s(CurrentFile, MAX_PATH, file);
-  wchar_t CurrentNameId[64];
-  _wsplitpath_s(CurrentFile, NULL, 0, NULL,0, CurrentNameId, 64, NULL, 0);
-  int i=0;
-  while (CurrentNameId[i]) {
-    if (CurrentNameId[i]=='.') {
-      CurrentNameId[i]=0;
-      break;
-    }
-    i++;
-  }
-  currentNameId = CurrentNameId;
   oe->updateTabs();
 }
 
@@ -3970,6 +4085,13 @@ void oEvent::reEvaluateAll(const set<int> &cls, bool doSync)
     leg++;
   }
 
+  // Mark info as complete
+  for (auto& c : Classes) {
+    if (!c.isRemoved() && (cls.empty() || cls.count(c.Id)))
+      for (auto &i : c.tLeaderTime)
+        i.setComplete();
+  }
+
   // Update team start times etc.
   for(oTeamList::iterator tit=Teams.begin();tit!=Teams.end();++tit) {
     if (!tit->isRemoved()) {
@@ -4015,6 +4137,7 @@ void oEvent::reEvaluateChanged()
       it->resetLeaderTime();
       it->reinitialize(true);
       resetClasses[it->getId()] = it->hasClassGlobalDependence();
+      it->updateLeaderTimes();
     }
   }
 
@@ -4037,8 +4160,8 @@ void oEvent::reEvaluateChanged()
       if (it->isRemoved())
         continue;
       int clz = it->getClassId(true);
-      if (resetClasses.count(clz))
-        it->storeTimes();
+      //if (resetClasses.count(clz))
+      //  it->storeTimes();
 
       if (!it->wasSQLChanged() && !resetClasses[clz])
         continue;
@@ -4785,13 +4908,13 @@ const string &oEvent::getPropertyString(const char *name, const string &def)
   }
 }
 
-wstring oEvent::getPropertyStringDecrypt(const char *name, const string &def)
+string oEvent::getPropertyStringDecrypt(const char *name, const string &def)
 {
   wchar_t bf[MAX_COMPUTERNAME_LENGTH + 1];
   DWORD len = MAX_COMPUTERNAME_LENGTH + 1;
   GetComputerName(bf, &len);
   string prop = getPropertyString(name, def);
-  wstring prop2;
+  string prop2;
   int code = 0;
   const int s = 337;
 
@@ -6455,4 +6578,11 @@ StartGroupInfo oEvent::getStartGroup(int id) const {
     return res->second;
   else
     return StartGroupInfo(L"", -1, -1);
+}
+
+MachineContainer &oEvent::getMachineContainer() {
+  if (!machineContainer)
+    machineContainer = make_unique<MachineContainer>();
+
+  return *machineContainer;
 }

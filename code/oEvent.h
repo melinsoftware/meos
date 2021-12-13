@@ -6,7 +6,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ struct SpeakerString;
 struct ClassDrawSpecification;
 class ImportFormats;
 class MeosSQL;
+class MachineContainer;
 
 struct oCounter {
   int level1;
@@ -149,6 +150,11 @@ struct CompetitionInfo {
   wstring Annotation;
   wstring Date;
   wstring NameId;
+
+  wstring postEvent;
+  wstring preEvent;
+  wstring importTimeStamp;
+
   wstring FullPath;
   string Server;
   string ServerUser;
@@ -162,10 +168,12 @@ struct CompetitionInfo {
   int ServerPort;
   int numConnected; // Number of connected entities
   int backupId; // Used to identify backups
-  bool operator<(const CompetitionInfo &ci)
-  {
+
+  bool operator<(const CompetitionInfo &ci) {
     if (Date != ci.Date)
-      return Date<ci.Date;
+      return Date < ci.Date;
+    else if (Server != ci.Server)
+      return Server < ci.Server;
     else
       return Modified < ci.Modified;
   }
@@ -527,6 +535,8 @@ public:
 private:
   NameMode currentNameMode;
 
+  unique_ptr<MachineContainer> machineContainer;
+
 public:
 
   enum class ResultType {
@@ -701,7 +711,7 @@ public:
   const string &getPropertyString(const char *name, const string &def);
   const wstring &getPropertyString(const char *name, const wstring &def);
   
-  wstring getPropertyStringDecrypt(const char *name, const string &def);
+  string getPropertyStringDecrypt(const char *name, const string &def);
 
   void setProperty(const char *name, int prop);
   //void setProperty(const char *name, const string &prop);
@@ -854,6 +864,8 @@ public:
   void setHiredCard(int cardNo, bool flag);
   vector<int> getHiredCards() const;
   void clearHiredCards();
+
+  MachineContainer &getMachineContainer();
 
 protected:
   // Returns hash key for punch based on control id, and leg. Class is marked as changed if oldHashKey != newHashKey.

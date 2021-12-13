@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -485,17 +485,25 @@ void MetaList::initUniqueIndex() const {
   uniqueIndex = "A" + itos(ix) + "B" + itos(yx);
 }
 
-bool MetaList::isBreak(int x) const {
+bool MetaList::isBreak(int x) {
   return isspace(x) || x == '.' || x == ',' ||
           x == '-'  || x == ':' || x == ';' || x == '('
           || x == ')' || x=='/' || (x>30 && x < 127 && !isalnum(x));
 }
 
-wstring MetaList::encode(const wstring &input_) const {
+wstring MetaList::encode(EPostType type, const wstring &inputS, bool &foundSymbol) {
+  if (inputS.empty()) {
+    foundSymbol = true; // No symbol needed
+    return inputS;
+  }
   wstring out;
-  wstring input = lang.tl(input_);
+  wstring input = lang.tl(inputS);
+  
   out.reserve(input.length() + 5);
-
+  int sCount = 0;
+  if (type == EPostType::lString)
+    sCount = 1; // No symbols expected in string
+  
   for (size_t k = 0; k<input.length(); k++) {
     int c = input[k];
     int p = k > 0 ? input[k-1] : ' ';
@@ -505,20 +513,22 @@ wstring MetaList::encode(const wstring &input_) const {
       out.push_back('%');
       out.push_back('%');
     }
-    else if (c == 'X' &&  isBreak(n) && isBreak(p) ) {
+    else if (c == 'X' &&  isBreak(n) && isBreak(p) && sCount == 0) {
       out.push_back('%');
       out.push_back('s');
+      sCount++;
     }
     else
       out.push_back(c);
   }
+
+  foundSymbol = sCount > 0;
   return out;
 }
 
 MetaListPost &MetaList::add(ListIndex ix, const MetaListPost &post) {
   if (data[ix].empty())
     addRow(ix);
-  //  data[ix].resize(1);
 
   vector<MetaListPost> &d = data[ix].back();
   d.push_back(post);
@@ -636,9 +646,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
     }
     
     auto isAllStageType = [](const MetaListPost &mp) {
-      return ((mp.type == lRunnerStagePlace || mp.type == lRunnerStageStatus
-              || mp.type == lRunnerStageTime || mp.type == lRunnerStageTimeStatus ||
-              mp.type == lRunnerStagePoints || mp.type == lRunnerStageNumber) && mp.leg == -1);
+      return MetaList::isAllStageType(mp.type) && mp.leg == -1;
     };
 
     for (size_t j = 0; j<lines.size(); j++) {
@@ -729,12 +737,13 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
           if (mp.font != formatIgnore)
             font = mp.font;
 
-          vector< pair<EPostType, wstring> > typeFormats;
-          typeFormats.push_back(make_pair(mp.type, encode(mp.text)));
+          bool dmy;
+          vector<pair<EPostType, wstring>> typeFormats;
+          typeFormats.push_back(make_pair(mp.type, encode(mp.type, mp.text, dmy)));
           size_t kk = k+1;
           //Add merged entities
           while (kk < cline.size() && cline[kk].mergeWithPrevious) {
-            typeFormats.push_back(make_pair(cline[kk].type, encode(cline[kk].text)));
+            typeFormats.push_back(make_pair(cline[kk].type, encode(cline[kk].type, cline[kk].text, dmy)));
             kk++;
           }
           
@@ -838,7 +847,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
           continue;
 
         string label = "P" + itos(0*1000 + j*100 + k);
-        wstring text = makeDash(encode(cline[k].text));
+        bool dmy;
+        wstring text = makeDash(encode(cline[k].type, cline[k].text, dmy));
         if (capitalizeTitle)
           capitalizeWords(text);
 
@@ -899,8 +909,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       gdiFonts font = header;
       if (mp.font != formatIgnore)
         font = mp.font;
-
-      wstring text = encode(mp.text);
+      bool dmy;
+      wstring text = encode(mp.type, mp.text, dmy);
       if (capitalizeTitle)
         capitalizeWords(text);
 
@@ -949,7 +959,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         font = mp.font;
 
       next_dy = max(next_dy, fontHeight[make_pair(font, MLList)]);
-      oPrintPost &added = li.addListPost(oPrintPost(mp.type, encode(mp.text), font|mp.textAdjust,
+      bool dmy;
+      oPrintPost &added = li.addListPost(oPrintPost(mp.type, encode(mp.type, mp.text, dmy), font|mp.textAdjust,
                                          pos.get(label, s_factor),
                                          dy + list_dy, cline[k].leg == -1 ? parLegNumber : make_pair(cline[k].leg, true))).
                                          setFontFace(fontFaces[MLList].font,
@@ -1000,7 +1011,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         xp = pos.get(label, s_factor);
 
       next_dy = max(next_dy, fontHeight[make_pair(font, MLSubList)]);
-      oPrintPost &added = li.addSubListPost(oPrintPost(mp.type, encode(mp.text), font|mp.textAdjust,
+      bool dmy;
+      oPrintPost &added = li.addSubListPost(oPrintPost(mp.type, encode(mp.type, mp.text, dmy), font|mp.textAdjust,
                                             xp, dy+sublist_dy, mp.leg == -1 ? parLegNumber : make_pair(mp.leg, true))).
                                             setFontFace(fontFaces[MLSubList].font,
                                                         fontFaces[MLSubList].scale);
@@ -1979,7 +1991,8 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerTimeAdjustment] = L"RunnerTimeAdjustment";
     typeToSymbol[lRunnerPointAdjustment] = L"RunnerPointAdjustment";
     typeToSymbol[lRunnerRogainingPointGross] = L"RunnerRogainingPointGross";
-  
+    typeToSymbol[lRunnerCardVoltage] = L"RunnerCardVoltage";
+
     typeToSymbol[lRunnerStageTime] = L"RunnerStageTime";
     typeToSymbol[lRunnerStageStatus] = L"RunnerStageStatus";
     typeToSymbol[lRunnerStageTimeStatus] = L"RunnerStageTimeStatus";

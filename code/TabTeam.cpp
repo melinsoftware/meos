@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1908,13 +1908,17 @@ void TabTeam::processChangeRunner(gdioutput &gdi, pTeam t, int leg, pRunner r) {
 void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   vector<int> mp;
   bool removeAnnonumousTeamMember = false;
-  
+  int crsIdR = r->getCourseId();
+  int crsIdROld = oldR ? oldR->getCourseId() : 0;
+
   if (r->getTeam()) {
     pTeam otherTeam = r->getTeam();
     int otherLeg = r->getLegNumber();
     otherTeam->setRunner(otherLeg, oldR, true);
-    if (oldR)
+    if (oldR) {
+      oldR->setCourseId(crsIdR);
       oldR->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
+    }
     otherTeam->checkValdParSetup();
     otherTeam->apply(oBase::ChangeType::Update, nullptr);
     otherTeam->synchronize(true);
@@ -1927,11 +1931,13 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
     else
       oldR->setClassId(r->getClassId(false), true);
     removeAnnonumousTeamMember = oldR->isAnnonumousTeamMember();
+    oldR->setCourseId(crsIdR);
     oldR->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
     oldR->synchronize(true);
   }
 
   t->setRunner(leg, r, true);
+  r->setCourseId(crsIdROld);
   r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
   t->checkValdParSetup();
   t->apply(oBase::ChangeType::Update, nullptr);

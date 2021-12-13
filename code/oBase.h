@@ -1,17 +1,11 @@
 ﻿// oBase.h: interface for the oBase class.
 //
 //////////////////////////////////////////////////////////////////////
-
-#if !defined(AFX_OBASE_H__C950D806_EEC7_4C56_B298_132C67FCF719__INCLUDED_)
-#define AFX_OBASE_H__C950D806_EEC7_4C56_B298_132C67FCF719__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -98,10 +92,6 @@ private:
   bool localObject;
 
 protected:
-
-  /// Mark the object as changed (on client) and that it needs synchronize to server
-  void updateChanged(ChangeType ct = ChangeType::Update);
-
   /// Mark the object as "changed" (locally or remotely), eg lists and other views may need update
   virtual void changedObject() = 0;
 
@@ -117,7 +107,12 @@ protected:
   // Merge into this entity
   virtual void merge(const oBase &input, const oBase *base) = 0;
 
+  void clearDuplicateBase(int newId);
+
 public:
+
+  /// Mark the object as changed (on client) and that it needs synchronize to server
+  void updateChanged(ChangeType ct = ChangeType::Update);
 
   void update(SqlUpdated &info) const;
 
@@ -208,5 +203,3 @@ public:
 };
 
 typedef oBase * pBase;
-
-#endif // !defined(AFX_OBASE_H__C950D806_EEC7_4C56_B298_132C67FCF719__INCLUDED_)

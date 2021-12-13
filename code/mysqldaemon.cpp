@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ unsigned __stdcall reconnectThread(void *v) {
   return 0;
 }
 
-void MySQLReconnect::settings(gdioutput &gdi, oEvent &oe, bool created) {
+void MySQLReconnect::settings(gdioutput &gdi, oEvent &oe, State state) {
 }
 
 void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
@@ -111,6 +111,7 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       gdi.setDBErrorState(false);
       gdi.setWindowTitle(oe->getTitleName());
       interval=0;
+      toRemove = true;
     }
   }
   else if (mysqlStatus==-1) {
@@ -138,9 +139,7 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
 int AutomaticCB(gdioutput *gdi, int type, void *data);
 
 void MySQLReconnect::status(gdioutput &gdi) {
-  gdi.dropLine(0.5);
-  gdi.addString("", 1, name);
-  gdi.pushX();
+  AutoMachine::status(gdi);
   if (interval>0){
     gdi.addStringUT(1, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkRed);
     gdi.fillRight();

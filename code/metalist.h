@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +50,6 @@ class Position
   void update(int ix, const string &newname, int width, bool alignBlock, bool alignLock);
 
 public:
-
   int getWidth() const;
 
   bool postAdjust();
@@ -207,9 +206,7 @@ private:
   enum ListIndex {MLHead = 0, MLSubHead = 1, MLList = 2, MLSubList=3};
   MetaListPost &add(ListIndex ix, const MetaListPost &post);
   void addRow(int ix);
-  wstring encode(const wstring &input) const;
-  bool isBreak(int x) const;
-
+  
   static map<EPostType, wstring> typeToSymbol;
   static map<wstring, EPostType> symbolToType;
 
@@ -237,15 +234,28 @@ private:
   int getResultModuleIndex(oEvent *oe, oListInfo &li, const MetaListPost &lp) const;
   mutable map<string, int> resultToIndex;
 
+  static bool isBreak(int x);
+
 public:
+
+  static wstring encode(EPostType type, const wstring &input, bool &foundSymbol);
 
   static void getAutoComplete(const wstring &w, vector<AutoCompleteRecord> &records);
 
   MetaList();
   virtual ~MetaList() {}
 
-  bool supportClasses() const;
+  static constexpr bool isAllStageType(EPostType type) {
+    return type == lRunnerStagePlace || type == lRunnerStageStatus ||
+      type == lRunnerStageTime || type == lRunnerStageTimeStatus ||
+      type == lRunnerStagePoints || type == lRunnerStageNumber;
+  }
 
+  static constexpr bool isResultModuleOutput(EPostType type) {
+    return type == lResultModuleNumber || type == lResultModuleTime ||
+      type == lResultModuleTimeTeam || type == lResultModuleNumberTeam;
+  }
+  bool supportClasses() const;
   const wstring &getListInfo(const oEvent &oe) const;
   void clearTag() {tag.clear();}
 

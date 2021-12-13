@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,10 +108,10 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
       gdi.enableEditControls(true);
 
       oControl::ControlStatus st = pc->getStatus();
-      if (st == oControl::StatusRogaining || st == oControl::StatusNoTiming)
+      if (st == oControl::StatusRogaining || st == oControl::StatusNoTiming || st == oControl::StatusBadNoTiming)
         gdi.disableInput("MinTime");
 
-      if (st == oControl::StatusNoTiming)
+      if (st == oControl::StatusNoTiming || st == oControl::StatusBadNoTiming)
         gdi.disableInput("TimeAdjust");
 
       if (gdi.hasWidget("Point") && st != oControl::StatusRogaining)
@@ -164,7 +164,7 @@ void TabControl::save(gdioutput &gdi)
     pc->setStatus(oControl::ControlStatus(gdi.getSelectedItem("Status").first));
     pc->setTimeAdjust(gdi.getText("TimeAdjust"));
     if (pc->getStatus() != oControl::StatusRogaining) {
-      if (pc->getStatus() != oControl::StatusNoTiming)
+      if (pc->getStatus() != oControl::StatusNoTiming && pc->getStatus() != oControl::StatusBadNoTiming)
         pc->setMinTime(gdi.getText("MinTime"));
       pc->setRogainingPoints(0);
     }
@@ -416,9 +416,9 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       selectControl(gdi, pc);
     }
     else if (bi.id == "Status" ) {
-      gdi.setInputStatus("MinTime",  bi.data != oControl::StatusRogaining && bi.data != oControl::StatusNoTiming, true);
+      gdi.setInputStatus("MinTime",  bi.data != oControl::StatusRogaining && bi.data != oControl::StatusNoTiming && bi.data != oControl::StatusBadNoTiming, true);
       gdi.setInputStatus("Point",  bi.data == oControl::StatusRogaining, true);
-      gdi.setInputStatus("TimeAdjust", bi.data != oControl::StatusNoTiming, true);
+      gdi.setInputStatus("TimeAdjust", bi.data != oControl::StatusNoTiming && bi.data != oControl::StatusBadNoTiming, true);
     }
   }
   else if (type==GUI_CLEAR) {

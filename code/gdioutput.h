@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -289,6 +289,8 @@ protected:
   shared_ptr<AnimationData> animationData;
 
   shared_ptr<AutoCompleteInfo> autoCompleteInfo;
+
+  wstring delayedAlert;
 public:
 
   AutoCompleteInfo &addAutoComplete(const string &key);
@@ -571,7 +573,11 @@ public:
 
   void alert(const string &msg) const;
   void alert(const wstring &msg) const;
-  
+  // Alert from main thread (via callback)
+  void delayAlert(const wstring& msg);
+  // Get and clear any delayed alert
+  wstring getDelayedAlert();
+
   void fillDown(){Direction=1;}
   void fillRight(){Direction=0;}
   void fillNone(){Direction=-1;}
@@ -762,8 +768,9 @@ public:
 
   void closeWindow();
 
+  int popupMenu(int x, int y, const vector<pair<wstring, int>> &menuItems) const;
+
   void setDBErrorState(bool state);
-  friend int TablesCB(gdioutput *gdi, int type, void *data);
   friend class Table;
   friend gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x, int max_y, bool fixedSize);
 

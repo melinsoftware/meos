@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -277,4 +277,18 @@ void oBase::makeQuietChangePermanent() {
 void oBase::update(SqlUpdated &info) const {
   info.updated = max(sqlUpdated, info.updated);
   info.counter = max(counter, info.counter);
+}
+
+void oBase::clearDuplicateBase(int newId) {
+  Id = newId;
+  Modified.update();
+  sqlUpdated = ""; //SQL TIMESTAMP
+  myReference.reset();
+  counter = 0;
+  Removed = false;
+  implicitlyAdded = false;
+  addedToEvent = false;
+  changed = true;
+  transientChanged = false;
+  localObject = false;
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,17 +25,17 @@
 
 //ABCDEFGHIJKLMNO
 int getMeosBuild() {
-  string revision("$Rev: 1081 $");
+  string revision("$Rev: 1103 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2021-07-12 17:51:51 +0200 (mån, 12 jul 2021) $");
+  wstring date(L"$Date: 2021-12-11 15:54:57 +0100 (lör, 11 dec 2021) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Beta"; // No parantheses (...)
+  return L"Beta II"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -90,7 +90,6 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"OK Tjärnen");
   supp.emplace_back(L"Leksands OK");  
   supp.emplace_back(L"O-Travel");
-  supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
   developSupp.emplace_back(L"KOB Kysak");
   supp.emplace_back(L"Ingemar Carlsson");
   supp.emplace_back(L"Tolereds AIK");
@@ -149,6 +148,20 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"IFK Kiruna");
   supp.emplace_back(L"Smedjebackens OK");
   supp.emplace_back(L"Gunnar Persson, Svanesunds GIF");
+  supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
+  supp.emplace_back(L"Køge Orienteringsklub");
+  supp.emplace_back(L"Simrishamns OK");
+  supp.emplace_back(L"OK Fryksdalen");
+  supp.emplace_back(L"Magnus Asplund, Sundbybergs IK");
+  supp.emplace_back(L"Frölunda OL");
+  supp.emplace_back(L"Hjobygdens OK");
+  supp.emplace_back(L"OK Malmia");
+  supp.emplace_back(L"Säterbygdens OK");
+  supp.emplace_back(L"OK Orinto");
+  supp.emplace_back(L"Trosabygdens OK");
+  supp.emplace_back(L"Järla Orientering");
+  supp.emplace_back(L"Hans Wilhelmsson, Säffle OK");
+  supp.emplace_back(L"Cent Vallées Orientation 12 (C.V.O. 12)");
 
   reverse(supp.begin(), supp.end());
 }

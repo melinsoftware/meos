@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -542,7 +542,7 @@ void xmlparser::read(const wstring &file, int maxobj)
 
   xbf.resize(asize+1);
   xmlinfo.clear();
-  xbf.reserve(xbf.size() / 30); // Guess number of tags
+  xmlinfo.reserve(xbf.size() / 30); // Guess number of tags
 
   parseStack.clear();
 

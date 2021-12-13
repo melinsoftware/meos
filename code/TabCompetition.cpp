@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -157,8 +157,8 @@ bool TabCompetition::save(gdioutput &gdi, bool write)
 bool TabCompetition::importFile(HWND hWnd, gdioutput &gdi)
 {
   vector< pair<wstring, wstring> > ext;
-  ext.push_back(make_pair(L"xml-data", L"*.xml;*.bu?"));
-  wstring fileName = gdi.browseForOpen(ext, L"xml");
+  ext.push_back(make_pair(L"MeOS-data", L"*.meosxml;*.xml;*.bu?"));
+  wstring fileName = gdi.browseForOpen(ext, L"meosxml");
   if (fileName.empty())
     return false;
 
@@ -182,8 +182,8 @@ bool TabCompetition::exportFileAs(HWND hWnd, gdioutput &gdi)
 {
   int ix = 0;
   vector< pair<wstring, wstring> > ext;
-  ext.push_back(make_pair(L"xml-data", L"*.xml"));
-  wstring fileName = gdi.browseForSave(ext, L"xml", ix);
+  ext.push_back(make_pair(L"MeOS-data", L"*.meosxml"));
+  wstring fileName = gdi.browseForSave(ext, L"meosxml", ix);
   if (fileName.empty())
     return false;
 
@@ -779,7 +779,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       wstring base = constructBase(L"base", L"");
       wchar_t newBase[_MAX_PATH];
       getUserFile(newBase, base.c_str());
-      if (!fileExist(newBase))
+      if (!fileExists(newBase))
         oe->save(newBase);
 
       loadConnectionPage(gdi);
@@ -1629,7 +1629,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "Cancel"){
       loadPage(gdi);
-    }
+    } 
     else if (bi.id == "WelcomeOK") {
       gdi.setFont(oe->getPropertyInt("TextSize", 0),
                   oe->getPropertyString("TextFont", L"Arial"));
@@ -2382,7 +2382,7 @@ void TabCompetition::copyrightLine(gdioutput &gdi) const
 
   gdi.dropLine(0.4);
   gdi.fillDown();
-  gdi.addString("", 0, makeDash(L"#Copyright © 2007-2020 Melin Software HB"));
+  gdi.addString("", 0, makeDash(L"#Copyright © 2007-2021 Melin Software HB"));
   gdi.dropLine(1);
   gdi.popX();
 
@@ -2412,7 +2412,7 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
   gdi.dropLine(1.5);
   gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
 
-  gdi.addStringUT(1, makeDash(L"Copyright © 2007-2020 Melin Software HB"));
+  gdi.addStringUT(1, makeDash(L"Copyright © 2007-2021 Melin Software HB"));
   gdi.dropLine();
   gdi.addStringUT(10, "The database connection used is MySQL++\nCopyright "
 				  "(c) 1998 by Kevin Atkinson, (c) 1999, 2000 and 2001 by MySQL AB,"
@@ -2764,7 +2764,7 @@ void TabCompetition::textSizeControl(gdioutput &gdi) const
 }
 
 int TabCompetition::getOrganizer(bool updateEvent) {
-  wstring apikey = oe->getPropertyStringDecrypt("apikey", "");
+  wstring apikey = gdioutput::widen(oe->getPropertyStringDecrypt("apikey", ""));
   if (apikey.empty())
     return 0;
   if (!isAscii(apikey))
@@ -2837,7 +2837,7 @@ int TabCompetition::getOrganizer(bool updateEvent) {
 }
 
 void TabCompetition::getAPIKey(vector< pair<wstring, wstring> > &key) const {
-  wstring apikey = oe->getPropertyStringDecrypt("apikey", "");
+  wstring apikey = gdioutput::widen(oe->getPropertyStringDecrypt("apikey", ""));
 
   if (apikey.empty() || organizorId == 0)
     throw std::exception("Internal error");
@@ -2989,7 +2989,7 @@ void TabCompetition::getEventorCmpData(gdioutput &gdi, int id,
 
   pw.setProgress(1);
   vector< pair<wstring, wstring> > key;
-  wstring apikey = oe->getPropertyStringDecrypt("apikey", "");
+  wstring apikey = gdioutput::widen(oe->getPropertyStringDecrypt("apikey", ""));
   key.push_back(pair<wstring, wstring>(L"ApiKey", apikey));
 
   gdi.fillRight();

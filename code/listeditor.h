@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ class TabBase;
 
 #include <vector>
 #include "autocompletehandler.h"
+#include "oListInfo.h"
 
 class ListEditor : public AutoCompleteHandler {
 private:
@@ -47,7 +48,7 @@ private:
   bool dirtyInt;
   SaveType lastSaved;
   const wchar_t *getIndexDescription(EPostType type);
-
+  wstring lastShownExampleText;
   void showLine(gdioutput &gdi, const vector<MetaListPost> &line, int ix) const;
   int editList(gdioutput &gdi, int type, BaseInfo &data);
   void updateType(int iType, gdioutput &gdi);
@@ -56,7 +57,12 @@ private:
                        int lineIx, int ix) const;
 
   void editListPost(gdioutput &gdi, const MetaListPost &mlp, int id);
-  void showExample(gdioutput &gdi, int margin, const MetaListPost &mlp);
+  
+  void showExample(gdioutput &gdi, EPostType type = EPostType::lLastItem);
+
+  void showExample(gdioutput &gdi, const MetaListPost &mlp);
+
+  int readLeg(gdioutput &gdi, EPostType newType, bool checkError) const;
 
   void editListProp(gdioutput &gdi, bool newList);
 
@@ -77,6 +83,12 @@ private:
 
   TabBase *origin = nullptr;
   void show(gdioutput &gdi);
+
+  int xpUseLeg;
+  int ypUseLeg;
+
+  bool legStageTypeIndex(gdioutput &gdi, EPostType type, int leg);
+
 
 public:
   ListEditor(oEvent *oe);

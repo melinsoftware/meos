@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -543,7 +543,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       if (!htmlTarget.empty()) {
         prm.setHTML(htmlTarget, currentList.getParam().timePerPage / 1000);
       }
-      tabAutoAddMachinge(prm);
+      TabAuto::tabAutoAddMachinge(prm);
       dynamic_cast<TabAuto *>(gdi.getTabs().get(TAutoTab))->loadPage(gdi, true);
     }
     else if (bi.id == "WideFormat") {

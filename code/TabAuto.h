@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,14 @@ enum Machines {
 
 class AutoMachine
 {
+public:
+
+  enum class State {
+    Edit,
+    Create,
+    Load
+  };
+
 private:
   int myid;
   static int uniqueId;
@@ -61,21 +69,47 @@ protected:
 
   void settingsTitle(gdioutput &gdi, char *title);
   enum IntervalType {IntervalNone, IntervalMinute, IntervalSecond};
-  void startCancelInterval(gdioutput &gdi, char *startCommand, bool created, IntervalType type, const wstring &interval);
+  void startCancelInterval(gdioutput &gdi, char *startCommand, State state, IntervalType type, const wstring &interval);
+  
+  virtual bool hasSaveMachine() const {
+    return false;
+  }
   
 public:
+
+  virtual void saveMachine(oEvent &oe, const wstring &guiInterval) {
+  }
+
+  virtual void loadMachine(oEvent &oe, const wstring &name) {
+  }
+
+  // Return true to auto-remove
+  virtual bool removeMe() const {
+    return false;
+  }
+
   static AutoMachine *getMachine(int id);
   static void resetGlobalId() {uniqueId = 1;}
   int getId() const {return myid;}
   static AutoMachine* construct(Machines);
+  static Machines getType(const string &typeStr);
+  static string getDescription(Machines type);
+  static string getTypeString(Machines type);
+  string getTypeString() const { return getTypeString(type); }
+  wstring getMachineName() const {
+    return machineName.empty() ? L"default" : machineName;
+  }
+
   void setEditMode(bool em) {editMode = em;}
   string name;
+  wstring machineName;
   DWORD interval; //Interval seconds
   DWORD timeout; //Timeout (TickCount)
   bool synchronize;
   bool synchronizePunches;
-  virtual void settings(gdioutput &gdi, oEvent &oe, bool created) = 0;
-  virtual void save(oEvent &oe, gdioutput &gdi) {}
+
+  virtual void settings(gdioutput &gdi, oEvent &oe, State state) = 0;
+  virtual void save(oEvent &oe, gdioutput &gdi, bool doProcess) = 0;
   virtual void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) = 0;
   virtual bool isEditMode() const {return editMode;}
   virtual void status(gdioutput &gdi) = 0;
@@ -119,9 +153,10 @@ public:
     prm->errorLock = false;
     return prm;
   }
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
+  void settings(gdioutput &gdi, oEvent &oe, State state) final;
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
 
   void setHTML(const wstring &file, int timeout) {
     exportFile = file;
@@ -176,10 +211,10 @@ public:
     return prm;
   }
 
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
-  void saveSettings(gdioutput &gdi);
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
+  void settings(gdioutput &gdi, oEvent &oe, State state) final;
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
 
   SaveMachine():AutoMachine("Säkerhetskopiera", Machines::mSaveBackup) , saveIter(0) {
   }
@@ -194,10 +229,12 @@ protected:
   set<int> controls;
   set<int> controlsSI;
 public:
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
+  void settings(gdioutput &gdi, oEvent &oe, State state);
   PrewarningMachine *clone() const {return new PrewarningMachine(*this);}
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
+
   PrewarningMachine():AutoMachine("Förvarningsröst", Machines::mPrewarningMachine) {}
   friend class TabAuto;
 };
@@ -210,12 +247,21 @@ protected:
   wstring timeError;
   wstring timeReconnect;
   HANDLE hThread;
+  bool toRemove = false;
+
 public:
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
+  void settings(gdioutput &gdi, oEvent &oe, State state);
   MySQLReconnect *clone() const {return new MySQLReconnect(*this);}
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   bool stop();
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final {
+  }
+
+  bool removeMe() const final {
+    return toRemove;
+  }
+
   MySQLReconnect(const wstring &error);
   virtual ~MySQLReconnect();
   friend class TabAuto;
@@ -230,9 +276,11 @@ protected:
   int radio;
 public:
   PunchMachine *clone() const {return new PunchMachine(*this);}
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
+  void settings(gdioutput &gdi, oEvent &oe, State state) final;
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
+
   PunchMachine():AutoMachine("Stämplingsautomat", Machines::mPunchMachine), radio(0) {}
   friend class TabAuto;
 };
@@ -246,9 +294,11 @@ protected:
   int leg;
 public:
   SplitsMachine *clone() const {return new SplitsMachine(*this);}
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
+  void settings(gdioutput &gdi, oEvent &oe, State state) final;
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
+
   SplitsMachine() : AutoMachine("Sträcktider/WinSplits", Machines::mSplitsMachine), leg(-1) {}
   friend class TabAuto;
 };
@@ -273,20 +323,22 @@ private:
   void timerCallback(gdioutput &gdi);
   void syncCallback(gdioutput &gdi);
 
-  void settings(gdioutput &gdi, AutoMachine *sm, Machines type);
+  void settings(gdioutput &gdi, AutoMachine *sm, AutoMachine::State state, Machines type);
 
 protected:
   void clearCompetitionData();
+  bool hasActiveReconnection() const;
 
 public:
 
   AutoMachine *getMachine(int id);
-  //AutoMachine *getMachine(const string &name);
   bool stopMachine(AutoMachine *am);
   void killMachines();
-  void addMachine(const AutoMachine &am) {
+
+  AutoMachine &addMachine(const AutoMachine &am) {
     machines.push_back(am.clone());
     setTimer(machines.back());
+    return *machines.back();
   }
 
   int processButton(gdioutput &gdi, const ButtonInfo &bu);
@@ -305,8 +357,10 @@ public:
 
   friend class AutoTask;
   friend void tabForceSync(gdioutput &gdi, pEvent oe);
+
+  static void tabAutoKillMachines();
+  static void tabAutoRegister(TabAuto* ta);
+  static AutoMachine& tabAutoAddMachinge(const AutoMachine& am);
+  static bool hasActiveReconnectionMachine();
 };
 
-void tabAutoKillMachines();
-void tabAutoRegister(TabAuto *ta);
-void tabAutoAddMachinge(const AutoMachine &am);

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -2376,13 +2376,13 @@ void gdioutput::processListMessage(ListBoxInfo &bi, WPARAM wParam)
 
 LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
 {
-  if (iMessage==WM_COMMAND) {
+  if (iMessage == WM_COMMAND) {
     WORD hwParam = HIWORD(wParam);
-    HWND hWnd=(HWND)lParam;
-    if (hwParam==EN_CHANGE) {
+    HWND hWnd = (HWND)lParam;
+    if (hwParam == EN_CHANGE) {
       list<TableInfo>::iterator tit;
       if (useTables)
-        for (tit=Tables.begin(); tit!=Tables.end(); ++tit)
+        for (tit = Tables.begin(); tit != Tables.end(); ++tit)
           if (tit->table->inputChange(*this, hWnd))
             return 0;
     }
@@ -2392,8 +2392,8 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
       //for (it=BI.begin(); it != BI.end(); ++it) {
       unordered_map<HWND, ButtonInfo*>::iterator it = biByHwnd.find(HWND(lParam));
 
-    //    if (it->hWnd==hWnd) {
-      if ( it != biByHwnd.end() ) {
+      //    if (it->hWnd==hWnd) {
+      if (it != biByHwnd.end()) {
         ButtonInfo &bi = *it->second;
         processButtonMessage(bi, wParam);
         return 0;
@@ -2431,62 +2431,62 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
       }
     }
   }
-  else if (iMessage==WM_MOUSEMOVE) {
+  else if (iMessage == WM_MOUSEMOVE) {
     POINT pt;
-    pt.x=(signed short)LOWORD(lParam);
-    pt.y=(signed short)HIWORD(lParam);
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
 
     list<TableInfo>::iterator tit;
 
-    bool GotCapture=false;
+    bool GotCapture = false;
 
     if (useTables)
-      for (tit=Tables.begin(); tit!=Tables.end(); ++tit)
+      for (tit = Tables.begin(); tit != Tables.end(); ++tit)
         GotCapture = tit->table->mouseMove(*this, pt.x, pt.y) || GotCapture;
 
     if (GotCapture)
       return 0;
 
-    list<InfoBox>::iterator it=IBox.begin();
+    list<InfoBox>::iterator it = IBox.begin();
 
 
     while (it != IBox.end()) {
       if (PtInRect(&it->TextRect, pt) && (it->callBack || it->hasEventHandler())) {
         SetCursor(LoadCursor(NULL, IDC_HAND));
 
-        HDC hDC=GetDC(hWndTarget);
+        HDC hDC = GetDC(hWndTarget);
         drawBoxText(hDC, it->TextRect, *it, true);
         ReleaseDC(hWndTarget, hDC);
         SetCapture(hWndTarget);
-        GotCapture=true;
-        it->HasTCapture=true;
+        GotCapture = true;
+        it->HasTCapture = true;
       }
       else {
         if (it->HasTCapture) {
-          HDC hDC=GetDC(hWndTarget);
+          HDC hDC = GetDC(hWndTarget);
           drawBoxText(hDC, it->TextRect, *it, false);
           ReleaseDC(hWndTarget, hDC);
           if (!GotCapture)
             ReleaseCapture();
-          it->HasTCapture=false;
+          it->HasTCapture = false;
         }
       }
 
       if (it->HasCapture) {
-        if (GetCapture()!=hWndTarget) {
-          HDC hDC=GetDC(hWndTarget);
+        if (GetCapture() != hWndTarget) {
+          HDC hDC = GetDC(hWndTarget);
           drawCloseBox(hDC, it->Close, false);
           ReleaseDC(hWndTarget, hDC);
           if (!GotCapture) ReleaseCapture();
-          it->HasCapture=false;
+          it->HasCapture = false;
         }
         else if (!PtInRect(&it->Close, pt)) {
-          HDC hDC=GetDC(hWndTarget);
+          HDC hDC = GetDC(hWndTarget);
           drawCloseBox(hDC, it->Close, false);
           ReleaseDC(hWndTarget, hDC);
         }
         else {
-          HDC hDC=GetDC(hWndTarget);
+          HDC hDC = GetDC(hWndTarget);
           drawCloseBox(hDC, it->Close, true);
           ReleaseDC(hWndTarget, hDC);
         }
@@ -2494,25 +2494,25 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
       ++it;
     }
 
-    for (size_t k=0;k<shownStrings.size();k++) {
+    for (size_t k = 0; k < shownStrings.size(); k++) {
       TextInfo &ti = *shownStrings[k];
       if ((!ti.callBack && !ti.hasEventHandler()) || ti.hasTimer)
         continue;
 
       if (PtInRect(&ti.textRect, pt)) {
-        if (!ti.highlight){
-          ti.highlight=true;
+        if (!ti.highlight) {
+          ti.highlight = true;
           InvalidateRect(hWndTarget, &ti.textRect, true);
         }
 
         SetCapture(hWndTarget);
-        GotCapture=true;
-        ti.hasCapture=true;
+        GotCapture = true;
+        ti.hasCapture = true;
         SetCursor(LoadCursor(NULL, IDC_HAND));
       }
       else {
         if (ti.highlight) {
-          ti.highlight=false;
+          ti.highlight = false;
           InvalidateRect(hWndTarget, &ti.textRect, true);
         }
 
@@ -2520,79 +2520,80 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
           if (!GotCapture)
             ReleaseCapture();
 
-          ti.hasCapture=false;
+          ti.hasCapture = false;
         }
       }
     }
   }
-  else if (iMessage==WM_LBUTTONDOWN) {
+  else if (iMessage == WM_LBUTTONDOWN) {
     if (autoCompleteInfo) {
       autoCompleteInfo.reset();
       return 0;
     }
 
-    list<InfoBox>::iterator it=IBox.begin();
+    list<InfoBox>::iterator it = IBox.begin();
 
     POINT pt;
-    pt.x=(signed short)LOWORD(lParam);
-    pt.y=(signed short)HIWORD(lParam);
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
 
     list<TableInfo>::iterator tit;
 
-    if (useTables)
-      for (tit=Tables.begin(); tit!=Tables.end(); ++tit)
+    if (useTables) {
+      for (tit = Tables.begin(); tit != Tables.end(); ++tit)
         if (tit->table->mouseLeftDown(*this, pt.x, pt.y))
           return 0;
+    }
 
-    while(it!=IBox.end()) {
+    while (it != IBox.end()) {
       if (PtInRect(&it->Close, pt)) {
-        HDC hDC=GetDC(hWndTarget);
+        HDC hDC = GetDC(hWndTarget);
         drawCloseBox(hDC, it->Close, true);
         ReleaseDC(hWndTarget, hDC);
         SetCapture(hWndTarget);
-        it->HasCapture=true;
+        it->HasCapture = true;
       }
       ++it;
     }
 
 
     //Handle links
-    for (size_t k=0;k<shownStrings.size();k++) {
+    for (size_t k = 0; k < shownStrings.size(); k++) {
       TextInfo &ti = *shownStrings[k];
       if (!ti.callBack && !ti.hasEventHandler())
         continue;
 
       if (ti.hasCapture) {
-        HDC hDC=GetDC(hWndTarget);
+        HDC hDC = GetDC(hWndTarget);
         if (PtInRect(&ti.textRect, pt)) {
-          ti.active=true;
+          ti.active = true;
           RenderString(ti, hDC);
         }
         ReleaseDC(hWndTarget, hDC);
       }
     }
   }
-  else if (iMessage==WM_LBUTTONUP) {
+  else if (iMessage == WM_LBUTTONUP) {
     list<TableInfo>::iterator tit;
 
-    list<InfoBox>::iterator it=IBox.begin();
+    list<InfoBox>::iterator it = IBox.begin();
 
     POINT pt;
-    pt.x=(signed short)LOWORD(lParam);
-    pt.y=(signed short)HIWORD(lParam);
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
 
-    if (useTables)
-      for (tit=Tables.begin(); tit!=Tables.end(); ++tit)
+    if (useTables) {
+      for (tit = Tables.begin(); tit != Tables.end(); ++tit)
         if (tit->table->mouseLeftUp(*this, pt.x, pt.y))
           return 0;
-
-    while (it!=IBox.end()) {
+    }
+    while (it != IBox.end()) {
       if (it->HasCapture) {
-        HDC hDC=GetDC(hWndTarget);
+        HDC hDC = GetDC(hWndTarget);
         drawCloseBox(hDC, it->Close, false);
         ReleaseDC(hWndTarget, hDC);
         ReleaseCapture();
-        it->HasCapture=false;
+        it->HasCapture = false;
 
         if (PtInRect(&it->Close, pt)) {
           IBox.erase(it);
@@ -2602,7 +2603,7 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
       }
       else if (it->HasTCapture) {
         ReleaseCapture();
-        it->HasTCapture=false;
+        it->HasTCapture = false;
 
         if (PtInRect(&it->TextRect, pt)) {
           if (!it->handleEvent(*this, GUI_INFOBOX) && it->callBack)
@@ -2614,12 +2615,12 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
     }
 
     //Handle links
-    for (size_t k=0;k<shownStrings.size();k++) {
+    for (size_t k = 0; k < shownStrings.size(); k++) {
       TextInfo &ti = *shownStrings[k];
       if (!ti.callBack && !ti.hasEventHandler())
         continue;
 
-      if (ti.hasCapture){
+      if (ti.hasCapture) {
         ReleaseCapture();
         ti.hasCapture = false;
 
@@ -2630,7 +2631,7 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
               cmd = "click(\"" + ti.id + "\", " + itos(ti.getExtraInt()) + "); //" + toUTF8(ti.text);
             else
               cmd = "click(\"" + ti.id + "\"); //" + toUTF8(ti.text);
-            ti.active=false;
+            ti.active = false;
             RenderString(ti);
             if (!ti.handleEvent(*this, GUI_LINK))
               ti.callBack(this, GUI_LINK, &ti);
@@ -2639,23 +2640,67 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
           }
         }
       }
-      else if (ti.active){
-        ti.active=false;
+      else if (ti.active) {
+        ti.active = false;
         RenderString(ti);
       }
     }
   }
-  else if (iMessage==WM_LBUTTONDBLCLK) {
+  else if (iMessage == WM_LBUTTONDBLCLK) {
     list<TableInfo>::iterator tit;
     POINT pt;
-    pt.x=(signed short)LOWORD(lParam);
-    pt.y=(signed short)HIWORD(lParam);
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
 
     if (useTables)
-      for (tit=Tables.begin(); tit!=Tables.end(); ++tit)
+      for (tit = Tables.begin(); tit != Tables.end(); ++tit)
         if (tit->table->mouseLeftDblClick(*this, pt.x, pt.y))
           return 0;
 
+  }
+  else if (iMessage == WM_RBUTTONDOWN) {
+    POINT pt;
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
+
+    if (useTables) {
+      for (auto tit = Tables.begin(); tit != Tables.end(); ++tit)
+        if (tit->table->mouseRightDown(*this, pt.x, pt.y))
+          return 0;
+    }
+  }
+  else if (iMessage == WM_RBUTTONUP) {
+    POINT pt;
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
+
+    if (useTables) {
+      for (auto tit = Tables.begin(); tit != Tables.end(); ++tit)
+        if (tit->table->mouseRightUp(*this, pt.x, pt.y))
+          return 0;
+    }
+  }
+  else if (iMessage == WM_MBUTTONDOWN) {
+    POINT pt;
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
+
+    if (useTables) {
+      for (auto tit = Tables.begin(); tit != Tables.end(); ++tit)
+        if (tit->table->mouseMidDown(*this, pt.x, pt.y))
+          return 0;
+    }
+  }
+  else if (iMessage == WM_MBUTTONUP) {
+    POINT pt;
+    pt.x = (signed short)LOWORD(lParam);
+    pt.y = (signed short)HIWORD(lParam);
+
+    if (useTables) {
+      for (auto tit = Tables.begin(); tit != Tables.end(); ++tit)
+        if (tit->table->mouseMidUp(*this, pt.x, pt.y))
+          return 0;
+    }
   }
   else if (iMessage == WM_CHAR) {
     /*list<TableInfo>::iterator tit;
@@ -3504,6 +3549,23 @@ void gdioutput::adjustDimension(int width, int height)
   }
 }
 
+// Alert from main thread (via callback)
+void gdioutput::delayAlert(const wstring& msg) {
+  if (!delayedAlert.empty())
+    delayedAlert += L", ";
+  if (delayedAlert.length() > 1000)
+    delayedAlert = L"";
+
+  delayedAlert += lang.tl(msg);
+  PostMessage(hWndAppMain, WM_USER + 6, 0, LPARAM(this));
+}
+
+wstring gdioutput::getDelayedAlert() {
+  wstring out = L"#" + delayedAlert;
+  delayedAlert.clear();
+  return out;
+}
+
 void gdioutput::alert(const string &msg) const
 {
   alert(widen(msg));
@@ -4002,6 +4064,7 @@ void gdioutput::removeString(string id)
       Rectangle(hDC, rc.left, rc.top, rc.right, rc.bottom);
       ReleaseDC(hWndTarget, hDC);
       TL.erase(it);
+      itTL = TL.end();
       shownStrings.clear();
       return;
     }
@@ -4833,6 +4896,8 @@ bool gdioutput::removeWidget(const string &id)
     }
     ++iit;
   }
+
+  removeString(id);
   return false;
 }
 
@@ -5757,6 +5822,12 @@ void gdioutput::tableCB(ButtonInfo &bu, Table *t)
     t->updateDimension(*this);
     refresh();
   }
+  else if (bu.id == "tblMarkAll") {
+    t->keyCommand(*this, KC_MARKALL);
+  }
+  else if (bu.id == "tblClearAll") {
+    t->keyCommand(*this, KC_CLEARALL);
+  }
   else if (bu.id=="tblUpdate") {
     t->keyCommand(*this, KC_REFRESH);
   }
@@ -5799,6 +5870,8 @@ void gdioutput::enableTables()
       toolbar->addButton("tblPrint", 0, STD_PRINT, "Skriv ut tabellen (X)#Ctrl+P");
       toolbar->addButton("tblUpdate", 1, 0, "Uppdatera alla värden i tabellen (X)#F5");
       toolbar->addButton("tblReset", 1, 4, "Återställ tabeldesignen och visa allt");
+      toolbar->addButton("tblMarkAll", 1, 5, "Markera allt (X)#Ctrl+A");
+      toolbar->addButton("tblClearAll", 1, 6, "Markera inget (X)#Ctrl+D");
       toolbar->addButton("tblCopy", 0, STD_COPY, "Kopiera selektionen till urklipp (X)#Ctrl+C");
       if (t->canPaste())
         toolbar->addButton("tblPaste", 0, STD_PASTE, "Klistra in data från urklipp (X)#Ctrl+V");
@@ -7040,7 +7113,18 @@ DWORD gdioutput::selectColor(wstring &def, DWORD input) {
   }
 
   cc.lpCustColors = staticColor;
-  if (ChooseColor(&cc)) {
+  int res = 0;
+  setCommandLock();
+  try {
+    res = ChooseColor(&cc);
+    liftCommandLock();
+  }
+  catch (...) {
+    liftCommandLock();
+    throw;
+  }
+
+  if (res) {
     wstring co;
     for (int ix = 0; ix < 16; ix++) {
       wchar_t bf[16];
@@ -7052,7 +7136,6 @@ DWORD gdioutput::selectColor(wstring &def, DWORD input) {
   }
   return -1;
 }
-
 
 void gdioutput::setAnimationMode(shared_ptr<AnimationData> &data) {
   if (animationData && animationData->takeOver(data))
@@ -7117,4 +7200,23 @@ int gdioutput::getPageX() const {
     return max(MaxX, xlimit);
   else
     return max(MaxX, xlimit) + scaleLength(60); 
+}
+
+int gdioutput::popupMenu(int x, int y, const vector<pair<wstring, int>> &menuItems) const {
+  POINT pt;
+  pt.x = x;
+  pt.y = y;
+  ClientToScreen(getHWNDTarget(), &pt);
+  HMENU hm = CreatePopupMenu();
+  for (auto &me : menuItems) {
+    if (me.first.empty())
+      AppendMenu(hm, MF_SEPARATOR, me.second, L"");
+    else
+      AppendMenu(hm, MF_STRING, me.second, lang.tl(me.first).c_str());
+  }
+  int res = TrackPopupMenuEx(hm, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD | TPM_NONOTIFY,
+                             pt.x, pt.y, getHWNDTarget(), nullptr);
+
+  DestroyMenu(hm);
+  return res;
 }

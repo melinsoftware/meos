@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include "RunnerDB.h"
 #include "progress.h"
 #include "metalist.h"
+#include "machinecontainer.h"
 #include "MeOSFeatures.h"
 #include "meosexception.h"
 #include "generalresult.h"
@@ -419,6 +420,11 @@ void MeosSQL::upgradeDB(const string &db, oDataContainer const * dc) {
       sql = sql.substr(0, sql.length() - 2);
       query.execute(sql);
     }
+    if (!eCol.count("Machine")) {
+      string sql = "ALTER TABLE oEvent ADD COLUMN " + C_MTEXT("Machine");
+      sql = sql.substr(0, sql.length() - 2);
+      query.execute(sql);
+    }
   }
   else if (db == "oCourse") {
     if (!eCol.count("Legs")) {
@@ -556,7 +562,8 @@ bool MeosSQL::openDB(oEvent *oe)
     << C_STRING("NameId", 64)
     << C_UINT("BuildVersion")
     << oe->getDI().generateSQLDefinition()
-    << C_MTEXT("Lists") << C_END();
+    << C_MTEXT("Lists")
+    << C_MTEXT("Machine") << C_END();
     query.execute();
 
     // Upgrade oEvent
@@ -818,7 +825,8 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
         << " NameId="  << quote << toString(oe->currentNameId) << ", "
         << " ZeroTime=" << unsigned(oe->ZeroTime) << ", "
         << " BuildVersion=" << buildVersion << ", "
-        << " Lists=" << quote << listEnc
+        << " Lists=" << quote << listEnc << ", "
+        << " Machine=" <<quote << oe->getMachineContainer().save()
         <<  oe->getDI().generateSQLSet(true);
 
     if (syncUpdate(queryset, "oEvent", oe) == opStatusFail)
@@ -1184,6 +1192,9 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
         alert(ex.what());
         retValue = opStatusWarning;
       }
+
+      const string &mRaw = row.raw_string(res.field_num("Machine"));
+      oe->getMachineContainer().load(mRaw);
 
       oDataInterface odi=oe->getDI();
       storeData(odi, row, oe->dataRevision);
@@ -2589,7 +2600,7 @@ OpFailStatus MeosSQL::syncRead(bool forceRead, oClub *c)
   }
   try {
     auto query = con->query();
-    query << "SELECT * FROM oClub WHERE Id=" << c->Id;
+    query << "SELECT * FROM oClub WHERE Id=" << c->Id << andWhereOld(c);
     auto res = query.store();
 
     RowWrapper row;
@@ -2611,8 +2622,7 @@ OpFailStatus MeosSQL::syncRead(bool forceRead, oClub *c)
         return syncUpdate(c, false);
       }
     }
-    else {
-      //Something is wrong!? Deleted?
+    else if (c->changed) {      
       return syncUpdate(c, true);
     }
     return opStatusOK;
@@ -3097,6 +3107,9 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
         catch (std::exception &ex) {
           alert(ex.what());
         }
+        const string &mRaw = row.raw_string(res.field_num("Machine"));
+        oe->getMachineContainer().load(mRaw);
+
         oe->counter = counter;
         oDataInterface odi=oe->getDI();
         storeData(odi, row, oe->dataRevision);
@@ -3124,7 +3137,8 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
                  << " ZeroTime=" << unsigned(oe->ZeroTime) << ", "
                  << " BuildVersion=if (BuildVersion<" <<
                       buildVersion << "," << buildVersion << ",BuildVersion), "
-                 << " Lists=" << quote << listEnc
+                 << " Lists=" << quote << listEnc << ", "
+                 << " Machine=" << quote << oe->getMachineContainer().save()
                  <<  oe->getDI().generateSQLSet(false);
 
         syncUpdate(queryset, "oEvent", oe);
@@ -3156,7 +3170,8 @@ OpFailStatus MeosSQL::SyncEvent(oEvent *oe) {
                << " ZeroTime=" << unsigned(oe->ZeroTime) << ","
                << " BuildVersion=if (BuildVersion<" <<
                     buildVersion << "," << buildVersion << ",BuildVersion),"
-               << " Lists=" << quote << listEnc
+               << " Lists=" << quote << listEnc << ", "
+               << " Machine=" << quote << oe->getMachineContainer().save()
                <<  oe->getDI().generateSQLSet(false);
 
       syncUpdate(queryset, "oEvent", oe);
@@ -3223,7 +3238,7 @@ bool MeosSQL::syncListRunner(oEvent *oe)
           st = OpFailStatus::opStatusOK;
           oRunner *r=oe->getRunner(Id, 0);
 
-          if (r) {
+          if (r && !r->Removed) {
             r->Removed=true;
             if (r->tInTeam)
               r->tInTeam->correctRemove(r);
@@ -3233,6 +3248,8 @@ bool MeosSQL::syncListRunner(oEvent *oe)
             }
 
             r->changedObject();
+            r->changed = false;
+            oe->dataRevision++;
           }
         }
         else{
@@ -3290,9 +3307,11 @@ bool MeosSQL::syncListClass(oEvent *oe) {
         if (int(row["Removed"])) {
           st = OpFailStatus::opStatusOK;
           oClass *c = oe->getClass(Id);
-          if (c) {
+          if (c && !c->Removed) {
             c->changedObject();
             c->Removed = true;
+            c->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3355,9 +3374,11 @@ bool MeosSQL::syncListClub(oEvent *oe)
           st = opStatusOK;
           oClub *c = oe->getClub(Id);
 
-          if (c) {
+          if (c && !c->Removed) {
             c->Removed = true;
             c->changedObject();
+            c->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3413,9 +3434,11 @@ bool MeosSQL::syncListCourse(oEvent *oe) {
           st = opStatusOK;
           oCourse *c = oe->getCourse(Id);
 
-          if (c) {
+          if (c && !c->Removed) {
             c->Removed = true;
             c->changedObject();
+            c->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3469,9 +3492,11 @@ bool MeosSQL::syncListCard(oEvent *oe)
         if (int(row["Removed"])) {
           st = opStatusOK;
           oCard *c = oe->getCard(Id);
-          if (c) {
+          if (c && !c->Removed) {
             c->changedObject();
             c->Removed = true;
+            c->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3529,9 +3554,11 @@ bool MeosSQL::syncListControl(oEvent *oe) {
           st = opStatusOK;
           oControl *c = oe->getControl(Id, false);
 
-          if (c) {
+          if (c && !c->Removed) {
             c->Removed = true;
             c->changedObject();
+            c->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3588,13 +3615,16 @@ bool MeosSQL::syncListPunch(oEvent *oe)
         if (int(row["Removed"])) {
           st = OpFailStatus::opStatusOK;
           oFreePunch *c=oe->getPunch(Id);
-          if (c) {
+          if (c && !c->Removed) {
             c->Removed=true;
             int cid = c->getControlId();
             oFreePunch::rehashPunches(*oe, c->CardNo, 0);
             pRunner r = oe->getRunner(c->tRunnerId, 0);
             if (r)
               r->markClassChanged(cid);
+
+            c->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3653,10 +3683,12 @@ bool MeosSQL::syncListTeam(oEvent *oe) {
         if (int(row["Removed"])) {
           st = OpFailStatus::opStatusOK;
           oTeam *t = oe->getTeam(Id);
-          if (t) {
+          if (t && !t->Removed) {
             t->changedObject();
             t->prepareRemove();
             t->Removed = true;
+            t->changed = false;
+            oe->dataRevision++;
           }
         }
         else {
@@ -3696,15 +3728,19 @@ bool MeosSQL::syncListTeam(oEvent *oe) {
 
 string MeosSQL::selectUpdated(const char *oTable, const SqlUpdated &updated) {
   string p1 = string("SELECT Id, Counter, Modified, Removed FROM ") + oTable;
-
-  string q = "(" + p1 + " WHERE Counter>" + itos(updated.counter) + ") UNION ALL ("+
+  string cond1 = p1 + " WHERE Counter>" + itos(updated.counter);
+  if (updated.updated.empty())
+    return cond1;
+  
+  string q = "(" + cond1  + ") UNION ALL ("+
                    p1 + " WHERE Modified>'" + updated.updated + "' AND Counter<=" + itos(updated.counter) + ")";
-
   return q;
 }
 
 bool MeosSQL::checkConnection(oEvent *oe)
 {
+  if (!con->connected())
+    return false;
   errorMessage.clear();
 
   if (!oe) {

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 
 #include <commctrl.h>
 #include <commdlg.h>
+#include <MMSystem.h>
+
 #include <algorithm>
 
 #include "oEvent.h"
@@ -134,7 +136,83 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       allowControl = gdi.isChecked(bi.id);
     else if (bi.id == "AllowFinish") 
       allowFinish = gdi.isChecked(bi.id);
-    if (bi.id == "ClearMemory") {
+    else if (bi.id == "PlaySound") {
+      oe->setProperty("PlaySound", gdi.isChecked(bi.id) ? 1 : 0);
+    }
+    else if (bi.id == "SoundChoice") {
+      gdi.disableInput("SoundChoice");
+      gdi.setRestorePoint("Sound");
+      gdi.dropLine();
+      gdi.fillDown();
+      gdi.addString("", fontMediumPlus, "help:selectsound");
+      gdi.dropLine(0.5);
+      gdi.pushX();
+      gdi.fillRight();
+
+      auto addSoundWidget = [&gdi, this](const wchar_t *name, SND type, const wstring &label) {
+        string nname = gdioutput::narrow(name);
+        gdi.addInput(nname, oe->getPropertyString(nname.c_str(), L""), 32, nullptr, label);
+        gdi.dropLine(0.8);
+        gdi.addButton("BrowseSound", "Bläddra...", SportIdentCB).setExtra(name);
+        gdi.addButton("TestSound", "Testa", SportIdentCB).setExtra(int(type));
+        gdi.dropLine(3);
+        gdi.popX();
+      };
+
+      addSoundWidget(L"SoundOK", SND::OK, L"Status OK:");
+      addSoundWidget(L"SoundNotOK", SND::NotOK, L"Status inte OK (röd utgång):");
+      addSoundWidget(L"SoundLeader", SND::Leader, L"Ny ledare i klassen:");
+      addSoundWidget(L"SoundAction", SND::ActionNeeded, L"Åtgärd krävs:");
+
+      gdi.addButton("CloseSound", "OK", SportIdentCB);
+      gdi.popX();
+      gdi.dropLine(3);
+      gdi.scrollToBottom();
+      gdi.refresh();
+        /*
+            fn = oe->getPropertyString("SoundOK", L"");
+    res = 50;
+    break;
+  case SND::NotOK:
+    fn = oe->getPropertyString("SoundNotOK", L"");
+    res = 52;
+    break;
+  case SND::Leader:
+    fn = oe->getPropertyString("SoundLeader", L"");
+    res = 51;
+    break;
+  case SND::ActionNeeded:
+    fn = oe->getPropertyString("SoundAction", L"");
+
+        
+        */
+    }
+    else if (bi.id == "BrowseSound") {
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"Ljud (wav)", L"*.wav"));
+
+      wstring file = gdi.browseForOpen(ext, L"wav");
+      if (!file.empty()) {
+        wchar_t *type = bi.getExtra();
+        string name = gdioutput::narrow(type);
+        gdi.setText(name, file);
+        oe->setProperty(name.c_str(), file);
+      }
+    }
+    else if (bi.id == "SoundOK" || bi.id == "SoundNotOK" ||
+             bi.id == "SoundLeader" || bi.id == "SoundAction") {
+      oe->setProperty(bi.id.c_str(), bi.text);
+    }
+    else if (bi.id == "TestSound") {
+      oe->setProperty("PlaySound", 1);
+      gdi.check(bi.id, true);
+      playReadoutSound(SND(bi.getExtraInt()));
+    }
+    else if (bi.id == "CloseSound") {
+      gdi.restore("Sound", true);
+      gdi.enableInput("SoundChoice");
+    }
+    else if (bi.id == "ClearMemory") {
       if (gdi.ask(L"Do you want to clear the card memory?")) {
         savedCards.clear();
         loadPage(gdi);
@@ -1678,7 +1756,7 @@ void TabSI::showReadCards(gdioutput &gdi, vector<SICard> &cards)
 SportIdent &TabSI::getSI(const gdioutput &gdi) {
   if (!gSI) {
     HWND hWnd=gdi.getHWNDMain();
-    gSI = new SportIdent(hWnd, 0, gEvent->getPropertyInt("ReadVoltageExp", 0) != 0);
+    gSI = new SportIdent(hWnd, 0, true);
   }
   return *gSI;
 }
@@ -1787,9 +1865,17 @@ bool TabSI::loadPage(gdioutput &gdi) {
       gdi.selectItemByData("ReadType", mode);
 
       gdi.dropLine(-0.1);
-      gdi.addButton("LockFunction", "Lås funktion...", SportIdentCB);
+      gdi.addButton("LockFunction", "Lås funktion", SportIdentCB);
       readoutFunctionX = gdi.getCX();
       readoutFunctionY = gdi.getCY();
+      gdi.dropLine(0.3);
+
+      gdi.addCheckbox("PlaySound", "Ljud", SportIdentCB, oe->getPropertyInt("PlaySound", 1) != 0, 
+                          "Spela upp ett ljud för att indikera resultatet av brickavläsningen.");
+      gdi.dropLine(-0.3);
+
+      gdi.addButton("SoundChoice", "Ljudval...", SportIdentCB);
+
       gdi.dropLine(0.3);
 
       gdi.addString("Allow", 0, "Tillåt:");
@@ -1883,6 +1969,8 @@ void TabSI::updateReadoutFunction(gdioutput &gdi) {
   gdi.hideWidget("AllowStart", hide);
   gdi.hideWidget("AllowControl", hide);
   gdi.hideWidget("AllowFinish", hide);
+  gdi.hideWidget("SoundChoice", hide);
+  gdi.hideWidget("PlaySound", hide);
 }
 
 void InsertSICard(gdioutput &gdi, SICard &sic)
@@ -2054,6 +2142,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
 
     return;
   }
+
   gEvent->synchronizeList({ oListId::oLCardId, oListId::oLRunnerId });
 
   if (sic.punchOnly) {
@@ -2092,6 +2181,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
       else {
         CardQueue.push_back(sic);
         gdi.addInfoBox("SIREAD", L"info:readout_action#" + gEvent->getCurrentTimeS()+L"#"+itow(sic.CardNumber), 0, SportIdentCB);
+        playReadoutSound(SND::ActionNeeded);
         return;
       }
     }
@@ -2099,8 +2189,10 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
       if (!readBefore) {
         if (r && r->getClassId(false) && !sameCardNewRace)
           processCard(gdi, r, sic, true);
-        else
+        else {
           processUnmatched(gdi, sic, true);
+          playReadoutSound(SND::ActionNeeded);
+        }
       }
       else
         gdi.addInfoBox("SIREAD", L"Brickan redan inläst.", 0, SportIdentCB);
@@ -2126,6 +2218,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
     name = itow(sic.CardNumber) + name;
     CardQueue.push_back(sic);
     gdi.addInfoBox("SIREAD", L"info:readout_queue#" + gEvent->getCurrentTimeS() + L"#" + name);
+    playReadoutSound(SND::ActionNeeded);
     return;
   }
 
@@ -2166,6 +2259,7 @@ void TabSI::insertSICardAux(gdioutput &gdi, SICard &sic)
       gdi.scrollToBottom();
       gdi.refresh();
       activeSIC.clear(0);
+      playReadoutSound(SND::ActionNeeded);
       checkMoreCardsInQueue(gdi);
       return;
     }
@@ -2422,7 +2516,7 @@ bool TabSI::processUnmatched(gdioutput &gdi, const SICard &csic, bool silent)
     gdi.addInfoBox("SIINFO", L"#" + info, 10000);
   }
   gdi.makeEvent("DataUpdate", "sireadout", 0, 0, true);
-
+  playReadoutSound(SND::ActionNeeded);
   checkMoreCardsInQueue(gdi);
   return true;
 }
@@ -2619,6 +2713,11 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
                    runner->getTeam()->getLegPlaceS(runner->getLegNumber(), false) :
                    runner->getPlaceS();
 
+    if (placeS == L"1") 
+      playReadoutSound(SND::Leader);
+    else
+      playReadoutSound(SND::OK);
+
     if (!silent) {
       gdi.fillDown();
       //gdi.dropLine();
@@ -2650,6 +2749,8 @@ bool TabSI::processCard(gdioutput &gdi, pRunner runner, const SICard &csic, bool
   }
   else {
     wstring msg=lang.tl(L"Status: ") + runner->getStatusS(true, true);
+
+    playReadoutSound(SND::NotOK);
 
     if (!MP.empty()) {
       msg=msg + L", (";
@@ -4258,7 +4359,49 @@ void TabSI::handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) {
   gdi.TabFocus(1);
 }
 
-
 bool TabSI::showDatabase() const {
   return useDatabase && oe->useRunnerDb();
+}
+void TabSI::playReadoutSound(SND type) {
+  if (!oe->getPropertyInt("PlaySound", 0))
+    return;
+  int res = -1;
+  wstring fn;
+  switch (type) {
+  case SND::OK:
+    fn = oe->getPropertyString("SoundOK", L"");
+    res = 50;
+    break;
+  case SND::NotOK:
+    fn = oe->getPropertyString("SoundNotOK", L"");
+    res = 52;
+    break;
+  case SND::Leader:
+    fn = oe->getPropertyString("SoundLeader", L"");
+    res = 51;
+    break;
+  case SND::ActionNeeded:
+    fn = oe->getPropertyString("SoundAction", L"");
+    res = 53;
+    break;
+  }
+
+  if (checkedSound.count(fn) || (!fn.empty() && fileExists(fn))) {
+    playSoundFile(fn);
+    checkedSound.insert(fn);
+  }
+  else {
+    playSoundResource(res);
+  }
+}
+
+void TabSI::playSoundResource(int res) const {
+  PlaySound(MAKEINTRESOURCE(res), GetModuleHandle(nullptr), SND_RESOURCE| SND_ASYNC);
+  //OutputDebugString((L"Play: " + itow(res)).c_str());
+
+}
+
+void TabSI::playSoundFile(const wstring& file) const {
+  PlaySound(file.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+  //OutputDebugString(file.c_str());
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include "Download.h"
 #include "xmlparser.h"
 #include "progress.h"
+#include "machinecontainer.h"
 
 int AutomaticCB(gdioutput *gdi, int type, void *data);
 
@@ -95,9 +96,9 @@ int OnlineResults::processButton(gdioutput &gdi, ButtonInfo &bi) {
   return 0;
 }
 
-void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
+void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
   int iv = interval;
-  if (created) {
+  if (state == State::Create) {
     iv = 10;
     url = oe.getPropertyString("MOPURL", L"");
     file = oe.getPropertyString("MOPFolderName", L"");
@@ -109,7 +110,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
     time = itow(iv);
 
   settingsTitle(gdi, "Resultat online");
-  startCancelInterval(gdi, "Save", created, IntervalSecond, time);
+  startCancelInterval(gdi, "Save", state, IntervalSecond, time);
 
   int basex = gdi.getCX();
   gdi.pushY();
@@ -209,7 +210,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, bool created) {
   int xp = gdi.getCX();
   int yp = gdi.getCY();
   for (size_t k = 0; k< ctrlP.size(); k++) {
-    if (created && ctrlP[k].first->isValidRadio())
+    if (state == State::Create && ctrlP[k].first->isValidRadio())
       controls.insert(ctrlP[k].second);
     wstring name = L"#" + (ctrlP[k].first->hasName() ? ctrlP[k].first->getName() : ctrlP[k].first->getString());
     if (ctrlP[k].first->getNumberDuplicates() > 1)
@@ -245,10 +246,17 @@ void OnlineResults::enableFile(gdioutput &gdi, bool state) {
   gdi.setInputStatus("BrowseScript", state);
 }
 
-void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
+void OnlineResults::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
+  AutoMachine::save(oe, gdi, doProcess);
   int iv=gdi.getTextNo("Interval");
   wstring folder=gdi.getText("FolderName");
   const wstring &xurl=gdi.getText("URL");
+  wstring px = gdi.getText("Prefix");
+
+  if (folder != file || px != prefix) {
+    exportCounter = 1;
+    sessionNumberOffset = 0;
+  }
 
   if (!folder.empty())
     oe.setProperty("MOPFolderName", folder);
@@ -261,7 +269,7 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
 
   cmpId = gdi.getTextNo("CmpID");
   passwd = gdi.getText("Password");
-  prefix = gdi.getText("Prefix");
+  prefix = px;
   exportScript = gdi.getText("ExportScript");
   zipFile = gdi.isChecked("Zip");
   includeTotal = gdi.hasWidget("IncludeTotal") && gdi.isChecked("IncludeTotal");
@@ -284,9 +292,26 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
       folder = folder.substr(0, folder.size() - 1);
 
     file = folder;
-    wstring exp = getExportFileName();
-    if (fileExist(exp.c_str()))
-      throw meosException(wstring(L"Filen finns redan: X#") + exp);
+    if (doProcess) {
+      wstring exp = getExportFileName();
+      if (fileExists(exp)) {
+        sessionNumberOffset = 1;
+        int lastOffset = sessionNumberOffset;
+        while (fileExists(exp = getExportFileName())) {
+          lastOffset = sessionNumberOffset;
+          sessionNumberOffset *= 2;
+        }
+        while (lastOffset + 1 < sessionNumberOffset) {
+          int midOffset = (lastOffset + sessionNumberOffset) / 2;
+          int oldOffset = sessionNumberOffset;
+          sessionNumberOffset = midOffset;
+          if (fileExists(exp = getExportFileName())) {
+            lastOffset = midOffset;
+            sessionNumberOffset = oldOffset;
+          }
+        }
+      }
+    }
   }
 
   if (sendToURL) {
@@ -316,18 +341,18 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi) {
     }
   }
 
-  process(gdi, &oe, SyncNone);
-
-  interval = iv;
-  synchronize = true;
-  synchronizePunches = true;
+  if (doProcess) {
+    process(gdi, &oe, SyncNone);
+    interval = iv;
+    synchronize = true;
+    synchronizePunches = true;
+  }
 }
 
 void OnlineResults::status(gdioutput &gdi)
 {
-  gdi.addString("", 1, name);
+  AutoMachine::status(gdi);
   gdi.fillRight();
-  gdi.pushX();
   if (sendToFile) {
     gdi.addString("", 0, "Mapp:");
     gdi.addStringUT(0, file);
@@ -556,6 +581,62 @@ InfoCompetition &OnlineResults::getInfoServer() const {
 
 wstring OnlineResults::getExportFileName() const {
   wchar_t bf[260];
-  swprintf_s(bf, L"%s\\%s%04d.xml", file.c_str(), prefix.c_str(), exportCounter);//WCS
+  if (prefix.empty())
+    swprintf_s(bf, L"%s\\exp_%04d.xml", file.c_str(), exportCounter + sessionNumberOffset);
+  else
+    swprintf_s(bf, L"%s\\%s%04d.xml", file.c_str(), prefix.c_str(), exportCounter + sessionNumberOffset);
+
   return bf;
+}
+
+void OnlineResults::saveMachine(oEvent &oe, const wstring &guiInterval) {
+  auto &cnt = oe.getMachineContainer().set(getTypeString(), getMachineName());
+  cnt.set("file", file);
+  cnt.set("url", url);
+  cnt.set("prefix", prefix);
+  int iv = _wtoi(guiInterval.c_str());
+  cnt.set("interval", iv);
+
+  string pwProp = "@respwd" + gdioutput::narrow(getMachineName());
+  oe.setPropertyEncrypt(pwProp.c_str(), gdioutput::toUTF8(passwd));
+
+  cnt.set("cmp", cmpId);
+  
+  cnt.set("classes", classes);
+  cnt.set("controls", controls);
+
+  cnt.set("dt", int(dataType));
+  cnt.set("zip", zipFile);
+  cnt.set("tot", includeTotal);
+  cnt.set("crs", includeCourse);
+  cnt.set("doURL", sendToURL);
+  cnt.set("doFile", sendToFile);
+  cnt.set("script", exportScript);
+}
+
+void OnlineResults::loadMachine(oEvent &oe, const wstring &name) {
+  auto *cnt = oe.getMachineContainer().get(getTypeString(), name);
+  if (!cnt)
+    return;
+  
+  file = cnt->getString("file");
+  url = cnt->getString("url");
+  prefix = cnt->getString("prefix");
+  interval = cnt->getInt("interval");
+
+  string pwProp = "@respwd" + gdioutput::narrow(getMachineName());
+  passwd = gdioutput::fromUTF8(oe.getPropertyStringDecrypt(pwProp.c_str(), ""));
+
+  cmpId = cnt->getInt("cmp");
+
+  classes = cnt->getSetInt("classes");
+  controls = cnt->getSetInt("controls");
+
+  dataType = DataType(cnt->getInt("dt"));
+  zipFile = cnt->getInt("zip") != 0;
+  includeTotal = cnt->getInt("tot") != 0;
+  includeCourse = cnt->getInt("crs") != 0;
+  sendToURL = cnt->getInt("doURL") != 0;
+  sendToFile = cnt->getInt("doFile") != 0;
+  exportScript = cnt->getString("script");
 }

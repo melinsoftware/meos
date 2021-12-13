@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@
 #include "xmlparser.h"
 #include "progress.h"
 #include "csvparser.h"
+#include "machinecontainer.h"
 
 #include "SportIdent.h"
 #include "TabSI.h"
@@ -69,7 +70,7 @@ OnlineInput::~OnlineInput() {
 int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
   if (bi.id == "SaveMapping") {
     int ctrl = gdi.getTextNo("Code");
-    if (ctrl<10)
+    if (ctrl<1)
       throw meosException("Ogiltig kontrollkod");
     ListBoxInfo lbi;
     if (!gdi.getSelectedItem("Function", lbi))
@@ -116,9 +117,9 @@ void OnlineInput::fillMappings(gdioutput &gdi) const{
 }
 
 
-void OnlineInput::settings(gdioutput &gdi, oEvent &oe, bool created) {
+void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
   int iv = interval;
-  if (created) {
+  if (state == State::Create) {
     iv = 10;
     url = oe.getPropertyString("MIPURL", L"");
   }
@@ -128,7 +129,7 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, bool created) {
     time = itow(iv);
 
   settingsTitle(gdi, "Inmatning online");
-  startCancelInterval(gdi, "Save", created, IntervalSecond, time);
+  startCancelInterval(gdi, "Save", state, IntervalSecond, time);
 
   gdi.addInput("URL", url, 40, 0, L"URL:", L"Till exempel X#http://www.input.org/online.php");
   gdi.addCheckbox("UseROC", "Använd ROC-protokoll", OnlineCB, useROCProtocol).setExtra(getId());
@@ -160,7 +161,8 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.addString("", 10, "help:onlineinput");
 }
 
-void OnlineInput::save(oEvent &oe, gdioutput &gdi) {
+void OnlineInput::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
+  AutoMachine::save(oe, gdi, doProcess);
   int iv=gdi.getTextNo("Interval");
   const wstring &xurl=gdi.getText("URL");
 
@@ -175,16 +177,17 @@ void OnlineInput::save(oEvent &oe, gdioutput &gdi) {
   }
   url = xurl;
 
-  process(gdi, &oe, SyncNone);
-  interval = iv;
+  if (doProcess) {
+    process(gdi, &oe, SyncNone);
+    interval = iv;
+  }
 }
 
 void OnlineInput::status(gdioutput &gdi)
 {
-  gdi.addString("", 1, name);
+  AutoMachine::status(gdi);
   gdi.fillRight();
-  gdi.pushX();
-
+  
   gdi.addString("", 0, "URL:");
   gdi.addStringUT(0, url);
   gdi.popX();
@@ -206,6 +209,46 @@ void OnlineInput::status(gdioutput &gdi)
   gdi.fillDown();
   gdi.addButton("OnlineInput", "Inställningar...", AutomaticCB).setExtra(getId());
   gdi.popX();
+}
+
+void OnlineInput::saveMachine(oEvent &oe, const wstring &guiInterval) {
+  auto &cnt = oe.getMachineContainer().set(getTypeString(), getMachineName());
+ 
+  cnt.set("url", url);
+  cnt.set("cmpId", cmpId);
+  cnt.set("unitId", unitId);
+  cnt.set("ROC", useROCProtocol);
+  cnt.set("useId", useUnitId);
+
+  int iv = _wtoi(guiInterval.c_str());
+  cnt.set("interval", iv);
+
+  vector<int> pm;
+  for (auto &v : specialPunches) {
+    pm.push_back(v.first);
+    pm.push_back(v.second);
+  }
+  cnt.set("map", pm);
+}
+
+void OnlineInput::loadMachine(oEvent &oe, const wstring &name) {
+  auto *cnt = oe.getMachineContainer().get(getTypeString(), name);
+  if (!cnt)
+    return;
+
+  url = cnt->getString("url");
+  cmpId = cnt->getInt("cmpId");
+  unitId = cnt->getString("unitId");
+  
+  useROCProtocol = cnt->getInt("ROC") != 0;
+  useUnitId = cnt->getInt("useId") != 0;
+  interval = cnt->getInt("interval");
+
+  specialPunches.clear();
+  vector<int> pm = cnt->getVectorInt("map");
+  for (int j = 0; j + 1 < pm.size(); j+=2) {
+    specialPunches[pm[j]] = oPunch::SpecialPunch(pm[j + 1]);
+  }
 }
 
 void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {

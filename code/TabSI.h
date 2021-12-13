@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -68,6 +68,17 @@ private:
   list< pair<unsigned, int> > printPunchRunnerIdQueue;
   void addToPrintQueue(pRunner r);
   
+  enum class SND {
+    OK,
+    Leader,
+    NotOK,
+    ActionNeeded
+  };
+
+  set<wstring> checkedSound;
+
+  void playReadoutSound(SND type);
+
   vector<PunchInfo> punches;
   vector<SICard> cards;
   vector<wstring> filterDate;
@@ -206,6 +217,8 @@ private:
   int readoutFunctionX = 0;
   int readoutFunctionY = 0;
 
+  void playSoundResource(int res) const;
+  void playSoundFile(const wstring& file) const;
 protected:
   void clearCompetitionData();
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1359,7 +1359,9 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
         }
       }
 
-      if (ctrl->getStatus() == oControl::StatusBad || ctrl->getStatus() == oControl::StatusOptional) {
+      if (ctrl->getStatus() == oControl::StatusBad || 
+          ctrl->getStatus() == oControl::StatusOptional ||
+          ctrl->getStatus() == oControl::StatusBadNoTiming) {
         // The control is marked "bad" but we found it anyway in the card. Mark it as used.
         if (tp_it!=Card->punches.end() && ctrl->hasNumberUnchecked(tp_it->Type)) {
           tp_it->isUsed=true; //Show that this is used when splittimes are calculated.
@@ -1676,31 +1678,40 @@ void oRunner::doAdjustTimes(pCourse course) {
     if (!ctrl)
       continue;
 
+    pControl ctrlPrev = n > 0 ? course->Controls[n - 1] : nullptr;
+
     while (it != Card->punches.end() && !it->isUsed) {
       it->setTimeAdjust(adjustment);
       ++it;
     }
 
     int minTime = ctrl->getMinTime();
-    if (ctrl->getStatus() == oControl::StatusNoTiming) {
+    int pN = n -1;
+    
+    while (pN >= 0 && (course->Controls[pN]->getStatus() == oControl::ControlStatus::StatusBad ||
+                       course->Controls[pN]->getStatus() == oControl::ControlStatus::StatusBadNoTiming)) {
+      pN--; // Skip bad controls
+    }
+
+    if (ctrl->getStatus() == oControl::StatusNoTiming || (ctrlPrev && ctrlPrev->getStatus() == oControl::StatusBadNoTiming)) {
       int t = 0;
-      if (n>0 && splitTimes[n].time>0 && splitTimes[n-1].time>0) {
-        t = splitTimes[n].time + adjustment - splitTimes[n-1].time;
+      if (n>0 && pN>=0 && splitTimes[n].time>0 && splitTimes[pN].time>0) {
+        t = splitTimes[n].time + adjustment - splitTimes[pN].time;
       }
-      else if (n == 0 && splitTimes[n].time>0) {
+      else if (pN < 0 && splitTimes[n].time>0) {
         t = splitTimes[n].time - tStartTime;
       }
       adjustment -= t;
     }
-    else if (minTime>0) {
+    else if (minTime > 0) {
       int t = 0;
-      if (n>0 && splitTimes[n].time>0 && splitTimes[n-1].time>0) {
-        t = splitTimes[n].time + adjustment - splitTimes[n-1].time;
+      if (n > 0 && pN >= 0 && splitTimes[n].time > 0 && splitTimes[pN].time > 0) {
+        t = splitTimes[n].time + adjustment - splitTimes[pN].time;
       }
-      else if (n == 0 && splitTimes[n].time>0) {
+      else if (pN < 0 && splitTimes[n].time>0) {
         t = splitTimes[n].time - tStartTime;
       }
-      int maxadjust = max(minTime-t, 0);
+      int maxadjust = max(minTime - t, 0);
       adjustment += maxadjust;
     }
 
@@ -1862,16 +1873,10 @@ bool oRunner::storeTimesAux(pClass targetClass) {
     if (targetClass && dupLeg < targetClass->tLeaderTime.size()) {
       if (tStatus == StatusOK) {
         int rt = getRunningTime(false);
-        /*int &bt = targetClass->tLeaderTime[dupLeg].bestTimeOnLeg;
-        if (rt > 0 && (bt <= 0 || rt < bt)) {
-          bt = rt;
-          updated = true;
-        }*/
         if (targetClass->tLeaderTime[dupLeg].update(rt, oClass::LeaderInfo::Type::Leg))
           updated = true;
-
-
       }
+
       if (getStatusComputed() == StatusOK) {
         int rt = getRunningTime(true);
         if (targetClass->tLeaderTime[dupLeg].updateComputed(rt, oClass::LeaderInfo::Type::Leg))
@@ -1886,6 +1891,16 @@ bool oRunner::storeTimesAux(pClass targetClass) {
       if (targetClass->tLeaderTime[dupLeg].updateComputed(rt, oClass::LeaderInfo::Type::Total))
         updated = true;
 
+      if (getTotalStatus() == StatusOK) {
+        rt = getTotalRunningTime(getFinishTime(), false, true);
+        if (targetClass->tLeaderTime[dupLeg].update(rt, oClass::LeaderInfo::Type::TotalInput))
+          updated = true;
+
+        rt = getTotalRunningTime(getFinishTime(), true, true);
+        if (targetClass->tLeaderTime[dupLeg].updateComputed(rt, oClass::LeaderInfo::Type::TotalInput))
+          updated = true;
+      }
+
       /*int &bt = targetClass->tLeaderTime[dupLeg].totalLeaderTime;
       if (rt > 0 && (bt <= 0 || rt < bt)) {
         bt = rt;
@@ -1898,14 +1913,10 @@ bool oRunner::storeTimesAux(pClass targetClass) {
   size_t mappedLeg = targetClass->mapLeg(tLeg);
   // Best input time
   if (mappedLeg<targetClass->tLeaderTime.size()) {
-    /*int &it = targetClass->tLeaderTime[mappedLeg].inputTime;
-    if (inputTime > 0 && inputStatus == StatusOK && (it <= 0 || inputTime < it) ) {
-      it = inputTime;
-      updated = true;
-    }*/
     if (inputStatus == StatusOK) {
-      if (targetClass->tLeaderTime[mappedLeg].update(inputTime, oClass::LeaderInfo::Type::Input))
+      if (targetClass->tLeaderTime[mappedLeg].update(inputTime, oClass::LeaderInfo::Type::Input)) {
         updated = true;
+      }
     }
   }
 
@@ -3631,7 +3642,7 @@ void oRunner::apply(ChangeType changeType, pRunner src) {
 
         if (r && r->FinishTime > 0 && r->statusOK(false)) {
           int rt = r->getRaceRunningTime(false, tDuplicateLeg - 1);
-          int timeAfter = rt - pc->getTotalLegLeaderTime(oClass::AllowRecompute::No, r->tDuplicateLeg, false, true);
+          int timeAfter = rt - pc->getTotalLegLeaderTime(oClass::AllowRecompute::NoUseOld, r->tDuplicateLeg, false, true);
           if (rt > 0 && timeAfter >= 0)
             lastStart = pc->getStartData(tDuplicateLeg) + timeAfter;
         }
@@ -3704,7 +3715,7 @@ const shared_ptr<Table> &oRunner::getTable(oEvent *oe) {
     table->addColumn("Lag", 120, false);
     table->addColumn("Sträcka", 70, true);
 
-    table->addColumn("SI", 90, true, false);
+    table->addColumn("Bricka", 90, true, false);
 
     table->addColumn("Start", 70, false, true);
     table->addColumn("Mål", 70, false, true);
@@ -4217,8 +4228,7 @@ void oRunner::getSplitTime(int courseControlId, RunnerStatus &stat, int &rt) con
   stat = StatusUnknown;
   int cardno = getCardNo();
 
-  if (courseControlId==oPunch::PunchFinish &&
-      FinishTime>0 && tStatus!=StatusUnknown) {
+  if (courseControlId==oPunch::PunchFinish && FinishTime>0) {
     stat = tStatus;
     rt = getFinishTimeAdjusted();
   }
@@ -5065,7 +5075,14 @@ void oRunner::printSplits(gdioutput& gdi) const {
   gdi.dropLine(0.7);
 
   if (getCard() && getCard()->miliVolt > 0) {
-    wstring warning = getCard()->isCriticalCardVoltage() ? lang.tl("Low") : lang.tl("OK");
+    auto stat = getCard()->isCriticalCardVoltage();
+    wstring warning;
+    if (stat == oCard::BatteryStatus::Bad)
+      warning = lang.tl("Replace");
+    else if (stat == oCard::BatteryStatus::Warning)
+      warning = lang.tl("Low");
+    else
+     warning = lang.tl("OK");
     gdi.fillRight();
     gdi.addString("", fontSmall, L"Batteristatus:");
     gdi.addStringUT(boldSmall, getCard()->getCardVoltage());

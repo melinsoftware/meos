@@ -489,6 +489,7 @@
     <ClCompile Include="listeditor.cpp" />
     <ClCompile Include="liveresult.cpp" />
     <ClCompile Include="localizer.cpp" />
+    <ClCompile Include="machinecontainer.cpp" />
     <ClCompile Include="meos.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -683,6 +684,7 @@
     <ClInclude Include="iof30interface.h" />
     <ClInclude Include="listeditor.h" />
     <ClInclude Include="liveresult.h" />
+    <ClInclude Include="machinecontainer.h" />
     <ClInclude Include="meosdb\sqltypes.h" />
     <ClInclude Include="meosdb\targetver.h" />
     <ClInclude Include="meosexception.h" />

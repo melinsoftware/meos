@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,9 @@ RestService::~RestService() {
   }
 }
 
-void RestService::save(oEvent &oe, gdioutput &gdi) {
+void RestService::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
+  AutoMachine::save(oe, gdi, doProcess);
+
   if (!server) {
     server = RestServer::construct();
 
@@ -49,7 +51,8 @@ void RestService::save(oEvent &oe, gdioutput &gdi) {
       oe.setProperty("ServicePort", xport);
       
       port = xport;
-      server->startService(port);
+      if (doProcess)
+        server->startService(port);
     }
     else
       throw meosException("Invalid port number");
@@ -74,7 +77,7 @@ void RestService::save(oEvent &oe, gdioutput &gdi) {
 
 void ListIpAddresses(vector<string>& ip);
 
-void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
+void RestService::settings(gdioutput &gdi, oEvent &oe, State state) {
   if (port == -1) {
     port = oe.getPropertyInt("ServicePort", 2009);    
     rootMap = oe.getPropertyString("ServiceRootMap", "");
@@ -100,7 +103,7 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
   gdi.addInput("RootMap", gdi.recodeToWide(rootMap));
   gdi.setInputStatus("RootMap", !rootMap.empty());
 
-  startCancelInterval(gdi, "Save", created, IntervalNone, L"");
+  startCancelInterval(gdi, "Save", state, IntervalNone, L"");
   
   if (!server) {
     gdi.addInput("Port", itow(port), 10, 0, L"Port:", L"#http://localhost:[PORT]/meos");
@@ -128,8 +131,7 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, bool created) {
 }
 
 void RestService::status(gdioutput &gdi) {
-  gdi.pushX();
-  gdi.addString("", 1, name);
+  AutoMachine::status(gdi);
 
   if (server) {
     gdi.addString("", 0, "Server startad på X#" + itos(port));

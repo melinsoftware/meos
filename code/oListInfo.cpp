@@ -1,6 +1,6 @@
 ﻿/********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -315,6 +315,9 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
   for (size_t k = 0; k < pps.size(); k++) {
     wstring extra;
     switch (pps[k].type) {
+      case lRunnerCardVoltage:
+        extra = L"3.00 V";
+        break;
       case lPunchName:
       case lControlName:
       case lPunchNamedTime: {
@@ -1020,9 +1023,8 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
   };
   bool invalidClass = pc && pc->getClassStatus() != oClass::ClassStatus::Normal;
   int legIndex = pp.legIndex;
-  if(pc && pp.type != lResultModuleNumber && pp.type != lResultModuleNumberTeam
-        && pp.type != lResultModuleTime && pp.type != lResultModuleTimeTeam)
-   legIndex = pc->getLinearIndex(pp.legIndex, pp.linearLegIndex);
+  if(pc && !MetaList::isResultModuleOutput(pp.type) && !MetaList::isAllStageType(pp.type))
+    legIndex = pc->getLinearIndex(pp.legIndex, pp.linearLegIndex);
         
   switch ( pp.type ) {
     case lClassName:
@@ -1459,6 +1461,12 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
           wcscpy_s(wbf, formatTime(r->tempRT).c_str());
         else
           wcscpy_s(wbf, formatStatus(r->tempStatus, true).c_str() );
+      }
+      break;
+
+    case lRunnerCardVoltage:
+      if (r && r->getCard()) {
+        wcscpy_s(wbf, r->getCard()->getCardVoltage().c_str());
       }
       break;
 

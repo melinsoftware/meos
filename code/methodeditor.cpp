@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -971,7 +971,7 @@ bool MethodEditor::resultIsInstalled() const {
     return false; // Used in a list in this competition
 
   //string path = getInternalPath(currentResult->getTag());
-  return fileExist(fileNameSource.c_str());
+  return fileExists(fileNameSource);
 }
 
 void MethodEditor::debug(gdioutput &gdi_in, int id, bool isTeam) {

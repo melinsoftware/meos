@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1102,7 +1102,7 @@ bool TabSpeaker::loadPage(gdioutput &gdi) {
 
     if (getExtraWindows().size() == 1) {
       wstring sf = getSpeakerSettingsFile();
-      if (fileExist(sf.c_str())) {
+      if (fileExists(sf)) {
         if ((cx + db) > basex && (cx + db + bw) >= limitX) {
           cx = basex; db = 0;
           cy += gdi.getButtonHeight() + 4;

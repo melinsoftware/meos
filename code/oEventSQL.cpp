@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ bool oEvent::connectToServer()
 
 void oEvent::startReconnectDaemon()
 {
-  if (isThreadReconnecting())
+  if (isThreadReconnecting() || TabAuto::hasActiveReconnectionMachine())
     return;
 
   string err;
@@ -66,13 +66,14 @@ void oEvent::startReconnectDaemon()
   MySQLReconnect msqlr(lang.tl("warning:dbproblem#" + err));
   msqlr.interval=5;
   hasPendingDBConnection = true;
-  tabAutoAddMachinge(msqlr);
+  TabAuto::tabAutoAddMachinge(msqlr);
 
   gdibase.setDBErrorState(false);
   gdibase.setWindowTitle(oe->getTitleName());
+  isConnectedToServer = false;
   if (!isReadOnly()) {
     // Do not show in kiosk-mode
-    gdibase.alert("warning:dbproblem#" + err);
+    gdibase.delayAlert(L"warning:dbproblem#" + gdibase.widen(err));
   }
 }
 
@@ -243,7 +244,7 @@ void oEvent::resetSQLChanged(bool resetAllTeamsRunners, bool cleanClasses) {
       it->sqlChangedLegControl.clear();
     }
     globalModification = false;
-  }
+  } 
 }
 
 bool BaseIsRemoved(const oBase &ob){return ob.isRemoved();}

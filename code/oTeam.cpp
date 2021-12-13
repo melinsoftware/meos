@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1212,7 +1212,7 @@ void oTeam::apply(ChangeType changeType, pRunner source) {
                 
                   if (rt>0)
                     setStart = true;
-                  int leaderTime = pc->getTotalLegLeaderTime(oClass::AllowRecompute::No, i-1, false, false);
+                  int leaderTime = pc->getTotalLegLeaderTime(oClass::AllowRecompute::NoUseOld, i-1, false, false);
                   int timeAfter = leaderTime > 0 ? rt - leaderTime : 0;
 
                   if (rt>0 && timeAfter>=0)

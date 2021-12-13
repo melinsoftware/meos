@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ protected:
   mutable InfoCompetition *infoServer;
   wstring exportScript;
   int exportCounter;
+  int sessionNumberOffset = 0;
   void enableURL(gdioutput &gdi, bool state);
   void enableFile(gdioutput &gdi, bool state);
 
@@ -63,16 +64,23 @@ protected:
   vector<string> errorLines;
   void formatError(gdioutput &gdi);
 
+  bool hasSaveMachine() const override {
+    return true;
+  }
+
+  void saveMachine(oEvent &oe, const wstring &guiInterval) final;
+  void loadMachine(oEvent &oe, const wstring &name) final;
+
 public:
 
   int processButton(gdioutput &gdi, ButtonInfo &bi);
   InfoCompetition &getInfoServer() const;
 
-  void save(oEvent &oe, gdioutput &gdi);
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
+  void settings(gdioutput &gdi, oEvent &oe, State state) final;
   OnlineResults *clone() const {return new OnlineResults(*this);}
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   OnlineResults();
   ~OnlineResults();
   friend class TabAuto;

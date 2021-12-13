@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,15 +59,23 @@ protected:
 
   void processPunches(oEvent &oe, const xmlList &punches);
   void processPunches(oEvent &oe, list< vector<wstring> > &rocData);
+
+  bool hasSaveMachine() const final {
+    return true;
+  }
+
+  void saveMachine(oEvent &oe, const wstring &guiInterval) final;
+  void loadMachine(oEvent &oe, const wstring &name) final;
+
 public:
 
   int processButton(gdioutput &gdi, ButtonInfo &bi);
 
-  void save(oEvent &oe, gdioutput &gdi);
-  void settings(gdioutput &gdi, oEvent &oe, bool created);
+  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
+  void settings(gdioutput &gdi, oEvent &oe, State state) final;
   OnlineInput *clone() const {return new OnlineInput(*this);}
-  void status(gdioutput &gdi);
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast);
+  void status(gdioutput &gdi) final;
+  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   OnlineInput() : AutoMachine("Onlineinput", Machines::mOnlineInput), cmpId(0), importCounter(1),
                     bytesImported(0), lastSync(0), lastImportedId(0), useROCProtocol(false), useUnitId(false) {}
   ~OnlineInput();

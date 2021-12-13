@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2020 Melin Software HB
+    Copyright (C) 2009-2021 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -882,9 +882,9 @@ wstring trim(const wstring &s) {
   else return L"";
 }
 
-bool fileExist(const wchar_t *file)
+bool fileExists(const wstring &file)
 {
-  return GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES;
+  return GetFileAttributes(file.c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
 bool stringMatch(const wstring &a, const wstring &b) {

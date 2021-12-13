@@ -7,6 +7,10 @@
 #define IDR_3007                        109
 #define IDR_3008                        110
 #define IDR_3011                        111
+#define SND_OK                          50
+#define SND_LEADER                      51
+#define SND_NOTOK                       52
+#define SND_NEEDACTION                  53
 
 IDR_3001                300     DISCARDABLE     "swedish.lng"
 IDR_3002                300     DISCARDABLE     "english.lng"
@@ -18,3 +22,7 @@ IDR_3008                300     DISCARDABLE     "french.lng"
 IDR_3011                300     DISCARDABLE     "spanish.lng"
 /////////////////////////////////////////////////////////////////////////////
 
+SND_OK                WAVE     DISCARDABLE     "./sound/ok.wav"
+SND_LEADER            WAVE     DISCARDABLE     "./sound/leader.wav"
+SND_NOTOK             WAVE     DISCARDABLE     "./sound/notok.wav"
+SND_NEEDACTION        WAVE     DISCARDABLE     "./sound/needaction.wav"
