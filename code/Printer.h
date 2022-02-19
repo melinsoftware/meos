@@ -4,7 +4,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -95,19 +95,19 @@ struct PrinterObject {
   bool onlyChanged;
 
   struct DATASET {
-    int pWidth_mm;
-    int pHeight_mm;
-    double pMgBottom;
-    double pMgTop;
-    double pMgRight;
-    double pMgLeft;
+    int pWidth_mm = 0;
+    int pHeight_mm = 0;
+    double pMgBottom = 0.0;
+    double pMgTop = 0.0;
+    double pMgRight = 0.0;
+    double pMgLeft = 0.0;
 
-    int MarginX;
-    int MarginY;
-    int PageX;
-    int PageY;
-    double Scale;
-    bool LastPage;
+    int MarginX = 0;
+    int MarginY = 0;
+    int PageX = 0;
+    int PageY = 0;
+    double Scale = 0.0;
+    bool LastPage = false;
   } ds;
 
   void operator=(const PrinterObject &po);

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -2285,4 +2285,9 @@ void checkWriteAccess(const wstring &file) {
 int compareStringIgnoreCase(const wstring &a, const wstring &b) {
   return CompareString(LOCALE_USER_DEFAULT, NORM_IGNORECASE, a.c_str(), a.length(),
                        b.c_str(), b.length()) - CSTR_EQUAL;
+}
+
+const char* meosException::narrow(const wstring& msg) {
+  static string nmsg(msg.begin(), msg.end());
+  return nmsg.c_str();
 }

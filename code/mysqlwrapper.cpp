@@ -95,12 +95,12 @@ const char *RowWrapper::raw_string(int ix) const {
 ResultBase::ResultBase(ConnectionWrapper *con, MYSQL_RES * res) : con(con), result(res) {
 }
 
-ResultBase::ResultBase(ResultBase &r) : con(r.con) {
+ResultBase::ResultBase(ResultBase &&r) : con(r.con) {
   result = r.result;
   r.result = nullptr;
 }
 
-const ResultBase &ResultBase::operator=(ResultBase &r) {
+const ResultBase &ResultBase::operator=(ResultBase &&r) {
   con = r.con;
   if (result)
     mysql_free_result(result);

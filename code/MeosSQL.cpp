@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1023,7 +1023,7 @@ bool MeosSQL::storeData(oDataInterface odi, const RowWrapper &row, unsigned long
     list<oVariableInt>::iterator it_int;
     for(it_int=varint.begin(); it_int!=varint.end(); it_int++) {
       if (it_int->data32) {
-        int val = int(row[it_int->name]);
+        int val = int(row[(const char *)it_int->name]);
 
         if (val != *(it_int->data32)) {
           *(it_int->data32) = val;
@@ -1031,7 +1031,7 @@ bool MeosSQL::storeData(oDataInterface odi, const RowWrapper &row, unsigned long
         }
       }
       else {
-        __int64 val = row[it_int->name].ulonglong();
+        __int64 val = row[(const char*)it_int->name].ulonglong();
         __int64 oldVal = *(it_int->data64);
         if (val != oldVal) {
           memcpy(it_int->data64, &val, 8);
@@ -1049,7 +1049,7 @@ bool MeosSQL::storeData(oDataInterface odi, const RowWrapper &row, unsigned long
     odi.getVariableString(varstring);
     list<oVariableString>::iterator it_string;
     for(it_string=varstring.begin(); it_string!=varstring.end(); it_string++) {
-      wstring w(fromUTF(row[it_string->name].c_str()));
+      wstring w(fromUTF(row[(const char*)it_string->name].c_str()));
       if (it_string->store(w.c_str()))
         updated = true;
     }
@@ -1822,12 +1822,12 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
       if (rid>0) {
         pRunner pr = oe->getRunner(rid, 0);
         if (pr==0) {
-          oRunner or(oe, rid);
-          or.setImplicitlyCreated();
+          oRunner oR(oe, rid);
+          oR.setImplicitlyCreated();
           if (allowSubRead)
-            success = min(success, syncRead(true, &or, false, readCourseCard));
-          if (!or.isRemoved()) {
-            pr = oe->addRunner(or , false);
+            success = min(success, syncRead(true, &oR, false, readCourseCard));
+          if (!oR.isRemoved()) {
+            pr = oe->addRunner(oR , false);
             addedFromDatabase(pr);
           }
           else {
@@ -1931,18 +1931,18 @@ OpFailStatus MeosSQL::storeTeam(const RowWrapper &row, oTeam &t,
       if (rns[k]>0) {
         pRns[k] = oe->getRunner(rns[k], 0);
         if (!pRns[k]) {
-          oRunner or(oe, rns[k]);
-          or.setImplicitlyCreated();
+          oRunner oR(oe, rns[k]);
+          oR.setImplicitlyCreated();
           if (allowSubRead)
-            success = min(success, syncRead(true, &or, readRecursive, readRecursive));
+            success = min(success, syncRead(true, &oR, readRecursive, readRecursive));
 
-          if (or.sName.empty()) {
-            or.sName = L"@AutoCorrection";
-            or.getRealName(or.sName, or.tRealName);
+          if (oR.sName.empty()) {
+            oR.sName = L"@AutoCorrection";
+            oR.getRealName(oR.sName, oR.tRealName);
           }
 
-          if (!or.isRemoved()) {
-            pRns[k] = oe->addRunner(or , false);
+          if (!oR.isRemoved()) {
+            pRns[k] = oe->addRunner(oR , false);
             addedFromDatabase(pRns[k]);
             assert(pRns[k] && !pRns[k]->changed);
           }
@@ -3262,10 +3262,10 @@ bool MeosSQL::syncListRunner(oEvent *oe)
               st = opStatusOK;
           }
           else {
-            oRunner or(oe, Id);
-            or.setImplicitlyCreated();
-            st = syncRead(true, &or, false, false);
-            r = oe->addRunner(or, false);
+            oRunner oR(oe, Id);
+            oR.setImplicitlyCreated();
+            st = syncRead(true, &oR, false, false);
+            r = oe->addRunner(oR, false);
           }
         }
         updateCounters(st, counter, modified, oe->sqlRunners, maxCounterRunner);
@@ -4259,9 +4259,9 @@ bool MeosSQL::checkConsistency(oEvent *oe, bool force) {
     checkAgainstDB("oControl", bmap, needUpdate);
     for (auto id : needUpdate) {
       if (!id.second) {
-        oControl or(oe, id.first);
-        or.setImplicitlyCreated();
-        auto c = oe->addControl(or);
+        oControl oR(oe, id.first);
+        oR.setImplicitlyCreated();
+        auto c = oe->addControl(oR);
         if (c != nullptr)
           syncRead(true, c);
       }
@@ -4275,9 +4275,9 @@ bool MeosSQL::checkConsistency(oEvent *oe, bool force) {
     checkAgainstDB("oCourse", bmap, needUpdate);
     for (auto id : needUpdate) {
       if (!id.second) {
-        oCourse or(oe, id.first);
-        or.setImplicitlyCreated();
-        auto c = oe->addCourse(or);
+        oCourse oR(oe, id.first);
+        oR.setImplicitlyCreated();
+        auto c = oe->addCourse(oR);
         if (c != nullptr)
           syncRead(true, c);
       }
@@ -4291,9 +4291,9 @@ bool MeosSQL::checkConsistency(oEvent *oe, bool force) {
     checkAgainstDB("oClass", bmap, needUpdate);
     for (auto id : needUpdate) {
       if (!id.second) {
-        oClass or(oe, id.first);
-        or .setImplicitlyCreated();
-        auto c = oe->addClass(or);
+        oClass oR(oe, id.first);
+        oR.setImplicitlyCreated();
+        auto c = oe->addClass(oR);
         if (c != nullptr)
           syncRead(true, c);
       }
@@ -4307,9 +4307,9 @@ bool MeosSQL::checkConsistency(oEvent *oe, bool force) {
     checkAgainstDB("oClub", bmap, needUpdate);
     for (auto id : needUpdate) {
       if (!id.second) {
-        oClub or(oe, id.first);
-        or.setImplicitlyCreated();
-        auto c = oe->addClub(or);
+        oClub oR(oe, id.first);
+        oR.setImplicitlyCreated();
+        auto c = oe->addClub(oR);
         if (c != nullptr)
           syncRead(true, c);
       }
@@ -4323,9 +4323,9 @@ bool MeosSQL::checkConsistency(oEvent *oe, bool force) {
     checkAgainstDB("oCard", bmap, needUpdate);
     for (auto id : needUpdate) {
       if (!id.second) {
-        oCard or (oe, id.first);
-        or .setImplicitlyCreated();
-        auto c = oe->addCard(or );
+        oCard oR(oe, id.first);
+        oR.setImplicitlyCreated();
+        auto c = oe->addCard(oR);
         if (c != nullptr)
           syncRead(true, c);
       }
@@ -4339,10 +4339,10 @@ bool MeosSQL::checkConsistency(oEvent *oe, bool force) {
     checkAgainstDB("oRunner", bmap, needUpdate);
     for (auto id : needUpdate) {
       if (!id.second) {
-        oRunner or (oe, id.first);
-        or .setImplicitlyCreated();
-        syncRead(true, &or );
-        oe->addRunner(or , false);
+        oRunner oR(oe, id.first);
+        oR.setImplicitlyCreated();
+        syncRead(true, &oR);
+        oe->addRunner(oR, false);
       }
       else {
         id.second->counter = 0;

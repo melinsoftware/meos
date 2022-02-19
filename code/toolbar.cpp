@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -213,7 +213,7 @@ void Toolbar::createToolbar(const string &id, const wstring &title)
   // Tell the toolbar to resize itself, and show it.
   SendMessage(hwndToolbar, TB_AUTOSIZE, 0, 0);
 
-  DWORD bsize = SendMessage(hwndToolbar, TB_GETBUTTONSIZE, 0,0);
+  LRESULT bsize = SendMessage(hwndToolbar, TB_GETBUTTONSIZE, 0,0);
   int bw = LOWORD(bsize);
   int bh = HIWORD(bsize);
 

@@ -64,6 +64,8 @@ public:
     machines.erase(make_pair(type, name));
   }
 
+  void rename(const string& type, const wstring& oldName, const wstring& newName);
+
   AbstractMachine &set(const string &type, const wstring &name) {
     auto &m = machines[make_pair(type, name)];
     m.clear();

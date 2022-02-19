@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ class oClass;
 typedef oClass* pClass;
 class oDataInterface;
 class GeneralResult;
+class oRunner;
 
 const int MaxClassId = 1000000;
 
@@ -444,7 +445,7 @@ public:
   // Autoassign new bibs
   static void extractBibPatterns(oEvent &oe, map<int, pair<wstring, int> > &patterns);
   pair<int, wstring> getNextBib(map<int, pair<wstring, int> > &patterns); // Version that calculates next free bib from cached data (fast, no gap usage)
-  pair<int, wstring> oClass::getNextBib(); // Version that calculates next free bib (slow, but reuses gaps)
+  pair<int, wstring> getNextBib(); // Version that calculates next free bib (slow, but reuses gaps)
 
   bool usesCourse(const oCourse &crs) const;
   
@@ -700,7 +701,7 @@ public:
   int getEntryFee(const wstring &date, int age) const;
 
   /// Get all class fees
-  vector<pair<wstring, size_t>> oClass::getAllFees() const;
+  vector<pair<wstring, size_t>> getAllFees() const;
 
   // Clear cached data
   void clearCache(bool recalculate);

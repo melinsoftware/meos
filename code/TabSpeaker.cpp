@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1302,10 +1302,10 @@ SpeakerMonitor *TabSpeaker::getSpeakerMonitor() {
 void TabSpeaker::getSettings(gdioutput &gdi, multimap<string, wstring> &settings) {
   RECT rc;
   gdi.getWindowsPosition(rc);
-  settings.insert(make_pair("left", itow(rc.left)));
-  settings.insert(make_pair("right", itow(rc.right)));
-  settings.insert(make_pair("top", itow(rc.top)));
-  settings.insert(make_pair("bottom", itow(rc.bottom)));
+  settings.insert(make_pair("left", itow(int(rc.left))));
+  settings.insert(make_pair("right", itow(int(rc.right))));
+  settings.insert(make_pair("top", itow(int(rc.top))));
+  settings.insert(make_pair("bottom", itow(int(rc.bottom))));
 
   for (auto clsId : classesToWatch) {
     pClass cls = oe->getClass(clsId);

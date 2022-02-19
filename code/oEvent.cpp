@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -704,7 +704,9 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   b.insert("FirstTime");
   b.insert("ExportCSVSplits");
   b.insert("DrawInterlace");
-  
+  b.insert("PlaySound");
+  b.insert("showheader");
+
   // Integers
   i.insert("YouthFee");
   i.insert("YouthAge");

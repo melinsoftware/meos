@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -260,12 +260,12 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   if (r->getCourse(false))
     crsName = r->getCourse(false)->getName();
 
-  wstring courseType = lang.tl("[Klassens bana]");
+  wstring courseType = lang.tl(" [Klassens bana]");
   pClass cClass = r->getClassRef(false);
   if (cClass && (cClass->hasCoursePool() || r->getClassRef(true)->hasCoursePool())) {
     if (!crsName.empty())
       courseType = L", ... ";
-    courseType += L"[" + lang.tl("Banpool") + L"]";
+    courseType += L" [" + lang.tl("Banpool") + L"]";
   }
   else if (crsName.empty())
     crsName += L" ";

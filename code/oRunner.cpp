@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1382,7 +1382,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int> & MissingPunches,
               if (ctrl->Status == oControl::StatusOK) {
                 int code = tp_it->Type;
                 if (expectedPunchCount[code]>1 && punchCount[code] < expectedPunchCount[code]) {
-                  tp_it==Card->punches.end();
+                  tp_it=Card->punches.end();
                   ctrl->uncheckNumber(code);
                   break;
                 }
@@ -5044,7 +5044,7 @@ void oRunner::printSplits(gdioutput& gdi) const {
     if (hasInputData())
       oe->calculateResults({ getClassId(true) }, oEvent::ResultType::TotalResult);
     if (tInTeam)
-      oe->calculateTeamResults({ getClassId(true) }, oEvent::ResultType::ClassResult);
+      oe->calculateTeamResults(std::set<int>({ getClassId(true) }), oEvent::ResultType::ClassResult);
 
     if (withResult && statusOK(true)) {
       gdi.dropLine(0.5);
@@ -5084,6 +5084,7 @@ void oRunner::printSplits(gdioutput& gdi) const {
     else
      warning = lang.tl("OK");
     gdi.fillRight();
+    gdi.pushX();
     gdi.addString("", fontSmall, L"Batteristatus:");
     gdi.addStringUT(boldSmall, getCard()->getCardVoltage());
     gdi.fillDown();
@@ -6083,6 +6084,11 @@ void oEvent::getDBRunnersInEvent(intkeymap<int, __int64> &runners) const {
     __int64 id = it->getExtIdentifier();
     if (id != 0)
       runners.insert(id, it->getId());
+    else if (it->getCardNo() != 0) {
+      // Lookup by card + constant
+      id = it->getCardNo() + cardIdConstant;
+      runners.insert(id, it->getId());
+    }
   }
 }
 

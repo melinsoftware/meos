@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,23 +44,23 @@ enum gdiFonts {
   formatIgnore = 1000,
 };
 
-const int pageNewPage=100;
-//const int pageReserveHeight=101;
-const int pagePageInfo=102;
-const int pageNewChapter = 103;
+constexpr int pageNewPage=100;
+constexpr int pagePageInfo=102;
+constexpr int pageNewChapter = 103;
 
-const int textRight=256;
-const int textCenter=512;
-const int timerCanBeNegative=1024;
-const int breakLines=2048;
-const int fullTimeHMS = 4096;
-const int timeWithTenth = 1<<13;
-const int timeSeconds = 1<<14;
-const int timerIgnoreSign = 1<<15;
-const int Capitalize = 1<<16;
-const int absolutePosition = 1 << 17;
-const int skipBoundingBox = 1 << 18;
-const int hiddenText = 1 << 19;
+constexpr int textRight=256;
+constexpr int textCenter=512;
+constexpr int timerCanBeNegative=1024;
+constexpr int breakLines=2048;
+constexpr int fullTimeHMS = 4096;
+constexpr int timeWithTenth = 1<<13;
+constexpr int timeSeconds = 1<<14;
+constexpr int timerIgnoreSign = 1<<15;
+constexpr int Capitalize = 1<<16;
+constexpr int absolutePosition = 1 << 17;
+constexpr int skipBoundingBox = 1 << 18;
+constexpr int hiddenText = 1 << 19;
+constexpr int textLimitEllipsis = 1 << 20;
 
 enum GDICOLOR {
   colorBlack = RGB(0, 0, 0),

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -100,7 +100,10 @@ AutoMachine *TabAuto::getMachine(int id) {
 }
 
 void AutoMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
+  wstring oldMachineName = getMachineName();
   machineName = gdi.getText("MachineName");
+  wstring newMachineName = getMachineName();
+  oe.getMachineContainer().rename(getTypeString(), oldMachineName, newMachineName);
 }
 
 void AutoMachine::status(gdioutput &gdi) {
@@ -665,18 +668,18 @@ bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast)
   return true;
 }
 
-void AutoMachine::settingsTitle(gdioutput &gdi, char *title) {
+void AutoMachine::settingsTitle(gdioutput &gdi, const char *title) {
   gdi.fillDown();
   gdi.dropLine(0.5);
   gdi.addString("", fontMediumPlus, title).setColor(colorDarkBlue);
   gdi.dropLine(0.5);
 }
 
-void AutoMachine::startCancelInterval(gdioutput &gdi, char *startCommand, State state, IntervalType type, const wstring &intervalIn) {
+void AutoMachine::startCancelInterval(gdioutput &gdi, const char *startCommand, State state, IntervalType type, const wstring &intervalIn) {
   gdi.pushX();
   gdi.fillRight();
 
-  gdi.addInput("MachineName", machineName, 10, nullptr, L"Namn", L"Om du vill kan du namnge automaten");
+  gdi.addInput("MachineName", machineName, 10, nullptr, L"Automatnamn:", L"Om du vill kan du namnge automaten");
 
   if (type == IntervalMinute)
     gdi.addInput("Interval", intervalIn, 7, 0, L"Tidsintervall (MM:SS):");
@@ -1117,7 +1120,7 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     if (!sic.empty()) {
       if (!radio) si.addCard(sic);
     }
-    else gdi.addInfoBox("", L"Failed to generate card.", interval * 2);
+    else gdi.addInfoBox("", L"Failed to generate card.", interval * 2000);
   }
   else {
     SICard sic(ConvertedTimeStatus::Hour24);

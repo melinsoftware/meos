@@ -4,6 +4,8 @@
 #include "meos_util.h"
 #include "xmlparser.h"
 #include "gdioutput.h"
+#include "TabAuto.h"
+
 int MachineContainer::AbstractMachine::getInt(const string &v) const {
   return _wtoi(getString(v).c_str());
 }
@@ -20,7 +22,7 @@ vector<int> MachineContainer::AbstractMachine::getVectorInt(const string &v) con
   vector<wstring> sp;
   split(s, L",", sp);
   vector<int> res(sp.size());
-  for (int j = 0; j < sp.size(); j++)
+  for (size_t j = 0; j < sp.size(); j++)
     res[j] = _wtoi(sp[j].c_str());
   return res;
 }
@@ -40,7 +42,7 @@ void MachineContainer::AbstractMachine::set(const string &name, int v) {
 
 void MachineContainer::AbstractMachine::set(const string &name, const vector<int> &v) {
   wstring &r = props[name];
-  for (int j = 0; j < v.size(); j++) {
+  for (size_t j = 0; j < v.size(); j++) {
     if (j == 0)
       r = itow(v[j]);
     else
@@ -66,7 +68,7 @@ namespace {
   string encode(const string &in) {
     string out;
     out.reserve(in.length());
-    for (int j = 0; j < in.length(); j++) {
+    for (size_t j = 0; j < in.length(); j++) {
       if (in[j] == '|' || in[j] == '$' || in[j] == '%') {
         out.push_back('%');
         if (in[j] == '|')
@@ -85,14 +87,14 @@ namespace {
   string decode(const string &in) {
     string out;
     out.reserve(in.length());
-    for (int j = 0; j < in.length(); j++) {
+    for (size_t j = 0; j < in.length(); j++) {
       if (in[j] == '%') {
         j++;
         if (j < in.length()) {
           if (in[j] == '1')
             out.push_back('|');
           else if (in[j] == '2')
-            out.push_back('§');
+            out.push_back('$');
           else if (in[j] == '3')
             out.push_back('%');
         }
@@ -168,8 +170,19 @@ void MachineContainer::save(xmlparser &data) {
 void MachineContainer::load(const string &data) {
   vector<string> parts;
   split(data, "$", parts);
-  for (int j = 0; j + 2 < parts.size(); j++) {
+  if ((parts.size() % 3) != 0) {
+    // Data is corrupt. Repair by delete...
+    if (parts.size() > 3)
+      parts.resize(3);
+  }
+
+  machines.clear();
+  for (size_t j = 0; j + 2 < parts.size(); j+=3) {
     const string &type = parts[j];
+
+    if (AutoMachine::getType(type) == Machines::Unknown)
+      continue;
+
     wstring tag = gdioutput::fromUTF8(decode(parts[j + 1]));
     auto res = machines.emplace(make_pair(type, tag), MachineContainer::AbstractMachine());
     if (res.second)
@@ -199,4 +212,14 @@ string MachineContainer::save() {
     out.append(m);
   }
   return out;
+}
+
+void MachineContainer::rename(const string& type, const wstring& oldName, const wstring& newName) {
+  if (newName != oldName) {
+    auto res = machines.find(make_pair(type, oldName));
+    if (res != machines.end()) {
+      machines.emplace(make_pair(type, newName), res->second);
+      machines.erase(res);
+    }
+  }
 }

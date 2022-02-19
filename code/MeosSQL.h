@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,7 +89,7 @@ protected:
   bool storeData(oDataInterface odi, const RowWrapper &row, unsigned long &revision);
 
   void importLists(oEvent *oe, const char *bf);
-  void encodeLists(const oEvent *or, string &listEnc) const;
+  void encodeLists(const oEvent *oe, string &listEnc) const;
 
   //Set DB to default competition DB
   void setDefaultDB();

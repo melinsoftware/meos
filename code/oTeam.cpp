@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -766,13 +766,13 @@ int oTeam::getLegPlace(int leg, bool multidayTotal, bool allowUpdate) const {
   auto &p = getTeamPlace(leg);
   if (!multidayTotal) {
     if (Class && allowUpdate && p.p.isOld(*oe)) {
-      oe->calculateTeamResults({getClassId(true)}, oEvent::ResultType::ClassResult);
+      oe->calculateTeamResults(std::set<int>({getClassId(true)}), oEvent::ResultType::ClassResult);
     }
     return p.p.get(!allowUpdate);
   }
   else {
     if (Class && allowUpdate && p.totalP.isOld(*oe)) {
-      oe->calculateTeamResults({ getClassId(true) }, oEvent::ResultType::TotalResult);
+      oe->calculateTeamResults(std::set<int>({ getClassId(true) }), oEvent::ResultType::TotalResult);
     }
     return p.totalP.get(!allowUpdate);
   }

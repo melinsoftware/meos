@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,8 +41,6 @@
 extern oEvent *gEvent;
 
 const int MAXLISTPARAMID = 10000000;
-using namespace tr1;
-
 
 class PositionVer2 {
   struct Block {
@@ -170,7 +168,7 @@ public:
     blocks.back().back().alignWith.emplace_back(row, ix);    
   }
   
-  void addAlignNext(const string &newName, int width, int indent) {
+  bool addAlignNext(const string &newName, int width, int indent) {
     int best = 10000;
     string bestName;
     
@@ -188,7 +186,10 @@ public:
         }
       }
     }
+    if (bestName.empty())
+      return false;
     addAlignWith(bestName, newName, width, indent, false);
+    return true;
   }
 
 
@@ -202,7 +203,7 @@ public:
   }
 
   int get(const string &name, double scale) const {
-    auto &r = pmap.find(name);
+    auto r = pmap.find(name);
     if (r != pmap.end())
       return int(blocks[r->second.first][r->second.second].getPos() * scale);
     return 0;
@@ -213,7 +214,7 @@ public:
   }
 
   int getOriginalPos(const string &name, double scale) const {
-    auto &r = pmap.find(name);
+    auto r = pmap.find(name);
     if (r != pmap.end())
       return int(blocks[r->second.first][r->second.second].getOriginalPos() * scale);
     return 0;
@@ -746,8 +747,10 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
             typeFormats.push_back(make_pair(cline[kk].type, encode(cline[kk].type, cline[kk].text, dmy)));
             kk++;
           }
-          
-          width = li.getMaxCharWidth(oe, gdi, par.selection, typeFormats, font,
+          if (mp.limitWidth && mp.blockWidth > 0)
+            width = gdi.scaleLength(mp.blockWidth);
+          else
+            width = li.getMaxCharWidth(oe, gdi, par.selection, typeFormats, font,
                                      oPrintPost::encodeFont(fontFaces[i].font, 
                                      fontFaces[i].scale).c_str(), 
                                      large, max(mp.blockWidth, extraMinWidth));
@@ -763,9 +766,11 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
           
         }
         else {
-          if (mp.alignType == lAlignNext)
-            pos.addAlignNext(label, width, mp.minimalIndent);
+          if (mp.alignType == lAlignNext) {
+            if (!pos.addAlignNext(label, width, mp.minimalIndent))
+              pos.add(label, width, mp.minimalIndent, mp.packPrevious);
             //pos.alignNext(label, width, mp.alignBlock);
+          }
           else if (mp.alignType == lString) {
             if (stringLabelMap.count(mp.alignWithText) == 0) {
               throw meosException(L"Don't know how to align with 'X'#" + mp.alignWithText);
@@ -874,6 +879,9 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         added.color = mp.color;
         if (!mp.mergeWithPrevious)
           base = &added;
+        added.useStrictWidth = mp.getLimitBlockWidth();
+        if (added.useStrictWidth)
+          added.format |= textLimitEllipsis;
 
         if (last && mp.mergeWithPrevious) {
           //last->mergeWith = &added;
@@ -926,6 +934,10 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       if (!mp.mergeWithPrevious)
         base = &added;
 
+      added.useStrictWidth = mp.getLimitBlockWidth();
+      if (added.useStrictWidth)
+        added.format |= textLimitEllipsis;
+
       if (last && mp.mergeWithPrevious) {
         //last->mergeWith = &added;
         last->doMergeNext = true;
@@ -969,6 +981,9 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
       setFixedWidth(added, indexPosToWidth, MLList, j, k);
       added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLList, j, k)];
+      added.useStrictWidth = mp.getLimitBlockWidth();
+      if (added.useStrictWidth)
+        added.format |= textLimitEllipsis;
 
       added.color = mp.color;
       if (!mp.mergeWithPrevious)
@@ -1024,6 +1039,9 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
       setFixedWidth(added, indexPosToWidth, MLSubList, j, k);
       added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLSubList, j, k)];
+      added.useStrictWidth = mp.getLimitBlockWidth();
+      if (added.useStrictWidth)
+        added.format |= textLimitEllipsis;
 
       if (last && mp.mergeWithPrevious) {
         last->doMergeNext = true;

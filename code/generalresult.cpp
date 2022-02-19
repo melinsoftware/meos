@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ GeneralResultCtr::GeneralResultCtr(const char *tagIn, const wstring &nameIn, con
   ptr = ptrIn;
 }
 
-GeneralResultCtr::GeneralResultCtr(wstring &file, const shared_ptr<DynamicResult> &ptrIn) {
+GeneralResultCtr::GeneralResultCtr(const wstring &file, const shared_ptr<DynamicResult> &ptrIn) {
   ptr = ptrIn;
   name = ptrIn->getName(false);
   tag = ptrIn->getTag();

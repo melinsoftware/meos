@@ -1,6 +1,6 @@
 ﻿/********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -274,7 +274,7 @@ public:
     TextInfo ti;
     HDC hDC = GetDC(gdi.getHWNDTarget());
     
-    for (multimap<int, T>::iterator it = words.begin(); it != words.end(); ++it) {
+    for (auto it = words.begin(); it != words.end(); ++it) {
       ti.xp = 0;
       ti.yp = 0;
       ti.format = font;
@@ -2436,7 +2436,10 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
     else
       keepNext = true;
 
-    limit = max(pp.fixedWidth, limit);
+    if (pp.useStrictWidth)
+      limit = max(pp.fixedWidth - 5, 0); // Allow some space
+    else
+      limit = max(pp.fixedWidth, limit);
 
     assert(limit >= 0);
     pRunner rr = r;

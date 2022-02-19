@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,10 +25,7 @@
 
 class meosException : public std::exception {
   wstring wideMessage;
-  static const char *narrow(const wstring &msg) {
-    static string nmsg(msg.begin(), msg.end());
-    return nmsg.c_str();
-  }
+  static const char *narrow(const wstring& msg);
 public:
   meosException(const wstring &wmsg) : std::exception(narrow(wmsg)), wideMessage(wmsg) {
     

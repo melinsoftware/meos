@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1074,8 +1074,8 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &n
   }
 
   map<int, vector< pair<int,int> > > preferences;
-  for (size_t k = 0; k < punchSequence.size(); k++) {
-    for (size_t j = 0; j < loopKeys.size(); j++) {
+  for (int k = 0; k < punchSequence.size(); k++) {
+    for (int j = 0; j < loopKeys.size(); j++) {
       int v = matchLoopKey(punchSequence[k], loopKeys[j]);
       if (v < 1000)
         preferences[v].push_back(make_pair(k, j));

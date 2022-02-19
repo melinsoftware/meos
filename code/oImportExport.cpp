@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -861,12 +861,12 @@ bool oEvent::addXMLTeamEntry(const xmlobject &xentry, int clubId)
 
   if (t == 0) {
     if ( id > 0) {
-      oTeam or(this, id);
-      t = addTeam(or, true);
+      oTeam oR(this, id);
+      t = addTeam(oR, true);
     }
     else {
-      oTeam or(this);
-      t = addTeam(or, true);
+      oTeam oR(this);
+      t = addTeam(oR, true);
     }
     t->setStartNo(Teams.size(), oBase::ChangeType::Update);
   }
@@ -950,12 +950,12 @@ pRunner oEvent::addXMLPerson(const xmlobject &person) {
 
   if (!r) {
     if ( pid > 0) {
-      oRunner or(this, pid);
-      r = addRunner(or, true);
+      oRunner oR(this, pid);
+      r = addRunner(oR, true);
     }
     else {
-      oRunner or(this);
-      r = addRunner(or, true);
+      oRunner oR(this);
+      r = addRunner(oR, true);
     }
   }
 
@@ -1048,12 +1048,12 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
 
       if (!r2) {
         if ( pid2 > 0) {
-          oRunner or(this, pid2);
-          r2 = addRunner(or, true);
+          oRunner oR(this, pid2);
+          r2 = addRunner(oR, true);
         }
         else {
-          oRunner or(this);
-          r2 = addRunner(or, true);
+          oRunner oR(this);
+          r2 = addRunner(oR, true);
         }
       }
 

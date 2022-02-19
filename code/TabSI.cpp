@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@
 #include "autocomplete.h"
 
 constexpr bool addTestPort = false;
+void tabForceSync(gdioutput& gdi, pEvent oe);
 
 TabSI::TabSI(oEvent *poe):TabBase(poe), activeSIC(ConvertedTimeStatus::Unknown) {
   editCardData.tabSI = this;
@@ -74,6 +75,7 @@ TabSI::TabSI(oEvent *poe):TabBase(poe), activeSIC(ConvertedTimeStatus::Unknown) 
   inputId = 0;
   printErrorShown = false;
   NC = 8;
+  splitPrinter.onlyChanged = false;
 }
 
 TabSI::~TabSI(void)
@@ -117,6 +119,22 @@ int SportIdentCB(gdioutput *gdi, int type, void *data) {
   return tsi.siCB(*gdi, type, data);
 }
 
+string TabSI::typeFromSndType(SND s) {
+  switch (s) {
+  case SND::OK:
+    return "SoundOK";
+  case SND::NotOK:
+    return "SoundNotOK";
+  case SND::Leader:
+    return "SoundLeader";
+  case SND::ActionNeeded:
+    return "SoundAction";
+  default:
+    assert(false);
+  }
+  return "";
+}
+
 int TabSI::siCB(gdioutput &gdi, int type, void *data)
 {
   if (type == GUI_BUTTON) {
@@ -150,11 +168,29 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
       gdi.fillRight();
 
       auto addSoundWidget = [&gdi, this](const wchar_t *name, SND type, const wstring &label) {
+        int itype = int(type);
         string nname = gdioutput::narrow(name);
-        gdi.addInput(nname, oe->getPropertyString(nname.c_str(), L""), 32, nullptr, label);
+        wstring fn = oe->getPropertyString(nname.c_str(), L"");
+        bool doPlay = true;
+        if (fn == L"none") {
+          doPlay = false;
+          fn = L"";
+        }
+
+        gdi.dropLine(1);
+        gdi.addCheckbox(("DoPlay" + nname).c_str(), "", SportIdentCB, doPlay, "Använd").setExtra(itype);
+        gdi.dropLine(-1);
+        gdi.addInput("SoundFile", fn, 32, SportIdentCB, label).setExtra(itype);
         gdi.dropLine(0.8);
-        gdi.addButton("BrowseSound", "Bläddra...", SportIdentCB).setExtra(name);
-        gdi.addButton("TestSound", "Testa", SportIdentCB).setExtra(int(type));
+        gdi.addButton("BrowseSound", "Bläddra...", SportIdentCB).setExtra(itype);
+        gdi.addButton("TestSound", "Testa", SportIdentCB).setExtra(itype);
+        
+        if (!doPlay) {
+          gdi.setInputStatus("SoundFile", false, false, itype);
+          gdi.setInputStatus("BrowseSound", false, false, itype);
+          gdi.setInputStatus("TestSound", false, false, itype);
+        }
+        
         gdi.dropLine(3);
         gdi.popX();
       };
@@ -193,15 +229,26 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
 
       wstring file = gdi.browseForOpen(ext, L"wav");
       if (!file.empty()) {
-        wchar_t *type = bi.getExtra();
-        string name = gdioutput::narrow(type);
-        gdi.setText(name, file);
+        SND iType = SND(bi.getExtraInt());
+        gdi.setText("SoundFile", file, false, int(iType));
+        string name = typeFromSndType(iType);
         oe->setProperty(name.c_str(), file);
       }
     }
-    else if (bi.id == "SoundOK" || bi.id == "SoundNotOK" ||
-             bi.id == "SoundLeader" || bi.id == "SoundAction") {
-      oe->setProperty(bi.id.c_str(), bi.text);
+    else if (bi.id.substr(0, 6) == "DoPlay") {
+      SND itype = SND(bi.getExtraInt());
+      bool checked = gdi.isChecked(bi.id);
+      gdi.setInputStatus("SoundFile", checked, false, int(itype));
+      gdi.setInputStatus("BrowseSound", checked, false, int(itype));
+      gdi.setInputStatus("TestSound", checked, false, int(itype));
+      string name = typeFromSndType(itype);
+      if (!checked) {
+        oe->setProperty(name.c_str(), L"none");
+      }
+      else {
+        wstring sf = gdi.getText("SoundFile", false, int(itype));
+        oe->setProperty(name.c_str(), sf);
+      }
     }
     else if (bi.id == "TestSound") {
       oe->setProperty("PlaySound", 1);
@@ -1622,6 +1669,11 @@ int TabSI::siCB(gdioutput &gdi, int type, void *data)
         else
           gdi.setText(ii.id, L"");
       }
+    }
+    else if (ii.id == "SoundFile") {
+      SND iType = SND(ii.getExtraInt());
+      string name = typeFromSndType(iType);
+      oe->setProperty(name.c_str(), ii.text);
     }
   }
   else if (type==GUI_INFOBOX) {
@@ -3174,6 +3226,7 @@ void TabSI::generateStartInfo(gdioutput &gdi, const oRunner &r) {
 void TabSI::printerSetup(gdioutput &gdi)
 {
   gdi.printSetup(splitPrinter);
+  splitPrinter.onlyChanged = false;
 }
 
 void TabSI::checkMoreCardsInQueue(gdioutput &gdi) {
@@ -3865,7 +3918,7 @@ void TabSI::showRegisterHiredCards(gdioutput &gdi) {
   gdi.fillDown();
 
   oe->synchronizeList(oListId::oLPunchId);
-  auto &hiredCards = oe->getHiredCards();
+  auto hiredCards = oe->getHiredCards();
   for (int i : hiredCards) {
     gdi.addStringUT(0, itos(i)).setExtra(i).setHandler(getResetHiredCardHandler());
   }
@@ -4375,16 +4428,31 @@ void TabSI::playReadoutSound(SND type) {
   case SND::NotOK:
     fn = oe->getPropertyString("SoundNotOK", L"");
     res = 52;
+    if (fn == L"none") {
+      fn = oe->getPropertyString("SoundAction", L"");
+      res = 53;
+    }
     break;
   case SND::Leader:
     fn = oe->getPropertyString("SoundLeader", L"");
     res = 51;
+    if (fn == L"none") {
+      fn = oe->getPropertyString("SoundOK", L"");
+      res = 50;
+    }
     break;
   case SND::ActionNeeded:
     fn = oe->getPropertyString("SoundAction", L"");
     res = 53;
+    if (fn == L"none") {
+      fn = oe->getPropertyString("SoundNotOK", L"");
+      res = 52;
+    }
     break;
   }
+
+  if (fn == L"none")
+    return;
 
   if (checkedSound.count(fn) || (!fn.empty() && fileExists(fn))) {
     playSoundFile(fn);

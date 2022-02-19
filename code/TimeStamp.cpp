@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,18 +28,13 @@
 #include "meos.h"
 #include "TimeStamp.h"
 #include <algorithm>
-
-#ifdef _DEBUG
-#undef THIS_FILE
-static char THIS_FILE[]=__FILE__;
-#define new DEBUG_NEW
-#endif
+#include "meos_util.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-const __int64 minYearConstant = 2014 - 1601;
+constexpr __int64 minYearConstant = 2014 - 1601;
 
 TimeStamp::TimeStamp()
 {
@@ -129,9 +124,9 @@ string TimeStamp::getStampStringN() const
   FILETIME &ft = *(FILETIME*)&ft64;
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
-
-  if (st.wYear > 2021 || st.wYear < 2009) {
-    st.wYear = 2021;
+  int y = getThisYear();
+  if (st.wYear > y || st.wYear < 2009) {
+    st.wYear = y;
     st.wDay = 1;
     st.wMonth = 1;
     st.wHour = 2;

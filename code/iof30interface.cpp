@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -256,7 +256,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
     if (pc->getNumStages() == 0) {
       pc->setNumStages(coursePattern[0].size());
     }
-    for (int leg = 0; leg < pc->getNumStages() && leg < coursePattern[0].size(); leg++) {
+    for (unsigned leg = 0; leg < pc->getNumStages() && leg < coursePattern[0].size(); leg++) {
       pc->clearStageCourses(leg);
       for (int m = 0; m < period; m++)
         pc->addStageCourse(leg, coursePattern[(patternStart + m)%period][leg], -1);
@@ -2501,12 +2501,12 @@ pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
 
   if (!r) {
     if ( pid > 0) {
-      oRunner or(&oe, pid);
-      r = oe.addRunner(or, true);
+      oRunner oR(&oe, pid);
+      r = oe.addRunner(oR, true);
     }
     else {
-      oRunner or(&oe);
-      r = oe.addRunner(or, true);
+      oRunner oR(&oe);
+      r = oe.addRunner(oR, true);
     }
   }
 
@@ -2560,7 +2560,7 @@ pClub IOF30Interface::readOrganization(gdioutput &gdi, const xmlobject &xclub, b
     if (clubId)
       pc = oe.getClubCreate(clubId, name);
 
-    if (!pc) return false;
+    if (!pc) return nullptr;
   }
   else {
     pc = new oClub(&oe, clubId);

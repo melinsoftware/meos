@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1934,6 +1934,8 @@ void oClass::updateLeaderTimes() const {
       else if (r->tLeg > leg)
         needupdate = true;
     }
+    if (leg >= tLeaderTime.size())
+      break;
     tLeaderTime[leg].setComplete();
     leg++;
   }
@@ -3407,8 +3409,10 @@ void oClass::calculateSplits() {
   LegResult legRes;
   LegResult legBestTime;
   vector<pRunner> rCls;
-
+  oe->getRunners(Id, -1, rCls, false);
+  /*
   if (isQualificationFinalBaseClass() || isQualificationFinalBaseClass()) {
+    
     for (auto &r : oe->Runners) {
       if (!r.isRemoved() && r.getClassRef(true) == this)
         rCls.push_back(&r);
@@ -3419,7 +3423,7 @@ void oClass::calculateSplits() {
       if (!r.isRemoved() && r.Class == this)
         rCls.push_back(&r);
     }
-  }
+  }*/
 
   for (set<pCourse>::iterator cit = cSet.begin(); cit!= cSet.end(); ++cit)  {
     pCourse pc = *cit;
@@ -4044,7 +4048,7 @@ pair<int, int> oClass::autoForking(const vector< vector<int> > &inputCourses) {
   }
 
   // Sample if there are very many combinations.
-  int sampleFactor = 1;
+  uint64_t sampleFactor = 1;
   while(N > 10000000) {
     sampleFactor *= 13;
     N /= 13;
@@ -4054,7 +4058,7 @@ pair<int, int> oClass::autoForking(const vector< vector<int> > &inputCourses) {
   vector<int> ws;
   for (size_t k = 0; k < Ns; k ++) {
     for (int j = 0; j < legs; j++) {
-      unsigned long long D = k * sampleFactor;
+      uint64_t D = uint64_t(k) * sampleFactor;
       if (nf[j]>0) {
         ix[j] = int((D/prod[j] + j) % nf[j]);
       }
@@ -4088,7 +4092,7 @@ pair<int, int> oClass::autoForking(const vector< vector<int> > &inputCourses) {
   for (size_t k = 0; k < Ns; k++) {
     long long forkKey = 0;
     for (int j = 0; j < legs; j++) {
-      unsigned long long D = (k * 997)%Ns * sampleFactor;
+      uint64_t D = uint64_t((k * 997)%Ns) * sampleFactor;
       if (nf[j]>0) {
         ix[j] = int((D/prod[j] + j) % nf[j]);
         forkKey = forkKey * 997 + ix[j];

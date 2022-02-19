@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
 const int baseNameLength = 64;
 const int baseNameLengthUTF = 96;
-
+constexpr int64_t cardIdConstant = 100000000000L;
 //Has 0-clearing constructor. Must not contain any
 //dynamic data etc.
 struct RunnerDBEntryV1 {
@@ -139,7 +139,7 @@ public:
   void setNameUTF(const char *name);
 
 
-  const wchar_t *RunnerWDBEntry::getNameCstr() const;
+  const wchar_t *getNameCstr() const;
 
   wstring getGivenName() const;
   wstring getFamilyName() const;

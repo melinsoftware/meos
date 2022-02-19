@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -317,6 +317,7 @@ struct oPrintPost {
     return *this;
   }
   int fixedWidth;
+  bool useStrictWidth = false; // Crop text
   bool doMergeNext;
   mutable const oPrintPost *mergeWithTmp; // Merge text with this output
 };
@@ -595,7 +596,7 @@ public:
                       const set<int> &clsSel,
                       const vector< pair<EPostType, wstring> > &typeFormats,
                       gdiFonts font,
-                      const wchar_t *fontFace = 0,
+                      const wchar_t *fontFace = nullptr,
                       bool large = false, 
                       int minSize = 0) const;
 
@@ -605,7 +606,7 @@ public:
                       EPostType type, 
                       wstring formats,
                       gdiFonts font,
-                      const wchar_t *fontFace = 0,
+                      const wchar_t *fontFace = nullptr,
                       bool large = false, 
                       int minSize = 0) const {
     vector< pair<EPostType, wstring> > typeFormats(1, make_pair(type, formats));

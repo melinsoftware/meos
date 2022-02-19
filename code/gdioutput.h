@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -174,7 +174,7 @@ protected:
   struct FucusInfo {
     bool wasTabbed;
     HWND hWnd;
-    FucusInfo() : wasTabbed(false), hWnd(false) {}
+    FucusInfo() : wasTabbed(false), hWnd(0) {}
     FucusInfo(HWND wnd) : wasTabbed(false), hWnd(wnd) {}
   };
 
@@ -365,7 +365,7 @@ public:
   DWORD getBGColor2() const;
   const wstring &getBGImage() const;
 
-  void setAnimationMode(shared_ptr<AnimationData> &mode);
+  void setAnimationMode(const shared_ptr<AnimationData> &mode);
 
   void setAutoScroll(double speed);
   void getAutoScroll(double &speed, double &pos) const;
@@ -533,11 +533,13 @@ public:
   BaseInfo *setInputFocus(const string &id, bool select=false);
   InputInfo *getInputFocus();
 
-  void enableInput(const char *id, bool acceptMissing = false) {setInputStatus(id, true, acceptMissing);}
-  void disableInput(const char *id, bool acceptMissing = false) {setInputStatus(id, false, acceptMissing);}
-  void setInputStatus(const char *id, bool status, bool acceptMissing = false);
-  void setInputStatus(const string &id, bool status, bool acceptMissing = false)
-    {setInputStatus(id.c_str(), status, acceptMissing);}
+  void enableInput(const char *id, bool acceptMissing = false, 
+                   int requireExtraMatch = -1) {setInputStatus(id, true, acceptMissing, requireExtraMatch);}
+  void disableInput(const char *id, bool acceptMissing = false, 
+                    int requireExtraMatch = -1) {setInputStatus(id, false, acceptMissing, requireExtraMatch);}
+  void setInputStatus(const char *id, bool status, bool acceptMissing = false, int requireExtraMatch = -1);
+  void setInputStatus(const string &id, bool status, bool acceptMissing = false, int requireExtraMatch = -1)
+    {setInputStatus(id.c_str(), status, acceptMissing, requireExtraMatch);}
 
   void setTabStops(const string &Name, int t1, int t2=-1);
   void setData(const string &id, DWORD data);
@@ -611,7 +613,7 @@ public:
 
   bool hasWidget(const string &id) const;
   
-  const wstring &getText(const char *id, bool acceptMissing = false) const;
+  const wstring &getText(const char *id, bool acceptMissing = false, int requireExtraMatch = -1) const;
   
   BaseInfo &getBaseInfo(const string &id) const {
     return getBaseInfo(id.c_str());
@@ -642,7 +644,7 @@ public:
   BaseInfo *setTextTranslate(const string &id, const wstring &text, bool update=false);
 
 
-  BaseInfo *setText(const char *id, const wstring &text, bool update=false);
+  BaseInfo *setText(const char *id, const wstring &text, bool update=false, int requireExtraMatch = -1);
   BaseInfo *setText(const wchar_t *id, const wstring &text, bool update=false) {
     return setText(narrow(id), text, update);
   }

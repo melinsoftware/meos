@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -398,7 +398,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "Window" || bi.id == "AutoScroll" ||
              bi.id == "FullScreen" || bi.id == "FullScreenLive") {
-      gdioutput *gdi_new;
+      gdioutput *gdi_new = nullptr;
       TabList *tl_new = this;
       if (!ownWindow) {
         auto nw = makeOwnWindow(gdi);
@@ -571,8 +571,9 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       gdi.getTabs().get(TabType(bi.getExtraInt()))->loadPage(gdi);
     }
     else if (bi.id=="SavePS") {
-      const char *ctype = (char *)gdi.getData("Type");
-      saveExtraLines(*oe, ctype, gdi);
+      string ctype;
+      gdi.getData("Type", ctype);
+      saveExtraLines(*oe, ctype.c_str(), gdi);
 
       if (gdi.hasWidget("SplitAnalysis")) {
         int aflag = (gdi.isChecked("SplitAnalysis") ? 0 : 1) + (gdi.isChecked("Speed") ? 0 : 2)
@@ -2745,7 +2746,7 @@ void TabList::splitPrintSettings(oEvent &oe, gdioutput &gdi, bool setupPrinter,
   }
   gdi.popX();
   gdi.fillDown();
-  char *ctype = type == Splits ? "SPExtra" : "EntryExtra";
+  const char *ctype = type == Splits ? "SPExtra" : "EntryExtra";
   customTextLines(oe, ctype, gdi);
 
   if (type == Splits) {

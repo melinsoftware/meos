@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -619,6 +619,7 @@ void OnlineResults::loadMachine(oEvent &oe, const wstring &name) {
   if (!cnt)
     return;
   
+  AutoMachine::loadMachine(oe, name);
   file = cnt->getString("file");
   url = cnt->getString("url");
   prefix = cnt->getString("prefix");

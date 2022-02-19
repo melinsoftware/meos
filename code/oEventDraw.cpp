@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1611,7 +1611,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
       vector<ClassInfo> cInfo;
       vector<pair<int, wstring>> outLines;
       di.vacancyFactor = 0;
-      auto &group = sgMap.find(groupId);
+      auto group = sgMap.find(groupId);
       int length = max(300, group->second.lastStart - group->second.firstStart);
       int slots = length / di.baseInterval;
       di.classes.clear();

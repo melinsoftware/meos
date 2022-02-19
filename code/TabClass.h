@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ class TabClass :
   void drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClass &cls);
   void pursuitDialog(gdioutput &gdi);
   void addVacantPosition(gdioutput &gdi);
-  oEvent::VacantPosition TabClass::readVacantPosition(gdioutput &gdi) const;
+  oEvent::VacantPosition readVacantPosition(gdioutput &gdi) const;
 
   bool warnDrawStartTime(gdioutput &gdi, int time, bool absTime);
   bool warnDrawStartTime(gdioutput &gdi, const wstring &firstStart);

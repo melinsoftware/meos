@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -235,7 +235,7 @@ void OnlineInput::loadMachine(oEvent &oe, const wstring &name) {
   auto *cnt = oe.getMachineContainer().get(getTypeString(), name);
   if (!cnt)
     return;
-
+  AutoMachine::loadMachine(oe, name);
   url = cnt->getString("url");
   cmpId = cnt->getInt("cmpId");
   unitId = cnt->getString("unitId");
@@ -246,7 +246,7 @@ void OnlineInput::loadMachine(oEvent &oe, const wstring &name) {
 
   specialPunches.clear();
   vector<int> pm = cnt->getVectorInt("map");
-  for (int j = 0; j + 1 < pm.size(); j+=2) {
+  for (size_t j = 0; j + 1 < pm.size(); j+=2) {
     specialPunches[pm[j]] = oPunch::SpecialPunch(pm[j + 1]);
   }
 }

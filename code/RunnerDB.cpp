@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -872,7 +872,6 @@ void RunnerDB::loadClubs(const wstring &file)
       else if (pc != pc2)
         problems.push_back(pc->getName() + L"-" + pc2->getName());
     }
-    problems.begin();
   }
 }
 
@@ -1330,11 +1329,24 @@ void RunnerDB::refreshRunnerTableData(Table &table) {
         int runnerId;
         bool found = false;
 
+        pRunner r = nullptr;
         if (rdb[k].extId != 0)
           found = runnerInEvent.lookup(rdb[k].extId, runnerId);
+        else if (rdb[k].cardNo != 0) {
+          found = runnerInEvent.lookup(rdb[k].cardNo + cardIdConstant, runnerId);
+          if (found) {
+            r = oe->getRunner(runnerId, 0);
+            const RunnerWDBEntry &rw = rwdb[k];
+            rw.initName();
+            if (!r || !r->matchName(rw.name)) {
+              found = false;
+            }
+          }
+        }
 
         if (found) {
-          pRunner r = oe->getRunner(runnerId, 0);
+          if (r == nullptr)
+            r = oe->getRunner(runnerId, 0);
           row->updateCell(cellEntryIndex, cellEdit, r ? r->getClass(true) : L"");
         }
         else if (!found && row->getCellType(cellEntryIndex) == cellEdit) {
@@ -1414,8 +1426,18 @@ void oDBRunnerEntry::addTableRow(Table &table) const {
   int runnerId;
   bool found = false;
 
+  pRunner cr = nullptr;
   if (rn.extId != 0)
     found = db->runnerInEvent.lookup(rn.extId, runnerId);
+  else if (rn.cardNo != 0) {
+    found = db->runnerInEvent.lookup(rn.cardNo + cardIdConstant, runnerId);
+    if (found) {
+      cr = oe->getRunner(runnerId, 0);
+      if (!cr || !cr->matchName(r.name)) {
+        found = false;
+      }
+    }
+  }
 
   if (canEdit)
     table.setTableProp(Table::CAN_DELETE|Table::CAN_INSERT|Table::CAN_PASTE);
@@ -1426,8 +1448,9 @@ void oDBRunnerEntry::addTableRow(Table &table) const {
   if (!found)
     table.set(row++, it, TID_ENTER, L"@+", false, cellAction);
   else {
-    pRunner r = oe->getRunner(runnerId, 0);
-    table.set(row++, it, TID_ENTER, r ? r->getClass(true) : L"", false, cellEdit);
+    if (cr == nullptr)
+      cr = oe->getRunner(runnerId, 0);
+    table.set(row++, it, TID_ENTER, cr ? cr->getClass(true) : L"", false, cellEdit);
   }
 }
 

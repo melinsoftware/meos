@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,6 +93,8 @@ void ListEditor::show(TabBase *dst, gdioutput &gdi) {
   origin = dst;
   show(gdi);
 }
+
+int editListCB(gdioutput* gdi, int type, void* data);
 
 void ListEditor::show(gdioutput &gdi) {
 
@@ -396,6 +398,13 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       }*/
     }
     if ( bi.id.substr(0, 8) == "EditPost" ) {
+      if (gdi.hasData("CurrentId")) {
+        DWORD id;
+        gdi.getData("CurrentId", id);
+        getPosFromId(id, groupIx, lineIx, ix);
+        MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
+        saveListPost(gdi, mlp);
+      }
       int id = atoi(bi.id.substr(8).c_str());
       getPosFromId(id, groupIx, lineIx, ix);
       MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
@@ -464,55 +473,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
 
       MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
 
-      ListBoxInfo lbi;
-      bool force = false;
-      gdi.getSelectedItem("Type", lbi);
-
-      EPostType ptype = EPostType(lbi.data);
-
-      wstring str = gdi.getText("Text");
-      if (ptype != lString) {
-        if (!str.empty() && str.find_first_of('X') == string::npos && str[0]!='@') {
-          throw meosException("Texten ska innehålla tecknet X, som byts ut mot tävlingsspecifik data");
-        }
-      }
-
-      wstring t1 = mlp.getType();
-      EPostType newType = EPostType(lbi.data);
-      mlp.setType(newType);
-      if (t1 != mlp.getType())
-        force = true;
-      mlp.setText(str);
-
-      gdi.getSelectedItem("AlignType", lbi);
-      mlp.align(EPostType(lbi.data));
-      
-      mlp.limitBlockWidth(gdi.isChecked("LimitBlockWidth"));
-      mlp.alignText(gdi.getText("AlignText"));
-
-      auto relPrev = gdi.getSelectedItem("RelPrevious");
-      mlp.packWithPrevious(relPrev.first == 2);
-      mlp.mergePrevious(relPrev.first == 1);
-      
-      gdi.getSelectedItem("TextAdjust", lbi);
-      mlp.setTextAdjust(lbi.data);
-
-      mlp.setColor(GDICOLOR(gdi.getExtraInt("Color")));
-
-      int leg = readLeg(gdi, newType, true);
-      mlp.setLeg(leg);
-
-      if (gdi.hasWidget("UseResultModule") && gdi.isChecked("UseResultModule"))
-        mlp.setResultModule(currentList->getResultModule());
-      else
-        mlp.setResultModule("");
-
-      mlp.setBlock(gdi.getTextNo("BlockSize"));
-      mlp.indent(gdi.getTextNo("MinIndent"));
-
-      gdi.getSelectedItem("Fonts", lbi);
-      mlp.setFont(gdiFonts(lbi.data));
-      makeDirty(gdi, MakeDirty, MakeDirty);
+      bool force = saveListPost(gdi, mlp);
 
       if (!gdi.hasData("NoRedraw") || force) {
         gdi.restore("BeginListEdit", false);
@@ -819,6 +780,60 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
   return 0;
 }
 
+bool ListEditor::saveListPost(gdioutput &gdi, MetaListPost &mlp) {
+  ListBoxInfo lbi;
+  bool force = false;
+  gdi.getSelectedItem("Type", lbi);
+
+  EPostType ptype = EPostType(lbi.data);
+
+  wstring str = gdi.getText("Text");
+  if (ptype != lString) {
+    if (!str.empty() && str.find_first_of('X') == string::npos && str[0] != '@') {
+      throw meosException("Texten ska innehålla tecknet X, som byts ut mot tävlingsspecifik data");
+    }
+  }
+
+  wstring t1 = mlp.getType();
+  EPostType newType = EPostType(lbi.data);
+  mlp.setType(newType);
+  if (t1 != mlp.getType())
+    force = true;
+  mlp.setText(str);
+
+  gdi.getSelectedItem("AlignType", lbi);
+  mlp.align(EPostType(lbi.data));
+
+  mlp.limitBlockWidth(gdi.isChecked("LimitBlockWidth"));
+  mlp.alignText(gdi.getText("AlignText"));
+
+  auto relPrev = gdi.getSelectedItem("RelPrevious");
+  mlp.packWithPrevious(relPrev.first == 2);
+  mlp.mergePrevious(relPrev.first == 1);
+
+  gdi.getSelectedItem("TextAdjust", lbi);
+  mlp.setTextAdjust(lbi.data);
+
+  mlp.setColor(GDICOLOR(gdi.getExtraInt("Color")));
+
+  int leg = readLeg(gdi, newType, true);
+  mlp.setLeg(leg);
+
+  if (gdi.hasWidget("UseResultModule") && gdi.isChecked("UseResultModule"))
+    mlp.setResultModule(currentList->getResultModule());
+  else
+    mlp.setResultModule("");
+
+  mlp.setBlock(gdi.getTextNo("BlockSize"));
+  mlp.indent(gdi.getTextNo("MinIndent"));
+
+  gdi.getSelectedItem("Fonts", lbi);
+  mlp.setFont(gdiFonts(lbi.data));
+  makeDirty(gdi, MakeDirty, MakeDirty);
+
+  return force;
+}
+
 int ListEditor::readLeg(gdioutput &gdi, EPostType newType, bool checkError) const {
   if (MetaList::isResultModuleOutput(newType)) {
     int leg = gdi.getTextNo("Leg");
@@ -891,10 +906,14 @@ void ListEditor::updateType(int iType, gdioutput & gdi) {
 
 void ListEditor::checkUnsaved(gdioutput &gdi) {
  if (gdi.hasData("IsEditing")) {
-    if (gdi.isInputChanged("")) {
-      gdi.setData("NoRedraw", 1);
-      gdi.sendCtrlMessage("Apply");
-    }
+   if (gdi.hasData("CurrentId")) {
+     DWORD id;
+     gdi.getData("CurrentId", id);
+     int groupIx, lineIx, ix;
+     getPosFromId(id, groupIx, lineIx, ix);
+     MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
+     saveListPost(gdi, mlp);
+   }
   }
   if (gdi.hasData("IsEditingList")) {
     if (gdi.isInputChanged("")) {
@@ -1085,6 +1104,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   
 
   gdi.addInput("MinIndent", itow(mlp.getMinimalIndent()), 7, 0, L"Justering i sidled:");
+  int maxX = gdi.getCX();
   gdi.popX();
   gdi.dropLine(3);
   vector< pair<wstring, size_t> > fonts;
@@ -1094,7 +1114,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.addSelection("Fonts", 200, 500, 0, L"Format:");
   gdi.addItem("Fonts", fonts);
   gdi.selectItemByData("Fonts", currentFont);
-  int maxX = gdi.getCX();
+  maxX = max(maxX, gdi.getCX());
 
   gdi.popX();
   gdi.dropLine(3);

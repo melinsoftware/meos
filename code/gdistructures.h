@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2021 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,10 @@ protected:
   GuiHandler *handler;
   bool dataString;
 public:
+
+  bool matchExtra(int requireExtraMatch) const {
+    return requireExtraMatch == -1 || requireExtraMatch == getExtraInt();
+  }
 
   bool hasEventHandler() const {
     return handler != 0;
@@ -168,8 +172,8 @@ public:
   wstring text;
   wstring font;
 
-  int xp;
-  int yp;
+  int xp = -1;
+  int yp = -1;
 
   int format;
   DWORD color;
@@ -179,8 +183,8 @@ public:
   int absPrintY;
 
   bool hasTimer;
-  DWORD zeroTime;
-  DWORD timeOut;
+  DWORD zeroTime = -1;
+  DWORD timeOut = 0;
 
   bool hasCapture;
   GUICALLBACK callBack;
@@ -328,10 +332,10 @@ private:
   bool isEditControl;
   bool writeLock;
   wstring original;
-  int originalIdx;
+  size_t originalIdx;
   bool ignoreCheck; // True if changed-state should be ignored
 
-  map<int, int> data2Index;
+  map<size_t, int> data2Index;
 
   // Synchronize with other list box
   WNDPROC originalProc;
@@ -428,7 +432,7 @@ struct ToolInfo {
   string name;
   TOOLINFOW ti;
   wstring tip;
-  int id;
+  uintptr_t id;
 };
 
 
