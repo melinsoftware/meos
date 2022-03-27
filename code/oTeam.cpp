@@ -1402,6 +1402,7 @@ void oTeam::speakerLegInfo(int leg, int specifiedLeg, int courseControlId,
                            RunnerStatus &status, int &runningTime) const {
   missingLeg = 0;
   totalLeg = 0;
+  bool prelRes = false;
   bool extra = false, firstExtra = true;
   for (int i = leg; i <= specifiedLeg; i++) {
     LegTypes lt=Class->getLegType(i);
@@ -1433,25 +1434,29 @@ void oTeam::speakerLegInfo(int leg, int specifiedLeg, int courseControlId,
           runningTime = lrt;
           status = lst; // Take status/time from best runner
         }
-        if (Runners[i] && lst == StatusUnknown)
-          missingLeg++;
+        if (Runners[i] && lst == StatusUnknown) {
+          if (lrt == 0)
+            missingLeg++;
+        }
       }
       else {
         if (lst > StatusOK) {
           status = lst;
           break;
         }
-        else if (lst == StatusUnknown) {
+        else if (lst == StatusUnknown && lrt == 0) {
           missingLeg++;
         }
         else {
           runningTime = max(lrt, runningTime);
+          if (lst == StatusUnknown)
+            prelRes = true;
         }
       }
     }
   }
 
-  if (missingLeg == 0 && status == StatusUnknown)
+  if (missingLeg == 0 && status == StatusUnknown && !prelRes)
     status = StatusOK;
 }
 
@@ -1626,9 +1631,15 @@ void oTeam::fillSpeakerObject(int leg, int courseControlId, int previousControlC
     spk.runningTimeLeg.preliminary = spk.runningTimeLeg.time;
   }
   else if (spk.status==StatusUnknown && spk.finishStatus==StatusUnknown) {
-    spk.runningTime.time = spk.runningTimeLeg.preliminary + timeOffset;
+    spk.runningTime.time = 0;// spk.runningTimeLeg.preliminary + timeOffset;
     spk.runningTime.preliminary = spk.runningTimeLeg.preliminary + timeOffset;
-    spk.runningTimeLeg.time = spk.runningTimeLeg.preliminary;
+    if (spk.runningTimeLeg.time > 0) {
+      spk.runningTime.time = spk.runningTimeLeg.time + timeOffset;
+    }
+    else {
+      spk.runningTime.time = 0;
+//      spk.runningTimeLeg.time = 0;// spk.runningTimeLeg.preliminary;
+    }
   }
   else if (spk.status==StatusUnknown)
     spk.status=StatusMP;

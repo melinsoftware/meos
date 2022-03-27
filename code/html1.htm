@@ -187,6 +187,7 @@
   <h2>Results</h2>
   <b>Syntax:</b>
 <pre><a href="/meos?get=result">/meos?get=result</a></pre>
+<pre><a href="/meos?get=result">/meos?get=result#preliminary=false</a></pre>
 <pre>/meos?get=result#class=*c1>,*c2>,...</pre>
 <pre>/meos?get=result#to=*c1></pre>
 <pre>/meos?get=result#from=*c1></pre>
@@ -200,6 +201,7 @@
   <b>Arguments:</b>
   <ul>
     <li><i>class</i> A list of one or more class id:s, separated by comma. The default is all classes.</li>
+    <li><i>preliminary</i> Control if preliminary results are returned. Preliminary results include competitors that have finished but not yet read out the card. The default is true.</li>
     <li>
       <i>from</i> Returns the result measuring time from a specific control. If a specified class
       does not visit the control, an empty result set is returned; no error is given.

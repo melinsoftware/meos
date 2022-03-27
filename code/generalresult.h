@@ -128,6 +128,7 @@ public:
                                          const pair<int, int> &controlId,
                                          bool totalResults,
                                          bool inclForestRunners,
+                                         bool inclPreliminary,
                                          const string &resTag,
                                          oListInfo::ResultType resType,
                                          int inputNumber,

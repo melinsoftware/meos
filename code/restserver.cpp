@@ -673,6 +673,12 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
         sampleClass = tt[0];
     }
       
+    bool includePreliminary = true;
+    if (param.count("preliminary")) {
+      const string& prl = param.find("preliminary")->second;
+      includePreliminary = atoi(prl.c_str()) > 0 || _stricmp(prl.c_str(), "true") == 0;
+    }
+
     string resTag;
     if (param.count("module") > 0)
       resTag = param.find("module")->second;
@@ -831,7 +837,8 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
         r.swap(r2);
       }
 
-      GeneralResult::calculateIndividualResults(r, controlId, totalResult, inclRunnersInForest, resTag, resType, inputNumber, oe, results);
+      GeneralResult::calculateIndividualResults(r, controlId, totalResult, inclRunnersInForest, includePreliminary, 
+                                                resTag, resType, inputNumber, oe, results);
 
 
       if (resType ==  oListInfo::Classwise)
@@ -854,7 +861,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
       int place = -1;
       int cClass = -1;
       int counter = 0;
-      for (const auto &res : results) {
+      for (auto &res : results) {
         if (res.src->getClassId(true) != cClass) {
           counter = 0;
           place = 1;
@@ -863,6 +870,10 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
         if (++counter > limit && (place != res.place || res.status != StatusOK))
           continue;
         place = res.place;
+
+        if (!includePreliminary && res.src->getStatus() == StatusUnknown)
+          res.status = StatusUnknown;
+
         writePerson(res, reslist, true, resType == oListInfo::Coursewise, rProp);
       }
       reslist.endTag();

@@ -1,13 +1,4 @@
-﻿// oRunner.h: interface for the oRunner class.
-//
-//////////////////////////////////////////////////////////////////////
-
-#if !defined(AFX_ORUNNER_H__D3B8D6C8_C90A_4F86_B776_7D77E5C76F42__INCLUDED_)
-#define AFX_ORUNNER_H__D3B8D6C8_C90A_4F86_B776_7D77E5C76F42__INCLUDED_
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+﻿#pragma once
 
 /************************************************************************
     MeOS - Orienteering Software
@@ -675,6 +666,9 @@ protected:
 public:
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
+  oRunner *getMainRunner() { return tParentRunner != nullptr ? tParentRunner : this; }
+  const oRunner* getMainRunner() const { return tParentRunner != nullptr ? tParentRunner : this; }
+
   int getStartGroup(bool useTmpStartGroup) const;
   void setStartGroup(int sg);
 
@@ -977,5 +971,3 @@ public:
   static bool sortSplit(const oRunner &a, const oRunner &b);
 
 };
-
-#endif // !defined(AFX_ORUNNER_H__D3B8D6C8_C90A_4F86_B776_7D77E5C76F42__INCLUDED_)

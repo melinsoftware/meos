@@ -85,6 +85,9 @@ public:
   RunnerStatus status;
   RunnerStatus finishStatus;
 
+  bool hasResult() const { return status == StatusOK || status == StatusUnknown && runningTime.time > 0; }
+  bool isIncomming() const { return status == StatusUnknown && runningTime.time <= 0; }
+
   RunningTime runningTime;
   RunningTime runningTimeLeg;
   RunningTime runningTimeSinceLast;

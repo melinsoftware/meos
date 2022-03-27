@@ -64,6 +64,8 @@ public:
 
   void saveUnknown(const wstring &file);
   void saveTable(const wstring &file);
+  void saveTranslation(const wstring &file);
+
   void loadTable(const wstring &file, const wstring &language);
   void loadTable(int resource, const wstring &language);
 
@@ -258,10 +260,11 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
   value[i] = str;
   return value[i];
 }
-const wstring newline = L"\n";
 
 void LocalizerImpl::saveUnknown(const wstring &file)
 {
+  const wstring newline = L"\n";
+
   if (!unknown.empty()) {
     ofstream fout(file.c_str(), ios::trunc|ios::out);
     for (map<wstring, wstring>::iterator it = unknown.begin(); it!=unknown.end(); ++it) {
@@ -279,6 +282,13 @@ void LocalizerImpl::saveUnknown(const wstring &file)
             nl = value.find(newline);
           }
           key = L"help:" + itow(value.length()) + itow(value.find_first_of('.'));
+        }
+      }
+      else {
+        int nl = value.find(newline);
+        while (nl != string::npos) {
+          value.replace(nl, newline.length(), L"\\n");
+          nl = value.find(newline);
         }
       }
       fout << toUTF8(key) << " = " << toUTF8(value) << endl;
@@ -329,6 +339,7 @@ void Localizer::LocalizerInternal::debugDump(const wstring &untranslated, const 
   }
   impl->saveUnknown(untranslated);
   impl->saveTable(translated);
+  impl->saveTranslation(L"spellcheck.txt");
 }
 
 void LocalizerImpl::translateAll(const LocalizerImpl &all) {
@@ -342,8 +353,8 @@ void LocalizerImpl::translateAll(const LocalizerImpl &all) {
   }
 }
 
-void LocalizerImpl::saveTable(const wstring &file)
-{
+void LocalizerImpl::saveTable(const wstring &file) {
+  const wstring newline = L"\n";
   ofstream fout(language+L"_"+file, ios::trunc|ios::out);
   for (map<wstring, wstring>::iterator it = table.begin(); it!=table.end(); ++it) {
     wstring value = it->second;
@@ -353,6 +364,13 @@ void LocalizerImpl::saveTable(const wstring &file)
       nl = value.find(newline);
     }
     fout << toUTF8(it->first) << " = " << toUTF8(value) << endl;
+  }
+}
+
+void LocalizerImpl::saveTranslation(const wstring &file) {
+  ofstream fout(language + L"_" + file, ios::trunc | ios::out);
+  for (map<wstring, wstring>::iterator it = table.begin(); it != table.end(); ++it) {
+    fout << toUTF8(it->second) << endl;
   }
 }
 

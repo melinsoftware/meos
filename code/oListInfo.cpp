@@ -315,6 +315,22 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
   for (size_t k = 0; k < pps.size(); k++) {
     wstring extra;
     switch (pps[k].type) {
+      case lResultModuleNumber:
+      case lResultModuleNumberTeam:
+        if (pps[k].text.length() > 1 && pps[k].text[0] == '@') {
+          wstring tmp;
+          int miLen = 0;
+          for (int j = 0; j < 10; j++) {
+            tmp = MetaList::fromResultModuleNumber(pps[k].text.substr(1), j, tmp);
+            if (tmp.length() > miLen / 2) {
+              miLen = tmp.length();
+              extras[k].add(tmp);
+            }
+          }
+        }
+        else
+          extra = L"999";
+        break;
       case lRunnerCardVoltage:
         extra = L"3.00 V";
         break;
@@ -404,8 +420,6 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lTeamTotalPlace:
       case lPunchControlPlace:
       case lPunchControlPlaceAcc:
-      case lResultModuleNumber:
-      case lResultModuleNumberTeam:
       case lRunnerStagePlace:           
         extra = L"99.";
         break;
@@ -2330,24 +2344,8 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         if (pp.text.empty() || pp.text[0]!='@')
           wsptr = &itow(nr);
         else {
-          vector<wstring> out;
-          split(pp.text.substr(1), L";", out);//WCS
           wstring &res = StringCache::getInstance().wget();
-          size_t ix = nr;
-          if (!out.empty() && ix >= out.size() && out.back().find_first_of('%') != out.back().npos) {
-            ix = out.size() - 1;
-          }
-          if (ix < out.size()) { 
-            res.swap(out[ix]);
-            if (res.find_first_of('%') != res.npos) {
-              wchar_t bf2[256];
-              swprintf_s(bf2, res.c_str(), itow(nr).c_str());
-              res = bf2;
-            }
-          }
-          else
-            res = L"";
-
+          MetaList::fromResultModuleNumber(pp.text.substr(1), nr, res);
           return res;
         }
       }

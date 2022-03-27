@@ -239,6 +239,7 @@ private:
 public:
 
   static wstring encode(EPostType type, const wstring &input, bool &foundSymbol);
+  static const wstring &fromResultModuleNumber(const wstring &in, int nr, wstring &out);
 
   static void getAutoComplete(const wstring &w, vector<AutoCompleteRecord> &records);
 

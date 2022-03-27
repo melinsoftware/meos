@@ -1473,6 +1473,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
                                                const pair<int, int> & controlId,
                                                bool totalResults,
                                                bool inclForestRunners,
+                                               bool inclPreliminary,
                                                const string &resTag,
                                                oListInfo::ResultType resType,
                                                int inputNumber,
@@ -1491,7 +1492,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
         for (pRunner r : runners) {
           clsId.insert(r->getClassId(true));
         }
-        oe.calculateResults(clsId, oEvent::ResultType::ClassResult, true);
+        oe.calculateResults(clsId, oEvent::ResultType::ClassResult, inclPreliminary);
         for (pRunner r : runners) {
           ri.status = r->getStatus();
           if (ri.status == StatusUnknown) {
@@ -1520,7 +1521,7 @@ void GeneralResult::calculateIndividualResults(vector<pRunner> &runners,
         }
       }
       else {
-        oe.calculateResults(set<int>(), oEvent::ResultType::TotalResult, true);
+        oe.calculateResults(set<int>(), oEvent::ResultType::TotalResult, inclPreliminary);
         for (pRunner r : runners) {
           ri.status = r->getTotalStatus();
           if (ri.status == StatusUnknown && r->getInputStatus() == StatusOK) {

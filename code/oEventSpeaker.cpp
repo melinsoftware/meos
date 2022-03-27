@@ -348,7 +348,7 @@ void renderRowSpeakerList(const oSpeakerObject &r, const oSpeakerObject *next_r,
 
   row.push_back(SpeakerString(normalText, r.club));
 
-  if (r.status == StatusOK) {
+  if (r.status == StatusOK || (r.status == StatusUnknown && r.runningTime.time > 0)) {
     row.push_back(SpeakerString(textRight, formatTime(r.runningTime.preliminary)));
 
     if (r.runningTime.time != r.runningTimeLeg.time)
@@ -599,7 +599,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
 
   list<oSpeakerObject>::iterator sit;
   for (sit=speakerList.begin(); sit != speakerList.end(); ++sit) {
-    if (sit->status==StatusOK && sit->priority>=0)
+    if (sit->hasResult() && sit->priority>=0)
       sit->priority=1;
     else if (sit->status > StatusOK  && sit->priority<=0)
       sit->priority=-1;
@@ -653,7 +653,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   //Calculate leader-time
   for(sit=speakerList.begin(); sit != speakerList.end(); ++sit) {
     int rt = sit->runningTime.time;
-    if (sit->status==StatusOK && rt>0)
+    if ((sit->status==StatusOK || sit->status == StatusUnknown) && rt>0)
       LeaderTime=min(LeaderTime, rt);
   }
 
@@ -670,7 +670,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
     ++sit;
     oSpeakerObject *next = sit != speakerList.end() ? &*sit : 0;
     int type = 3;
-    if (so->priority > 0 || (so->status==StatusOK && so->priority>=0))
+    if (so->priority > 0 || (so->hasResult() && so->priority>=0))
       type = 1;
     else if (so->status == StatusUnknown && so->priority==0)
       type = 2;
@@ -720,7 +720,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   rendered = false;
   for (size_t k = 0; k < toRender.size(); k++) {
     oSpeakerObject *so = toRender[k].first;
-    if (so && (so->priority > 0 || (so->status==StatusOK && so->priority>=0))) {
+    if (so && (so->priority > 0 || (so->hasResult() && so->priority>=0))) {
       if (rendered == false) {
         gdi.addString("", y, x, boldSmall, "Resultat");
         y+=lh+5, rendered=true;
@@ -734,7 +734,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   rendered = false;
   for (size_t k = 0; k < toRender.size(); k++) {
     oSpeakerObject *so = toRender[k].first;
-    if (so && so->status == StatusUnknown && so->priority==0) {
+    if (so && so->isIncomming() && so->priority==0) {
       if (rendered == false) {
         gdi.addString("", y+4, x, boldSmall, "Inkommande");
         y+=lh+5, rendered=true;
@@ -1721,10 +1721,14 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     const oRunner &r = *it;
     if (r.isRemoved() || !classFilter.count(r.getClassId(true)))
       continue;
-    if (r.getStatusComputed() != StatusOutOfCompetition && 
-        r.getStatusComputed() != StatusNoTiming &&
-       (r.prelStatusOK(true, false) || r.getStatusComputed() != StatusUnknown)) {
+
+    if (r.getStatusComputed() == StatusOutOfCompetition || r.getStatusComputed() == StatusNoTiming)
+      continue;
+
+    bool wroteResult = false;
+    if (r.prelStatusOK(true, false) || r.getStatusComputed() != StatusUnknown) {
       RunnerStatus stat = r.prelStatusOK(true, false) ? StatusOK : r.getStatusComputed();
+      wroteResult = true;
       results.push_back(ResultEvent(pRunner(&r), r.getFinishTime(), oPunch::PunchFinish, stat));
     }
     pCard card = r.getCard();
@@ -1735,7 +1739,8 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
       if (res != teamStatusPos.end()) {
         RunnerStatus prevStat = teamLegStatusOK[res->second + r.tLeg - 1];
         if (prevStat != StatusOK && prevStat != StatusUnknown) {
-          results.back().status = StatusNotCompetiting;
+          if (wroteResult)
+            results.back().status = StatusNotCompetiting;
           punchStatus = StatusNotCompetiting;
         }
       }

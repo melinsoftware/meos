@@ -80,6 +80,7 @@ public:
   void getRogainingTeam(set<int> &sel) const;
 
   bool hasTeamClass() const;
+  bool hasQualificationFinal() const;
 
   void getRaceNStart(int race, set<int> &sel) const;
   void getLegNStart(int leg, set<int> &sel) const;

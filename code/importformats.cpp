@@ -89,6 +89,20 @@ void ImportFormats::getOECSVLanguage(vector< pair<wstring, size_t> > &typeLangua
   typeLanguages.push_back(make_pair(L"Russian", 6));
 }
   
+wstring ImportFormats::getExtension(ExportFormats fm) {
+  switch (fm) {
+  case IOF30:
+  case IOF203:
+    return L"xml";
+  case OE:
+    return L"csv";
+  case HTML:
+    return L"html";
+  }
+  throw exception();
+}
+
+
 int ImportFormats::getDefaultCSVLanguage(oEvent &oe) {
   string currentLanguage = oe.getPropertyString("Language", "English");
   int defaultLanguageType = 1;

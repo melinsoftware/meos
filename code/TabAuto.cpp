@@ -586,7 +586,7 @@ bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast)
 
   if (sm.size() > 0) {
     gdi.dropLine();
-    gdi.addString("", fontMediumPlus, "Sparade automater").setColor(colorDarkBlue);
+    gdi.addStringUT(fontMediumPlus, lang.tl(L"Sparade automater", true)).setColor(colorDarkBlue);
     gdi.dropLine(0.3);
     gdi.fillRight();
 
@@ -610,7 +610,7 @@ bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast)
   }
 
   gdi.dropLine();
-  gdi.addString("", fontMediumPlus, "Tillgängliga automater").setColor(colorDarkBlue);
+  gdi.addStringUT(fontMediumPlus, lang.tl(L"Tillgängliga automater", true)).setColor(colorDarkBlue);
   gdi.dropLine(0.3);
   gdi.fillRight();
   gdi.addButton("Result", AutoMachine::getDescription(Machines::mPrintResultsMachine), AutomaticCB, "tooltip:resultprint");
@@ -631,7 +631,7 @@ bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast)
   gdi.popX();
 
   if (!machines.empty()) {
-    gdi.addString("", fontMediumPlus, "Startade automater").setColor(colorDarkBlue);
+    gdi.addStringUT(fontMediumPlus, lang.tl(L"Startade automater", true)).setColor(colorDarkBlue);
     list<AutoMachine *>::iterator it;
 
     int baseX = gdi.getCX();

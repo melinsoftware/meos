@@ -2362,13 +2362,16 @@ wstring oEvent::getZeroTime() const
 
 void oEvent::setZeroTime(wstring m, bool manualSet)
 {
-  unsigned nZeroTime = convertAbsoluteTime(m);
+  const unsigned nZeroTime = convertAbsoluteTime(m);
   if (nZeroTime!=ZeroTime && nZeroTime != -1) {
     if (manualSet)
       setFlag(TransferFlags::FlagManualDateTime, true);
 
     updateChanged();
     ZeroTime=nZeroTime;
+  }
+  else if (manualSet && !hasFlag(oEvent::TransferFlags::FlagManualDateTime)) {
+    setFlag(TransferFlags::FlagManualDateTime, true);
   }
 }
 
@@ -4341,15 +4344,28 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
 
   if (sic.convertedTime == ConvertedTimeStatus::Hour12) {
 
-    int startTime = ZeroTime + 3600; //Add one hour. Subtracted below
+    int startTime = ZeroTime + 2*3600; //Add two hours. Subtracted below
     if (useLongTimes())
-      startTime = 5 * 3600; // Avoid midnight as default. Prefer morning
+      startTime = 7 * 3600; // Avoid midnight as default. Prefer morning
 
     int st = -1;
     if (runner) {
       st = runner->getStartTime();
       if (st > 0) {
-        startTime = (ZeroTime + st) % (3600 * 24);
+        if (sic.StartPunch.Code == -1)
+          startTime = (ZeroTime + st) % (3600 * 24); // No start punch
+        else {
+          // Got start punch. If this is close to specified start time,
+          // use specified start time
+          const int stPunch = sic.StartPunch.Time; // 12 hour
+          const int stStart = startTime = (ZeroTime + st) % (3600 * 12); // 12 hour
+          if (std::abs(stPunch - stStart) < 1800) {
+            startTime = (ZeroTime + st) % (3600 * 24); // Use specified start time (for conversion)
+          }
+          else {
+            st = -1; // Ignore start time
+          }
+        }
       }
       else {
         st = -1;
@@ -4370,7 +4386,7 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
         startTime = (ZeroTime + relT12) % (3600 * 24);
       }
     }
-    int zt = (startTime + 23 * 3600) % (24 * 3600); // Subtract one hour
+    int zt = (startTime + 22 * 3600) % (24 * 3600); // Subtract two hours from start time
     sic.analyseHour12Time(zt);
   }
   sic.convertedTime = ConvertedTimeStatus::Done;

@@ -3362,7 +3362,7 @@ void IOF30Interface::writePersonResult(xmlparser &xml, const oRunner &r,
     if (r.getNumMulti() > 0) {
       for (int k = 0; k <= r.getNumMulti(); k++) {
         const pRunner tr = r.getMultiRunner(k);
-        if (tr)
+        if (tr && tr->getClassRef(true) == r.getClassRef(true))
           writeResult(xml, *tr, *tr, includeCourse, includeStageRaceInfo, teamMember, hasInputTime);
       }
     }
@@ -3394,6 +3394,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
     writeLegOrder(xml, rPerson.getClassRef(false), rPerson.getLegNumber());
 
   bool patrolResult = r.getTeam() && r.getClassRef(false)->getClassType() == oClassPatrol && !teamsAsIndividual;
+  bool qualFinal = r.getTeam() && r.getTeam()->getClassRef(false) != r.getClassRef(true);
 
   wstring bib = rPerson.getBib();
   if (!bib.empty())
@@ -3474,7 +3475,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
       xml.write("Score", "type", L"Score", itow(rg));
       xml.write("Score", "type", L"Penalty", itow(r.getRogainingReduction(true)));
     }
-    if ( (r.getTeam() && r.getClassRef(false)->getClassType() != oClassPatrol && !teamsAsIndividual) || hasInputTime) {
+    if ( (r.getTeam() && r.getClassRef(false)->getClassType() != oClassPatrol && !teamsAsIndividual && !qualFinal) || hasInputTime) {
       xml.startTag("OverallResult");
 
       int rt = r.getTotalRunningTime();
@@ -3677,10 +3678,11 @@ void IOF30Interface::writeEvent(xmlparser &xml) {
 void IOF30Interface::writePerson(xmlparser &xml, const oRunner &r) {
   xml.startTag("Person");
 
-  __int64 id = r.getExtIdentifier();
-  if (id != 0)
+  if (r.getExtIdentifier() != 0)
     xml.write("Id", r.getExtIdentifierString());
-
+  else if (r.getMainRunner()->getExtIdentifier() != 0)
+    xml.write("Id", r.getMainRunner()->getExtIdentifierString());
+ 
   xml.startTag("Name");
   xml.write("Family", r.getFamilyName());
   xml.write("Given", r.getGivenName());
@@ -3818,7 +3820,7 @@ void IOF30Interface::getRunnersToUse(const pClass cls, vector<pRunner> &rToUse,
         if (leg == -1 && indRel && r[j]->getLegNumber() != 0)
           continue; // Skip all but leg 0 for individual relay
 
-        if (leg == -1 && !indRel && r[j]->getTeam())
+        if (leg == -1 && !indRel && (r[j]->getTeam() && r[j]->getTeam()->getClassRef(true) == cls))
           continue; // For teams, skip presonal results, unless individual relay
 
         if (!includeUnknown && !r[j]->hasResult())

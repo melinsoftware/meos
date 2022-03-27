@@ -59,6 +59,8 @@ public:
   
   static int getDefaultCSVLanguage(oEvent &oe);
 
+  static wstring getExtension(ExportFormats fm);
+
   private:
     ImportFormatOptions option;
 };

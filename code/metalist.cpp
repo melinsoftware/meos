@@ -504,12 +504,17 @@ wstring MetaList::encode(EPostType type, const wstring &inputS, bool &foundSymbo
   int sCount = 0;
   if (type == EPostType::lString)
     sCount = 1; // No symbols expected in string
-  
+  bool outputNumberType = (type == EPostType::lResultModuleNumber || type == EPostType::lResultModuleNumberTeam) &&
+                          input.length() > 0 && input[0] == '@';
+
   for (size_t k = 0; k<input.length(); k++) {
     int c = input[k];
     int p = k > 0 ? input[k-1] : ' ';
     int n = k+1 < input.length() ? input[k+1] : ' ';
 
+    if (outputNumberType && c == ';') 
+      sCount = 0;
+    
     if (c == '%') {
       out.push_back('%');
       out.push_back('%');
@@ -525,6 +530,34 @@ wstring MetaList::encode(EPostType type, const wstring &inputS, bool &foundSymbo
 
   foundSymbol = sCount > 0;
   return out;
+}
+
+const wstring &MetaList::fromResultModuleNumber(const wstring &in, int nr, wstring &res) {
+  vector<wstring> out;
+  split(in, L";", out);
+  size_t ix = nr;
+  if (!out.empty() && ix + 1 >= out.size()) {
+    if (out.back().size() > 1 && out.back()[0] == '@') {
+      ix = out.size() - 1;
+      out[ix] = out[ix].substr(1);
+    }
+    if (out.back().find_first_of('%') != wstring::npos) {
+      ix = out.size() - 1;
+    }
+  }
+
+  if (ix < out.size()) {
+    res.swap(out[ix]);
+    if (res.find_first_of('%') != wstring::npos) {
+      wchar_t bf2[256];
+      swprintf_s(bf2, res.c_str(), itow(nr).c_str());
+      res = bf2;
+    }
+  }
+  else
+    res = L"";
+
+  return res;
 }
 
 MetaListPost &MetaList::add(ListIndex ix, const MetaListPost &post) {

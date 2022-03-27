@@ -213,7 +213,7 @@ void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
     gdi.enableEditControls(false);
   }
   gdi.refreshFast();
-  gdi.setInputStatus("DrawCourse", pc != 0);  
+  gdi.setInputStatus("DrawCourse", pc != 0, true);  
 }
 
 int CourseCB(gdioutput *gdi, int type, void *data) {
@@ -764,8 +764,11 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.addButton("ExportCourses", "Exportera...", CourseCB);
   gdi.popX();
   gdi.dropLine(2.5);
-  gdi.addButton("DrawCourse", "Lotta starttider..", CourseCB);
-  gdi.disableInput("DrawCourse");
+
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::DrawStartList)) {
+    gdi.addButton("DrawCourse", "Lotta starttider..", CourseCB);
+    gdi.disableInput("DrawCourse");
+  }
   gdi.newColumn();
   gdi.fillDown();
 

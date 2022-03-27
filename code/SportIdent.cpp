@@ -1436,6 +1436,8 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
             double voltage = 1.9 + (battVoltageRow * 0.09);
             miliVolt = int(1000 * voltage);
 
+            if (miliVolt > 5000)
+              miliVolt = 900; // Not allowed
             /*char xx[30];
             sprintf_s(xx, "V = %f\n\n", voltage);
             OutputDebugStringA(xx);*/

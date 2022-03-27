@@ -223,7 +223,9 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
       getRunners(classes, runnersCls);
 
     runners.reserve(runnersCls.size());
-    bool resOK = true;
+    
+    bool resOK = lastResultCalcPrelState == includePreliminary;
+    lastResultCalcPrelState = includePreliminary;
 
     for (auto it : runnersCls) {
       oRunner &r = *it;

@@ -25,17 +25,17 @@
 
 //ABCDEFGHIJKLMNO
 int getMeosBuild() {
-  string revision("$Rev: 1116 $");
+  string revision("$Rev: 1132 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2022-02-18 14:51:32 +0100 (fre, 18 feb 2022) $");
+  wstring date(L"$Date: 2022-03-23 22:25:26 +0100 (ons, 23 mar 2022) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC2"; // No parantheses (...)
+  return L""; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -135,6 +135,7 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Miroslav Kollar, KOB Kysak");
   supp.emplace_back(L"Zdenko Rohac, KOB ATU Košice");
   supp.emplace_back(L"Hans Carlstedt, Sävedalens AIK");
-  supp.emplace_back(L"Javier Arufe Varela, O-Liceo");
+  supp.emplace_back(L"O-Liceo, Spain");
+  developSupp.emplace_back(L"Västerviks OK");
   reverse(supp.begin(), supp.end());
 }

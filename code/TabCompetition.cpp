@@ -1762,11 +1762,14 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       if (save.empty())
         throw meosException("Filnamn kan inte vara tomt");
 
+      oe->setProperty("ExpStaFilename", save);
       bool individual = !gdi.hasWidget("ExportTeam") || gdi.isChecked("ExportTeam");
 
       bool includeStage = true;
-      if (gdi.hasWidget("IncludeRaceNumber"))
+      if (gdi.hasWidget("IncludeRaceNumber")) {
         includeStage = gdi.isChecked("IncludeRaceNumber");
+        oe->setProperty("ExpWithRaceNo", includeStage);
+      }
 
       gdi.getSelection("ClassNewEntries", allTransfer);
       ImportFormats::ExportFormats filterIndex = ImportFormats::setExportFormat(*oe, gdi.getSelectedItem("Type").first);
@@ -1806,7 +1809,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       if (save.empty())
         throw meosException("Filnamn kan inte vara tomt");
 
-      //bool individual = !gdi.hasWidget("ExportTeam") || gdi.isChecked("ExportTeam");
+      oe->setProperty("ExpResFilename", save);
       gdi.getSelection("ClassNewEntries", allTransfer);
       
       checkReadyForResultExport(gdi, allTransfer);
@@ -1816,9 +1819,15 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       bool includeSplits = gdi.isChecked("ExportSplitTimes");
       
       bool unroll = gdi.isChecked("UnrollLoops"); // If not applicable, field does not exist.
+      if (gdi.hasWidget("UnrollLoops")) {
+        oe->setProperty("ExpUnroll", unroll);
+      }
+      
       bool includeStage = true;
-      if (gdi.hasWidget("IncludeRaceNumber"))
+      if (gdi.hasWidget("IncludeRaceNumber")) {
         includeStage = gdi.isChecked("IncludeRaceNumber");
+        oe->setProperty("ExpWithRaceNo", includeStage);
+      }
 
       gdi.setWaitCursor(true);
       if (filterIndex == ImportFormats::IOF30 || filterIndex == ImportFormats::IOF203) {
@@ -1827,13 +1836,14 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         oe->getClassConfigurationInfo(cnf);
         bool useUTC = oe->getDCI().getInt("UTC") != 0;
 
-        if (!cnf.hasTeamClass()) {
+        if (!gdi.hasWidget("LegType")) {
           oe->exportIOFSplits(ver, save.c_str(), true, useUTC, 
                               allTransfer, -1, false, unroll, includeStage, false);
         }
         else {
           ListBoxInfo leglbi;
           gdi.getSelectedItem("LegType", leglbi);
+          oe->setProperty("ExpTypeIOF", leglbi.data);
           wstring file = save;
           if (leglbi.data == 2) {
             wstring fileBase;
@@ -3791,18 +3801,22 @@ void TabCompetition::selectStartlistOptions(gdioutput &gdi) {
   if (oe->hasTeam()) {
     gdi.addCheckbox("ExportTeam", "Exportera individuella lopp istället för lag", 0, false);
   }
+
   if (oe->hasMultiRunner() || oe->getStageNumber() > 0)
-    gdi.addCheckbox("IncludeRaceNumber", "Inkludera information om flera lopp per löpare", 0, true);
+    gdi.addCheckbox("IncludeRaceNumber", "Inkludera information om flera lopp per löpare", nullptr, 
+                    oe->getPropertyInt("ExpWithRaceNo", true) != 0);
     
+  wstring fn = oe->getPropertyString("ExpStaFilename", L"");
+  gdi.addInput("Filename", fn, 
+               48, CompetitionCB,  L"Filnamn:").setExtra(L"DoSaveStartlist");
   setExportOptionsStatus(gdi, format);
 
-  gdi.addInput("Filename", L"", 48, CompetitionCB,  L"Filnamn:").setExtra(L"DoSaveStartlist");
   gdi.fillRight();
   gdi.dropLine();
   gdi.addButton("BrowseExport", "Bläddra...",  CompetitionCB);
   gdi.addButton("DoSaveStartlist", "Exportera",  CompetitionCB).setDefault();
   gdi.addButton("Cancel", "Avbryt", CompetitionCB).setCancel();
-  gdi.disableInput("DoSaveStartlist");
+  gdi.setInputStatus("DoSaveStartlist", !fn.empty());
   gdi.refresh();
 }
 
@@ -3826,14 +3840,14 @@ void TabCompetition::selectExportSplitOptions(gdioutput &gdi) {
   gdi.pushX();
   gdi.addSelection("Type", 250, 200, CompetitionCB, L"Exporttyp:");
 
-  vector< pair<wstring, size_t> > types;
+  vector<pair<wstring, size_t>> types;
   ImportFormats::getExportFormats(types, true);
 
   gdi.addItem("Type", types);
   ImportFormats::ExportFormats format = ImportFormats::getDefaultExportFormat(*oe);
   gdi.selectItemByData("Type", format);
 
-  vector< pair<wstring, size_t> > typeLanguages;
+  vector<pair<wstring, size_t>> typeLanguages;
   ImportFormats::getOECSVLanguage(typeLanguages);
   
   gdi.addSelection("LanguageType", 250, 200, CompetitionCB, L"Export language:");
@@ -3846,16 +3860,19 @@ void TabCompetition::selectExportSplitOptions(gdioutput &gdi) {
   ClassConfigInfo cnf;
   oe->getClassConfigurationInfo(cnf);
 
-  if (oe->hasTeam()) {
+  if (cnf.hasTeamClass() || cnf.hasQualificationFinal()) {
     gdi.addSelection("LegType", 300, 100, 0, L"Exportval, IOF-XML");
     gdi.addItem("LegType", lang.tl("Totalresultat"), 1);
     gdi.addItem("LegType", lang.tl("Alla lopp som individuella"), 3);
-    gdi.addItem("LegType", lang.tl("Alla sträckor/lopp i separata filer"), 2);
-    int legMax = cnf.getNumLegsTotal();
-    for (int k = 0; k<legMax; k++) {
-      gdi.addItem("LegType", lang.tl("Sträcka X#" + itos(k+1)), k+10);
+    if (cnf.hasTeamClass()) {
+      gdi.addItem("LegType", lang.tl("Alla sträckor/lopp i separata filer"), 2);
+      int legMax = cnf.getNumLegsTotal();
+      for (int k = 0; k < legMax; k++) {
+        gdi.addItem("LegType", lang.tl("Sträcka X#" + itos(k + 1)), k + 10);
+      }
     }
-    gdi.selectFirstItem("LegType");
+    if (!gdi.selectItemByData("LegType", oe->getPropertyInt("ExpTypeIOF", 1)))
+      gdi.selectFirstItem("LegType");
   }
 
   bool hasLoops = false;
@@ -3866,20 +3883,23 @@ void TabCompetition::selectExportSplitOptions(gdioutput &gdi) {
       hasLoops = true;
   }
   if (hasLoops)
-    gdi.addCheckbox("UnrollLoops", "Unroll split times for loop courses", 0, true);
+    gdi.addCheckbox("UnrollLoops", "Unroll split times for loop courses", 0, oe->getPropertyInt("ExpUnroll", true) != 0);
 
   if (oe->hasMultiRunner() || oe->getStageNumber() > 0)
-    gdi.addCheckbox("IncludeRaceNumber", "Inkludera information om flera lopp per löpare", 0, true);
+    gdi.addCheckbox("IncludeRaceNumber", "Inkludera information om flera lopp per löpare", 0, 
+                    oe->getPropertyInt("ExpWithRaceNo", true) != 0);
 
+  wstring fn = oe->getPropertyString("ExpResFilename", L"");
+  gdi.addInput("Filename", fn, 48, CompetitionCB,  L"Filnamn:").setExtra(L"DoSaveSplits");
   setExportOptionsStatus(gdi, format);
-  gdi.addInput("Filename", L"", 48, CompetitionCB,  L"Filnamn:").setExtra(L"DoSaveSplits");
+
   gdi.fillRight();
   gdi.dropLine();
   gdi.addButton("BrowseExportResult", "Bläddra...",  CompetitionCB);
   gdi.addButton("DoSaveSplits", "Exportera",  CompetitionCB).setDefault();
   gdi.addButton("Cancel", "Avbryt", CompetitionCB).setCancel();
 
-  gdi.disableInput("DoSaveSplits");
+  gdi.setInputStatus("DoSaveSplits", !fn.empty());
   gdi.refresh();
 }
 
@@ -3902,6 +3922,18 @@ void TabCompetition::setExportOptionsStatus(gdioutput &gdi, int format) const {
   }
 
   gdi.setInputStatus("LanguageType", format == ImportFormats::OE);
+
+  if (gdi.hasWidget("Filename")) {
+    wstring fn = gdi.getText("Filename");
+    if (!fn.empty()) {
+      size_t ldot = fn.find_last_of(L".");
+      if (ldot != wstring::npos && ldot > fn.length() - 8 && ldot < fn.length() - 2) {
+        fn = fn.substr(0, ldot+1);
+        fn += ImportFormats::getExtension(ImportFormats::ExportFormats(format));
+        gdi.setText("Filename", fn);
+      }
+    }
+  }
 }
 
 void TabCompetition::clearCompetitionData() {

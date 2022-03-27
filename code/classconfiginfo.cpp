@@ -75,6 +75,10 @@ bool ClassConfigInfo::hasTeamClass() const {
   return !relay.empty() || !patrol.empty() || !raceNRes.empty();
 }
 
+bool ClassConfigInfo::hasQualificationFinal() const {
+  return !knockout.empty();
+}
+
 void ClassConfigInfo::getPatrol(set<int> &sel) const {
   sel.insert(patrol.begin(), patrol.end());
 }
@@ -141,7 +145,7 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
     if (Courses.empty() || (it->getCourse(false) == nullptr && it->getCourse(0,0, false) == nullptr)  ||
         (it->getCourse(false) && it->getCourse(false)->getNumControls() == 0)) {
 
-      if (!it->isQualificationFinalBaseClass()) {
+      if (!it->isQualificationFinalBaseClass() && !it->isQualificationFinalClass()) {
         // No course.
         if (runnerPerClass.empty()) {
           for (auto &r : Runners) {

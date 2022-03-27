@@ -288,7 +288,18 @@ ButtonInfo &ListEditor::addButton(gdioutput &gdi, const MetaListPost &mlp, int x
       if (text[0] == '@') {
         vector<wstring> part; 
         split(text.substr(1), L";", part);
-        unsplit(part, L"|", cap);
+        for (int j = 0; j < part.size(); j++) {
+          if (part[j].empty())
+            continue;
+          else if (part[j][0] == '@')
+            part[j] = part[j].substr(1);
+          if (!cap.empty())
+            cap += L"|";
+          else
+            cap += L"#";
+
+          cap += lang.tl(part[j] + L"#" + itow(j));
+        }
       }
       else
         cap = text + L"#" + lang.tl(mlp.getType());
@@ -1201,11 +1212,19 @@ void ListEditor::showExample(gdioutput &gdi, const MetaListPost &mlp) {
   RECT rrInner;
   rrInner.left = x1 + margin;
   rrInner.top = gdi.getCY();
-  bool hasSymbol;
+  bool hasSymbol, hasStringMap = false;
   lastShownExampleText = mlp.getText();
   GDICOLOR color = GDICOLOR::colorLightGreen;
   wstring text = MetaList::encode(mlp.getTypeRaw(), lastShownExampleText, hasSymbol);
-  if (!hasSymbol) {
+
+  if (mlp.getTypeRaw() == lResultModuleNumber || mlp.getTypeRaw() == lResultModuleNumberTeam) {
+    if (text.length() > 0 && text[0]=='@') {
+      hasStringMap = true;
+      text = text.substr(1);
+    }
+  }
+
+  if (!hasSymbol && !hasStringMap) {
     text = lang.tl("Fel: Använd X i texten där värdet (Y) ska sättas in.#X#%s");
     color = GDICOLOR::colorLightRed;
   }
@@ -1224,10 +1243,15 @@ void ListEditor::showExample(gdioutput &gdi, const MetaListPost &mlp) {
   set<wstring> used;
   for (size_t i = 0; i < rr.size(); i++) {
     int ix = (997 * i) % rr.size();
-    wstring s = oe->formatListString(mlp.getTypeRaw(), rr[i]);
+    wstring s;
+    if (!hasStringMap)
+      s = oe->formatListString(mlp.getTypeRaw(), rr[i]);
+    else 
+      MetaList::fromResultModuleNumber(text, i, s);
+    
     if (used.insert(s).second) {
       int xb = gdi.getCX();
-      if (!text.empty()) {
+      if (!text.empty() && !hasStringMap) {
         wchar_t st[300];
         swprintf_s(st, text.c_str(), s.c_str());
         s = st;

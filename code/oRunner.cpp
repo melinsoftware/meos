@@ -272,11 +272,11 @@ oRunner::oRunner(oEvent *poe) :oAbstractRunner(poe, false)
 {
   isTemporaryObject = false;
   Id = oe->getFreeRunnerId();
-  Course = 0;
+  Course = nullptr;
   StartNo = 0;
   cardNumber = 0;
 
-  tInTeam = 0;
+  tInTeam = nullptr;
   tLeg = 0;
   tLegEquClass = 0;
   tNeedNoCard = false;
@@ -285,9 +285,9 @@ oRunner::oRunner(oEvent *poe) :oAbstractRunner(poe, false)
   correctionNeeded = false;
 
   tDuplicateLeg = 0;
-  tParentRunner = 0;
+  tParentRunner = nullptr;
 
-  Card = 0;
+  Card = nullptr;
   cPriority = 0;
 
   tCachedRunningTime = 0;
@@ -309,11 +309,11 @@ oRunner::oRunner(oEvent *poe, int id) :oAbstractRunner(poe, true)
   isTemporaryObject = false;
   Id = id;
   oe->qFreeRunnerId = max(id, oe->qFreeRunnerId);
-  Course = 0;
+  Course = nullptr;
   StartNo = 0;
   cardNumber = 0;
 
-  tInTeam = 0;
+  tInTeam = nullptr;
   tLeg = 0;
   tLegEquClass = 0;
   tNeedNoCard = false;
@@ -322,9 +322,9 @@ oRunner::oRunner(oEvent *poe, int id) :oAbstractRunner(poe, true)
   correctionNeeded = false;
 
   tDuplicateLeg = 0;
-  tParentRunner = 0;
+  tParentRunner = nullptr;
 
-  Card = 0;
+  Card = nullptr;
   cPriority = 0;
   tCachedRunningTime = 0;
   tSplitRevision = -1;
@@ -359,7 +359,7 @@ oRunner::~oRunner()
   }
 
   delete tAdaptedCourse;
-  tAdaptedCourse = 0;
+  tAdaptedCourse = nullptr;
 }
 
 bool oRunner::Write(xmlparser &xml)

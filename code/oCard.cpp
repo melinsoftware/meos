@@ -546,8 +546,8 @@ pCard oEvent::getCardByNumber(int cno) const
   oCardList::const_reverse_iterator it;
   pCard second = 0;
   for (it=Cards.rbegin(); it != Cards.rend(); ++it){
-    if (it->cardNo==cno) {
-      if (it->getOwner() == 0)
+    if (!it->isRemoved() && it->cardNo==cno) {
+      if (it->getOwner() == nullptr)
         return const_cast<pCard>(&*it);
       else if (second == 0)
         second = const_cast<pCard>(&*it);

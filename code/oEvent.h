@@ -895,6 +895,8 @@ protected:
   void calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &teams);
 
   unsigned int lastTimeConsistencyCheck = 0;
+  mutable bool lastResultCalcPrelState = false;
+
 public:
   void updateStartTimes(int delta);
 
