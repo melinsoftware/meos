@@ -81,6 +81,8 @@ extern Image image;
 extern int defaultCodePage;
   
 GuiHandler &BaseInfo::getHandler() const {
+  if (managedHandler)
+    return *managedHandler;
   if (handler == 0)
     throw meosException("Handler not definied.");
   return *handler;
@@ -790,6 +792,8 @@ void gdioutput::timerProc(TimerInfo &timer, DWORD timeout) {
   int timerId = timer.timerId;
   if (timer.handler)
     timer.handler->handle(*this, timer, GUI_TIMER);
+  if (timer.managedHandler)
+    timer.managedHandler->handle(*this, timer, GUI_TIMER);
   else if (timer.callBack)
     timer.callBack(this, GUI_TIMER, &timer);
 
@@ -1706,6 +1710,7 @@ bool gdioutput::addItem(const string& id, const vector< pair<wstring, size_t> >&
       if (it->IsCombo) {
         SendMessage(it->hWnd, CB_RESETCONTENT, 0, 0);
         SendMessage(it->hWnd, CB_INITSTORAGE, items.size(), 48);
+        SendMessage(it->hWnd, WM_SETREDRAW, FALSE, 0);
         it->data2Index.clear();
 
         for (size_t k = 0; k < items.size(); k++) {
@@ -1713,16 +1718,23 @@ bool gdioutput::addItem(const string& id, const vector< pair<wstring, size_t> >&
           SendMessage(it->hWnd, CB_SETITEMDATA, index, items[k].second);
           it->data2Index[items[k].second] = int(index);
         }
+        SendMessage(it->hWnd, WM_SETREDRAW, TRUE, 0);
+        RedrawWindow(it->hWnd, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
       }
       else {
         SendMessage(it->hWnd, LB_RESETCONTENT, 0, 0);
         SendMessage(it->hWnd, LB_INITSTORAGE, items.size(), 48);
+        SendMessage(it->hWnd, WM_SETREDRAW, FALSE, 0);
+
         it->data2Index.clear();
         for (size_t k = 0; k < items.size(); k++) {
           LRESULT index = SendMessage(it->hWnd, LB_INSERTSTRING, -1, LPARAM(items[k].first.c_str()));
           SendMessage(it->hWnd, LB_SETITEMDATA, index, items[k].second);
           it->data2Index[items[k].second] = int(index);
         }
+
+        SendMessage(it->hWnd, WM_SETREDRAW, TRUE, 0);
+        RedrawWindow(it->hWnd, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
       }
       return true;
     }

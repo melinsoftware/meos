@@ -181,6 +181,7 @@ static void generateNBestHead(const oListParam &par, oListInfo &li, int ypos) {
   if (par.filterMaxPer > 0)
     li.addHead(oPrintPost(lString, lang.tl(L"Visar de X bästa#" + itow(par.filterMaxPer)), normalText, 0, ypos));
 }
+
 extern gdioutput *gdi_main;
 
 static pair<wstring, bool> getControlName(const oEvent &oe, int courseContolId) {
@@ -2874,7 +2875,7 @@ GeneralResult *oListInfo::applyResultModule(oEvent &oe, vector<pRunner> &rlist) 
 void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool formatHead) {
   li.setupLinks();
   pClass sampleClass = 0;
-
+  bool calculatedSplitResults = false;
   if (!li.lp.selection.empty())
     sampleClass = getClass(*li.lp.selection.begin());
   if (!sampleClass && !Classes.empty())
@@ -2896,8 +2897,10 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     }
 
     if (li.calcResults) {
-      if (li.lp.useControlIdResultTo > 0 || li.lp.useControlIdResultFrom > 0)
+      if (li.lp.useControlIdResultTo > 0 || li.lp.useControlIdResultFrom > 0) {
         calculateSplitResults(li.lp.useControlIdResultFrom, li.lp.useControlIdResultTo);
+        calculatedSplitResults = true;
+      }
       else {
         calculateTeamResults(li.lp.selection, ResultType::ClassResult);
         calculateResults(li.lp.selection, ResultType::ClassResult);
@@ -2925,11 +2928,11 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
     if (li.calcCourseResults)
       calculateResults(li.lp.selection, ResultType::CourseResult);
 
-    //pair<int, bool> info = li.lp.getLegInfo(sampleClass);
-    //sortTeams(li.sortOrder, info.first, info.second);
     if (li.calcResults) {
-      if (li.lp.useControlIdResultTo > 0 || li.lp.useControlIdResultFrom > 0)
+      if (li.lp.useControlIdResultTo > 0 || li.lp.useControlIdResultFrom > 0) {
         calculateSplitResults(li.lp.useControlIdResultFrom, li.lp.useControlIdResultTo);
+        calculatedSplitResults = true;
+      }
       else {
         calculateResults(li.lp.selection, ResultType::ClassResult);
       }
@@ -2994,7 +2997,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         rlist.push_back(r);
     }
 
-    if (li.sortOrder != Custom)
+    if (li.sortOrder != Custom && !calculatedSplitResults)
       sortRunners(li.sortOrder, rlist);
 
     GeneralResult *gResult = li.applyResultModule(*this, rlist);
@@ -3022,7 +3025,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         formatPrintPost(li.subHead, printPostInfo, it->tInTeam, &*it, it->Club, it->getClassRef(true),
                         nullptr, nullptr, nullptr, -1);
       }
-      if (li.lp.filterMaxPer == 0 || printPostInfo.counter.level2 < li.lp.filterMaxPer) {
+      if (li.lp.filterInclude(printPostInfo.counter.level2 + 1, rlist[k])) {
         printPostInfo.reset();
         printPostInfo.par.relayLegIndex = it->tLeg;
         formatPrintPost(li.listPost, printPostInfo, it->tInTeam, &*it, it->Club, it->getClassRef(true),
@@ -3142,11 +3145,11 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
                         nullptr, nullptr, nullptr, -1);
       }
       ++printPostInfo.counter;
-      if (li.lp.filterMaxPer == 0 || printPostInfo.counter.level2 <= li.lp.filterMaxPer) {
+      if (li.lp.filterInclude(printPostInfo.counter.level2, it)) {
         printPostInfo.counter.level3 = 0;
         printPostInfo.reset();
         printPostInfo.par.relayLegIndex = linearLegSpec;
-        formatPrintPost(li.listPost, printPostInfo, &*it, 0, it->Club, it->Class,
+        formatPrintPost(li.listPost, printPostInfo, it, 0, it->Club, it->Class,
                         nullptr, nullptr, nullptr, -1);
 
         if (li.subListPost.empty())
@@ -3322,11 +3325,11 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
           startClub = true;
         }
         ++printPostInfo.counter;
-        if (li.lp.filterMaxPer == 0 || printPostInfo.counter.level2 <= li.lp.filterMaxPer) {
+        if (li.lp.filterInclude(printPostInfo.counter.level2, rit)) {
           printPostInfo.counter.level3 = 0;
           printPostInfo.reset();
           printPostInfo.par.relayLegIndex = rit->tLeg;
-          formatPrintPost(li.listPost, printPostInfo, nullptr, &*rit, &*it, rit->getClassRef(true),
+          formatPrintPost(li.listPost, printPostInfo, nullptr, rit, &*it, rit->getClassRef(true),
                           nullptr, nullptr, nullptr, -1);
 
           if (li.listSubType == li.EBaseTypeCoursePunches ||
@@ -3371,7 +3374,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         formatPrintPost(li.subHead, printPostInfo, nullptr,
                         nullptr, nullptr, nullptr, &*it, nullptr, nullptr, 0);
       }
-      if (li.lp.filterMaxPer == 0 || printPostInfo.counter.level2 < li.lp.filterMaxPer) {
+      if (li.lp.filterInclude(printPostInfo.counter.level2 + 1, nullptr)) {
         printPostInfo.reset();
         formatPrintPost(li.listPost, printPostInfo, nullptr, nullptr, nullptr,
                         nullptr, &*it, nullptr, nullptr, 0);
@@ -3404,7 +3407,7 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         formatPrintPost(li.subHead, printPostInfo, nullptr, nullptr, nullptr,
                         nullptr, nullptr, &*it, nullptr, 0);
       }
-      if (li.lp.filterMaxPer == 0 || printPostInfo.counter.level2 < li.lp.filterMaxPer) {
+      if (li.lp.filterInclude(printPostInfo.counter.level2 + 1, nullptr)) {
         printPostInfo.reset();
         formatPrintPost(li.listPost, printPostInfo, nullptr, nullptr, nullptr,
                         nullptr, nullptr, &*it, nullptr, 0);

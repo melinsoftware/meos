@@ -2145,11 +2145,12 @@ void TabRunner::listRunners(gdioutput &gdi, const vector<pRunner> &r, bool filte
   int yp = gdi.getCY();
   int xp = gdi.getCX();
   vector<pRunner> out;
+  int counter = 0;
   for (size_t k=0; k<r.size(); k++) {
     if (filterVacant && r[k]->isVacant())
       continue;
     out.clear();
-    sprintf_s(bf, "%d.", int(k+1));
+    sprintf_s(bf, "%d.", ++counter);
     gdi.addStringUT(yp, xp, 0, bf);
     gdi.addStringUT(yp, xp+gdi.scaleLength(40), 0, r[k]->getNameAndRace(true), gdi.scaleLength(190));
     gdi.addStringUT(yp, xp+gdi.scaleLength(200), 0, r[k]->getClass(true), gdi.scaleLength(140));

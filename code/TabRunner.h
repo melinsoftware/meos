@@ -57,7 +57,6 @@ private:
   void listRunners(gdioutput &gdi, const vector<pRunner> &r, bool filterVacant) const;
 
   void fillRunnerList(gdioutput &gdi);
-
   int cardModeStartY;
   int lastRace;
   wstring lastFee;

@@ -25,17 +25,17 @@
 
 //ABCDEFGHIJKLMNO
 int getMeosBuild() {
-  string revision("$Rev: 1132 $");
+  string revision("$Rev: 1152 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2022-03-23 22:25:26 +0100 (ons, 23 mar 2022) $");
+  wstring date(L"$Date: 2022-05-04 14:47:48 +0200 (ons, 04 maj 2022) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L""; // No parantheses (...)
+  return L"U1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -137,5 +137,13 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Hans Carlstedt, Sävedalens AIK");
   supp.emplace_back(L"O-Liceo, Spain");
   developSupp.emplace_back(L"Västerviks OK");
+  supp.emplace_back(L"Ljusne Ala OK");
+  supp.emplace_back(L"Sävedalens AIK");
+  supp.emplace_back(L"Foothills Wanderers Orienteering Club");
+  supp.emplace_back(L"OK Gripen");
+  supp.emplace_back(L"Per Ågren, OK Enen");
+  supp.emplace_back(L"OK Roslagen");
+  supp.emplace_back(L"OK Kolmården");
+   
   reverse(supp.begin(), supp.end());
 }

@@ -63,6 +63,7 @@ IOF30Interface::IOF30Interface(oEvent *oe, bool forceSplitFee) : oe(*oe), useGMT
 
 void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool updateClass,
                                     int &courseCount, int &failed) {
+  gdi.fillDown();
   string ver;
   xo.getObjectString("iofVersion", ver);
   if (!ver.empty() && ver > "3.0")
@@ -173,7 +174,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
 
     vector<pCourse> presentCrs;
     pc->getCourses(-1, presentCrs);
-
+    /*
     // Check if we have the same set of courses
     bool sameSet = presentCrs.size() == classCourses.size();
     for (pCourse crs : presentCrs) {
@@ -185,7 +186,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
 
     if (sameSet)
       continue; // Do not touch forking if same set
-
+    */
     int fallBackCrs = *classCourses.begin();
     map<int, vector<pair<int, int>>> bibToLegCourseId;
     for (auto &blc : bibLegCourse.second) {
@@ -218,7 +219,7 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
         // Check if pattern is OK
         bool ok = true;
         for (int off = 0; off < period; off++) {
-          for (int c = off + period; c < coursePattern.size(); c++) {
+          for (int c = off + period; c < coursePattern.size(); c += period) {
             if (!matchCoursePattern(coursePattern[off], coursePattern[c])) {
               ok = false;
               break;
@@ -259,7 +260,62 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
     for (unsigned leg = 0; leg < pc->getNumStages() && leg < coursePattern[0].size(); leg++) {
       pc->clearStageCourses(leg);
       for (int m = 0; m < period; m++)
-        pc->addStageCourse(leg, coursePattern[(patternStart + m)%period][leg], -1);
+        pc->addStageCourse(leg, coursePattern[(period - patternStart + m)%period][leg], -1);
+    }
+
+    bool classHeader = false;
+    auto showClassHeader = [&gdi, pc, &classHeader]() {
+      if (!classHeader) {
+        gdi.dropLine();
+        gdi.addString("", boldText, L"Varningar i X#" + pc->getName()).setColor(colorDarkRed);
+        classHeader = true;
+      }
+    };
+
+    oAbstractRunner *missingBib = nullptr;
+    vector<pair<int, pTeam>> teamBibs;
+    vector<pTeam> clsTeam;
+    oe.getTeams(pc->getId(), clsTeam, false);
+    for (pTeam t : clsTeam) {
+      const wstring &b = t->getBib();
+      wstring pre, post;
+      int iBib = extractAnyNumber(b, pre, post);
+      if (iBib > 0) {
+        teamBibs.emplace_back(iBib, t);
+        t->setStartNo(iBib, oBase::ChangeType::Update);
+        t->synchronize(true);
+        for (int leg = 0; leg < t->getNumRunners(); leg++) {
+          pRunner tr = t->getRunner(leg);
+          if (tr) {
+            tr->setStartNo(iBib, oBase::ChangeType::Update);
+            tr->synchronize(true);
+          }
+        }
+      }
+      else {
+        showClassHeader();
+        gdi.addString("", 0, L"Lag utan nummerlapp: X#" + t->getName());
+      }
+    }
+    sort(teamBibs.begin(), teamBibs.end());
+
+    auto getNameAndBib = [](pTeam t) {
+      return t->getName() + L"/" + t->getBib();
+    };
+
+    for (int j = 1; j < teamBibs.size(); j++) {
+      if (teamBibs[j - 1].first < teamBibs[j].first - 1) {
+        showClassHeader();
+        gdi.addString("", 0, L"Saknat lag mellan X och Y#" +
+                               getNameAndBib(teamBibs[j - 1].second) + L"#" +
+                               getNameAndBib(teamBibs[j].second));
+      }
+      else if (teamBibs[j - 1].first == teamBibs[j].first) {
+        showClassHeader();
+        gdi.addString("", 0, L"Duplicerad nummerlapp: X, Y#" + 
+                               getNameAndBib(teamBibs[j - 1].second) + L"#" +
+                               getNameAndBib(teamBibs[j].second));
+      }
     }
   }
 }

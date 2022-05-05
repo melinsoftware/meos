@@ -75,12 +75,15 @@ public:
 
   void setMeasuredVoltage(int miliVolt) { this->miliVolt = miliVolt; }
   wstring getCardVoltage() const;
+  static wstring getCardVoltage(int miliVolt);
+
   enum class BatteryStatus {
     OK,
     Warning,
     Bad
   };
   BatteryStatus isCriticalCardVoltage() const;
+  static BatteryStatus isCriticalCardVoltage(int miliVolt);
 
   static const shared_ptr<Table> &getTable(oEvent *oe);
 

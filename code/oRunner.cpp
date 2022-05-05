@@ -5078,7 +5078,7 @@ void oRunner::printSplits(gdioutput& gdi) const {
     auto stat = getCard()->isCriticalCardVoltage();
     wstring warning;
     if (stat == oCard::BatteryStatus::Bad)
-      warning = lang.tl("Replace");
+      warning = lang.tl("Replace[battery]");
     else if (stat == oCard::BatteryStatus::Warning)
       warning = lang.tl("Low");
     else
@@ -5718,15 +5718,18 @@ int oRunner::getMissedTime(int ctrlNo) const {
     return -1;
 }
 
-wstring oRunner::getMissedTimeS() const
-{
+int oRunner::getMissedTime() const {
   setupRunnerStatistics();
   int t = 0;
-  for (size_t k = 0; k<tMissedTime.size(); k++)
-    if (tMissedTime[k]>0)
+  for (size_t k = 0; k < tMissedTime.size(); k++) {
+    if (tMissedTime[k] > 0)
       t += tMissedTime[k];
+  }
+  return t;
+}
 
-  return getTimeMS(t);
+wstring oRunner::getMissedTimeS() const {
+  return getTimeMS(getMissedTime());
 }
 
 wstring oRunner::getMissedTimeS(int ctrlNo) const
@@ -6888,4 +6891,26 @@ int oRunner::getStartGroup(bool useTmpStartGroup) const {
 
 void oRunner::setStartGroup(int sg) {
   getDI().setInt("StartGroup", sg);
+}
+
+bool oAbstractRunner::isStatusOK(bool computed) const {
+  RunnerStatus st = computed ? getStatusComputed() : getStatus();
+  if (st == StatusOK)
+    return true;
+  else if (st == StatusOutOfCompetition || st == StatusNoTiming) {
+    int rt = getRunningTime(computed);
+    return rt > 0;
+  }
+  return false;
+}
+
+bool oAbstractRunner::isStatusUnknown(bool computed) const {
+  RunnerStatus st = computed ? getStatusComputed() : getStatus();
+  if (st == StatusUnknown)
+    return true;
+  else if (st == StatusOutOfCompetition || st == StatusNoTiming) {
+    int rt = getRunningTime(computed);
+    return rt == 0;
+  }
+  return false;
 }

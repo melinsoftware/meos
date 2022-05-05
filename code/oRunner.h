@@ -396,6 +396,13 @@ public:
 
   RunnerStatus getStatusComputed() const { return tComputedStatus != StatusUnknown ? tComputedStatus : tStatus; }
   virtual RunnerStatus getStatus() const { return tStatus;}
+  
+  /** Status OK, including NoTiming/OutOfCompetition*/
+  bool isStatusOK(bool computed) const;
+
+  /** Status unknown, including NoTiming/OutOfCompetition*/
+  bool isStatusUnknown(bool computed) const;
+
   inline bool statusOK(bool computed) const {return (computed ? getStatusComputed() : tStatus) == StatusOK;}
   inline bool prelStatusOK(bool computed, bool includeOutsideCompetition) const {
     bool ok = statusOK(computed) || (tStatus == StatusUnknown && getRunningTime(false) > 0);
@@ -786,6 +793,7 @@ public:
   wstring getMissedTimeS() const;
   wstring getMissedTimeS(int ctrlNo) const;
 
+  int getMissedTime() const;
   int getMissedTime(int ctrlNo) const;
   int getLegPlace(int ctrlNo) const;
   int getLegTimeAfter(int ctrlNo) const;

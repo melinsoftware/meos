@@ -394,6 +394,10 @@ void oListParam::getCustomTitle(wchar_t *t) const
     wcscpy_s(t, 256, makeDash(title).c_str());
 }
 
+bool oListParam::filterInclude(int count, const oAbstractRunner *r) const {
+  return filterMaxPer == 0 || count <= filterMaxPer || (r != nullptr && r == alwaysInclude);
+}
+
 const wstring &oListParam::getCustomTitle(const wstring &t) const
 {
   if (!title.empty())

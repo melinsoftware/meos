@@ -788,10 +788,14 @@ void oCard::adaptTimes(int startTime) {
 }
 
 wstring oCard::getCardVoltage() const {
+  return getCardVoltage(miliVolt);
+}
+
+wstring oCard::getCardVoltage(int miliVolt) {
   if (miliVolt == 0)
     return L"";
   int vi = miliVolt / 1000;
-  int vd = (miliVolt % 1000)/10;
+  int vd = (miliVolt % 1000) / 10;
 
   wchar_t bf[64];
   swprintf_s(bf, L"%d.%02d V", vi, vd);
@@ -799,6 +803,10 @@ wstring oCard::getCardVoltage() const {
 }
 
 oCard::BatteryStatus oCard::isCriticalCardVoltage() const {
+  return isCriticalCardVoltage(miliVolt);
+}
+
+oCard::BatteryStatus oCard::isCriticalCardVoltage(int miliVolt)  {
   if (miliVolt > 0 && miliVolt < 2445)
     return BatteryStatus::Bad;
   else if (miliVolt > 0 && miliVolt <= 2710)

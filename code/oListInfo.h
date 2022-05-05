@@ -339,6 +339,7 @@ struct oListParam {
       a.useControlIdResultFrom == useControlIdResultFrom &&
       a.useControlIdResultTo == useControlIdResultTo &&
       a.filterMaxPer == filterMaxPer &&
+      a.alwaysInclude == alwaysInclude &&
       a.pageBreak == pageBreak &&
       a.showHeader == showHeader &&
       a.showInterTimes == showInterTimes &&
@@ -369,7 +370,12 @@ struct oListParam {
 
   int useControlIdResultTo;
   int useControlIdResultFrom;
+  
+  // Max number shown per class/class etc
   int filterMaxPer;
+  const oAbstractRunner *alwaysInclude = nullptr;
+  bool filterInclude(int count, const oAbstractRunner *r) const;
+
   bool pageBreak;
   bool showHeader = true;
   bool showInterTimes;

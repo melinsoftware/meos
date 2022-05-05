@@ -177,7 +177,7 @@ private:
 
   void showModeCardData(gdioutput &gdi);
 
-  void printCard(gdioutput &gdi, int cardId, SICard *crdRef, bool forPrinter) const;
+  void printCard(gdioutput &gdi, int lineBreak, int cardId, SICard *crdRef, bool forPrinter) const;
   void generateSplits(int cardId, gdioutput &gdi);
 
   static int analyzePunch(SIPunch &p, int &start, int &accTime, int &days);
@@ -223,6 +223,10 @@ private:
   void playSoundFile(const wstring& file) const;
 protected:
   void clearCompetitionData();
+
+  static wstring getPlace(const oRunner *r);
+  static wstring getTimeString(const oRunner *r);
+  static wstring getTimeAfterString(const oRunner *r);
 
 public:
 
@@ -283,6 +287,12 @@ public:
   void refillComPorts(gdioutput &gdi);
 
   bool loadPage(gdioutput &gdi);
+  void showReadoutMode(gdioutput & gdi);
+
+  void showReadoutStatus(gdioutput &gdi, const oRunner *r, 
+                         const oCard *crd, SICard *card,
+                         const wstring &missingPunchList);
+
   TabSI(oEvent *oe);
   ~TabSI(void);
 };

@@ -2053,9 +2053,21 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
   synchronize(false);
 
   if (id>1000) {
+    const wstring &preBib = getDCI().getString("Bib");
     auto res = oe->oTeamData->inputData(this, id, input,
                                     inputId, output, noUpdate);
-    applyBibs();
+    
+    const wstring &postBib = getDCI().getString("Bib");
+
+    if (preBib != postBib) {
+      wchar_t pat[32];
+      int no = oClass::extractBibPattern(postBib, pat);
+      if (no > 0)
+        setStartNo(no, ChangeType::Update);
+
+      applyBibs();
+    }
+
     evaluate(oBase::ChangeType::Update);
     return res;
   }

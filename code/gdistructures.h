@@ -32,6 +32,7 @@ class BaseInfo
 protected:
   void *extra;
   GuiHandler *handler;
+  shared_ptr<GuiHandler> managedHandler;
   bool dataString;
 public:
 
@@ -40,12 +41,16 @@ public:
   }
 
   bool hasEventHandler() const {
-    return handler != 0;
+    return handler != 0 || managedHandler;
   }
 
   bool handleEvent(gdioutput &gdi, GuiEventType type) {
     if (handler) {
       handler->handle(gdi, *this, type);
+      return true;
+    }
+    else if (managedHandler) {
+      managedHandler->handle(gdi, *this, type);
       return true;
     }
     return false;
@@ -76,7 +81,7 @@ public:
 
   GuiHandler &getHandler() const;
   BaseInfo &setHandler(const GuiHandler *h) {handler = const_cast<GuiHandler *>(h); return *this;}
-
+  BaseInfo &setHandler(const shared_ptr<GuiHandler> &h) { managedHandler = h; return *this; }
 };
 
 class RestoreInfo : public BaseInfo
