@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,11 +33,14 @@
 #include "gdifonts.h"
 #include "gdiimpl.h"
 #include "Printer.h"
+#include "image.h"
 
 #define HPDF_DLL
 #include "hpdf.h"
 
 #include "pdfwriter.h"
+
+extern Image image;
 
 wstring getMeosCompectVersion();
 
@@ -248,6 +251,22 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
     vector<PrintTextInfo> &info = pages[j].text;
 
     for (size_t k = 0; k < info.size(); k++) {
+      if ((info[k].ti.format & 0xFF) == textImage) {
+        if (info[k].ti.text.empty() || info[k].ti.text[0] != 'L')
+          throw meosException("Unsupported image");
+
+        uint64_t imgId = _wcstoui64(info[k].ti.text.c_str() + 1, nullptr, 10);
+        auto &data = image.getRawData(imgId);
+        auto image = HPDF_LoadPngImageFromMem(pdf, data.data(), data.size());
+        int imgW = info[k].ti.textRect.right - info[k].ti.textRect.left;
+        int imgH = info[k].ti.textRect.bottom - info[k].ti.textRect.top;
+
+        HPDF_Page_DrawImage(page, image, info[k].xp, h - info[k].yp, (imgW*scale), (imgH*scale));
+
+        continue;
+      }
+
+
       if (fonts.count(info[k].ti.font) == 0) {
         FontInfo fi;
         gdi.getFontInfo(info[k].ti, fi);

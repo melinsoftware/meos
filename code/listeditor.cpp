@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,6 +37,9 @@
 #include "generalresult.h"
 #include "gdiconstants.h"
 #include "autocomplete.h"
+#include "image.h"
+
+extern Image image;
 
 ListEditor::ListEditor(oEvent *oe_) {
   oe = oe_;
@@ -62,13 +65,6 @@ void ListEditor::setCurrentList(MetaList *lst) {
   delete currentList;
   currentList = lst;
 }
-/*
-void ListEditor::load(MetaList *list) {
-  currentList = list;
-  currentIndex = -1;
-  dirtyInt = true;
-  dirtyExt = true;
-}*/
 
 void ListEditor::load(const MetaListContainer &mlc, int index) {
   const MetaList &mc = mlc.getList(index);
@@ -117,6 +113,8 @@ void ListEditor::show(gdioutput &gdi) {
   gdi.fillRight();
 
   gdi.addButton("EditList", "Egenskaper", editListCB);
+  gdi.addButton("SplitPrint", "Sträcktidslista", editListCB);
+
   gdi.setCX(gdi.getCX() + gdi.scaleLength(32));
   gdi.addButton("OpenFile", "Öppna fil", editListCB);
   gdi.addButton("OpenInside", "Öppna från aktuell tävling", editListCB);
@@ -137,6 +135,21 @@ void ListEditor::show(gdioutput &gdi) {
   gdi.dropLine(2);
 
   int dx = gdi.getCX();
+  
+  if (currentList && currentList->isSplitPrintList()) {
+    gdi.setCX(bx);
+    gdi.addString("", 0, "Välj deltagare för förhandsgranskning:");
+    gdi.addSelection("Runner", 300, 300, editListCB);
+    oe->fillRunners(gdi, "Runner", false, 0);
+    if (currentRunnerId > 0 && oe->getRunner(currentRunnerId, 0))
+      gdi.selectItemByData("Runner", currentRunnerId);
+    else {
+      gdi.selectFirstItem("Runner");
+      currentRunnerId = gdi.getSelectedItem("Runner").first;
+    }
+    gdi.dropLine(2);
+  }
+  
   int dy = gdi.getCY();
 
   RECT rc;
@@ -156,6 +169,7 @@ void ListEditor::show(gdioutput &gdi) {
   makeDirty(gdi, NoTouch, NoTouch);
   if (!currentList) {
     gdi.disableInput("EditList");
+    gdi.disableInput("SplitPrint");
     gdi.disableInput("SaveFile");
     gdi.disableInput("SaveFileCopy", true);
     gdi.disableInput("SaveInside");
@@ -223,8 +237,17 @@ void ListEditor::show(gdioutput &gdi) {
   gdi.addButton("AddLine3", "Lägg till rad", editListCB);
 
   gdi.setRestorePoint("EditList");
+  renderListPreview(gdi);
+  gdi.refresh();
+}
 
+void ListEditor::renderListPreview(gdioutput &gdi) {
   gdi.dropLine(2);
+  gdi.fillDown();
+  RECT rc;
+  pRunner splitPrintR = nullptr;
+  if (currentList->isSplitPrintList() && currentRunnerId)
+    splitPrintR = oe->getRunner(currentRunnerId, 0);
 
   oListInfo li;
   oListParam par;
@@ -232,30 +255,59 @@ void ListEditor::show(gdioutput &gdi) {
   par.splitAnalysis = true;
   par.setLegNumberCoded(-1);
   par.inputNumber = 0;
-  gdi.fillDown();
 
+  if (splitPrintR) {
+    par.selection.insert(splitPrintR->getClassId(true));
+    par.showInterTimes = false;
+    par.setLegNumberCoded(splitPrintR->getLegNumber());
+    par.filterMaxPer = 3;
+    par.alwaysInclude = splitPrintR;
+    par.showHeader = false;
+  }
+  double originalScale = 0;
   try {
-    currentList->interpret(oe, gdi, par, li);
     rc.left = gdi.getCX();
-    rc.right = gdi.getCX() + gdi.getWidth() - 20;
+    rc.right = gdi.getCX() + gdi.getWidth() - gdi.scaleLength(20);
     rc.top = gdi.getCY();
     rc.bottom = rc.top + 4;
-
     gdi.addRectangle(rc, colorDarkGreen, false, false);
     gdi.dropLine();
 
-    oe->generateList(gdi, false, li, true);
+    currentList->interpret(oe, gdi, par, li);
+    
+    if (splitPrintR) {
+      auto& sp = *li.getSplitPrintInfo();
+      li.getParam().filterMaxPer = sp.numClassResults;
+
+      const bool wideFormat = oe->getPropertyInt("WideSplitFormat", 0) == 1;
+      if (!wideFormat)
+        li.shrinkSize();
+
+      rc.left = gdi.getCX();
+      rc.top = gdi.getCY();
+      gdi.setCX(gdi.getCX() + gdi.scaleLength(10));
+      gdi.dropLine();
+
+      splitPrintR->printSplits(gdi, &li);
+
+      gdi.dropLine();
+      rc.right = rc.left + gdi.scaleLength(250);
+      rc.bottom = gdi.getHeight();
+      gdi.addRectangle(rc, GDICOLOR::colorLightYellow);
+      gdi.refresh();
+    }
+    else {
+      oe->generateList(gdi, false, li, true);
+    }
   }
-  catch (meosException &ex) {
+  catch (meosException& ex) {
     gdi.addString("", 1, "Listan kan inte visas").setColor(colorRed);
     gdi.addString("", 0, ex.wwhat());
   }
-  catch (std::exception &ex) {
+  catch (std::exception& ex) {
     gdi.addString("", 1, "Listan kan inte visas").setColor(colorRed);
     gdi.addString("", 0, ex.what());
   }
-
-  gdi.refresh();
 }
 
 int editListCB(gdioutput *gdi, int type, void *data)
@@ -274,13 +326,25 @@ void ListEditor::showLine(gdioutput &gdi, const vector<MetaListPost> &line, int 
     addButton(gdi, line[k], gdi.getCX(), gdi.getCY(), ix, k);
   }
 
-  gdi.addButton("AddPost" + itos(ix), "Lägg till ny", editListCB);
+  gdi.addButton("AddPost", "Lägg till ny", editListCB).setExtra(ix);
+  gdi.addButton("AddImage", "Lägg till bild", editListCB).setExtra(ix);
 }
 
 ButtonInfo &ListEditor::addButton(gdioutput &gdi, const MetaListPost &mlp, int x, int y, int lineIx, int ix) const {
   wstring cap;
   if (mlp.getType() == L"String") {
     cap = L"Text: X#" + mlp.getText();
+  }
+  else if (mlp.getType() == L"Image") {
+    if (mlp.getText().empty())
+      cap = L"Image";
+    else {
+      uint64_t imgId = mlp.getImageId();
+      if (!image.hasImage(imgId))
+        cap = L"Error";
+      else
+        cap = image.getFileName(imgId);
+    }
   }
   else {
     const wstring &text = mlp.getText();
@@ -364,6 +428,26 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     if (ii.id == "Text" && ii.text != lastShownExampleText) {
       showExample(gdi);
     }
+    else if (ii.id == "ImgWidth" || ii.id == "ImgHeight") {
+      if (gdi.isChecked("PreserveAspectRatio")) {
+        auto sel = gdi.getSelectedItem("Image");
+        if (sel.second && sel.first >= 0) {
+          auto imgId = image.getIdFromEnumeration(sel.first);
+          int h = image.getHeight(imgId);
+          int w = image.getWidth(imgId);
+          int ww, hh;
+          if (ii.id == "ImgWidth") {
+            ww = _wtoi(ii.text.c_str());
+            hh = (ww * h + w/2) / w;
+            gdi.setText("ImgHeight", hh);
+          } else {
+            hh = _wtoi(ii.text.c_str());
+            ww = (hh * w + h / 2) / h;
+            gdi.setText("ImgWidth", ww);
+          }
+        }
+      }
+    }
   }
   else if (type == GUI_BUTTON) {
     ButtonInfo bi = dynamic_cast<ButtonInfo &>(data);
@@ -376,66 +460,64 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         biSrc.setExtra(res);
         oe->setProperty("Colors", c);
       }
-      /*CHOOSECOLOR cc;
-      memset(&cc, 0, sizeof(cc));
-      cc.lStructSize = sizeof(cc);
-      cc.hwndOwner = gdi.getHWND();
-      cc.rgbResult = COLORREF(bi.getExtra());
-      if (GDICOLOR((int)bi.getExtra()) != colorDefault)
-        cc.Flags |= CC_RGBINIT;
-
-      COLORREF staticColor[16];
-      memset(staticColor, 0, 16*sizeof(COLORREF));
-
-      const string &c = oe->getPropertyString("Colors", "");
-      const char *end = c.c_str() + c.length();
-      const char * pEnd = c.c_str();
-      int pix = 0;
-      while(pEnd < end && pix < 16) {
-        staticColor[pix++] = strtol(pEnd,(char **)&pEnd,16);
-      }
-
-      cc.lpCustColors = staticColor;
-      if (ChooseColor(&cc)) {
-        data.setExtra((int)cc.rgbResult);
-
-        wstring co;
-        for (ix = 0; ix < 16; ix++) {
-          wchar_t bf[16];
-          swprintf_s(bf, L"%x ", staticColor[ix]);
-          co += bf;
-        }
-        oe->setProperty("Colors", co);
-      }*/
     }
-    if ( bi.id.substr(0, 8) == "EditPost" ) {
+    else if (bi.id == "NewImage") {
+      vector<pair<wstring, wstring>> ext = { make_pair(L">Bilder", L"*.png") };
+      wstring fn = gdi.browseForOpen(ext, L"png");
+      if (!fn.empty()) {
+        bool transparent = gdi.isChecked("TransparentWhite");
+
+        uint64_t imgId = image.loadFromFile(fn, transparent ? Image::ImageMethod::WhiteTransparent : Image::ImageMethod::Default);
+        int selIx = selectImage(gdi, imgId);
+        previewImage(gdi, selIx);
+        updateImageStatus(gdi, selIx);
+
+      }
+    }
+    else if (bi.id == "TransparentWhite") {
+      bool transparent = gdi.isChecked("TransparentWhite");
+      int data = gdi.getSelectedItem("Image").first;
+
+      if (data >= 0) {
+        uint64_t imgId = image.getIdFromEnumeration(data);
+        image.reloadImage(imgId, transparent ? Image::ImageMethod::WhiteTransparent : Image::ImageMethod::Default);
+        gdi.refresh();
+      }
+    }
+    else if ( bi.id.substr(0, 8) == "EditPost" ) {
       if (gdi.hasData("CurrentId")) {
-        DWORD id;
-        gdi.getData("CurrentId", id);
-        getPosFromId(id, groupIx, lineIx, ix);
-        MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
-        saveListPost(gdi, mlp);
+        checkUnsaved(gdi);
       }
       int id = atoi(bi.id.substr(8).c_str());
       getPosFromId(id, groupIx, lineIx, ix);
       MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
-      editListPost(gdi, mlp, id);
+      if (mlp.getTypeRaw() == EPostType::lImage)
+        editImage(gdi, mlp, id);
+      else
+        editListPost(gdi, mlp, id);
     }
-    else if ( bi.id.substr(0, 7) == "AddPost" ) {
+    else if (bi.id == "AddPost" || bi.id == "AddImage") {
       checkUnsaved(gdi);
       gdi.restore("EditList", true);
       gdi.pushX();
-      lineIx = atoi(bi.id.substr(7).c_str());
+      lineIx = bi.getExtraInt();
       groupIx = (lineIx / 100) - 1;
       int ixOutput = 0;
       MetaListPost &mlp = currentList->addNew(groupIx, lineIx % 100, ixOutput);
-      int xp = bi.xp;
-      int yp = bi.yp;
+      if (bi.id == "AddImage")
+        mlp.setType(EPostType::lImage);
+      
+      auto& post = dynamic_cast<ButtonInfo&>(gdi.getBaseInfo("AddPost", lineIx));
+
+      int xp = post.xp;
+      int yp = post.yp;
       ButtonInfo &nb = addButton(gdi, mlp, xp, yp, lineIx, ixOutput);
-        //gdi.addButton(xp, yp, string("Foo"), string("FoooBar"), 0);
       int w, h;
       nb.getDimension(gdi, w, h);
-      biSrc.moveButton(gdi, xp+w, yp);
+      post.moveButton(gdi, xp + w, yp);
+      int w2, h2;
+      post.getDimension(gdi, w2, h2);
+      dynamic_cast<ButtonInfo&>(gdi.getBaseInfo("AddImage", lineIx)).moveButton(gdi, xp + w + w2, yp);
       gdi.popX();
       gdi.setRestorePoint("EditList");
       makeDirty(gdi, MakeDirty, MakeDirty);
@@ -463,9 +545,13 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     else if (bi.id == "UseLeg") {
       gdi.setInputStatus("Leg", gdi.isChecked(bi.id));
     }
+    else if (bi.id == "UseForSplit") {
+      statusSplitPrint(gdi, gdi.isChecked(bi.id));
+    }
     else if (bi.id == "Cancel") {
       gdi.restore("EditList");
       gdi.enableInput("EditList");
+      gdi.enableInput("SplitPrint");
     }
     else if (bi.id == "CancelNew") {
       gdi.clearPage(false);
@@ -473,26 +559,35 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       show(gdi);
     }
     else if (bi.id == "Apply" || bi.id == "MoveLeft" || bi.id == "MoveRight") {
+      bool image = gdi.hasData("IsEditingImage");
       DWORD id;
       gdi.getData("CurrentId", id);
       getPosFromId(id, groupIx, lineIx, ix);
 
-      if (bi.id == "MoveLeft") 
+      if (bi.id == "MoveLeft") {
         currentList->moveOnRow(groupIx, lineIx, ix, -1);
-      else if (bi.id == "MoveRight")
+        id--;
+      }
+      else if (bi.id == "MoveRight") {
         currentList->moveOnRow(groupIx, lineIx, ix, 1);
-
+        id++;
+      }
+      gdi.setData("CurrentId", id);
       MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
 
-      bool force = saveListPost(gdi, mlp);
+      bool force = checkUnsaved(gdi);//saveListPost(gdi, mlp);
 
       if (!gdi.hasData("NoRedraw") || force) {
         gdi.restore("BeginListEdit", false);
         show(gdi);
       }
 
-      if (bi.id != "Apply")
-        editListPost(gdi, mlp, bi.getExtraInt());
+      if (bi.id != "Apply") {
+        if (image)
+          editImage(gdi, mlp, bi.getExtraInt());
+        else
+          editListPost(gdi, mlp, bi.getExtraInt());
+      }
     }
     else if (bi.id == "ApplyListProp") {
       wstring name = gdi.getText("Name");
@@ -532,7 +627,6 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
 
       list.setSubFilters(subFiltersOut);
 
-
       for (int k = 0; k < 4; k++) {
         list.setFontFace(k, gdi.getText("Font" + itos(k)),
                             gdi.getTextNo("FontFactor" + itos(k)));
@@ -540,7 +634,6 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         int f = gdi.getTextNo("ExtraSpace" + itos(k));
         list.setExtraSpace(k, f);
       }
-
 
       list.setSupportFromTo(gdi.isChecked("SupportFrom"), gdi.isChecked("SupportTo"));
       list.setSupportLegSelection(gdi.isChecked("SupportLegSelection"));
@@ -552,8 +645,31 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         show(gdi);
       }
     }
+    else if (bi.id == "ApplySplitList") {
+      MetaList& list = *currentList;
+      if (!gdi.isChecked("UseForSplit"))
+        list.setSplitPrintInfo(nullptr);
+      else {
+        auto spInfo = make_shared<SplitPrintListInfo>();
+        spInfo->includeSplitTimes = gdi.isChecked("Split");
+        spInfo->withSpeed = gdi.isChecked("Speed");
+        spInfo->withResult = gdi.isChecked("Result");
+        spInfo->withAnalysis = gdi.isChecked("Analysis");
+        list.setSplitPrintInfo(spInfo);
+      }
+
+      makeDirty(gdi, MakeDirty, MakeDirty);
+
+      if (!gdi.hasData("NoRedraw")) {
+        gdi.clearPage(false);
+        show(gdi);
+      }
+    }
     else if (bi.id == "EditList") {
       editListProp(gdi, false);
+    }
+    else if (bi.id == "SplitPrint") {
+      splitPrintList(gdi);
     }
     else if (bi.id == "NewList") {
       if (!checkSave(gdi))
@@ -645,7 +761,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
 
       gdi.pushX();
       vector< pair<wstring, size_t> > lists;
-      oe->getListContainer().getLists(lists, true, false, false);
+      oe->getListContainer().getLists(lists, true, false, false, false);
       
       gdi.fillRight();
       gdi.addSelection("OpenList", 250, 400, editListCB, L"Välj lista:");
@@ -691,6 +807,11 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       savedFileName.clear();
       oe->synchronize(false);
 
+      set<uint64_t> imgUsed;
+      currentList->getUsedImages(imgUsed);
+      for (uint64_t id : imgUsed)
+        oe->saveImage(id);
+
       if (currentIndex != -1) {
         oe->getListContainer().saveList(currentIndex, *currentList);
       }
@@ -733,15 +854,6 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       }
       return 0;
     }
-    /*else if (bi.id == "BrowseFont") {
-      InitCommonControls();
-      CHOOSEFONT cf;
-      memset(&cf, 0, sizeof(cf));
-      cf.lStructSize = sizeof(cf);
-      cf.hwndOwner = gdi.getHWND();
-      ChooseFont(&cf);
-      EnumFontFamilies(
-    }*/
   }
   else if (type == GUI_LISTBOX) {
     ListBoxInfo &lbi = dynamic_cast<ListBoxInfo &>(data);
@@ -757,6 +869,10 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       }
       else
         gdi.setText("AlignText", L"");
+    }
+    else if (lbi.id == "Image") {
+      previewImage(gdi, lbi.data);
+      updateImageStatus(gdi, lbi.data);
     }
     else if (lbi.id == "Type") {
       updateType(lbi.data, gdi);
@@ -783,6 +899,12 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     }
     else if (lbi.id == "OpenList") {
       enableOpen(gdi);
+    }
+    else if (lbi.id == "Runner") {
+      currentRunnerId = lbi.getDataInt();
+      gdi.restore("EditList", false);
+      renderListPreview(gdi);
+      gdi.refresh();
     }
   }
   else if (type==GUI_CLEAR) {
@@ -845,6 +967,26 @@ bool ListEditor::saveListPost(gdioutput &gdi, MetaListPost &mlp) {
   return force;
 }
 
+bool ListEditor::saveImage(gdioutput& gdi, MetaListPost& mlp) {
+  ListBoxInfo lbi;
+  int selIx = gdi.getSelectedItem("Image").first;
+
+  if (selIx >= 0) {
+    auto imgId = image.getIdFromEnumeration(selIx);
+    mlp.setText(itow(imgId));
+    mlp.setImageDimension(gdi.getTextNo("ImgWidth"), gdi.getTextNo("ImgHeight"));
+    mlp.setImageOffset(gdi.getTextNo("ImgOffsetX"), gdi.getTextNo("ImgOffsetY"));
+    mlp.setImageStyle(gdi.isChecked("TransparentWhite") ? 1 : 0);
+    mlp.imageUnderText(gdi.isChecked("ImageUnderText"));
+  }
+  else {
+    mlp.setText(L"");
+  }
+  makeDirty(gdi, MakeDirty, MakeDirty);
+
+  return false;
+}
+
 int ListEditor::readLeg(gdioutput &gdi, EPostType newType, bool checkError) const {
   if (MetaList::isResultModuleOutput(newType)) {
     int leg = gdi.getTextNo("Leg");
@@ -862,6 +1004,13 @@ int ListEditor::readLeg(gdioutput &gdi, EPostType newType, bool checkError) cons
       return leg - 1;
     else
       return -1;
+  }
+  else if (MetaList::isAllLegType(newType)) {
+    int leg = gdi.getSelectedItem("LegSel").first;
+    if (leg >= 0)
+      return leg - 1; // -1 -> automatic
+    else 
+      return -2; // All legs
   }
   else {
     if (gdi.isChecked("UseLeg")) {
@@ -899,7 +1048,7 @@ void ListEditor::updateType(int iType, gdioutput & gdi) {
     if (gdi.getText("Leg").empty())
       gdi.setText("Leg", L"0");
   }
-  else if (MetaList::isAllStageType(type)) {
+  else if (MetaList::isAllStageType(type) || MetaList::isAllLegType(type)) {
 
   }
   else {
@@ -915,23 +1064,36 @@ void ListEditor::updateType(int iType, gdioutput & gdi) {
   showExample(gdi, type);
 }
 
-void ListEditor::checkUnsaved(gdioutput &gdi) {
- if (gdi.hasData("IsEditing")) {
-   if (gdi.hasData("CurrentId")) {
-     DWORD id;
-     gdi.getData("CurrentId", id);
-     int groupIx, lineIx, ix;
-     getPosFromId(id, groupIx, lineIx, ix);
-     MetaListPost &mlp = currentList->getMLP(groupIx, lineIx, ix);
-     saveListPost(gdi, mlp);
-   }
+bool ListEditor::checkUnsaved(gdioutput& gdi) {
+  if (gdi.hasData("IsEditing")) {
+    DWORD id;
+    gdi.getData("CurrentId", id);
+    int groupIx, lineIx, ix;
+    getPosFromId(id, groupIx, lineIx, ix);
+    MetaListPost& mlp = currentList->getMLP(groupIx, lineIx, ix);
+    return saveListPost(gdi, mlp);
   }
-  if (gdi.hasData("IsEditingList")) {
+  else if (gdi.hasData("IsEditingImage")) {
+    DWORD id;
+    gdi.getData("CurrentId", id);
+    int groupIx, lineIx, ix;
+    getPosFromId(id, groupIx, lineIx, ix);
+    MetaListPost& mlp = currentList->getMLP(groupIx, lineIx, ix);
+    return saveImage(gdi, mlp);
+  }
+  else if (gdi.hasData("IsEditingList")) {
     if (gdi.isInputChanged("")) {
       gdi.setData("NoRedraw", 1);
       gdi.sendCtrlMessage("ApplyListProp");
     }
   }
+  else if (gdi.hasData("IsSplitListEdit")) {
+    if (gdi.isInputChanged("")) {
+      gdi.setData("NoRedraw", 1);
+      gdi.sendCtrlMessage("ApplySplitList");
+    }
+  }
+  return false;
 }
 
 void ListEditor::updateAlign(gdioutput &gdi, int val) {
@@ -949,38 +1111,17 @@ void ListEditor::updateAlign(gdioutput &gdi, int val) {
 }
 
 void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
-  checkUnsaved(gdi);
-  gdi.restore("EditList", false);
-  gdi.dropLine();
-
-  gdi.enableInput("EditList");
   int groupIx, lineIx, ix;
   getPosFromId(id, groupIx, lineIx, ix);
-  const bool hasResultModule = currentList && !currentList->getResultModule().empty();
-  int x1 = gdi.getCX();
-  int y1 = gdi.getCY();
-  int margin = gdi.scaleLength(10);
-  gdi.setCX(x1+margin);
 
-  gdi.dropLine();
-  gdi.pushX();
-  gdi.fillRight();
-  gdi.addString("", boldLarge, "Listpost").setColor(colorDarkGrey);
-  gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
+  int x1, y1, boxY;
+  editDlgStart(gdi, id, "Listpost", x1, y1, boxY);
 
-  gdi.addButton("MoveLeft", "<< Flytta vänster", editListCB).setExtra(id-1);
-  if (ix == 0)
-    gdi.setInputStatus("MoveLeft", false);
-  
-  gdi.addButton("MoveRight", "Flytta höger >>", editListCB).setExtra(id+1);
-  if (ix + 1 == currentList->getNumPostsOnLine(groupIx, lineIx))
-    gdi.setInputStatus("MoveRight", false);
-
-  gdi.dropLine(1);
-  int boxY = gdi.getCY();
-  gdi.dropLine(2);
+  int maxX = gdi.getCX();
 
   gdi.popX();
+  const bool hasResultModule = currentList && !currentList->getResultModule().empty();
+
   vector< pair<wstring, size_t> > types;
   int currentType;
   mlp.getTypes(types, currentType);
@@ -1039,22 +1180,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   int leg = mlp.getLeg();
 
   legStageTypeIndex(gdi, storedType, leg);
-  /*gdi.addCheckbox(xpUseLeg, ypUseLeg, "UseLeg", getIndexDescription(storedType), editListCB, leg != -1);
-  //gdi.dropLine(-0.2);
-  int dx = gdi.scaleLength(250);
-  int dy = -gdi.getLineHeight() / 5;
-
-  //gdi.setCX(gdi.getCX() + gdi.scaleLength(100));
-  if (MetaList::isResultModuleOutput(storedType))
-    gdi.addInput(xpUseLeg + dx, ypUseLeg + dy, "Leg", leg >= 0 ? itow(leg) : L"0", 4);
-  else
-    gdi.addInput(xpUseLeg + dx, ypUseLeg + dy, "Leg", leg >= 0 ? itow(leg + 1) : L"", 4);
-
-  gdi.setInputStatus("Leg", leg != -1);
-  */
   if (MetaList::isResultModuleOutput(storedType)) {
-    //gdi.check("UseLeg", true);
-    //gdi.disableInput("UseLeg");
     if (gdi.hasWidget("UseResultModule")) {
       gdi.check("UseResultModule", true);
       gdi.disableInput("UseResultModule");
@@ -1083,9 +1209,6 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.dropLine(1.9);
   gdi.popX();
   gdi.fillRight();
-
- 
-
   gdi.dropLine(2);
   
   int maxY = gdi.getCY();
@@ -1115,7 +1238,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   
 
   gdi.addInput("MinIndent", itow(mlp.getMinimalIndent()), 7, 0, L"Justering i sidled:");
-  int maxX = gdi.getCX();
+  maxX = max(maxX, gdi.getCX());
   gdi.popX();
   gdi.dropLine(3);
   vector< pair<wstring, size_t> > fonts;
@@ -1136,8 +1259,6 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.addItem("TextAdjust", lang.tl("Centrera"), textCenter);
   gdi.selectItemByData("TextAdjust", mlp.getTextAdjustNum());
 
-  //gdi.popX();
-  //gdi.dropLine(2);
   gdi.dropLine();
   gdi.addButton("Color", "Färg...", editListCB).setExtra(mlp.getColorValue());
 
@@ -1188,6 +1309,166 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
 
   updateAlign(gdi, val);
   gdi.refresh();
+}
+
+void ListEditor::editDlgStart(gdioutput& gdi, int id, const char *title, int &x1, int &y1, int &boxY) {
+  int groupIx, lineIx, ix;
+  getPosFromId(id, groupIx, lineIx, ix);
+
+  checkUnsaved(gdi);
+  gdi.restore("EditList", false);
+  gdi.dropLine();
+  gdi.enableInput("EditList");
+  gdi.enableInput("SplitPrint");
+  
+  x1 = gdi.getCX();
+  y1 = gdi.getCY();
+  int margin = gdi.scaleLength(10);
+  gdi.setCX(x1 + margin);
+
+  gdi.dropLine();
+  gdi.pushX();
+  gdi.fillRight();
+  gdi.addString("", boldLarge, title).setColor(colorDarkGrey);
+  gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
+
+  gdi.addButton("MoveLeft", "<< Flytta vänster", editListCB).setExtra(id - 1);
+  if (ix == 0)
+    gdi.setInputStatus("MoveLeft", false);
+
+  gdi.addButton("MoveRight", "Flytta höger >>", editListCB).setExtra(id + 1);
+  if (ix + 1 == currentList->getNumPostsOnLine(groupIx, lineIx))
+    gdi.setInputStatus("MoveRight", false);
+
+  gdi.dropLine(1);
+  boxY = gdi.getCY();
+  gdi.dropLine(2);
+}
+
+void ListEditor::editImage(gdioutput& gdi, const MetaListPost& mlp, int id) {
+  int groupIx, lineIx, ix;
+  getPosFromId(id, groupIx, lineIx, ix);
+
+  uint64_t imgId = mlp.getImageId();
+
+  int x1, y1, boxY;
+  editDlgStart(gdi, id, "Bild", x1, y1, boxY);
+
+  int maxX = gdi.getCX();
+  gdi.popX();
+  gdi.fillRight();
+  gdi.dropLine(1);
+  
+  gdi.addSelection("Image", 200, 200, editListCB, L"Välj bild:", L"Välj bland befintliga bilder");
+
+  int selIx = selectImage(gdi, imgId);
+
+  gdi.dropLine(1);
+  gdi.addButton("NewImage", "Ny bild...", editListCB);
+
+  int maxY = 0;
+  maxX = max(maxX, gdi.getCX());
+  int innerBoxLowerCX = maxX + gdi.scaleLength(6);
+  maxX += gdi.scaleLength(12);
+
+  gdi.popX();
+  gdi.dropLine(3);
+
+  wstring wh, ww, xoff, yoff;
+  bool keepRatio = true;
+  if (imgId) {
+    int h = mlp.getImageHeight();
+    int w = mlp.getImageWidth();
+    wh = itow(h);
+    ww = itow(w);
+
+    int hImg = image.getHeight(imgId);
+    int wImg = image.getWidth(imgId);
+
+    int hComputed = (w * hImg + wImg / 2) / wImg;
+    int wComputed = (h * wImg + hImg / 2) / hImg;
+
+    keepRatio = std::abs(h - hComputed) <= 1 || std::abs(w - wComputed) <= 1;
+
+    xoff = itow(mlp.getImageOffsetX());
+    yoff = itow(mlp.getImageOffsetY());
+  }
+
+  gdi.addInput("ImgWidth", ww, 5, editListCB, L"Bredd:");
+  gdi.addInput("ImgHeight", wh, 5, editListCB, L"Höjd:");
+  gdi.dropLine();
+  gdi.addCheckbox("PreserveAspectRatio", "Bevara höjd/bredd-relationen", nullptr, keepRatio);
+  gdi.popX();
+  gdi.dropLine(2);
+
+  gdi.dropLine(1);
+  gdi.addString("", 0, "Förskjutning:");
+  gdi.dropLine(-1);
+
+  gdi.addInput("ImgOffsetX", xoff, 5, editListCB, L"Horizontell:");
+  gdi.addInput("ImgOffsetY", yoff, 5, editListCB, L"Vertikal:");
+
+  gdi.popX();
+  gdi.dropLine(3);
+
+  gdi.addCheckbox("TransparentWhite", "Tolka vitt som genomskinligt", editListCB, mlp.getImageStyle() == 1);
+  gdi.addCheckbox("ImageUnderText", "Bild under text", editListCB, mlp.imageUnderText());
+
+  bool hasImg = imgId != 0;
+  gdi.setInputStatus("ImgWidth", hasImg);
+  gdi.setInputStatus("ImgHeight", hasImg);
+  gdi.setInputStatus("ImgOffsetX", hasImg);
+  gdi.setInputStatus("ImgOffsetY", hasImg);
+
+  gdi.setInputStatus("PreserveAspectRatio", hasImg);
+
+  gdi.dropLine(3);
+  gdi.setData("CurrentId", id);
+  gdi.addButton("Remove", "Radera", editListCB, "Ta bort listposten");
+  gdi.addButton("Cancel", "Avbryt", editListCB).setCancel();
+
+  gdi.updatePos(gdi.getCX(), gdi.getCY(), gdi.scaleLength(20), 0);
+  gdi.addButton("Apply", "OK", editListCB).setDefault();
+
+  gdi.dropLine(1);
+  maxY = max(maxY, gdi.getCY());
+  maxX = max(gdi.getCX(), maxX);
+
+  RECT rc;
+
+  rc.top = y1;
+  rc.left = x1;
+  rc.right = maxX + gdi.scaleLength(6);
+  rc.bottom = maxY + gdi.scaleLength(6) + gdi.getLineHeight();
+
+  gdi.addRectangle(rc, colorLightBlue, true, false);
+
+  gdi.setData("IsEditingImage", 1);
+  
+  gdi.scrollToBottom();
+  gdi.setCX(rc.right + gdi.scaleLength(10));
+  gdi.setCY(boxY);
+
+  if (imgId != 0) {
+    previewImage(gdi, selIx);
+  }
+  else
+    gdi.refresh();
+}
+
+int ListEditor::selectImage(gdioutput &gdi, uint64_t imgId) {
+  vector<pair<wstring, size_t>> img;
+  image.enumerateImages(img);
+  img.emplace(img.begin(), lang.tl("Ingen[bild]"), -2);
+  gdi.addItem("Image", img);
+
+  int ix = image.getEnumerationIxFromId(imgId);
+  if (ix >= 0)
+    gdi.selectItemByData("Image", ix);
+  else
+    gdi.selectFirstItem("Image");
+
+  return ix;
 }
 
 void ListEditor::showExample(gdioutput &gdi, EPostType type) {
@@ -1275,6 +1556,46 @@ void ListEditor::showExample(gdioutput &gdi, const MetaListPost &mlp) {
   gdi.addRectangle(rrInner, color, true);
 }
 
+void ListEditor::previewImage(gdioutput& gdi, int data) const {
+  gdi.restoreNoUpdate("image_preview");
+  gdi.setRestorePoint("image_preview");
+  if (data >= 0) {
+    auto imgId = image.getIdFromEnumeration(data);
+    oe->loadImage(imgId);
+    bool transparent = gdi.isChecked("TransparentWhite");
+    image.reloadImage(imgId, transparent ? Image::ImageMethod::WhiteTransparent : Image::ImageMethod::Default);
+    gdi.addImage("", gdi.getCY(), gdi.getCX(), 0, itow(imgId));
+  }
+  gdi.refreshFast();
+}
+
+void ListEditor::updateImageStatus(gdioutput& gdi, int data) {
+  bool hasImg = int(data) >= 0;
+  gdi.setInputStatus("ImgWidth", hasImg);
+  gdi.setInputStatus("ImgHeight", hasImg);
+  gdi.setInputStatus("PreserveAspectRatio", hasImg);
+  gdi.setInputStatus("ImgOffsetX", hasImg);
+  gdi.setInputStatus("ImgOffsetY", hasImg);
+
+  if (hasImg) {
+    auto imgId = image.getIdFromEnumeration(data);
+    int h = image.getHeight(imgId);
+    int w = image.getWidth(imgId);
+    gdi.setText("ImgWidth", w);
+    gdi.setText("ImgHeight", h);
+    
+    if (gdi.getTextNo("ImgOffsetX") == 0 && gdi.getTextNo("ImgOffsetY") == 0) {
+      // Change from blank to "0"
+      gdi.setText("ImgOffsetX", 0);
+      gdi.setText("ImgOffsetY", 0);
+    }
+  }
+  else {
+    gdi.setText("ImgWidth", L"");
+    gdi.setText("ImgHeight", L"");
+  }
+}
+
 const wchar_t *ListEditor::getIndexDescription(EPostType type) {
   if (type == lResultModuleTime || type == lResultModuleTimeTeam)
     return L"Index in X[index]#OutputTimes";
@@ -1310,7 +1631,7 @@ bool ListEditor::legStageTypeIndex(gdioutput &gdi, EPostType type, int leg) {
         gdi.setText("Leg", legW);
     }
   }
-  else if (MetaList::isAllStageType(type)) {
+  else if (MetaList::isAllStageType(type) || MetaList::isAllLegType(type)) {
     if (gdi.hasWidget("UseLeg"))
       gdi.removeWidget("UseLeg");
 
@@ -1322,9 +1643,22 @@ bool ListEditor::legStageTypeIndex(gdioutput &gdi, EPostType type, int leg) {
     else
       gdi.addString("TUseLeg", ypUseLeg, xpUseLeg, 0, getIndexDescription(type));
 
-    if (!gdi.hasWidget("LegSel")) {
+    if (!gdi.hasWidget("LegSel")) 
       gdi.addSelection(xpUseLeg + dx, ypUseLeg + dy, "LegSel", 160, gdi.scaleLength(300), editListCB);
-      vector<pair<wstring, size_t>> items;
+    vector<pair<wstring, size_t>> items;
+    if (MetaList::isAllLegType(type)) {
+      items.emplace_back(lang.tl("Automatisk"), 0);
+      items.emplace_back(lang.tl("Alla sträckor"), -2);
+      for (int j = 1; j <= 50; j++) {
+        items.emplace_back(lang.tl("Sträcka X#" + itos(j)), j);
+      }
+      gdi.addItem("LegSel", items);
+      if (leg >= -1)
+        gdi.selectItemByData("LegSel", leg + 1);
+      else if (leg == -2)
+        gdi.selectItemByData("LegSel", -2);
+    }
+    else {
       items.emplace_back(lang.tl("Alla tidigare etapper"), -2);
       for (int j = 1; j < 20; j++) {
         items.emplace_back(lang.tl("Etapp X#" + itos(j)), j);
@@ -1373,6 +1707,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   if (!newList) {
     gdi.restore("EditList", false);
     gdi.disableInput("EditList");
+    gdi.disableInput("SplitPrint");
   }
 
   gdi.dropLine(0.8);
@@ -1552,6 +1887,80 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   gdi.setInputFocus("Name");
 }
 
+void ListEditor::statusSplitPrint(gdioutput& gdi, bool status) {
+  gdi.setInputStatus("Split", status);
+  gdi.setInputStatus("Speed", status);
+  gdi.setInputStatus("Result", status);
+  gdi.setInputStatus("Analysis", status);
+}
+
+void ListEditor::splitPrintList(gdioutput& gdi) {
+  checkUnsaved(gdi);
+
+  if (!currentList)
+    return;
+
+  MetaList& list = *currentList;
+
+  gdi.restore("EditList", false);
+  gdi.disableInput("EditList");
+  gdi.disableInput("SplitPrint");
+  
+  gdi.dropLine(0.8);
+
+  int x1 = gdi.getCX();
+  int y1 = gdi.getCY();
+  int margin = gdi.scaleLength(10);
+  gdi.setCX(x1 + margin);
+
+  gdi.dropLine();
+  gdi.fillDown();
+  gdi.addString("", boldLarge, "Sträcktidsutskrift").setColor(colorDarkGrey);
+  gdi.dropLine();
+  
+  gdi.fillRight();
+  gdi.pushX();
+
+  bool isSP = list.isSplitPrintList();
+  auto sp = list.getSplitPrintInfo();
+  gdi.fillDown();
+
+  gdi.addCheckbox("UseForSplit", "Använd listan för sträcktidsutskrift", editListCB, isSP);
+
+  gdi.dropLine(0.5);
+  gdi.fillRight();
+  gdi.addCheckbox("Split", "Inkludera sträcktider", nullptr, isSP ? sp->includeSplitTimes : true);
+  gdi.addCheckbox("Speed", "Inkludera tempo", nullptr, isSP ? sp->withSpeed : true);
+  gdi.addCheckbox("Result", "Inkludera individuellt resultat", nullptr, isSP ? sp->withResult : true);
+  gdi.addCheckbox("Analysis", "Inkludera bomanalys", nullptr, isSP ? sp->withAnalysis : true);
+
+  statusSplitPrint(gdi, isSP);
+
+  gdi.dropLine(0.8);
+  gdi.setCX(gdi.getCX() + 20);
+  gdi.addButton("ApplySplitList", "OK", editListCB);
+  gdi.addButton("Cancel", "Avbryt", editListCB);
+
+  gdi.dropLine(3);
+  int maxY = gdi.getCY();
+  int maxX = gdi.getCX();
+
+  gdi.fillDown();
+  gdi.popX();
+  gdi.setData("IsSplitListEdit", 1);
+
+  RECT rc;
+  rc.top = y1;
+  rc.left = x1;
+  rc.right = maxX + gdi.scaleLength(6);
+  rc.bottom = maxY;
+
+  gdi.addRectangle(rc, colorLightBlue, true);
+  
+  gdi.scrollToBottom();
+  gdi.refresh();
+}
+
 void ListEditor::makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside) {
   if (inside == MakeDirty)
     dirtyInt = true;
@@ -1575,10 +1984,10 @@ void ListEditor::makeDirty(gdioutput &gdi, DirtyFlag inside, DirtyFlag outside) 
 bool ListEditor::checkSave(gdioutput &gdi) {
   if (dirtyInt || dirtyExt) {
     gdioutput::AskAnswer answer = gdi.askCancel(L"Vill du spara ändringar?");
-    if (answer == gdioutput::AnswerCancel)
+    if (answer == gdioutput::AskAnswer::AnswerCancel)
       return false;
 
-    if (answer == gdioutput::AnswerYes) {
+    if (answer == gdioutput::AskAnswer::AnswerYes) {
       if (currentIndex >= 0)
         gdi.sendCtrlMessage("SaveInside");
       else if (gdi.sendCtrlMessage("SaveFile") == 0)

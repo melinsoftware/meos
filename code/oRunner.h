@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,6 +82,7 @@ enum SortOrder {
   CourseResult,
   CourseStartTime,
   SortByEntryTime,
+  ClubClassStartTime,
   Custom,
   SortEnumLastItem
 };
@@ -156,9 +157,9 @@ public:
     }
     const wstring &getStatusS(RunnerStatus inputStatus) const;
     const wstring &getPrintPlaceS(bool withDot) const;
-    const wstring &getRunningTimeS(int inputTime) const;
-    const wstring &getFinishTimeS(const oEvent *oe) const;
-    const wstring &getStartTimeS(const oEvent *oe) const;
+    const wstring &getRunningTimeS(int inputTime, SubSecond mode) const;
+    const wstring &getFinishTimeS(const oEvent *oe, SubSecond mode) const;
+    const wstring &getStartTimeS(const oEvent *oe, SubSecond mode) const;
 
     const wstring &getOutputTime(int ix) const;
     int getOutputNumber(int ix) const;
@@ -189,6 +190,8 @@ protected:
 
   bool sqlChanged;
   bool tEntryTouched;
+
+  virtual int getBuiltinAdjustment() const { return 0; }
 
   mutable pair<bool, int> tPreventRestartCache = { false, -1 };
 public:
@@ -235,6 +238,7 @@ public:
     FlagAddedViaAPI = 128, // Added by the REST api entry.
     FlagOutsideCompetition = 256,
     FlagNoTiming = 512, // No timing requested
+    FlagNoDatabase = 1024, // Do not store in databse
   };
 
   bool hasFlag(TransferFlags flag) const;
@@ -306,7 +310,7 @@ public:
   virtual void apply(ChangeType ct, pRunner src) = 0;
 
   //Get time after on leg/for race
-  virtual int getTimeAfter(int leg) const = 0;
+  virtual int getTimeAfter(int leg, bool allowUpdate) const = 0;
 
 
   virtual void fillSpeakerObject(int leg, int controlCourseId, int previousControlCourseId, bool totalResult,
@@ -361,8 +365,13 @@ public:
 
   virtual int getStartTime() const {return tStartTime;}
   virtual int getFinishTime() const {return FinishTime;}
-
-  int getFinishTimeAdjusted() const {return getFinishTime() + getTimeAdjustment();}
+  
+  int getFinishTimeAdjusted(bool adjusted) const {
+    if (adjusted)
+      return getFinishTime() + getTimeAdjustment(false);
+    else
+      return FinishTime - getBuiltinAdjustment();
+  }
 
   virtual int getRogainingPoints(bool computed, bool multidayTotal) const = 0;
   virtual int getRogainingReduction(bool computed) const = 0;
@@ -371,11 +380,18 @@ public:
   
   virtual const wstring &getStartTimeS() const;
   virtual const wstring &getStartTimeCompact() const;
-  virtual const wstring &getFinishTimeS() const;
+  const wstring &getFinishTimeS(bool adjusted, SubSecond mode) const;
 
-  const wstring &getTotalRunningTimeS() const;
- 	const wstring &getRunningTimeS(bool computedTime) const;
+  const wstring &getTotalRunningTimeS(SubSecond mode) const;
+ 	const wstring &getRunningTimeS(bool computedTime, SubSecond mode) const;
   virtual int getRunningTime(bool computedTime) const;
+
+  int getSubSeconds() const {
+    if (timeConstSecond > 1)
+      return getRunningTime(false) % timeConstSecond;
+    else
+      return 0;
+  }
 
   /// Get total running time (including earlier stages / races)
   virtual int getTotalRunningTime() const;
@@ -394,27 +410,27 @@ public:
   virtual int getPlace(bool allowUpdate = true) const = 0;
   virtual int getTotalPlace(bool allowUpdate = true) const = 0;
 
-  RunnerStatus getStatusComputed() const { return tComputedStatus != StatusUnknown ? tComputedStatus : tStatus; }
-  virtual RunnerStatus getStatus() const { return tStatus;}
+  virtual RunnerStatus getStatusComputed(bool allowUpdate) const = 0;
+  RunnerStatus getStatus() const { return tStatus;}
   
   /** Status OK, including NoTiming/OutOfCompetition*/
-  bool isStatusOK(bool computed) const;
+  bool isStatusOK(bool computed, bool allowUpdate) const;
 
   /** Status unknown, including NoTiming/OutOfCompetition*/
-  bool isStatusUnknown(bool computed) const;
+  bool isStatusUnknown(bool computed, bool allowUpdate) const;
 
-  inline bool statusOK(bool computed) const {return (computed ? getStatusComputed() : tStatus) == StatusOK;}
-  inline bool prelStatusOK(bool computed, bool includeOutsideCompetition) const {
-    bool ok = statusOK(computed) || (tStatus == StatusUnknown && getRunningTime(false) > 0);
+  inline bool statusOK(bool computed, bool allowUpdate) const {return (computed ? getStatusComputed(allowUpdate) : tStatus) == StatusOK;}
+  inline bool prelStatusOK(bool computed, bool includeOutsideCompetition, bool allowUpdate) const {
+    bool ok = statusOK(computed, allowUpdate) || (tStatus == StatusUnknown && getRunningTime(false) > 0);
     if (!ok && includeOutsideCompetition) {
-      RunnerStatus st = (computed ? getStatusComputed() : tStatus);
+      RunnerStatus st = (computed ? getStatusComputed(true) : tStatus);
       ok = (st == StatusOutOfCompetition || st == StatusNoTiming) && getRunningTime(false) > 0;
     }
     return ok;
   }
   // Returns true if the competitor has a definite result
   bool hasResult() const {
-    RunnerStatus st = this->getStatusComputed();
+    RunnerStatus st = getStatusComputed(true);
     if (st == StatusUnknown || st == StatusNotCompetiting)
       return false;
     if (isPossibleResultStatus(st))
@@ -432,7 +448,7 @@ public:
   virtual int getRanking() const = 0;
 
   /// Get total status for this running (including team/earlier races)
-  virtual RunnerStatus getTotalStatus() const;
+  virtual RunnerStatus getTotalStatus(bool allowUpdate = true) const;
 
   RunnerStatus getStageResult(int stage, int &time, int &point, int &place) const;
   // Get results from all previous stages
@@ -449,9 +465,9 @@ public:
   void setSpeakerPriority(int pri);
   virtual int getSpeakerPriority() const;
 
-  int getTimeAdjustment() const;
+  int getTimeAdjustment(bool includeBuiltinAdjustment) const;
   int getPointAdjustment() const;
-
+  
   void setTimeAdjustment(int adjust);
   void setPointAdjustment(int adjust);
 
@@ -477,39 +493,61 @@ public:
 
 struct RunnerWDBEntry;
 
-struct SplitData {
-  enum SplitStatus {OK, Missing, NoTime};
-  int time;
+class SplitData {
+public:
+  enum class SplitStatus { OK, Missing, NoTime };
+private:
+  int time; // Is the adjusted time
+  int adjustment = 0; // Is the applied adjustment
   SplitStatus status;
+public:
   SplitData() {};
   SplitData(int t, SplitStatus s) : time(t), status(s) {};
 
+  void setAdjustment(int a) {
+    if (time > 0)
+      time += a - adjustment;
+    adjustment = a;
+  }
+
+  SplitStatus getStatus() const {
+    return status;
+  }
+
+  int getTime(bool adjusted) const {
+    if (adjusted)
+      return time;
+    else
+      return time - adjustment;
+  }
+
   void setPunchTime(int t) {
     time = t;
-    status = OK;
+    status = SplitStatus::OK;
   }
 
   void setPunched() {
     time = -1;
-    status = NoTime;
+    status = SplitStatus::NoTime;
   }
 
   void setNotPunched() {
     time = -1;
-    status = Missing;
+    status = SplitStatus::Missing;
   }
 
   bool hasTime() const {
-    return time > 0 && status == OK;
+    return time > 0 && status == SplitStatus::OK;
   }
 
   bool isMissing() const {
-    return status == Missing;
+    return status == SplitStatus::Missing;
   }
+
+  friend class oRunner;
 };
 
-class oRunner : public oAbstractRunner
-{
+class oRunner final: public oAbstractRunner {
 protected:
   pCourse Course;
 
@@ -670,6 +708,9 @@ protected:
   bool isHiredCard(int card) const;
 
   int tmpStartGroup = 0;
+
+  int getBuiltinAdjustment() const override;
+
 public:
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
@@ -771,13 +812,13 @@ public:
   int getTotalRunningTime() const override;
 
   //Get total running time after leg
-  int getRaceRunningTime(bool computedTime, int leg) const;
+  int getRaceRunningTime(bool computedTime, int leg, bool allowUpdate) const;
 
   // Get the complete name, including team and club.
   wstring getCompleteIdentification(bool includeExtra = true) const;
 
   /// Get total status for this running (including team/earlier races)
-  RunnerStatus getTotalStatus() const override;
+  RunnerStatus getTotalStatus(bool allowUpdate = true) const override;
 
   // Return the runner in a multi-runner set matching the card, if course type is extra
   pRunner getMatchedRunner(const SICard &sic) const;
@@ -824,7 +865,8 @@ public:
   bool updateFromDB(const wstring &name, int clubId, int classId,
                     int cardNo, int birthYear, bool forceUpdate);
 
-  void printSplits(gdioutput &gdi) const;
+  void printSplits(gdioutput& gdi) const;
+  void printSplits(gdioutput &gdi, const oListInfo *li) const;
 
   void printStartInfo(gdioutput &gdi) const;
 
@@ -857,7 +899,7 @@ public:
   bool synchronizeAll(bool writeOnly = false);
 
   void setFinishTime(int t) override;
-  int getTimeAfter(int leg) const;
+  int getTimeAfter(int leg, bool allowUpdate) const override;
   int getTimeAfter() const;
   int getTimeAfterCourse() const;
 
@@ -873,6 +915,8 @@ public:
                          oSpeakerObject &spk) const;
 
   bool needNoCard() const;
+
+  RunnerStatus getStatusComputed(bool allowUpdate) const final;
   int getPlace(bool allowUpdate = true) const override;
   int getCoursePlace(bool perClass) const;
   int getTotalPlace(bool allowUpdate = true) const override;
@@ -892,13 +936,14 @@ public:
   int getTimeAdjust(int controlNumber) const;
 
   int getNamedSplit(int controlNumber) const;
+  wstring getNamedSplitS(int controlNumber) const;
+
   // Normalized = true means permuted to the unlooped version of the course
-  int getPunchTime(int controlNumber, bool normalized) const;
+  int getPunchTime(int controlNumber, bool normalized, bool adjusted) const;
+  wstring getPunchTimeS(int controlNumber, bool normalized, bool adjusted, SubSecond mode) const;
+
   // Normalized = true means permuted to the unlooped version of the course
   wstring getSplitTimeS(int controlNumber, bool normalized) const;
-  // Normalized = true means permuted to the unlooped version of the course
-  wstring getPunchTimeS(int controlNumber, bool normalized) const;
-  wstring getNamedSplitS(int controlNumber) const;
 
   void addTableRow(Table &table) const;
   pair<int, bool> inputData(int id, const wstring &input,
@@ -954,7 +999,10 @@ public:
   PersonSex getSex() const;
 
   void setBirthYear(int year);
+  void setBirthDate(const wstring& date);
   int getBirthYear() const;
+  const wstring &getBirthDate() const;
+
   void setNationality(const wstring &nat);
   wstring getNationality() const;
 

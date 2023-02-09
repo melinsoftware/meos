@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -769,7 +769,7 @@ void oEvent::updateComputerTime()
 {
   SYSTEMTIME st;
   GetLocalTime(&st);
-  computerTime=(((24+2+st.wHour)*3600+st.wMinute*60+st.wSecond-ZeroTime)%(24*3600)-2*3600) * 1000 + st.wMilliseconds;
+  computerTime=(((24+2+st.wHour)*timeConstHour+st.wMinute*timeConstMinute+st.wSecond*timeConstSecond - ZeroTime)%(24*timeConstHour)-2*timeConstHour) * (1000/timeConstSecond) + st.wMilliseconds;
 }
 
 void oEvent::clearPrewarningSounds()
@@ -797,7 +797,7 @@ void oEvent::playPrewarningSounds(const wstring &basedir, set<int> &controls)
   oFreePunchList::reverse_iterator it;
   for (it=punches.rbegin(); it!=punches.rend() && !it->hasBeenPlayed; ++it) {
 
-    if (controls.count(it->Type)==1 || controls.empty()) {
+    if (controls.count(it->type)==1 || controls.empty()) {
       pRunner r = getRunnerByCardNo(it->CardNo, it->getAdjustedTime(), oEvent::CardLookupProperty::ForReadout);
 
       if (r){
@@ -893,7 +893,7 @@ wstring getNumber(int k) {
 
 struct BestTime {
   static const int nt = 4;
-  static const int maxtime = 3600*24*7;
+  static const int maxtime = timeConstHour*24*7;
   int times[nt];
 
   BestTime() {
@@ -1014,7 +1014,7 @@ int oEvent::setupTimeLineEvents(int currentTime)
     currentTime = getComputerTime();
   }
 
-  int nextKnownEvent = 3600*48;
+  int nextKnownEvent = timeConstHour*48;
   vector<pRunner> started;
   started.reserve(Runners.size());
   timeLineEvents.clear();
@@ -1033,7 +1033,7 @@ int oEvent::setupTimeLineEvents(int classId, int currentTime)
   // leg -> started on leg
   vector< vector<pRunner> > started;
   started.reserve(32);
-  int nextKnownEvent = 3600*48;
+  int nextKnownEvent = timeConstHour*48;
   int classSize = 0;
 
   pClass pc = getClass(classId);
@@ -1231,7 +1231,7 @@ void oEvent::timeLinePrognose(TempResultMap &results, TimeRunner &tr, int prelT,
 
 int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int, pControl> > &rc, int currentTime, bool finish)
 {
-  int nextKnownEvent = 48*3600;
+  int nextKnownEvent = 48*timeConstHour;
   vector< vector<TimeRunner> > radioResults(rc.size());
   vector<BestTime> bestLegTime(rc.size() + 1);
   vector<BestTime> bestTotalTime(rc.size() + 1);
@@ -1722,12 +1722,12 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     if (r.isRemoved() || !classFilter.count(r.getClassId(true)))
       continue;
 
-    if (r.getStatusComputed() == StatusOutOfCompetition || r.getStatusComputed() == StatusNoTiming)
+    if (r.getStatusComputed(true) == StatusOutOfCompetition || r.getStatusComputed(true) == StatusNoTiming)
       continue;
 
     bool wroteResult = false;
-    if (r.prelStatusOK(true, false) || r.getStatusComputed() != StatusUnknown) {
-      RunnerStatus stat = r.prelStatusOK(true, false) ? StatusOK : r.getStatusComputed();
+    if (r.prelStatusOK(true, false, true) || r.getStatusComputed(true) != StatusUnknown) {
+      RunnerStatus stat = r.prelStatusOK(true, false, true) ? StatusOK : r.getStatusComputed(true);
       wroteResult = true;
       results.push_back(ResultEvent(pRunner(&r), r.getFinishTime(), oPunch::PunchFinish, stat));
     }
@@ -1761,7 +1761,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
 
   for (oFreePunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
     const oFreePunch &fp = *it;
-    if (fp.isRemoved() || fp.tRunnerId == 0 || fp.Type == oPunch::PunchCheck || fp.Type == oPunch::PunchStart || fp.Type == oPunch::HiredCard)
+    if (fp.isRemoved() || fp.tRunnerId == 0 || fp.type == oPunch::PunchCheck || fp.type == oPunch::PunchStart || fp.type == oPunch::HiredCard)
       continue;
 
     pRunner r = getRunner(fp.tRunnerId, 0);
@@ -1774,7 +1774,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     if (!punchFilter.count(ctrl))
       continue;
 
-    results.push_back(ResultEvent(r, fp.Time, courseControlId, StatusOK));
+    results.push_back(ResultEvent(r, fp.getTimeInt(), courseControlId, StatusOK));
 
     if (r->tInTeam && r->tLeg > 0) {
       map<int, int>::iterator res = teamStatusPos.find(r->tInTeam->getId());
@@ -1790,7 +1790,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
   for (map<pair<int,int>, oFreePunch>::const_iterator it = advanceInformationPunches.begin(); 
                                                       it != advanceInformationPunches.end(); ++it) {
     const oFreePunch &fp = it->second;
-    if (fp.isRemoved() || fp.tRunnerId == 0 || fp.Type == oPunch::PunchCheck || fp.Type == oPunch::PunchStart)
+    if (fp.isRemoved() || fp.tRunnerId == 0 || fp.type == oPunch::PunchCheck || fp.type == oPunch::PunchStart)
       continue;
     pRunner r = getRunner(fp.tRunnerId, 0);
     if (r == 0 || !classFilter.count(r->getClassId(true)))
@@ -1800,7 +1800,7 @@ void oEvent::getResultEvents(const set<int> &classFilter, const set<int> &punchF
     if (!punchFilter.count(ctrl))
       continue;
 
-    results.push_back(ResultEvent(r, fp.Time, courseControlId, StatusOK));
+    results.push_back(ResultEvent(r, fp.getTimeInt(), courseControlId, StatusOK));
 
     if (r->tInTeam && r->tLeg > 0) {
       map<int, int>::iterator res = teamStatusPos.find(r->tInTeam->getId());

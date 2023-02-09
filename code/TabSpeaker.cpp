@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -176,7 +176,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.fillDown();
 
     vector< pair<wstring, size_t> > d;
-    oe->fillControls(d, oEvent::CTCourseControl);
+    oe->fillControls(d, oEvent::ControlType::CourseControl);
     gdi.addItem("Controls", d);
 
     gdi.setSelection("Controls", controlsToWatch);
@@ -382,7 +382,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
       controlsToWatch.insert(-2); // Non empty but no control
 
     for (set<int>::iterator it=controlsToWatch.begin();it!=controlsToWatch.end();++it) {
-      pControl pc=oe->getControl(*it, false);
+      pControl pc=oe->getControl(*it, false, false);
       if (pc) {
         pc->setRadio(true);
         pc->synchronize(true);
@@ -722,7 +722,7 @@ void TabSpeaker::splitAnalysis(gdioutput &gdi, int xp, int yp, pRunner r)
       else
         first = false;
 
-      timeloss += pc->getControlOrdinal(j) + L". " + formatTime(delta[j]);
+      timeloss += pc->getControlOrdinal(j) + L". " + formatTime(delta[j], SubSecond::Auto);
     }
     if (timeloss.length() > charlimit || (!timeloss.empty() && !first && j+1 == delta.size())) {
       gdi.addStringUT(yp, xp, 0, timeloss).setColor(colorDarkRed);
@@ -1223,7 +1223,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
     throw std::exception(bf);
   }
 
-  oe->addFreePunch(itime, punch, sino, true);
+  oe->addFreePunch(itime, punch, 0, sino, true);
 
   gdi.restore("manual", false);
   gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch) + L"#" +  oe->getAbsTime(itime));
@@ -1432,7 +1432,7 @@ void TabSpeaker::loadSettings(vector< multimap<string, wstring> > &settings) {
     xmlList allS;
     s.getObjects(allS);
     for (auto &prop : allS) {
-      settings.back().insert(make_pair(prop.getName(), prop.getw()));
+      settings.back().insert(make_pair(prop.getName(), prop.getWStr()));
     }
   }
 }

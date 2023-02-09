@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,14 +49,17 @@ class LiveResult : public GuiHandler {
     int place;
     int runnerId;
     int time;
+    wstring name;
     bool operator<(const Result &b) const {
       return time < b.time;
     }
   };
 
-  vector< Result > results;
+  vector<Result> results;
 
   void calculateResults();
+  void readoutResult();
+  void showResults(gdioutput& gdi);
 
 public:
   LiveResult(oEvent *oe);

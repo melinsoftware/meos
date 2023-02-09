@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,9 +72,22 @@ int getRelativeDay();
 /// Get time and date in a format that forms a part of a filename
 wstring getLocalTimeFileName();
 
-const wstring &getTimeMS(int m);
-const wstring &formatTime(int rt);
-const wstring &formatTimeHMS(int rt);
+enum class SubSecond {
+  Off,
+  On,
+  Auto
+};
+
+int parseRelativeTime(const char *data);
+int parseRelativeTime(const wchar_t *data);
+
+const wstring &codeRelativeTimeW(int rt);
+const string &codeRelativeTime(int rt);
+
+// Format time MM:SS.t (force2digit=true) or M:SS.t (force2digit=false)
+const wstring &formatTimeMS(int m, bool force2digit, SubSecond mode = SubSecond::Auto);
+const wstring &formatTime(int rt, SubSecond mode = SubSecond::Auto);
+const wstring &formatTimeHMS(int rt, SubSecond mode = SubSecond::Auto);
 
 wstring formatTimeIOF(int rt, int zeroTime);
 
@@ -91,8 +104,8 @@ void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &
 //string formatDate(int m, bool useIsoFormat);
 wstring formatDate(int m, bool useIsoFormat);
 
-__int64 SystemTimeToInt64Second(const SYSTEMTIME &st);
-SYSTEMTIME Int64SecondToSystemTime(__int64 time);
+__int64 SystemTimeToInt64TenthSecond(const SYSTEMTIME &st);
+SYSTEMTIME Int64TenthSecondToSystemTime(__int64 time);
 
 #define NOTIME 0x7FFFFFFF
 
@@ -141,7 +154,7 @@ wstring itow(uint64_t i);
 
 ///Lower case match (filt_lc must be lc)
 bool filterMatchString(const string &c, const char *filt_lc);
-bool filterMatchString(const wstring &c, const wchar_t *filt_lc);
+bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score);
 
 bool matchNumber(int number, const wchar_t *key);
 

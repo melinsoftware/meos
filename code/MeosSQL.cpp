@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,6 +97,11 @@ string C_INT(string name)
 string C_INT64(string name)
 {
   return " "+name+" BIGINT NOT NULL DEFAULT 0, ";
+}
+
+string C_UINT64(string name)
+{
+  return " " + name + " BIGINT UNSIGNED NOT NULL DEFAULT 0, ";
 }
 
 string C_STRING(string name, int len=64)
@@ -451,8 +456,21 @@ void MeosSQL::upgradeDB(const string &db, oDataContainer const * dc) {
       sql = sql.substr(0, sql.length() - 2);
       query.execute(sql);
     }
+    if (!eCol.count("BDate")) {
+      string sql = "ALTER TABLE " + db + " ";
+      sql += "ADD COLUMN " + C_INT("BDate");
+      sql = sql.substr(0, sql.length() - 2);
+      query.execute(sql);
+    }
   }
-
+  else if (db == "oPunch") {
+    if (!eCol.count("Unit")) {
+      string sql = "ALTER TABLE " + db + " ";
+      sql += "ADD COLUMN " + C_INT("Unit");
+      sql = sql.substr(0, sql.length() - 2);
+      query.execute(sql);
+    }
+  }
   if (dc) {
     // Ugrade table
     string sqlAdd = dc->generateSQLDefinition(eCol);
@@ -478,7 +496,8 @@ bool MeosSQL::openDB(oEvent *oe)
     return 0;
   }
   monitorId = 0;
-  string dbname(oe->currentNameId.begin(), oe->currentNameId.end());//WCS
+  string dbname(oe->currentNameId.begin(), oe->currentNameId.end());
+  bool tookLock = false;
 
   try {
     auto query = con->query();
@@ -489,11 +508,29 @@ bool MeosSQL::openDB(oEvent *oe)
       auto row = res.at(0);
 
       int version = row["Version"];
-
       if (version < oEvent::dbVersion) {
+        if (version <= 88) {
+          query.exec("LOCK TABLE MeOSMain.oEvent WRITE");
+          tookLock = true;
+
+          query.reset();
+          query << "SELECT Version FROM oEvent WHERE NameId=" << quote << dbname;
+          auto resV = query.store();
+          if (res && res.num_rows() >= 1) {
+            version = res.at(0)["Version"];
+          }
+        }
+
         query.reset();
         query << "UPDATE oEvent SET Version=" << oEvent::dbVersion << " WHERE Id=" << int(row["Id"]);
         query.execute();
+        if (version <= 88) {
+          upgradeTimeFormat(dbname);
+        }
+
+        if (tookLock) {
+          con->query().exec("UNLOCK TABLES");
+        }
       }
       else if (version > oEvent::dbVersion) {
         alert("A newer version av MeOS is required.");
@@ -524,6 +561,10 @@ bool MeosSQL::openDB(oEvent *oe)
     }
   }
   catch (const Exception& er) {
+    if (tookLock && con) {
+      con->query().exec("UNLOCK TABLES");
+    }
+
     setDefaultDB();
     alert(string(er.what()) + " MySQL Error. Select DB.");
     return 0;
@@ -588,6 +629,7 @@ bool MeosSQL::openDB(oEvent *oe)
       << C_INT("CardNo")
       << C_UINT("ReadId")
       << C_UINT("Voltage")
+      << C_INT("BDate")
       << C_STRING("Punches", 16*190) << C_END();
 
     query.execute();
@@ -657,8 +699,11 @@ bool MeosSQL::openDB(oEvent *oe)
     query << C_START("oPunch")
       << C_INT("CardNo")
       << C_INT("Time")
-      << C_INT("Type") << C_END();
+      << C_INT("Type")
+      << C_INT("Unit") << C_END();
     query.execute();
+
+    upgradeDB("oPunch", nullptr);
 
     query.reset();
     query << C_START("oMonitor")
@@ -691,6 +736,13 @@ bool MeosSQL::openDB(oEvent *oe)
 
     // Create runner/club DB
     createRunnerDB(oe, query);
+
+    query.reset();
+    query << C_START_noid("oImage")
+      << C_UINT64("Id")
+      << C_TEXT("Filename")
+      << " Image LONGBLOB)" << engine();
+    query.execute();
   }
   catch (const Exception& er){
     alert(string(er.what()) + " MySQL Error.");
@@ -979,9 +1031,9 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
       auto query = con->query();
       query << "INSERT INTO dbRunner SET " <<
         "Name=" << quote << rdb[k].name <<
-        ", ExtId=" << rdb[k].extId << ", Club="  << rdb[k].clubNo <<
+        ", ExtId=" << rdb[k].getExtId() << ", Club=" << rdb[k].clubNo <<
         ", CardNo=" << rdb[k].cardNo << ", Sex=" << quote << rdb[k].getSex() <<
-        ", Nation=" << quote << rdb[k].getNationality() << ", BirthYear=" << rdb[k].birthYear;
+        ", Nation=" << quote << rdb[k].getNationality() << ", BirthYear=" << rdb[k].getBirthDateInt();
 
       try {
         query.execute();
@@ -1031,7 +1083,7 @@ bool MeosSQL::storeData(oDataInterface odi, const RowWrapper &row, unsigned long
         }
       }
       else {
-        __int64 val = row[(const char*)it_int->name].ulonglong();
+        __int64 val = row[(const char*)it_int->name].longlong();
         __int64 oldVal = *(it_int->data64);
         if (val != oldVal) {
           memcpy(it_int->data64, &val, 8);
@@ -1476,7 +1528,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
           RunnerDBEntry &dbn = db->dbe();
           if (sex.length()==1)
             dbn.sex = sex[0];
-          dbn.birthYear = short(atoi(birth.c_str()));
+          dbn.setBirthDate(atoi(birth.c_str()));
 
           if (nat.length()==3) {
             dbn.national[0] = nat[0];
@@ -1546,6 +1598,7 @@ void MeosSQL::storeCard(const RowWrapper &row, oCard &c)
   c.cardNo = row["CardNo"];
   c.readId = row["ReadId"];
   c.miliVolt = row["Voltage"];
+  c.batteryDate = row["BDate"];
   c.importPunches(string(row["Punches"]));
 
   c.sqlUpdated = row["Modified"];
@@ -1565,10 +1618,10 @@ void MeosSQL::storePunch(const RowWrapper &row, oFreePunch &p, bool rehash)
   }
   else {
     p.CardNo = row["CardNo"];
-    p.Time = row["Time"];
-    p.Type = row["Type"];
+    p.punchTime = row["Time"];
+    p.type = row["Type"];
   }
-
+  p.punchUnit = row["Unit"];
   p.sqlUpdated = row["Modified"];
   p.counter = row["Counter"];
   p.Removed = row["Removed"];
@@ -2178,6 +2231,7 @@ OpFailStatus MeosSQL::syncUpdate(oCard *c, bool forceWriteAll)
   auto queryset = con->query();
   queryset << " CardNo=" << c->cardNo 
       << ", ReadId=" << c->readId << ", Voltage=" << max(0, c->miliVolt)
+      << ", BDate=" << c->batteryDate 
       << ", Punches=" << quote << c->getPunchString();
 
   return syncUpdate(queryset, "oCard", c);
@@ -2285,6 +2339,77 @@ OpFailStatus MeosSQL::syncUpdate(oTeam *t, bool forceWriteAll) {
 OpFailStatus MeosSQL::syncRead(bool forceRead, oTeam *t)
 {
   return syncRead(forceRead, t, true);
+}
+
+void MeosSQL::upgradeTimeFormat(const string & dbname) {
+  bool ok = false;
+  try {
+    con->select_db(dbname);
+    ok = true;
+  }
+  catch (const Exception &) {
+  }
+
+  if (ok) {
+    auto query = con->query();
+    query.exec("LOCK TABLES oEvent WRITE, oClass WRITE, oControl WRITE, "
+               "oCourse WRITE, oPunch WRITE, oRunner WRITE, oTeam WRITE");
+  }
+  else
+    return;
+
+  auto upgradeCol = [this](const string &db, const string &col) {
+    auto query = con->query();
+    string v = "UPDATE " + db + " SET " + col + "=" + col + "*10 WHERE " + col + "<>-1";
+    try {
+      query.execute(v);
+    }
+    catch (const Exception &) {
+      return false;
+    }
+    return true;
+  };
+
+  auto alter = [this](const string &db, const string &col) {
+    auto query = con->query();
+    string v = "ALTER TABLE " + db + " MODIFY COLUMN " + col + " INT NOT NULL DEFAULT 0";
+    try {
+      query.execute(v);
+    }
+    catch (const Exception &) {
+      return false;
+    }
+    return true;
+
+  };
+  upgradeCol("oEvent", "ZeroTime");
+  upgradeCol("oEvent", "MaxTime");
+  upgradeCol("oEvent", "DiffTime");
+
+  upgradeCol("oClass", "FirstStart");
+  upgradeCol("oClass", "StartInterval");
+  upgradeCol("oClass", "MaxTime");
+
+  upgradeCol("oControl", "TimeAdjust");
+  upgradeCol("oControl", "MinTime");
+
+  upgradeCol("oCourse", "RTimeLimit");
+
+  upgradeCol("oPunch", "Time");
+
+  upgradeCol("oRunner", "StartTime");
+  upgradeCol("oRunner", "FinishTime");
+  upgradeCol("oRunner", "InputTime");
+  alter("oRunner", "TimeAdjust");
+  upgradeCol("oRunner", "TimeAdjust");
+  upgradeCol("oRunner", "EntryTime");
+
+  upgradeCol("oTeam", "StartTime");
+  upgradeCol("oTeam", "FinishTime");
+  upgradeCol("oTeam", "InputTime");
+  alter("oTeam", "TimeAdjust");
+  upgradeCol("oTeam", "TimeAdjust");
+  upgradeCol("oTeam", "EntryTime");
 }
 
 OpFailStatus MeosSQL::syncRead(bool forceRead, oTeam *t, bool readRecursive)
@@ -2536,7 +2661,7 @@ OpFailStatus MeosSQL::syncReadControls(oEvent *oe, const set<int> &controls) {
        int counter = row["Counter"];
        string modified = row["Modified"];
 
-       pControl pc = oe->getControl(id, false);
+       pControl pc = oe->getControl(id, false, false);
        if (!pc) {
          oControl oc(oe, id);
          success = min(success, syncRead(true, &oc));
@@ -2550,7 +2675,7 @@ OpFailStatus MeosSQL::syncReadControls(oEvent *oe, const set<int> &controls) {
 
      // processedCourses should now be empty, unless there are local controls not yet added.
      for(set<int>::iterator it = processedControls.begin(); it != processedControls.end(); ++it) {
-        pControl pc = oe->getControl(*it, false);
+        pControl pc = oe->getControl(*it, false, false);
         if (pc) {
           success = min(success, syncUpdate(pc, true));
         }
@@ -2647,7 +2772,7 @@ OpFailStatus MeosSQL::syncUpdate(oControl *c, bool forceWriteAll) {
   auto queryset = con->query();
   queryset << " Name=" << quote << toString(c->Name) << ", "
     << " Numbers=" << quote << toString(c->codeNumbers()) << ","
-    << " Status=" << c->Status
+    << " Status=" << int(c->Status)
     << c->getDI().generateSQLSet(forceWriteAll);
 
   return syncUpdate(queryset, "oControl", c);
@@ -2826,8 +2951,9 @@ OpFailStatus MeosSQL::syncUpdate(oFreePunch *c, bool forceWriteAll)
   }
   auto queryset = con->query();
   queryset << " CardNo=" <<  c->CardNo << ", "
-    << " Type=" << c->Type << ","
-    << " Time=" << c->Time;
+    << " Type=" << c->type << ","
+    << " Time=" << c->punchTime << ","
+    << " Unit=" << c->punchUnit;
 
   return syncUpdate(queryset, "oPunch", c);
 }
@@ -2974,14 +3100,20 @@ OpFailStatus MeosSQL::syncUpdate(QueryWrapper &updateqry,
       if (ob->isRemoved())
         return opStatusOK;
       bool setId = false;
-
+      bool update = false;
       if (ob->Id > 0) {
-        query << "SELECT Id FROM " << oTable << " WHERE Id=" << ob->Id;
+        query << "SELECT Removed FROM " << oTable << " WHERE Id=" << ob->Id;
         auto res=query.store();
         if (res.empty())
           setId = true;
         else if (ob->isImplicitlyCreated()) {
           return opStatusWarning;//XXX Should we read this object?
+        }
+        else {
+          int removed = res.at(0).at(0);
+          if (removed) {
+            update = true;
+          }
         }
       }
       else {
@@ -2989,23 +3121,34 @@ OpFailStatus MeosSQL::syncUpdate(QueryWrapper &updateqry,
       }
 
       query.reset();
-      query << "INSERT INTO " << oTable << " SET " << updateqry.str();
+      if (update) {
+        query << "UPDATE " << oTable << " SET Removed = 0, " << updateqry.str();
+      }
+      else {
+        query << "INSERT INTO " << oTable << " SET " << updateqry.str();
 
-      if (setId)
-        query << ", Id=" << ob->Id;
+        if (setId)
+          query << ", Id=" << ob->Id;
+      }
 
       if (writeTime) {
         query << ", Modified='" << ob->getTimeStampN() << "'";
       }
 
+      if (update) {
+        query << " WHERE Id=" << ob->Id;
+      }
+
       ResNSel res=query.execute();
       if (res) {
-        if (ob->Id > 0 && ob->Id!=(int)res.insert_id) {
-          ob->correctionNeeded = true;
-        }
+        if (!update) {
+          if (ob->Id > 0 && ob->Id != (int)res.insert_id) {
+            ob->correctionNeeded = true;
+          }
 
-        if (ob->Id != res.insert_id)
-          ob->changeId((int)res.insert_id);
+          if (ob->Id != res.insert_id)
+            ob->changeId((int)res.insert_id);
+        }
 
         updateCounter(oTable, ob->Id, 0);
         ob->oe->updateFreeId(ob);
@@ -3059,8 +3202,12 @@ OpFailStatus MeosSQL::syncUpdate(QueryWrapper &updateqry,
 
 bool MeosSQL::checkOldVersion(oEvent *oe, RowWrapper &row) {
   int dbv=int(row["BuildVersion"]);
-  if ( dbv<buildVersion )
-    oe->updateChanged();
+  if (dbv < buildVersion) {
+    string bv = "UPDATE oEvent SET BuildVersion=if (BuildVersion<" +
+           itos(buildVersion) + "," + itos(buildVersion) + ",BuildVersion) WHERE Id = " + itos(oe->Id);
+
+    con->query().exec(bv);
+  }
   else if (dbv>buildVersion)
     return true;
 
@@ -3552,7 +3699,7 @@ bool MeosSQL::syncListControl(oEvent *oe) {
 
         if (int(row["Removed"])) {
           st = opStatusOK;
-          oControl *c = oe->getControl(Id, false);
+          oControl *c = oe->getControl(Id, false, false);
 
           if (c && !c->Removed) {
             c->Removed = true;
@@ -3562,7 +3709,7 @@ bool MeosSQL::syncListControl(oEvent *oe) {
           }
         }
         else {
-          oControl *c = oe->getControl(Id, false);
+          oControl *c = oe->getControl(Id, false, false);
           if (c) {
             if (isOld(counter, modified, c))
               st = syncRead(false, c);
@@ -3848,11 +3995,12 @@ bool MeosSQL::dropDatabase(oEvent *oe)
     return 0;
   }
 
+  string error;
   try {
     con->drop_db(CmpDataBase);
   }
-  catch (const Exception& ) {
-    //Don't care if we fail.
+  catch (const Exception& ex) {
+    error = ex.what();
   }
 
   try {
@@ -3860,7 +4008,10 @@ bool MeosSQL::dropDatabase(oEvent *oe)
     query << "DELETE FROM oEvent WHERE NameId=" << quote << CmpDataBase;
     query.execute();
   }
-  catch (const Exception& ) {
+  catch (const Exception& ex) {
+    if (!error.empty())
+      error += ", ";
+    error += ex.what();
     //Don't care if we fail.
   }
 
@@ -3873,6 +4024,9 @@ bool MeosSQL::dropDatabase(oEvent *oe)
   }
   catch (const Exception&) {
   }
+
+  if (!error.empty())
+    throw meosException(error);
 
   return true;
 }
@@ -3930,7 +4084,9 @@ int getTypeId(const oBase &ob)
 }
 static int skipped = 0, notskipped = 0, readent = 0;
 
-void MeosSQL::synchronized(const oBase &entity) {
+void MeosSQL::synchronized(oBase &entity) {
+  entity.Modified.setStamp(entity.sqlUpdated);
+  
   int id = getTypeId(entity);
   readTimes[make_pair(id, entity.getId())] = GetTickCount();
   readent++;
@@ -4460,3 +4616,96 @@ OpFailStatus MeosSQL::synchronizeUpdate(oBase *obj) {
   return OpFailStatus::opStatusFail;
 }
 
+OpFailStatus MeosSQL::enumerateImages(vector<pair<wstring, uint64_t>>& images) {
+  try {
+    auto query = con->query();
+    images.clear();
+    auto res = query.store("SELECT Id, Filename FROM oImage");
+    if (res) {
+      for (int i = 0; i < res.num_rows(); i++) {
+        auto row = res.at(i);
+        wstring fileName = fromUTF((string)row["Filename"]);
+        uint64_t id = row["Id"].ulonglong();
+        images.emplace_back(fileName, id);
+      }
+    }
+  }
+  catch (const Exception& ) {
+    return OpFailStatus::opStatusFail;
+  }
+
+  return OpFailStatus::opStatusOK;
+}
+
+OpFailStatus MeosSQL::getImage(uint64_t id, wstring& fileName, vector<uint8_t>& data) {
+  try {
+    auto query = con->query();
+    auto res = query.store("SELECT * FROM oImage WHERE id=" + itos(id));
+    if (res && res.num_rows() > 0) {
+      auto row = res.at(0);
+      fileName = fromUTF((string)row["Filename"]);
+      row["Image"].storeBlob(data);
+      return OpFailStatus::opStatusOK;
+    }
+  }
+  catch (const Exception&) {
+  }
+
+  return OpFailStatus::opStatusFail;
+}
+
+string hexEncode(const vector<uint8_t>& data) {
+  string out;
+  out.reserve(4 + data.size() * 2);
+  out.append("X'");
+
+  char table[17] = "0123456789ABCDEF";
+  char block[33];
+  block[32] = 0;
+
+  for (int j = 0; j < data.size();) {
+    if (j + 16 < data.size()) {
+      for (int i = 0; i < 32; ) {
+        uint8_t b = data[j];
+        int bLow = b & 0xF;
+        int bHigh = (b >> 4) & 0xF;
+        block[i++] = table[bHigh];
+        block[i++] = table[bLow];
+        j++;
+      }
+    }
+    else {
+      int i = 0;
+      while (j < data.size()) {
+        uint8_t b = data[j];
+        int bLow = b & 0xF;
+        int bHigh = (b >> 4) & 0xF;
+        block[i++] = table[bHigh];
+        block[i++] = table[bLow];
+        j++;
+      }
+      block[i] = 0;
+    }
+
+    out.append(block);
+  }
+  out.append("'");
+  return out;
+}
+
+OpFailStatus MeosSQL::storeImage(uint64_t id, const wstring& fileName, const vector<uint8_t>& data) {
+  try {
+    auto query = con->query();
+    auto res = query.store("SELECT Id FROM oImage WHERE Id=" + itos(id));
+    if (res.empty()) {
+      query << ("INSERT INTO oImage SET Id=" + itos(id) + ", Filename=")
+        << quote << toString(fileName) << ", Image=" << hexEncode(data);
+      query.execute();
+    }
+  }
+  catch (Exception &) {
+    return OpFailStatus::opStatusFail;
+  }
+
+  return OpFailStatus::opStatusOK;
+}

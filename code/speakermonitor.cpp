@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -227,7 +227,7 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
     GDICOLOR color = colorLightRed;
 
     if (res.control == oPunch::PunchFinish) {
-      if (r && r->statusOK(true))
+      if (r && r->statusOK(true, true))
         color = colorLightGreen;
       else
         color = colorLightRed;
@@ -298,7 +298,7 @@ void SpeakerMonitor::calculateResults() {
     if (results[k].status == StatusOK)
       results[k].resultScore = results[k].runTime;
     else
-      results[k].resultScore = RunnerStatusOrderMap[results[k].status] + 3600*24*7;
+      results[k].resultScore = RunnerStatusOrderMap[results[k].status] + timeConstHour*24*7;
   }
 
   totalLeaderTimes.clear();
@@ -440,7 +440,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
           while (leg > 0) {
             pRunner pr = res.r->getTeam()->getRunner(--leg);
             // TODO: Pursuit
-            if (pr && pr->prelStatusOK(false, false) && pr->getFinishTime() == res.r->getStartTime()) {
+            if (pr && pr->prelStatusOK(false, false, true) && pr->getFinishTime() == res.r->getStartTime()) {
               vector<ResultInfo> &rResultsP = runnerToTimeKey[pr->getId()];
               if (!rResultsP.empty()) {
                 preRes = &rResultsP.back();

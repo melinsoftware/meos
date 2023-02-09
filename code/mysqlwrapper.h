@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include "mysql/mysql.h"
 
 using std::string;
@@ -26,7 +27,9 @@ namespace sqlwrapper {
     operator int() const;
     operator unsigned int() const;
     operator bool() const;
-    int64_t ulonglong() const;
+    int64_t longlong() const;
+    uint64_t ulonglong() const;
+    void storeBlob(std::vector<uint8_t>& d) const;
     bool is_null() const;
   };
 

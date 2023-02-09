@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2022 Melin Software HB
+Copyright (C) 2009-2023 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -176,7 +176,10 @@ void  AutoCompleteInfo::enter() {
   }
 }
 
-void AutoCompleteInfo::setData(const vector<AutoCompleteRecord> &items) {
+void AutoCompleteInfo::setData(const vector<AutoCompleteRecord> &itemsIn) {
+  vector<AutoCompleteRecord> items = itemsIn;
+  stable_sort(items.begin(), items.end());
+
   int newDataIx = -1;
   if (modifedAutoComplete && size_t(currentIx) < data.size()) {
     for (size_t k = 0; k < items.size(); k++) {
@@ -188,6 +191,6 @@ void AutoCompleteInfo::setData(const vector<AutoCompleteRecord> &items) {
     newDataIx = 0;
     modifedAutoComplete = false;
   }
-  data = items;
+  data = std::move(items);
   currentIx = newDataIx;
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -237,12 +237,12 @@ wstring RunnerWDBEntry::getFamilyName() const
 
 __int64 RunnerWDBEntry::getExtId() const
 {
-  return dbe().extId;
+  return dbe().getExtId();
 }
 
 void RunnerWDBEntry::setExtId(__int64 id)
 {
-  dbe().extId = id;
+  dbe().setExtId(id);
 }
 
 void RunnerDBEntryV2::init(const RunnerDBEntryV1 &dbe)
@@ -303,7 +303,7 @@ RunnerWDBEntry *RunnerDB::addRunner(const wchar_t *name,
   en.cardNo = card;
   en.clubNo = club;
   e.setName(name);
-  en.extId = extId;
+  en.setExtId(extId);
 
   if (!check(en) ) {
     rdb.pop_back();
@@ -336,7 +336,7 @@ RunnerWDBEntry *RunnerDB::addRunner(const char *nameUTF,
   en.cardNo = card;
   en.clubNo = club;
   e.setNameUTF(nameUTF);
-  en.extId = extId;
+  en.setExtId(extId);
 
   if (!check(en) ) {
     rdb.pop_back();
@@ -550,16 +550,16 @@ RunnerWDBEntry *RunnerDB::getRunnerByName(const wstring &name, int clubId,
     int bestYear = 0;
     for (size_t k = 0;k<ix2.size(); k++) {
       const RunnerWDBEntry &re = rwdb[ix2[k]];
-      if (abs(re.dbe().birthYear-expectedBirthYear) < abs(bestYear-expectedBirthYear)) {
+      if (abs(re.dbe().getBirthDay() - expectedBirthYear) < abs(bestYear - expectedBirthYear)) {
         bestMatch = ix2[k];
-        bestYear = re.dbe().birthYear;
+        bestYear = re.dbe().getBirthYear();
       }
     }
     if (bestYear>0)
       return (RunnerWDBEntry *)&rwdb[bestMatch];
   }
 
-  return 0;
+  return nullptr;
 }
 
 void RunnerDB::setupIdHash() const
@@ -569,7 +569,7 @@ void RunnerDB::setupIdHash() const
 
   for (size_t k=0; k<rdb.size(); k++) {
     if (!rdb[k].isRemoved())
-      idhash[rdb[k].extId] = int(k);
+      idhash[rdb[k].getExtId()] = int(k);
   }
 }
 
@@ -1076,13 +1076,13 @@ void RunnerDB::updateAdd(const oRunner &r, map<int, int> &clubIdMap)
   if (dbe == nullptr) {
     dbe = addRunner(r.getName().c_str(), 0, localClubId, r.getCardNo());
     if (dbe)
-      dbe->dbe().birthYear = r.getDCI().getInt("BirthYear");
+      dbe->dbe().setBirthYear(r.getDCI().getInt("BirthYear"));
   }
   else {
     if (dbe->getExtId() == 0) { // Only update entries not in national db.
       dbe->setName(r.getName().c_str());
       dbe->dbe().clubNo = localClubId;
-      dbe->dbe().birthYear = r.getDCI().getInt("BirthYear");
+      dbe->dbe().setBirthYear(r.getDCI().getInt("BirthYear"));
     }
   }
 }
@@ -1251,13 +1251,13 @@ const shared_ptr<Table> &RunnerDB::getRunnerTB() {
     auto table = make_shared<Table>(oe, 20, L"Löpardatabasen", "runnerdb");
 
     table->addColumn("Index", 70, true, true);
-    table->addColumn("Id", 70, true, true);
+    table->addColumn("Externt Id", 70, true, true);
     table->addColumn("Namn", 200, false);
     table->addColumn("Klubb", 200, false);
     table->addColumn("SI", 70, true, true);
     table->addColumn("Nationalitet", 70, false, true);
     table->addColumn("Kön", 50, false, true);
-    table->addColumn("Födelseår", 70, true, true);
+    table->addColumn("RunnerBirthDate", 70, true, true);
     table->addColumn("Anmäl", 120, false, true);
 
     table->setTableProp(Table::CAN_INSERT|Table::CAN_DELETE|Table::CAN_PASTE);
@@ -1330,8 +1330,8 @@ void RunnerDB::refreshRunnerTableData(Table &table) {
         bool found = false;
 
         pRunner r = nullptr;
-        if (rdb[k].extId != 0)
-          found = runnerInEvent.lookup(rdb[k].extId, runnerId);
+        if (rdb[k].getExtId() != 0)
+          found = runnerInEvent.lookup(rdb[k].getExtId(), runnerId);
         else if (rdb[k].cardNo != 0) {
           found = runnerInEvent.lookup(rdb[k].cardNo + cardIdConstant, runnerId);
           if (found) {
@@ -1404,8 +1404,8 @@ void oDBRunnerEntry::addTableRow(Table &table) const {
   table.set(row++, it, TID_INDEX, itow(index+1), false, cellEdit);
 
   wchar_t bf[16];
-  oBase::converExtIdentifierString(rn.extId, bf);
-  table.set(row++, it, TID_ID, bf, false, cellEdit);
+  oBase::converExtIdentifierString(rn.getExtId(), bf);
+  table.set(row++, it, TID_ID, bf, canEdit, cellEdit);
   r.initName();
   table.set(row++, it, TID_NAME, r.name, canEdit, cellEdit);
 
@@ -1421,14 +1421,14 @@ void oDBRunnerEntry::addTableRow(Table &table) const {
   table.set(row++, it, TID_NATIONAL, nat, canEdit, cellEdit);
   wchar_t sex[2] = {wchar_t(rn.sex), 0};
   table.set(row++, it, TID_SEX, sex, canEdit, cellEdit);
-  table.set(row++, it, TID_YEAR, itow(rn.birthYear), canEdit, cellEdit);
+  table.set(row++, it, TID_YEAR, rn.getBirthDate(), canEdit, cellEdit);
 
   int runnerId;
   bool found = false;
 
   pRunner cr = nullptr;
-  if (rn.extId != 0)
-    found = db->runnerInEvent.lookup(rn.extId, runnerId);
+  if (rn.getExtId() != 0)
+    found = db->runnerInEvent.lookup(rn.getExtId(), runnerId);
   else if (rn.cardNo != 0) {
     found = db->runnerInEvent.lookup(rn.cardNo + cardIdConstant, runnerId);
     if (found) {
@@ -1467,8 +1467,29 @@ pair<int, bool>  oDBRunnerEntry::inputData(int id, const wstring &input,
     throw meosException("Not initialized");
   RunnerWDBEntry &r = db->rwdb[index];
   RunnerDBEntry &rd = db->rdb[index];
+  static bool hasWarnedId = false;
 
   switch(id) {
+    case TID_ID: {
+      wchar_t bf[16];
+      auto key = oBase::converExtIdentifierString(input);
+      oBase::converExtIdentifierString(key, bf);
+
+      if (compareStringIgnoreCase(bf, input)) {
+        throw meosException(L"Cannot represent ID X#" + input);
+      }
+
+      if (key != r.getExtId() && !hasWarnedId) {
+        if (oe->gdiBase().askOkCancel(L"warn:changeid") == gdioutput::AskAnswer::AnswerCancel)
+          throw meosCancel();
+        hasWarnedId = true;
+      }
+      
+      r.setExtId(key);
+      db->idhash.clear();
+      output = bf;
+    }
+    break;
     case TID_NAME:
       r.setName(input.c_str());
       r.getName(output);
@@ -1503,8 +1524,8 @@ pair<int, bool>  oDBRunnerEntry::inputData(int id, const wstring &input,
       output = r.getSex();
       break;
     case TID_YEAR:
-      rd.birthYear = short(_wtoi(input.c_str()));
-      output = itow(r.getBirthYear());
+      rd.setBirthDate(input);
+      output = rd.getBirthDate();
       break;
 
     case TID_CLUB:
@@ -1529,7 +1550,7 @@ void oDBRunnerEntry::fillInput(int id, vector< pair<wstring, size_t> > &out, siz
 void oDBRunnerEntry::remove() {
   RunnerWDBEntry &r = db->rwdb[index];
   r.remove();
-  db->idhash.remove(r.dbe().extId);
+  db->idhash.remove(r.dbe().getExtId());
   wstring cname(canonizeName(r.name));
   multimap<wstring, int>::const_iterator it = db->nhash.find(cname);
 
@@ -1823,6 +1844,20 @@ vector<pair<RunnerWDBEntry *, int>> RunnerDB::getRunnerSuggestions(const wstring
   else
     setupAutoCompleteHash(AutoHashMode::Runners);
 
+  // Check if database key
+  int64_t id = 0;
+  for (int j = 0; j < key.length(); j++) {
+    if (key[j] >= '0' && key[j] <= '9') {
+      id = oBase::converExtIdentifierString(key);
+      wchar_t bf[16];
+      oBase::converExtIdentifierString(id, bf);
+      if (compareStringIgnoreCase(key, bf))
+        id = 0;
+
+      break;
+    }
+  }
+  
   vector< pair<int, int> > outOrder;
   set<pair<int, int>> ix;
   wchar_t bf[256];
@@ -1866,8 +1901,15 @@ vector<pair<RunnerWDBEntry *, int>> RunnerDB::getRunnerSuggestions(const wstring
       if (res != runnerHash.end())
         res->second.match(*this, ix, nameParts);
     }
-    
   }
+
+  if (id > 0) {
+    auto r = getRunnerById(id);
+    if (r) {
+      ix.emplace(1000, r->getIndex());
+    }
+  }
+
   if (ix.empty())
     return ret;
 
@@ -1896,3 +1938,85 @@ vector<pair<RunnerWDBEntry *, int>> RunnerDB::getRunnerSuggestions(const wstring
   }
   return ret;
 }
+
+const wstring& RunnerDBEntry::getBirthDate() const {
+  int year = getBirthYear();
+  if (year <= 0 || year>9999)
+    return _EmptyWString;
+
+  int month = getBirthMonth();
+  if (month > 0 && month <= 12) {
+    int day = getBirthDay();
+    if (day > 0 && day <= 31) {
+      wchar_t bf[16];
+      swprintf_s(bf, L"%d-%02d-%02d", year, month, day);
+      wstring& res = StringCache::getInstance().wget();
+      res = bf;
+      return res;
+    }
+  }
+  return itow(year);
+}
+
+void RunnerDBEntry::setBirthDate(const wstring& in) {
+  SYSTEMTIME st;
+  if (convertDateYMS(in, st, true) > 0) {
+    setBirthYear(st.wYear);
+    setBirthMonth(st.wMonth);
+    setBirthDay(st.wDay);
+  }
+  else {
+    int year = _wtoi(in.c_str());
+    if (year > 1900 && year < 9999) 
+      setBirthYear(year);
+    else
+      setBirthYear(0);
+
+    setBirthMonth(0);
+    setBirthDay(0);
+  }
+}
+
+void RunnerDBEntry::setBirthDate(int dateOrYear) {
+  if (dateOrYear > 0 && dateOrYear < 100)
+    dateOrYear = extendYear(dateOrYear);
+
+  if ((dateOrYear > 1900 && dateOrYear < 9999) || dateOrYear == 0) {
+    setBirthYear(dateOrYear);
+    setBirthMonth(0);
+    setBirthDay(0);
+    return;
+  }
+  int d = dateOrYear % 100;
+  dateOrYear /= 100;
+
+  int m = dateOrYear % 100;
+  dateOrYear /= 100;
+
+  int y = extendYear(dateOrYear);
+  if (d > 0 && d <= 31 && m > 0 && m <= 12 && y > 1900 && y < 9999) {
+    setBirthYear(y);
+    setBirthMonth(m);
+    setBirthDay(d);
+  }
+  else if (y > 1900 && y < 9999) {
+    setBirthYear(y);
+  }
+  else {
+    setBirthYear(0);
+    setBirthMonth(0);
+    setBirthDay(0);
+  }
+}
+
+int RunnerDBEntry::getBirthDateInt() const {
+  int y = getBirthYear();
+  int m = getBirthMonth();
+  int d = getBirthDay();
+
+  if (y > 0 && y < 9999 && m > 0 && d > 0)
+    return y * 10000 + m * 100 + d;
+  else
+    return y;
+}
+

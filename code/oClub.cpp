@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,16 +96,16 @@ void oClub::set(const xmlobject &xo)
       Id=it->getInt();
     }
     else if (it->is("Name")){
-      internalSetName(it->getw());
+      internalSetName(it->getWStr());
     }
     else if (it->is("oData")){
       getDI().set(*it);
     }
     else if (it->is("Updated")){
-      Modified.setStamp(it->getRaw());
+      Modified.setStamp(it->getRawStr());
     }
     else if (it->is("AltName")) {
-      altNames.push_back(it->getw());
+      altNames.push_back(it->getWStr());
     }
   }
 }
@@ -154,15 +154,14 @@ oDataContainer &oClub::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &s
   return *oe->oClubData;
 }
 
-pClub oEvent::getClub(int Id) const
-{
-  if (Id<=0)
-    return 0;
+pClub oEvent::getClub(int Id) const {
+  if (Id <= 0)
+    return nullptr;
 
   pClub value;
   if (clubIdIndex.lookup(Id, value))
     return value;
-  return 0;
+  return nullptr;
 }
 
 pClub oEvent::getClub(const wstring &pname) const
@@ -509,19 +508,19 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
       if (type == oClassIndividRelay || type == oClassRelay) {
         int leg = r->getLegNumber();
         if (t->getLegStatus(leg, true, false) == StatusOK)
-          ts =  t->getLegPlaceS(leg, false)+ L" (" + r->getRunningTimeS(true) + L")";
+          ts =  t->getLegPlaceS(leg, false)+ L" (" + r->getRunningTimeS(true, SubSecond::Auto) + L")";
         else
-          ts =  t->getLegStatusS(leg, true, false)+ L" (" + r->getRunningTimeS(true) +L")";
+          ts =  t->getLegStatusS(leg, true, false)+ L" (" + r->getRunningTimeS(true, SubSecond::Auto) +L")";
       }
       else
-        ts =  r->getPrintPlaceS(true)+ L" (" + r->getRunningTimeS(true) + L")";
+        ts =  r->getPrintPlaceS(true)+ L" (" + r->getRunningTimeS(true, SubSecond::Auto) + L")";
     }
     else
       ts =  r->getStatusS(true, true);
   }
   else {
     if (r->getTotalStatus()==StatusOK) {
-      ts =  r->getPrintTotalPlaceS(true) + L" (" + r->getTotalRunningTimeS() + L")";
+      ts =  r->getPrintTotalPlaceS(true) + L" (" + r->getTotalRunningTimeS(SubSecond::Auto) + L")";
     }
     else if (r->getTotalStatus()!=StatusNotCompetiting)
       ts =  r->getStatusS(true, true);
@@ -580,7 +579,7 @@ void oClub::addTeamInvoiceLine(const pTeam t, const map<int, wstring> &definedPa
     ts = L"-";
   else  {
     if (t->getStatus()==StatusOK) {
-      ts =  t->getPrintPlaceS(true) + L" (" + t->getRunningTimeS(true) + L")";
+      ts =  t->getPrintPlaceS(true) + L" (" + t->getRunningTimeS(true, SubSecond::Auto) + L")";
     }
     else
       ts =  t->getStatusS(true, true);

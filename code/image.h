@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,34 +29,57 @@ class Image {
 public:
   enum class ImageMethod {
     Default,
-    MonoAlpha
+    MonoAlpha,
+    WhiteTransparent
   };
 
 private:
  
-  static HBITMAP read_png_file(const wstring &filename, int &width, int &height, ImageMethod method);
+  static uint64_t computeHash(const vector<uint8_t>& data);
+
+  static void read_file(const wstring& filename, vector<uint8_t>& data);
+
+  static HBITMAP read_png_file(const wstring &filename, int &width, int &height, uint64_t &hash, ImageMethod method);
   static HBITMAP read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int &width, int &height, ImageMethod method);
-  static HBITMAP read_png(vector<uint8_t> &data, int &width, int &height, ImageMethod method);
-
-
+  static HBITMAP read_png(vector<uint8_t> &&data, int &width, int &height, ImageMethod method);
 
   struct Bmp {
-    HBITMAP image;
-    int width;
-    int height;
+    HBITMAP image = nullptr;
+    int width = -1;
+    int height = -1;
+    wstring fileName;
+    vector<uint8_t> rawData;
+    ~Bmp();
+    void destroy();
   };
 
-  map<int, Bmp> images;
+  map<uint64_t, Bmp> images;
 public:
 
-  HBITMAP loadImage(int resource, ImageMethod method);
+  HBITMAP loadImage(uint64_t resource, ImageMethod method);
   
   static vector<uint8_t> loadResourceToMemory(LPCTSTR lpName, LPCTSTR lpType);
 
-  int getWidth(int resource);
-  int getHeight(int resource);
-  void drawImage(int resource, ImageMethod method, HDC hDC, int x, int y, int width, int height);
+  int getWidth(uint64_t resource);
+  int getHeight(uint64_t resource);
+  void drawImage(uint64_t resource, ImageMethod method, HDC hDC, int x, int y, int width, int height);
 
+  uint64_t loadFromFile(const wstring& path, ImageMethod method);
+  uint64_t loadFromMemory(const wstring& fileName, const vector<uint8_t> &bytes, ImageMethod method);
+  void provideFromMemory(uint64_t id, const wstring& fileName, const vector<uint8_t>& bytes);
+  void addImage(uint64_t id, const wstring& fileName);
+
+  void clearLoaded();
+
+  void enumerateImages(vector<pair<wstring, size_t>>& img) const;
+  uint64_t getIdFromEnumeration(int enumerationIx) const;
+  int getEnumerationIxFromId(uint64_t imgId) const;
+
+  bool hasImage(uint64_t imgId) const;
+  void reloadImage(uint64_t imgId, ImageMethod method);
+
+  const wstring& getFileName(uint64_t imgId) const;
+  const vector<uint8_t> &getRawData(uint64_t imgId) const;
   Image();
   ~Image();
 };

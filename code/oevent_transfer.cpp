@@ -1,6 +1,6 @@
 /************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2022 Melin Software HB
+Copyright (C) 2009-2023 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -602,9 +602,9 @@ wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
   if (addToDate) {
     SYSTEMTIME st;
     convertDateYMS(Date, st, false);
-    __int64 absD = SystemTimeToInt64Second(st);
-    absD += 3600 * 24;
-    ce.Date = convertSystemDate(Int64SecondToSystemTime(absD));
+    __int64 absD = SystemTimeToInt64TenthSecond(st);
+    absD += timeConstHour * 24;
+    ce.Date = convertSystemDate(Int64TenthSecondToSystemTime(absD));
   }
   int len = Name.length();
   if (len > 2 && isdigit(Name[len - 1]) && !isdigit(Name[len - 2])) {
@@ -614,6 +614,7 @@ wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
     ce.Name += L" E2";
 
   memcpy(ce.oData, oData, sizeof(oData));
+  ce.dynamicData = dynamicData;
 
   for (oClubList::iterator it = Clubs.begin(); it != Clubs.end(); ++it) {
     if (it->isRemoved())
@@ -1159,7 +1160,7 @@ void oEvent::transferResult(oEvent &ce,
             continue;
 
           pRunner dst = ce.addRunner(src->sName, src->getClub(), classMap[src->getClassId(false)],
-                                     src->getCardNo(), src->getBirthYear(), true);
+                                     src->getCardNo(), src->getBirthDate(), true);
           dst->cloneData(src);
           dst->setInputData(*src);
           newEntries.push_back(dst);
@@ -1172,7 +1173,7 @@ void oEvent::transferResult(oEvent &ce,
             continue;
 
           pRunner dst = ce.addRunner(src->sName, src->getClub(), classMap[src->getClassId(false)],
-                                     0, src->getBirthYear(), true);
+                                     0, src->getBirthDate(), true);
           dst->cloneData(src);
           dst->setInputData(*src);
           dst->setStatus(StatusNotCompetiting, true, ChangeType::Update);

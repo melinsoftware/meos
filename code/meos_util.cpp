@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -152,7 +152,7 @@ int getRelativeDay() {
   return int(qp);
 }
 
-__int64 SystemTimeToInt64Second(const SYSTEMTIME &st) {
+__int64 SystemTimeToInt64TenthSecond(const SYSTEMTIME &st) {
   FILETIME ft;
   SystemTimeToFileTime(&st, &ft);
 
@@ -160,16 +160,16 @@ __int64 SystemTimeToInt64Second(const SYSTEMTIME &st) {
   u.HighPart = ft.dwHighDateTime;
   u.LowPart = ft.dwLowDateTime;
   __int64 qp = u.QuadPart;
-  qp /= __int64(10) * 1000 * 1000;
+  qp /= __int64(1000 * 1000 * timeUnitsPerSecond);
   return qp;
 }
 
-SYSTEMTIME Int64SecondToSystemTime(__int64 time) {
+SYSTEMTIME Int64TenthSecondToSystemTime(__int64 time) {
   SYSTEMTIME st;
   FILETIME ft;
 
   ULARGE_INTEGER u;
-  u.QuadPart = time * __int64(10) * 1000 * 1000;
+  u.QuadPart = time * __int64(1000 * 1000 * timeUnitsPerSecond);
   ft.dwHighDateTime = u.HighPart;
   ft.dwLowDateTime = u.LowPart;
 
@@ -257,44 +257,87 @@ int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid) {
   return convertDateYMS(ms, st, checkValid);
 }
 //Absolute time string to SYSTEM TIME
-int convertDateYMS(const string &m, SYSTEMTIME &st, bool checkValid) {
+int convertDateYMS(const string& m, SYSTEMTIME& st, bool checkValid) {
   memset(&st, 0, sizeof(st));
 
-  if (m.length()==0)
+  if (m.length() == 0)
     return -1;
 
-  int len=m.length();
-  for (int k=0;k<len;k++) {
-    BYTE b=m[k];
+  int len = m.length();
+  int dashCount = 0;
+  for (int k = 0; k < len; k++) {
+    BYTE b = m[k];
     if (b == 'T')
       break;
-    if ( !(b=='-' || b==' ' || (b>='0' && b<='9')) )
+    if (!(b == '-' || b == ' ' || (b >= '0' && b <= '9')))
       return -1;
+
+    if (b == '-')
+      dashCount++;
   }
 
-  int year=atoi(m.c_str());
-  if (year<1900 || year>3000)
-    return -1;
+  int year = atoi(m.c_str());
 
-  int month=0;
-  int day=0;
-  int kp=m.find_first_of('-');
+  if (dashCount == 0) {
+    int day = year % 100;
+    year /= 100;
+    int month = year % 100;
+    year /= 100;
 
-  if (kp!=string::npos) {
-    string mtext=m.substr(kp+1);
-    month=atoi(mtext.c_str());
+    if ((year > 0 && year < 100) || (year == 0 && m.size() > 2 && m[0] == '0' && m[1] == '0'))
+      year = extendYear(year);
 
-    if (month<1 || month>12) {
+    if (year < 1900 || year>3000)
+      return -1;
+
+    if (month < 1 || month>12) {
       if (checkValid)
         return -1;
       month = 1;
     }
 
-    kp=mtext.find_last_of('-');
+    if (day < 1 || day>31) {
+      if (checkValid)
+        return -1;
+      day = 1;
+    }
 
-    if (kp!=string::npos) {
-      day=atoi(mtext.substr(kp+1).c_str());
-      if (day<1 || day>31) {
+    st.wYear = year;
+    st.wMonth = month;
+    st.wDay = day;
+
+    int t = year * 100 * 100 + month * 100 + day;
+    if (t < 0)
+      return -1;
+
+    return t;
+  }
+
+  if ((year > 0 && year < 100) || (year == 0 && m.size() > 2 && m[0] == '0' && m[1] == '0'))
+    year = extendYear(year);
+
+  if (year < 1900 || year>3000)
+    return -1;
+
+  int month = 0;
+  int day = 0;
+  int kp = m.find_first_of('-');
+
+  if (kp != string::npos) {
+    string mtext = m.substr(kp + 1);
+    month = atoi(mtext.c_str());
+
+    if (month < 1 || month>12) {
+      if (checkValid)
+        return -1;
+      month = 1;
+    }
+
+    kp = mtext.find_last_of('-');
+
+    if (kp != string::npos) {
+      day = atoi(mtext.substr(kp + 1).c_str());
+      if (day < 1 || day>31) {
         if (checkValid)
           return -1;
         day = 1;
@@ -306,8 +349,8 @@ int convertDateYMS(const string &m, SYSTEMTIME &st, bool checkValid) {
   st.wDay = day;
 
 
-  int t = year*100*100+month*100+day;
-  if (t<0) return -1;
+  int t = year * 100 * 100 + month * 100 + day;
+  if (t < 0) return -1;
 
   return t;
 }
@@ -356,7 +399,7 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
         return -1;
       if (tpart < daysZeroTime)
         days--;
-      return days * 3600 * 24 + tpart;
+      return days * timeConstHour * 24 + tpart;
     }
     return -1;
   }
@@ -364,7 +407,7 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
   int plusIndex = -1;
   for (int k=0;k<len;k++) {
     BYTE b=m[k];
-    if ( !(isspace(b) || b==':' || (b>='0' && b<='9')) ) {
+    if ( !(isspace(b) || b==':' || (b>='0' && b<='9') || b == '.' || b == ',') ) {
       if (b=='+' && plusIndex ==-1 && k>0)
         plusIndex = k;
       else
@@ -377,7 +420,7 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
     int d = atoi(m.c_str());
 
     if (d>0 && t>=0)
-      return d*24*3600 + t;
+      return d*24* timeConstHour + t;
     else
       return -1;
   }
@@ -389,6 +432,7 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
 
   int minute=0;
   int second=0;
+  int tenth = 0;
   int kp=m.find_first_of(':');
 
   if (kp!=string::npos) {
@@ -401,13 +445,27 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime) {
     kp=mtext.find_last_of(':');
 
     if (kp!=string::npos) {
-      second=atoi(mtext.substr(kp+1).c_str());
+      second=atoi(mtext.c_str() + kp+1);
       if (second<0 || second>60)
         second=0;
+
+      if (timeConstSecond > 1) {
+        kp = mtext.find_last_of('.');
+        if (kp == string::npos)
+          kp = mtext.find_last_of(',');
+        if (kp != string::npos) {
+          tenth = atoi(mtext.c_str() + kp + 1);
+          if (tenth < 0 || tenth >= 10)
+            tenth = 0;
+        }
+      }
     }
   }
-  int t=hour*3600+minute*60+second;
-  if (t<0) return 0;
+
+  int t = hour * timeConstHour + minute * timeConstMinute + second * timeConstSecond + tenth;
+  
+  if (t<0) 
+    return 0;
 
   return t;
 }
@@ -477,7 +535,7 @@ int convertAbsoluteTimeISO(const string &m)
   if (second<0 || second>60)
     return -1;
 
-  int t = hour*3600 + minute*60 + second;
+  int t = hour * timeConstHour + minute * timeConstMinute + second;
 
   return t;
 }
@@ -509,31 +567,50 @@ int convertAbsoluteTimeMS(const string &m)
     mtext=m;
 
   minute=atoi(mtext.c_str());
-
+  int hour = 0;
   if (minute<0 || minute>60*24)
     minute=0;
 
   int kp=mtext.find_first_of(':');
-
+  bool gotSecond = false;
   if (kp!=string::npos) {
     mtext = mtext.substr(kp+1);
     second = atoi(mtext.c_str());
+    gotSecond = true;
     if (second<0 || second>60)
       second=0;
   }
 
-  int t=minute*60+second;
-
-  kp=mtext.find_first_of(':');
-  if (kp!=string::npos) {
+  int t;
+  kp = mtext.find_first_of(':');
+  if (kp != string::npos) {
     //Allow also for format +-HH:MM:SS
-    mtext = mtext.substr(kp+1);
-    second=atoi(mtext.c_str());
-    if (second<0 || second>60)
-      second=0;
-    else
-      t = t*60 + second;
+    hour = minute;
+    minute = second;
+    
+    mtext = mtext.substr(kp + 1);
+    second = atoi(mtext.c_str());
+    if (second < 0 || second>60)
+      second = 0;  
   }
+  
+  int tenth = 0;
+  if (timeConstSecond > 1) {
+    kp = mtext.find_first_of('.');
+    if (kp == string::npos)
+      kp = mtext.find_last_of(',');
+    if (kp != string::npos) {
+      tenth = atoi(mtext.c_str() + kp + 1);
+      if (!gotSecond) { // Reinterpret minute as second (no minute was specified)
+        second = minute;
+        minute = 0;
+      }
+      if (tenth < 0 || tenth >= 10)
+        tenth = 0;
+    }
+  }
+  t = hour * timeConstHour + minute * timeConstMinute + second * timeConstSecond + tenth;
+
   return sign*t;
 }
 
@@ -543,13 +620,37 @@ int convertAbsoluteTimeMS(const wstring &m) {
 }
 
 //Generate +-MM:SS or +-HH:MM:SS
-const wstring &getTimeMS(int m) {
+const wstring &formatTimeMS(int m, bool force2digit, SubSecond mode) {
   wchar_t bf[32];
   int am = abs(m);
-  if (am < 3600 || !MeOSUtil::useHourFormat)
-    swprintf_s(bf, L"-%02d:%02d", am/60, am%60);
-  else if (am < 3600*48)
-    swprintf_s(bf, L"-%02d:%02d:%02d", am/3600, (am/60)%60, am%60);
+  if (am < timeConstHour || !MeOSUtil::useHourFormat) {
+    if (force2digit) {
+      if (mode == SubSecond::Off || (mode == SubSecond::Auto && m % 10 == 0))
+        swprintf_s(bf, L"-%02d:%02d", am / timeConstMinute, (am / timeConstSecond) % 60);
+      else
+        swprintf_s(bf, L"-%02d:%02d.%d", am / timeConstMinute, (am / timeConstSecond) % 60, am % timeConstSecond);
+    }
+    else {
+      if (mode == SubSecond::Off || (mode == SubSecond::Auto && m % 10 == 0))
+        swprintf_s(bf, L"-%d:%02d", am / timeConstMinute, (am / timeConstSecond) % 60);
+      else
+        swprintf_s(bf, L"-%d:%02d.%d", am / timeConstMinute, (am / timeConstSecond) % 60, am % timeConstSecond);
+    }
+  }
+  else if (am < timeConstHour * 48) {
+    if (force2digit) {
+      if (mode == SubSecond::Off || (mode == SubSecond::Auto && m % 10 == 0))
+        swprintf_s(bf, L"-%02d:%02d:%02d", am / timeConstHour, (am / timeConstMinute) % 60, (am / timeConstSecond) % 60);
+      else
+        swprintf_s(bf, L"-%02d:%02d:%02d.%d", am / timeConstHour, (am / timeConstMinute) % 60, (am / timeConstSecond) % 60, am % timeConstSecond);
+    }
+    else {
+      if (mode == SubSecond::Off || (mode == SubSecond::Auto && m % 10 == 0))
+        swprintf_s(bf, L"-%d:%02d:%02d", am / timeConstHour, (am / timeConstMinute) % 60, (am / timeConstSecond) % 60);
+      else
+        swprintf_s(bf, L"-%d:%02d:%02d.%d", am / timeConstHour, (am / timeConstMinute) % 60, (am / timeConstSecond) % 60, am % timeConstSecond);
+    }
+  }
   else {
     m = 0;
     bf[0] = 0x2013;
@@ -564,15 +665,25 @@ const wstring &getTimeMS(int m) {
   return res;
 }
 
-const wstring &formatTime(int rt) {
+const wstring &formatTime(int rt, SubSecond mode) {
   wstring &res = StringCache::getInstance().wget();
-  if (rt>0 && rt<3600*999) {
-    wchar_t bf[16];
-    if (rt>=3600 && MeOSUtil::useHourFormat)
-      swprintf_s(bf, 16, L"%d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
-    else
-      swprintf_s(bf, 16, L"%d:%02d", (rt/60), rt%60);
+  if (rt>0 && rt<timeConstHour*999) {
+    wchar_t bf[40];
+    if (mode == SubSecond::Off || (mode == SubSecond::Auto && rt % 10 == 0)) {
+      if (rt >= timeConstHour && MeOSUtil::useHourFormat)
+        swprintf_s(bf, L"%d:%02d:%02d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60);
+      else
+        swprintf_s(bf, L"%d:%02d", (rt / timeConstMinute), (rt / timeConstSecond) % 60);
+    }
+    else {
+      if (rt >= timeConstHour && MeOSUtil::useHourFormat)
+        swprintf_s(bf, L"%d:%02d:%02d.%d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt%timeConstSecond);
+      else
+        swprintf_s(bf, L"%d:%02d.%d", (rt / timeConstMinute), (rt / timeConstSecond) % 60, rt%timeConstSecond);
 
+  
+
+    }
     res = bf;
     return res;
   }
@@ -583,12 +694,12 @@ const wstring &formatTime(int rt) {
 
 const string &formatTimeN(int rt) {
   string &res = StringCache::getInstance().get();
-  if (rt>0 && rt<3600*999) {
+  if (rt>0 && rt<timeConstHour *999) {
     char bf[16];
-    if (rt>=3600 && MeOSUtil::useHourFormat)
-      sprintf_s(bf, 16, "%d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
+    if (rt>= timeConstHour && MeOSUtil::useHourFormat)
+      sprintf_s(bf, 16, "%d:%02d:%02d", rt/ timeConstHour,(rt/timeConstMinute)%60, (rt/timeConstSecond)%60);
     else
-      sprintf_s(bf, 16, "%d:%02d", (rt/60), rt%60);
+      sprintf_s(bf, 16, "%d:%02d", (rt/timeConstMinute), (rt/timeConstSecond)%60);
 
     res = bf;
     return res;
@@ -597,11 +708,15 @@ const string &formatTimeN(int rt) {
   return res;
 }
 
-const wstring &formatTimeHMS(int rt) {
+const wstring &formatTimeHMS(int rt, SubSecond mode) {
   wstring &res = StringCache::getInstance().wget();
   if (rt>=0) {
-    wchar_t bf[32];
-    swprintf_s(bf, 16, L"%02d:%02d:%02d", rt/3600,(rt/60)%60, rt%60);
+    wchar_t bf[40];
+    if (mode == SubSecond::Off || (mode == SubSecond::Auto && rt%10 == 0))
+      swprintf_s(bf, 16, L"%02d:%02d:%02d", rt/timeConstHour,(rt/timeConstMinute)%60, (rt/timeConstSecond)%60);
+    else
+      swprintf_s(bf, 16, L"%02d:%02d:%02d.%d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt % timeConstSecond);
+
     res = bf;
     return res;
   }
@@ -612,10 +727,10 @@ const wstring &formatTimeHMS(int rt) {
 
 wstring formatTimeIOF(int rt, int zeroTime)
 {
-  if (rt>0 && rt<(3600*24*10)) {
-    rt+=zeroTime;
+  if (rt > 0) {
+    rt += zeroTime;
     wchar_t bf[16];
-    swprintf_s(bf, 16, L"%02d:%02d:%02d", (rt/3600)%24,(rt/60)%60, rt%60);
+    swprintf_s(bf, 16, L"%02d:%02d:%02d", (rt / timeConstHour) % 24, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60);
 
     return bf;
   }
@@ -766,7 +881,7 @@ wstring itow(int64_t i) {
 
 wstring itow(uint64_t i) {
   wchar_t bf[32];
-  _i64tow_s(i, bf, 32, 10);
+  _ui64tow_s(i, bf, 32, 10);
   return bf;
 }
 
@@ -819,14 +934,19 @@ bool filterMatchString(const string &c, const char *filt_lc)
   return strstr(key, filt_lc)!=0;
 }
 
-bool filterMatchString(const wstring &c, const wchar_t *filt_lc) {
+bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score) {
+  score = 0;
   if (filt_lc[0] == 0)
     return true;
   wchar_t key[2048];
   wcscpy_s(key, c.c_str());
   CharLowerBuff(key, c.length());
-
-  return wcsstr(key, filt_lc)!=0;
+  bool match = wcsstr(key, filt_lc) != 0;
+  if (match) {
+    while (filt_lc[score] && key[score] && filt_lc[score] == key[score])
+      score++;
+  }
+  return match;
 }
 
 
@@ -1936,8 +2056,8 @@ int getTimeZoneInfo(const wstring &date) {
   else if (datecodeUTC < datecode)
     daydiff = -1;
 
-  int t = st.wHour * 3600;
-  int tUTC = daydiff * 24 * 3600 + utc.wHour * 3600 + utc.wMinute * 60 + utc.wSecond;
+  int t = st.wHour * timeConstSecPerHour;
+  int tUTC = daydiff * 24 * timeConstSecPerHour + utc.wHour * timeConstSecPerHour + utc.wMinute * timeConstSecPerMin + utc.wSecond;
 
   lastValue = tUTC - t;
   return lastValue;
@@ -1949,12 +2069,12 @@ wstring getTimeZoneString(const wstring &date) {
     return L"+00:00";
   else if (a>0) {
     wchar_t bf[12];
-    swprintf_s(bf, L"-%02d:%02d", a/3600, (a/60)%60);
+    swprintf_s(bf, L"-%02d:%02d", a/timeConstSecPerHour, (a/timeConstMinPerHour)%60);
     return bf;
   }
   else {
     wchar_t bf[12];
-    swprintf_s(bf, L"+%02d:%02d", a/-3600, (a/-60)%60);
+    swprintf_s(bf, L"+%02d:%02d", a/-timeConstSecPerHour, (a/-timeConstMinPerHour)%60);
     return bf;
   }
 }
@@ -2290,4 +2410,98 @@ int compareStringIgnoreCase(const wstring &a, const wstring &b) {
 const char* meosException::narrow(const wstring& msg) {
   static string nmsg(msg.begin(), msg.end());
   return nmsg.c_str();
+}
+
+int parseRelativeTime(const char *data) {
+  if (data) {
+    int ret = atoi(data);
+    if (timeConstSecond > 1) {
+      int j = 0;
+      while (data[j]) {
+        if (data[j] == '.') {
+          int t = data[j + 1] - '0';
+          if (t > 0 && t < 10) {
+            if (ret < 0 || data[0] == '-')
+              return ret * timeConstSecond - t;
+            else
+              return ret * timeConstSecond + t;
+          }
+          break;
+        }
+        j++;
+      }
+    }
+    if (ret == -1)
+      return ret; // Special value
+
+    return ret * timeConstSecond;
+  }
+  return 0;
+}
+
+int parseRelativeTime(const wchar_t *data) {
+  if (data) {
+    int ret = _wtoi(data);
+    if (timeConstSecond > 1) {
+      int j = 0;
+      while (data[j]) {
+        if (data[j] == '.') {
+          int t = data[j + 1] - '0';
+          if (t > 0 && t < 10) {
+            if (ret < 0 || data[0] == '-')
+              return ret * timeConstSecond - t;
+            else
+              return ret * timeConstSecond + t;
+          }
+          break;
+        }
+        j++;
+      }
+    }
+    if (ret == -1)
+      return ret; // Special value
+
+    return ret * timeConstSecond;
+  }
+  return 0;
+}
+
+const wstring &codeRelativeTimeW(int rt) {
+  wchar_t bf[32];
+  int subSec = timeConstSecond == 1 ? 0 : rt % timeConstSecond;
+
+  if (timeConstSecond == 1 || rt == -1)
+    return itow(rt);
+  else if (subSec == 0 && rt != -10)
+    return itow(rt / timeConstSecond);
+  else if (rt > 0) {
+    swprintf_s(bf, L"%d.%d", rt / timeConstSecond, rt % timeConstSecond);
+  }
+  else {
+    rt = -rt;
+    swprintf_s(bf, L"-%d.%d", rt / timeConstSecond, rt % timeConstSecond);
+  }
+  wstring &res = StringCache::getInstance().wget();
+  res = bf;
+  return res;
+}
+
+const string &codeRelativeTime(int rt) {
+  char bf[32];
+  int subSec = timeConstSecond == 1 ? 0 : rt % timeConstSecond;
+
+  if (timeConstSecond == 1 || rt == -1)
+    return itos(rt);
+  else if (subSec == 0 && rt != -10)
+    return itos(rt / timeConstSecond);
+  else if (rt > 0) {
+    sprintf_s(bf, "%d.%d", rt / timeConstSecond, rt % timeConstSecond);
+  }
+  else {
+    rt = -rt;
+    sprintf_s(bf, "-%d.%d", rt / timeConstSecond, rt % timeConstSecond);
+  }
+  string &res = StringCache::getInstance().get();
+  res = bf;
+  return res;
 }

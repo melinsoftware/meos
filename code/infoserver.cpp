@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -501,9 +501,9 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     ch = true;
   }
 
-  RunnerStatus s = bc.getStatusComputed();
+  RunnerStatus s = bc.getStatusComputed(true);
 
-  int rt = bc.getRunningTime(true) * 10;
+  int rt = bc.getRunningTime(true) * (10/timeConstSecond);
   if (rt > 0) {
     if (s == RunnerStatus::StatusUnknown)
       s = RunnerStatus::StatusOK;
@@ -521,7 +521,7 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
 
   int st = -1;
   if (bc.startTimeAvailable())
-    st = convertRelativeTime(bc, bc.getStartTime()) * 10;
+    st = convertRelativeTime(bc, bc.getStartTime()) * (10 / timeConstSecond);
   
   if (st != startTime) {
     startTime = st;
@@ -564,7 +564,7 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
 
   pTeam t = r.getTeam();
   if (useTotalResults) {
-    legInput = r.getTotalTimeInput() * 10;
+    legInput = r.getTotalTimeInput() * (10 / timeConstSecond);
     s = r.getTotalStatusInput();
   }
   else if (t && !isQF && r.getLegNumber() > 0) {
@@ -578,7 +578,7 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
       }
     }
     if (ltu > 0) {
-      legInput = t->getLegRunningTime(ltu - 1, true, false) * 10;
+      legInput = t->getLegRunningTime(ltu - 1, true, false) * (10 / timeConstSecond);
       s = t->getLegStatus(ltu - 1, true, false);
     }
   }
@@ -625,7 +625,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
   }
 
   vector<RadioTime> newRT;
-  if (r.getClassId(false) > 0 && r.getStatusComputed() != RunnerStatus::StatusNoTiming)  {
+  if (r.getClassId(false) > 0 && r.getStatusComputed(true) != RunnerStatus::StatusNoTiming)  {
     const vector<int> &radios = cmp.getControls(r.getClassId(true), r.getLegNumber());
     for (size_t k = 0; k < radios.size(); k++) {
       RadioTime radioTime;
@@ -634,7 +634,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
       r.getSplitTime(radioTime.radioId, s_split, radioTime.runningTime);
 
       if (radioTime.runningTime > 0) {
-        radioTime.runningTime*=10;
+        radioTime.runningTime *= (10 / timeConstSecond);
         newRT.push_back(radioTime);
       }
     }

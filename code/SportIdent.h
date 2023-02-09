@@ -1,19 +1,15 @@
 ﻿// SportIdent.h: interface for the SportIdent class.
 //
 //////////////////////////////////////////////////////////////////////
-
-#if !defined(AFX_SPORTIDENT_H__F13F5795_8FA9_4CE6_8497_7407CD590139__INCLUDED_)
-#define AFX_SPORTIDENT_H__F13F5795_8FA9_4CE6_8497_7407CD590139__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include <set>
+#include <vector>
+#include "oPunch.h"
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,6 +104,8 @@ struct SICard
 
   string serializePunches() const;
   void deserializePunches(const string &arg);
+
+  int getFirstTime() const;
 };
 
 struct SI_StationData {
@@ -154,9 +152,11 @@ struct SI_StationInfo
 };
 
 
-class SportIdent
-{
+class SportIdent {
 protected:
+
+  bool useSubsecondMode = false;
+  
   bool readSI6Block(HANDLE hComm, BYTE *data);
   bool readSystemData(SI_StationInfo *si, int retry=2);
   bool readSystemDataV2(SI_StationInfo &si);
@@ -195,7 +195,7 @@ protected:
   void getSI9DataExt(HANDLE hComm);
 
   void analyseSI5Time(BYTE *data, DWORD &time, DWORD &control);
-  bool analysePunch(BYTE *data, DWORD &time, DWORD &control);
+  bool analysePunch(BYTE *data, DWORD &time, DWORD &control, bool subSecond);
   void analyseTPunch(BYTE *data, DWORD &time, DWORD &control);
 
   //Card read waiting to be processed.
@@ -227,13 +227,25 @@ protected:
 
   bool readVoltage;
 
+  vector<int> punchMap;
+  SI_StationInfo* findStationInt(const wstring& com);
+  void addTestStation(const wstring& com);
+
 public:
-  SI_StationInfo *findStation(const wstring &com);
+
+  map<int, oPunch::SpecialPunch> getSpecialMappings() const;
+  void addSpecialMapping(int code, oPunch::SpecialPunch);
+  void removeSpecialMapping(int code);
+
+  const SI_StationInfo *findStation(const wstring &com) const;
 
   /** Log debug data. */
   void debugLog(const wchar_t *ptr);
 
-  void getInfoString(const wstring &com, vector<wstring> &info);
+  void getInfoString(const wstring &com, vector<pair<bool, wstring>> &info) const;
+  
+  bool isAnyOpenUnkownUnit() const;
+  
   bool isPortOpen(const wstring &com);
   bool autoDetect(list<int> &ComPorts);
   void stopMonitorThread();
@@ -250,13 +262,14 @@ public:
   void closeCom(const wchar_t *com);
   bool openCom(const wchar_t *com);
   bool tcpAddPort(int port, DWORD zeroTime);
-
   bool openComListen(const wchar_t *com, DWORD BaudRate);
 
   SportIdent(HWND hWnd, DWORD Id, bool readVoltage);
+
+  void setSubSecondMode(bool subSec) { useSubsecondMode = subSec; }
+  void resetPunchMap();
+
   virtual ~SportIdent();
   friend void start_si_thread(void *ptr);
 
 };
-
-#endif // !defined(AFX_SPORTIDENT_H__F13F5795_8FA9_4CE6_8497_7407CD590139__INCLUDED_)

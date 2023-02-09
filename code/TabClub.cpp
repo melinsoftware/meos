@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -351,8 +351,8 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
 
       gdi.fillDown();
       gdi.popX();
-
-      TabList::customTextLines(*oe, "IVExtra", gdi);
+      gdi.dropLine(2.5);
+      TabList::customTextLines(*oe, "IVExtra", true, gdi);
 
       gdi.dropLine(1);
 
@@ -364,7 +364,8 @@ int TabClub::clubCB(gdioutput &gdi, int type, void *data)
       oe->getDI().fillDataFields(gdi);
     }
     else if (bi.id == "SaveSettings") {
-      oe->getDI().saveDataFields(gdi);
+      set<string> modified;
+      oe->getDI().saveDataFields(gdi, modified);
 
       TabList::saveExtraLines(*oe, "IVExtra", gdi);
 

@@ -54,7 +54,7 @@ void MachineContainer::AbstractMachine::load(const xmlobject &data) {
   xmlList out;
   data.getObjects(out);
   for (auto &x : out) {
-    props[x.getName()] = x.getw();
+    props[x.getName()] = x.getWStr();
   }
 }
 

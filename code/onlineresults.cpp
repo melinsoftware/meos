@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -103,6 +103,11 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
     url = oe.getPropertyString("MOPURL", L"");
     file = oe.getPropertyString("MOPFolderName", L"");
     oe.getAllClasses(classes);
+    allClasses = true;
+  }
+  else if (allClasses && state == State::Edit) {
+    if (allClasses)
+      oe.getAllClasses(classes);
   }
 
   wstring time;
@@ -283,6 +288,8 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
     getInfoServer().includeCourse(includeCourse);
   }
   gdi.getSelection("Classes", classes);
+  allClasses = classes.size() == oe.getNumClasses();
+
   if (sendToFile) {
     if (folder.empty()) {
       throw meosException("Mappnamnet får inte vara tomt.");
@@ -394,6 +401,9 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWNDTarget() : 0);
   pwMain.init();
 
+  if (allClasses)
+    oe->getAllClasses(classes);
+
   wstring t;
   int xmlSize = 0;
   InfoCompetition &ic = getInfoServer();
@@ -408,10 +418,10 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     t = getTempFile();
     if (dataType == DataType::IOF2)
       oe->exportIOFSplits(oEvent::IOF20, t.c_str(), false, false,
-                          classes, -1, false, true, true, false);
+                          classes, -1, false, true, true, false, false);
     else if (dataType == DataType::IOF3)
       oe->exportIOFSplits(oEvent::IOF30, t.c_str(), false, false, 
-                          classes, -1, false, true, true, false);
+                          classes, -1, false, true, true, false, false);
     else
       throw meosException("Internal error");
   }
@@ -460,14 +470,10 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         key.push_back(mk1);
 		    pair<wstring, wstring> mk2(L"pwd", passwd);
         key.push_back(mk2);
-        if (zipFile) {
-          pair<wstring, wstring> mk3(L"Content-Type", L"application/zip");
-          key.push_back(mk3);
-        }
-        else {
-          pair<wstring, wstring> mk3(L"Content-Type", L"application/xml");
-          key.push_back(mk3);
-        }
+
+        bool addedHeader = false;
+        bool forceZIP = false;
+        bool forceNoZip = false;
 
         bool moreToWrite = true;
         string tmp;
@@ -483,7 +489,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           xmlSize = xmlOut.closeOut();
           wstring result = getTempFile();
 
-          if (zipFile && xmlSize > 1024) {
+          if (!forceNoZip && ((zipFile && xmlSize > 1024) || forceZIP)) {
             wstring zipped = getTempFile();
             zip(zipped.c_str(), 0, vector<wstring>(1, t));
             removeTempFile(t);
@@ -495,6 +501,21 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           }
           else
             bytesExported +=xmlSize;
+
+
+          if (!addedHeader) {
+            if (zipFile) {
+              forceZIP = true;
+              pair<wstring, wstring> mk3(L"Content-Type", L"application/zip");
+              key.push_back(mk3);
+            }
+            else {
+              forceNoZip = true;
+              pair<wstring, wstring> mk3(L"Content-Type", L"application/xml");
+              key.push_back(mk3);
+            }
+            addedHeader = true;
+          }
 
           dwl.postFile(url, t, result, key, pw);
           removeTempFile(t);

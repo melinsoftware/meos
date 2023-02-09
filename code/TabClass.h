@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,9 +33,9 @@ class TabClass :
     int maxTime;
 
     PursuitSettings(oClass &c) {
-      firstTime = 3600;
+      firstTime = timeConstHour;
       use = c.interpretClassType() != ctOpen;
-      maxTime = 3600;
+      maxTime = timeConstHour;
     }
   };
 
@@ -103,6 +103,9 @@ class TabClass :
   wstring lastScaleFactor;
   wstring lastMaxAfter;
 
+  // Filter for course assignment
+  wstring courseFilter;
+  
   bool lastHandleBibs;
   // Generate a table with class settings
   void showClassSettings(gdioutput &gdi);

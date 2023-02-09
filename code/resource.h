@@ -16,6 +16,8 @@
 #define IDC_STATIC                      -1
 #define IDI_SPLASHIMAGE                 512
 #define IDI_MEOSIMAGE                   513
+#define IDI_MEOSINFO                    514
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

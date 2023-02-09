@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,11 +46,11 @@
 //#define DEBUG_SI
 
 SI_StationData::SI_StationData() {
-  stationNumber=0;
-  stationMode=0;
-  extended=false;
-  handShake=false;
-  autoSend=false;
+  stationNumber = 0;
+  stationMode = 0;
+  extended = false;
+  handShake = false;
+  autoSend = false;
   radioChannel = 0;
 }
 
@@ -64,19 +64,28 @@ SI_StationInfo::SI_StationInfo()
   localZeroTime=0;
 }
 
-SportIdent::SportIdent(HWND hWnd, DWORD Id, bool readVoltage) : readVoltage(readVoltage)
-{
-  ClassId=Id;
-  hWndNotify=hWnd;
+SportIdent::SportIdent(HWND hWnd, DWORD Id, bool readVoltage) : readVoltage(readVoltage) {
+  ClassId = Id;
+  hWndNotify = hWnd;
 
-  //hComm=0;
-  //ThreadHandle=0;
-  n_SI_Info=0;
+  n_SI_Info = 0;
 
   InitializeCriticalSection(&SyncObj);
 
-  tcpPortOpen=0;
-  serverSocket=0;
+  tcpPortOpen = 0;
+  serverSocket = 0;
+  punchMap.resize(31, 0);
+  punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
+  punchMap[oPunch::SpecialPunch::PunchCheck] = oPunch::SpecialPunch::PunchCheck;
+  punchMap[oPunch::SpecialPunch::PunchFinish] = oPunch::SpecialPunch::PunchFinish;
+}
+
+void SportIdent::resetPunchMap() {
+  punchMap.resize(31, 0);
+  fill(punchMap.begin(), punchMap.end(), 0);
+  punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
+  punchMap[oPunch::SpecialPunch::PunchCheck] = oPunch::SpecialPunch::PunchCheck;
+  punchMap[oPunch::SpecialPunch::PunchFinish] = oPunch::SpecialPunch::PunchFinish;
 }
 
 SportIdent::~SportIdent()
@@ -299,7 +308,7 @@ string decode(BYTE *bf, int read)
 bool SportIdent::openComListen(const wchar_t *com, DWORD BaudRate) {
   closeCom(com);
 
-  SI_StationInfo *si = findStation(com);
+  SI_StationInfo *si = findStationInt(com);
 
   if (!si) {
     SI_Info[n_SI_Info].ComPort=com;
@@ -309,6 +318,9 @@ bool SportIdent::openComListen(const wchar_t *com, DWORD BaudRate) {
   }
   si->data.clear();
   
+  if (si->ComPort == L"TEST")
+    return true; // Passive test
+
   wstring comfile=wstring(L"//./")+com;
   si->hComm = CreateFile( comfile.c_str(),
             GENERIC_READ | GENERIC_WRITE,
@@ -355,7 +367,7 @@ bool SportIdent::tcpAddPort(int port, DWORD zeroTime)
 {
   closeCom(L"TCP");
 
-  SI_StationInfo *si = findStation(L"TCP");
+  SI_StationInfo *si = findStationInt(L"TCP");
 
   if (!si) {
     SI_Info[n_SI_Info].ComPort=L"TCP";
@@ -374,7 +386,7 @@ bool SportIdent::openCom(const wchar_t *com)
 {
   closeCom(com);
 
-  SI_StationInfo *si = findStation(com);
+  SI_StationInfo *si = findStationInt(com);
 
   if (!si) {
     SI_Info[n_SI_Info].ComPort=com;
@@ -386,7 +398,7 @@ bool SportIdent::openCom(const wchar_t *com)
   si->data.clear();
 
   if (si->ComPort == L"TEST") {
-    return true;
+    return false;
   }
 
   wstring comfile=wstring(L"//./")+com;
@@ -511,13 +523,31 @@ bool SportIdent::openCom(const wchar_t *com)
   return true;
 }
 
-
-SI_StationInfo *SportIdent::findStation(const wstring &com)
-{
+SI_StationInfo* SportIdent::findStationInt(const wstring& com) {
   if (com == L"TEST" && n_SI_Info < 30) {
     if (n_SI_Info == 0 || SI_Info[n_SI_Info - 1].ComPort != com) {
       SI_Info[n_SI_Info].ComPort = com;
       n_SI_Info++;
+    }
+  }
+
+  for (int i = 0; i < n_SI_Info; i++)
+    if (com == SI_Info[i].ComPort)
+      return &SI_Info[i];
+
+  return 0;
+}
+
+void SportIdent::addTestStation(const wstring& com) {
+  SI_Info[n_SI_Info].ComPort = com;
+  n_SI_Info++;
+}
+
+const SI_StationInfo *SportIdent::findStation(const wstring &com) const
+{
+  if (com == L"TEST" && n_SI_Info < 30) {
+    if (n_SI_Info == 0 || SI_Info[n_SI_Info - 1].ComPort != com) {
+      const_cast<SportIdent*>(this)->addTestStation(com);
     }
   }
 
@@ -537,7 +567,7 @@ void SportIdent::closeCom(const wchar_t *com)
   }
   else
   {
-    SI_StationInfo *si = findStation(com);
+    SI_StationInfo *si = findStationInt(com);
 
     if (si && si->ComPort==L"TCP") {
       if (tcpPortOpen) {
@@ -890,7 +920,7 @@ int SportIdent::MonitorTCPSI(WORD port, int localZeroTime)
             }
           }
           else
-            addPunch(op.CodeTime/10, op.CodeNo, op.SICardNo, 0);
+            addPunch(op.CodeTime, op.CodeNo, op.SICardNo, 0);
         }
         else r=-1;
 
@@ -933,10 +963,10 @@ bool SportIdent::MonitorTEST(SI_StationInfo &si)
 
     SICard card(ConvertedTimeStatus::Hour12);
     card.StartPunch.Code = 1;
-    int t = card.StartPunch.Time = 3600*8 + rand()%1000;
+    int t = card.StartPunch.Time = timeConstHour*8 + rand()%1000;
 
     card.FinishPunch.Code = 2;
-    card.FinishPunch.Time = card.StartPunch.Time + 1800 + rand() % 3600;
+    card.FinishPunch.Time = card.StartPunch.Time + timeConstHour/2 + rand() % timeConstHour;
     card.CardNumber = tc.cardNo;
 
     for (size_t k = 0; k < tc.punches.size(); k++) {
@@ -947,8 +977,8 @@ bool SportIdent::MonitorTEST(SI_StationInfo &si)
     }
     addCard(card);
 
-    //Sleep(300 + rand()%600);
-    Sleep(0);
+    Sleep(300 + rand()%600);
+    //Sleep(0);
     if (++longSleepIter > 20) {
       Sleep(100 + rand() % 600);
       longSleepIter = 0;
@@ -1002,12 +1032,15 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
 
               DWORD Card=MAKELONG(MAKEWORD(bf[7], bf[6]), MAKEWORD(bf[5], bf[4]));
 
-              if (Series<=4 && Series>=1)
-                Card=ShortCard+100000*Series;
+              if (Series <= 4 && Series >= 1)
+                Card = ShortCard + 100000 * Series;
 
               DWORD Time=0;
-              if (bf[8]&0x1) Time=3600*12;
-              Time+=MAKEWORD(bf[10], bf[9]);
+              if (bf[8] & 0x1) Time = timeConstHour * 12;
+              Time += MAKEWORD(bf[10], bf[9])*timeConstSecond;
+              uint8_t tss = bf[11]; // Sub second 1/256 seconds
+              int tenth = (((100 * tss) / 256) + 4) / 10;
+              Time += tenth;
 #ifdef DEBUG_SI
               char str[128];
               sprintf_s(str, "EXTENDED: Card = %d, Station = %d, StationMode = %d", Card, Station, si.StationMode);
@@ -1040,9 +1073,9 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
             //if (Series!=1)
             //	Card+=100000*Series;
 
-            DWORD Time=MAKEWORD(bf[8], bf[7]);
+            DWORD Time = MAKEWORD(bf[8], bf[7]) * timeConstSecond;
             BYTE p=bf[1];
-            if (p&0x1) Time+=3600*12;
+            if (p&0x1) Time+=timeConstHour*12;
 
 #ifdef DEBUG_SI
               char str[128];
@@ -1100,7 +1133,7 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
             bf[0]=chRead;
             readBytes(bf+1, 200,  hComm);
             //GetSI5DataExt(hComm);
-            MessageBox(NULL, L"Programmera stationen utan AUTOSEND!", NULL, MB_OK);
+            MessageBox(NULL, lang.tl(L"Programmera stationen utan AUTOSEND").c_str(), NULL, MB_OK);
             }
             break;
 
@@ -1108,7 +1141,7 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
             BYTE bf[200];
             bf[0]=chRead;
             readBytes(bf+1, 200,  hComm);
-            MessageBox(NULL, L"Programmera stationen utan AUTOSEND!", NULL, MB_OK);
+            MessageBox(NULL, lang.tl(L"Programmera stationen utan AUTOSEND").c_str(), NULL, MB_OK);
             }
             break;
           case 0xE8:{
@@ -1125,7 +1158,6 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
           //	MessageBox(NULL, "SI-card not supported", NULL, MB_OK);
           //	break;
           default:
-
             BYTE bf[128];
             bf[0]=chRead;
             int rb=readBytes(bf+1, 120,  hComm);
@@ -1146,6 +1178,9 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
                 st+=d;
               }
             }
+
+            if (chRead == 0xEF)
+              MessageBox(NULL, lang.tl(L"Programmera stationen utan AUTOSEND").c_str(), NULL, MB_OK);
             //MessageBox(NULL, st.c_str(), "Unknown SI response", MB_OK);
           }
          }
@@ -1650,8 +1685,6 @@ bool SportIdent::getCard5Data(BYTE *data, SICard &card)
   analyseSI5Time(data+5, card.FinishPunch.Time, card.FinishPunch.Code);
   analyseSI5Time(data+9, card.CheckPunch.Time, card.CheckPunch.Code);
 
-//	card.StartPunch=MAKEWORD(data[4], data[3]);
-//	card.FinishPunch=MAKEWORD(data[6], data[5]);
   card.nPunch=data[7]-1;
 
   data+=16;
@@ -1660,7 +1693,7 @@ bool SportIdent::getCard5Data(BYTE *data, SICard &card)
     if (k<30) {
       DWORD basepointer=3*(k%5)+1+(k/5)*16;
       DWORD code=data[basepointer];
-      DWORD time;//=MAKEWORD(data[basepointer+2],data[basepointer+1]);
+      DWORD time;
       DWORD slask;
       analyseSI5Time(data+basepointer+1, time, slask);
 
@@ -1710,29 +1743,29 @@ bool SportIdent::getCard9Data(BYTE *data, SICard &card)
   int series = data[24] & 15;
 
   card.convertedTime = ConvertedTimeStatus::Hour24;
-  analysePunch(data+12, card.StartPunch.Time, card.StartPunch.Code);
-  analysePunch(data+16, card.FinishPunch.Time, card.FinishPunch.Code);
-  analysePunch(data+8, card.CheckPunch.Time, card.CheckPunch.Code);
+  analysePunch(data+12, card.StartPunch.Time, card.StartPunch.Code, useSubsecondMode);
+  analysePunch(data+16, card.FinishPunch.Time, card.FinishPunch.Code, useSubsecondMode);
+  analysePunch(data+8, card.CheckPunch.Time, card.CheckPunch.Code, false);
 
   if (series == 1) {
     // SI Card 9
     card.nPunch=min(int(data[22]), 50);
     for(unsigned k=0;k<card.nPunch;k++) {
-      analysePunch(14*4 + data + 4*k, card.Punch[k].Time, card.Punch[k].Code);
+      analysePunch(14*4 + data + 4*k, card.Punch[k].Time, card.Punch[k].Code, false);
     }
   }
   else if (series == 2) {
     // SI Card 8
     card.nPunch=min(int(data[22]), 30);
     for(unsigned k=0;k<card.nPunch;k++) {
-      analysePunch(34*4 + data + 4*k, card.Punch[k].Time, card.Punch[k].Code);
+      analysePunch(34*4 + data + 4*k, card.Punch[k].Time, card.Punch[k].Code, false);
     }
   }
   else if (series == 4) {
     // pCard
     card.nPunch=min(int(data[22]), 20);
     for(unsigned k=0;k<card.nPunch;k++) {
-      analysePunch(44*4 + data + 4*k, card.Punch[k].Time, card.Punch[k].Code);
+      analysePunch(44*4 + data + 4*k, card.Punch[k].Time, card.Punch[k].Code, false);
     }
   }
   else if (series == 6) {
@@ -1751,7 +1784,7 @@ bool SportIdent::getCard9Data(BYTE *data, SICard &card)
     // Card 10, 11, SIAC
     card.nPunch=min(int(data[22]), 128);
     for(unsigned k=0;k<card.nPunch;k++) {
-      analysePunch(data + 128 + 4*k, card.Punch[k].Time, card.Punch[k].Code);
+      analysePunch(data + 128 + 4*k, card.Punch[k].Time, card.Punch[k].Code, false);
     }
   }
   else
@@ -1774,7 +1807,7 @@ void SportIdent::analyseTPunch(BYTE *data, DWORD &time, DWORD &control) {
 //    BYTE day = (dt0 >> 1) & 0x1F;
 
     control=cn;
-    time=MAKEWORD(ptl, pth)+3600*12*(dt0&0x1);
+    time = MAKEWORD(ptl, pth) * timeConstSecond + timeConstHour * 12 * (dt0 & 0x1);
   }
   else {
     control=-1;
@@ -1810,9 +1843,9 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
 //	DWORD control;
 //	DWORD time;
   card.convertedTime = ConvertedTimeStatus::Hour24;
-  analysePunch(data+8, card.StartPunch.Time, card.StartPunch.Code);
-  analysePunch(data+4, card.FinishPunch.Time, card.FinishPunch.Code);
-  analysePunch(data+12, card.CheckPunch.Time, card.CheckPunch.Code);
+  analysePunch(data+8, card.StartPunch.Time, card.StartPunch.Code, useSubsecondMode);
+  analysePunch(data+4, card.FinishPunch.Time, card.FinishPunch.Code, useSubsecondMode);
+  analysePunch(data+12, card.CheckPunch.Time, card.CheckPunch.Code, false);
   card.nPunch=min(int(data[2]), 192);
 
   int i;
@@ -1843,12 +1876,12 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
   data+=128-16;
 
   for(unsigned k=0;k<card.nPunch;k++) {
-    analysePunch(data+4*k, card.Punch[k].Time, card.Punch[k].Code);
+    analysePunch(data+4*k, card.Punch[k].Time, card.Punch[k].Code, false);
   }
 
   // Check for extra punches, SI6-bug
   for (unsigned k = card.nPunch; k < 192; k++) {
-    if (!analysePunch(data+4*k, card.Punch[k].Time, card.Punch[k].Code)) {
+    if (!analysePunch(data+4*k, card.Punch[k].Time, card.Punch[k].Code, false)) {
       break;
     }
     else {
@@ -1860,7 +1893,7 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
   return true;
 }
 
-bool SportIdent::analysePunch(BYTE *data, DWORD &time, DWORD &control) {
+bool SportIdent::analysePunch(BYTE *data, DWORD &time, DWORD &control, bool subSecond) {
   if (*LPDWORD(data)!=0xEEEEEEEE && *LPDWORD(data)!=0x0)
   {
     BYTE ptd=data[0];
@@ -1868,8 +1901,16 @@ bool SportIdent::analysePunch(BYTE *data, DWORD &time, DWORD &control) {
     BYTE pth=data[2];
     BYTE ptl=data[3];
 
-    control=cn+256*((ptd>>6)&0x3);
-    time=MAKEWORD(ptl, pth)+3600*12*(ptd&0x1);
+    time = timeConstSecond * MAKEWORD(ptl, pth) + timeConstHour * 12 * (ptd & 0x1);
+    if (!subSecond) {
+      control = cn + 256 * ((ptd >> 6) & 0x3);      
+    }
+    else {
+      control = 0;
+      uint8_t tss = data[1]; // Sub second 1/256 seconds
+      int tenth = (((100 * tss) / 256) + 4) / 10;
+      time += tenth;
+    }
     return true;
   }
   else
@@ -1880,15 +1921,15 @@ bool SportIdent::analysePunch(BYTE *data, DWORD &time, DWORD &control) {
   }
 }
 
-void SportIdent::analyseSI5Time(BYTE *data, DWORD &time, DWORD &control)
+void SportIdent::analyseSI5Time(BYTE* data, DWORD& time, DWORD& control)
 {
-  if (*LPWORD(data)!=0xEEEE) {
-    time=MAKEWORD(data[1], data[0]);
-    control=0;
+  if (*LPWORD(data) != 0xEEEE) {
+    time = MAKEWORD(data[1], data[0]) * timeConstSecond;
+    control = 0;
   }
   else {
-    control=-1;
-    time=0;
+    control = -1;
+    time = 0;
   }
 }
 
@@ -1906,17 +1947,17 @@ void SICard::analyseHour12Time(DWORD zeroTime) {
 }
 
 void SIPunch::analyseHour12Time(DWORD zeroTime) {
-  if (Code != -1 && Time>=0 && Time <=12*3600) {
-    if (zeroTime < 12 * 3600) {
+  if (Code != -1 && Time>=0 && Time <=12*timeConstHour) {
+    if (zeroTime < 12 * timeConstHour) {
       //Förmiddag
       if (Time < zeroTime)
-        Time += 12 * 3600; //->Eftermiddag
+        Time += 12 * timeConstHour; //->Eftermiddag
     }
     else {
       //Eftermiddag
-      if (Time >= zeroTime % (12 * 3600)) {
+      if (Time >= zeroTime % (12 * timeConstHour)) {
         //Eftermiddag
-        Time += 12 * 3600;
+        Time += 12 * timeConstHour;
       }
       // else Efter midnatt OK.
     }
@@ -1985,50 +2026,67 @@ void SportIdent::addCard(const SICard &sic)
   PostMessage(hWndNotify, WM_USER, ClassId, 0);
 }
 
-void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode)
-{
+void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode) {
+  if (!useSubsecondMode)
+    Time -= (Time % timeConstSecond);
+
   SICard sic(ConvertedTimeStatus::Hour24);
-  sic.CardNumber=Card;
+  sic.CardNumber = Card;
   sic.StartPunch.Code = -1;
   sic.CheckPunch.Code = -1;
   sic.FinishPunch.Code = -1;
 
-  if (Mode==0 || Mode == 11){ // 11 is dongle
-    if (Station>30){
-      sic.Punch[0].Code=Station;
-      sic.Punch[0].Time=Time;
-      sic.nPunch=1;
+  auto mapPunch = [this](int code) {
+    if (code > 0 && code < punchMap.size() && punchMap[code] > 0)
+      return punchMap[code];
+    else
+      return code;
+  };
+
+  if (Mode == 0 || Mode == 11) { // 11 is dongle
+    int code = (Station & 0xFFFF);
+    int mappedCode = mapPunch(code);
+    int unit = 0;
+    if (mappedCode != code)
+      unit = code;
+    else
+      unit = (Station >> 16) & 0xFFFF;
+
+    if (mappedCode > 30) {
+      sic.Punch[0].Code = Station;
+      sic.Punch[0].Time = Time;
+      sic.nPunch = 1;
     }
-    else if (Station == oPunch::PunchStart) {
+    else if (mappedCode == oPunch::PunchStart) {
       sic.StartPunch.Time = Time;
-      sic.StartPunch.Code = oPunch::PunchStart;
+      sic.StartPunch.Code = unit;
     }
-    else if (Station == oPunch::PunchCheck) {
+    else if (mappedCode == oPunch::PunchCheck) {
       sic.CheckPunch.Time = Time;
-      sic.CheckPunch.Code = oPunch::PunchCheck;
+      sic.CheckPunch.Code = unit;
     }
-    else{
-      sic.FinishPunch.Time=Time;
-      sic.FinishPunch.Code = oPunch::PunchFinish;
+    else {
+      sic.FinishPunch.Time = Time;
+      sic.FinishPunch.Code = unit;
     }
   }
-  else{
-    if (Mode==0x02 || Mode == 50){
-      sic.Punch[0].Code=Station;
-      sic.Punch[0].Time=Time;
-      sic.nPunch=1;
+  else {
+    if (Mode == 0x02 || Mode == 50) {
+      sic.Punch[0].Code = Station;
+      sic.Punch[0].Time = Time;
+      sic.nPunch = 1;
     }
     else if (Mode == 3) {
-      sic.StartPunch.Time=Time;
-      sic.StartPunch.Code = oPunch::PunchStart;
+      sic.StartPunch.Time = Time;
+      sic.StartPunch.Code = Station;
     }
     else if (Mode == 10) {
-      sic.CheckPunch.Time=Time;
-      sic.CheckPunch.Code = oPunch::PunchCheck;
+      sic.CheckPunch.Time = Time;
+      sic.CheckPunch.Code = Station;
     }
-    else{
-      sic.FinishPunch.Time=Time;
-      sic.FinishPunch.Code = oPunch::PunchFinish;
+    else {
+      sic.FinishPunch.Time = Time;
+      sic.FinishPunch.Code = Station;
     }
   }
   sic.punchOnly = true;
@@ -2084,9 +2142,8 @@ void start_si_thread(void *ptr)
   }
 }
 
-void SportIdent::startMonitorThread(const wchar_t *com)
-{
-  SI_StationInfo *si = findStation(com);
+void SportIdent::startMonitorThread(const wchar_t *com) {
+  SI_StationInfo *si = findStationInt(com);
 
   if (si && (si->hComm || si->ComPort==L"TCP" || si->ComPort == L"TEST"))
   {
@@ -2119,7 +2176,7 @@ void checkport_si_thread(void *ptr)
     *port=0; //No SI found here
   else {
     bool valid = true;
-    SI_StationInfo *sii = si.findStation(bf);
+    const SI_StationInfo *sii = ((const SportIdent &)si).findStation(bf);
     if (sii) {
       if (sii->data.empty() || sii->data[0].stationNumber>=1024 || sii->data[0].stationMode>15 ||
               !(sii->data[0].autoSend || sii->data[0].handShake))
@@ -2178,7 +2235,7 @@ bool SportIdent::autoDetect(list<int> &ComPorts)
 
 bool SportIdent::isPortOpen(const wstring &com)
 {
-  SI_StationInfo *si = findStation(com);
+  const SI_StationInfo *si = findStation(com);
 
   if (si && si->ComPort==L"TCP")
     return tcpPortOpen && serverSocket;
@@ -2186,25 +2243,61 @@ bool SportIdent::isPortOpen(const wstring &com)
     return si!=0 && si->hComm && si->ThreadHandle;
 }
 
-void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
-{
+
+bool SportIdent::isAnyOpenUnkownUnit() const {
+  if (tcpPortOpen && serverSocket)
+    return true;
+
+  for (int i = 0; i < n_SI_Info; i++) {
+    auto& si = SI_Info[i];
+    auto& com = si.ComPort;
+
+    if (com == L"TCP")
+      continue;
+
+    if (com == L"TEST")
+      return true;
+
+    if (!(si.hComm && si.ThreadHandle))
+      continue; // Not open
+
+    if (si.data.empty())
+      return true; // Listen mode (no contact made)
+
+    switch (si.data[0].stationMode) {
+    case 2: // Known modes
+    case 50:
+    case 4:
+    case 3:
+    case 5:
+    case 7:
+    case 10:
+      continue;
+    }
+
+    return true;
+  }
+  return false;
+}
+
+void SportIdent::getInfoString(const wstring &com, vector<pair<bool, wstring>> &infov) const {
   infov.clear();
-  SI_StationInfo *si = findStation(com);
+  const SI_StationInfo *si = findStation(com);
 
   if (com==L"TCP") {
     if (!si || !tcpPortOpen || !serverSocket) {
-      infov.push_back(L"TCP: "+lang.tl(L"ej aktiv."));
+      infov.emplace_back(false, L"TCP: "+lang.tl(L"ej aktiv."));
       return;
     }
 
     wchar_t bf[128];
     swprintf_s(bf, lang.tl(L"TCP: Port %d, Nolltid: %s").c_str(), tcpPortOpen, L"00:00:00");//WCS
-    infov.push_back(bf);
+    infov.emplace_back(false, bf);
     return;
   }
 
   if (!(si!=0 && si->hComm && si->ThreadHandle)) {
-    infov.push_back(com+L": "+lang.tl(L"ej aktiv."));
+    infov.emplace_back(false, com+L": "+lang.tl(L"ej aktiv."));
     return;
   }
   
@@ -2221,7 +2314,7 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
     switch(da.stationMode){
       case 2:
       case 50:
-        info+=lang.tl(L"Kontrol");
+        info+=lang.tl(L"Kontroll");
         break;
       case 4:
         info+=lang.tl(L"Mål");
@@ -2256,12 +2349,15 @@ void SportIdent::getInfoString(const wstring &com, vector<wstring> &infov)
     else if (da.handShake) info+=lang.tl(L"handskakning.");
     else info+=lang.tl(L"[VARNING] ingen/okänd.");
 
-    infov.push_back(info);
+    infov.emplace_back(false, info);
+
+    if (da.autoSend && da.stationMode == 5)
+      infov.emplace_back(true, lang.tl("Programmera stationen utan AUTOSEND"));
   }
 }
 
 static string formatTimeN(int t) {
-  const wstring &wt = formatTime(t);
+  const wstring &wt = formatTime(t, SubSecond::Auto);
   string nt(wt.begin(), wt.end());
   return nt;
 }
@@ -2411,7 +2507,7 @@ unsigned int SICard::calculateHash() const {
 }
 
 string SICard::serializePunches() const {
-  string ser;
+  string ser = "*";// Mark of time factor
   if (CheckPunch.Code != -1)
     ser += "C-" + itos(CheckPunch.Time);
   
@@ -2437,24 +2533,31 @@ void SICard::deserializePunches(const string &arg) {
   StartPunch.Code = -1;
   CheckPunch.Code = -1;
   vector<string> out;
-  split(arg, ";", out);
+  int timeFactor = 10;
+  if (arg.length() > 1 && arg[0] == '*') {
+    split(arg.c_str() + 2, ";", out);
+    timeFactor = 1;
+  }
+  else {
+    split(arg, ";", out);
+  }
   nPunch = 0;
   for (size_t k = 0; k< out.size(); k++) {
     vector<string> mark;
     split(out[k], "-", mark);
-    if (mark.size() != 2)
+    if (mark.size() != 2 || mark[0].empty())
       throw std::exception("Invalid string");
     DWORD *tp = 0;
-    if (mark[0] == "F") {
-      FinishPunch.Code = 1;
+    if (mark[0][0] == 'F') {
+      FinishPunch.Code = atoi(mark[0].c_str() + 1);
       tp = &FinishPunch.Time;
     }
-    else if (mark[0] == "S") {
-      StartPunch.Code = 1;
+    else if (mark[0][0] == 'S') {
+      StartPunch.Code = atoi(mark[0].c_str() + 1);
       tp = &StartPunch.Time;
     }
-    else if (mark[0] == "C") {
-      CheckPunch.Code = 1;
+    else if (mark[0][0] == 'C') {
+      CheckPunch.Code = atoi(mark[0].c_str() + 1);
       tp = &CheckPunch.Time;
     }
     else {
@@ -2462,10 +2565,49 @@ void SICard::deserializePunches(const string &arg) {
       tp = &Punch[nPunch++].Time;
     }
 
-    *tp = atoi(mark[1].c_str());
+    *tp = atoi(mark[1].c_str()) * timeFactor;
   }
   if (out.size() == 1)
     punchOnly = true;
+}
+
+int SICard::getFirstTime() const {
+  if (StartPunch.Time > 0)
+    return StartPunch.Time;
+
+  for (int i = 0; i < nPunch; i++) {
+    if (Punch[i].Time > 0)
+      return Punch[i].Time;
+  }
+
+  if (FinishPunch.Time > 0)
+    return FinishPunch.Time;
+
+  return 0;
+}
+
+
+map<int, oPunch::SpecialPunch> SportIdent::getSpecialMappings() const {
+  map<int, oPunch::SpecialPunch> res;
+  for (int j = 1; j < punchMap.size(); j++) {
+    if (punchMap[j] > 0)
+      res[j] = oPunch::SpecialPunch(punchMap[j]);
+  }
+  return res;
+}
+
+void SportIdent::addSpecialMapping(int code, oPunch::SpecialPunch p) {
+  if (code > 0 && code < punchMap.size())
+    punchMap[code] = p;
+  else
+    throw std::exception("Not supported");
+}
+
+void SportIdent::removeSpecialMapping(int code) {
+  if (code > 0 && code < punchMap.size())
+    punchMap[code] = 0;
+  else
+    throw std::exception("Not supported");
 }
 
 void SportIdent::addTestCard(int cardNo, const vector<int> &punches) {

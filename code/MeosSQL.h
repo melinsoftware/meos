@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -131,7 +131,7 @@ protected:
   bool checkOldVersion(oEvent *oe, RowWrapper &row);
 
   map<pair<int, int>, DWORD> readTimes;
-  void synchronized(const oBase &entity);
+  void synchronized(oBase &entity);
   bool skipSynchronize(const oBase &entity) const;
 
   ResNSel updateCounter(const char *oTable, int id, QueryWrapper *updateqry);
@@ -186,8 +186,13 @@ protected:
   OpFailStatus syncUpdate(oTeam *t, bool forceWriteAll);
   OpFailStatus syncRead(bool forceRead, oTeam *t);
 
+  void upgradeTimeFormat(const string &dbname);
 
 public:
+
+  OpFailStatus enumerateImages(vector<pair<wstring, uint64_t>>& images);
+  OpFailStatus getImage(uint64_t id, wstring &fileName, vector<uint8_t> &data);
+  OpFailStatus storeImage(uint64_t id, const wstring& fileName, const vector<uint8_t>& data);
 
   bool synchronizeList(oEvent *oe, oListId lid);
   OpFailStatus synchronizeUpdate(oBase *obj);

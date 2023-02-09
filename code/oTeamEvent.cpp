@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -296,6 +296,7 @@ pTeam oEvent::findTeam(const wstring &s, int lastId, unordered_set<int> &filter)
 
 bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
 {
+  int score;
   if (number) {
     if (matchNumber(StartNo, s_lc ))
         return true;
@@ -306,11 +307,11 @@ bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
     }
   }
 
-  if (filterMatchString(sName, s_lc))
+  if (filterMatchString(sName, s_lc, score))
     return true;
 
   for(size_t k=0;k<Runners.size();k++)
-    if (Runners[k] && filterMatchString(Runners[k]->tRealName, s_lc))
+    if (Runners[k] && filterMatchString(Runners[k]->tRealName, s_lc, score))
       return true;
 
   return false;
@@ -642,11 +643,11 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setRopeTime(0, L"-");
 
       cls.setLegType(1, LTSum);
-      cls.setStartType(1, STHunting, false); 
-      int t = convertAbsoluteTimeHMS(start, ZeroTime)+3600;
+      cls.setStartType(1, STPursuit, false); 
+      int t = convertAbsoluteTimeHMS(start, ZeroTime)+timeConstHour;
       cls.setStartData(1, formatTimeHMS(t));
-      cls.setRestartTime(1, formatTimeHMS(t+1800));
-      cls.setRopeTime(1, formatTimeHMS(t+1800));
+      cls.setRestartTime(1, formatTimeHMS(t+timeConstHour/2));
+      cls.setRopeTime(1, formatTimeHMS(t+ timeConstHour / 2));
       cls.setLegRunner(1, 0);
       cls.setCoursePool(false);
       getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
@@ -850,7 +851,7 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
 }
 
 void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> &classId2Linear, bool &hasRunner) const {
-  if (so == ClassStartTime || so == ClassStartTimeClub) {
+  if (so == ClassStartTime || so == ClassStartTimeClub || so == ClubClassStartTime) {
     if (leg == -1)
       leg = 0;
     if (unsigned(leg) < Runners.size())
@@ -865,7 +866,7 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
   else if (so == ClassPoints) {
     bool totalResult = so == ClassTotalResult;
     setTmpTime(getRunningTime(true));
-    tmpSortTime -= 7 * 24 * 3600 * getRogainingPoints(true, totalResult);
+    tmpSortTime -= 7 * 24 * timeConstHour * getRogainingPoints(true, totalResult);
     tmpCachedStatus = getLegStatus(-1, true, totalResult);
   }
   else if (so == ClassKnockoutTotalResult) {
@@ -878,7 +879,7 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
     int numResult = 0;
     int lastClassHeat = 0;
     for (auto &r : Runners) {
-      if (r && (r->prelStatusOK(true, true) ||
+      if (r && (r->prelStatusOK(true, true, false) ||
         (r->tStatus != StatusUnknown && r->tStatus != StatusDNS && r->tStatus != StatusCANCEL))) {
 
         if (r->Class && r->tLeg > 0 && r->Class->isQualificationFinalBaseClass() && r->getClassRef(true) == r->Class)
@@ -937,7 +938,7 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
         }
         else {
           setTmpTime(r->getRunningTime(true));
-          tmpCachedStatus = r->getStatusComputed();
+          tmpCachedStatus = r->getStatusComputed(false);
         }
       }
       else {
@@ -948,18 +949,18 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
     else {
       if (so == ClassDefaultResult) {
         setTmpTime(getLegRunningTime(lg, false, totalResult));
-        tmpSortTime += getNumShortening(lg) * 3600 * 24 * 10;
+        tmpSortTime += getNumShortening(lg) * timeConstHour * 24 * 10;
         tmpCachedStatus = getLegStatus(lg, false, totalResult);
       }
       else {
         setTmpTime(getLegRunningTime(lg, true, totalResult));
-        tmpSortTime += getNumShortening(lg) * 3600 * 24 * 10;
+        tmpSortTime += getNumShortening(lg) * timeConstHour * 24 * 10;
         tmpCachedStatus = getLegStatus(lg, true, totalResult);
       }
 
       // Ensure number of restarts has effect on final result
       if (lg == lastIndex)
-        tmpSortTime += tNumRestarts * 24 * 3600;
+        tmpSortTime += tNumRestarts * 24 * timeConstHour;
     }
   }
   unsigned rawStatus = tmpCachedStatus;
@@ -981,6 +982,8 @@ bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg) {
 
   if (so == ClassStartTimeClub)
     Teams.sort(oTeam::compareResultNoSno);
+  else if (so == ClubClassStartTime)
+    Teams.sort(oTeam::compareResultClub);
   else
     Teams.sort(oTeam::compareResult);
 
@@ -998,7 +1001,9 @@ bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg, vector<const oTeam
   if (!hasRunner)
     return false;
 
-  if (so != ClassStartTimeClub)
+  if (so == ClubClassStartTime)
+    sort(teams.begin(), teams.end(), [](const oTeam*& a, const oTeam*& b)->bool {return oTeam::compareResultClub(*a, *b); });
+  else if (so != ClassStartTimeClub)
     sort(teams.begin(), teams.end(), [](const oTeam * &a, const oTeam * &b)->bool {return oTeam::compareResult(*a, *b); });
   else
     sort(teams.begin(), teams.end(), [](const oTeam * &a, const oTeam * &b)->bool {return oTeam::compareResultNoSno(*a, *b); });
@@ -1017,7 +1022,9 @@ bool oEvent::sortTeams(SortOrder so, int leg, bool linearLeg, vector<oTeam *> &t
   if (!hasRunner)
     return false;
 
-  if (so != ClassStartTimeClub)
+  if (so == ClubClassStartTime)
+    sort(teams.begin(), teams.end(), [](oTeam * &a, oTeam * &b)->bool {return oTeam::compareResultClub(*a, *b); });
+  else if (so != ClassStartTimeClub)
     sort(teams.begin(), teams.end(), [](oTeam * &a, oTeam * &b)->bool {return oTeam::compareResult(*a, *b); });
   else
     sort(teams.begin(), teams.end(), [](oTeam * &a, oTeam * &b)->bool {return oTeam::compareResultNoSno(*a, *b); });

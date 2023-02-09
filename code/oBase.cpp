@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ oBase::oBase(oBase &&in) {
   localObject = in.localObject;
   implicitlyAdded = in.implicitlyAdded;
   addedToEvent = in.addedToEvent;
-  sqlUpdated = in.sqlUpdated;
+  sqlUpdated = std::move(in.sqlUpdated);
   localObject = in.localObject;
   transientChanged = in.transientChanged;
   if (in.myReference) {
@@ -239,6 +239,7 @@ void oBase::changeId(int newId) {
 void oBase::addToEvent(oEvent *e, const oBase *src) { 
   oe = e;
   addedToEvent = true;
+  localObject = false;
   oe->updateFreeId(this);
   if (src)
     Modified = src->Modified;

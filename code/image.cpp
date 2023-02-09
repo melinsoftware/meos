@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,9 +89,9 @@ vector<uint8_t> Image::loadResourceToMemory(LPCTSTR lpName, LPCTSTR lpType)  {
   return result;
 }
 
-HBITMAP Image::read_png(vector<uint8_t> &inData, int &width, int &height, ImageMethod method) {
+HBITMAP Image::read_png(vector<uint8_t> &&inData, int &width, int &height, ImageMethod method) {
   PngData inputStream;
-  inputStream.memory.swap(inData);
+  inputStream.memory = std::move(inData);
   png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
   if (!png) 
     return nullptr;
@@ -196,25 +196,57 @@ HBITMAP Image::read_png(vector<uint8_t> &inData, int &width, int &height, ImageM
         row[x + 3] = src[x + 3];
       }
     }
+    else if (method == ImageMethod::WhiteTransparent) {
+      for (size_t x = 0; x < cbStride; x += 4) {
+        row[x + 2] = src[x + 0]; // Red
+        row[x + 1] = src[x + 1]; // Green 
+        row[x + 0] = src[x + 2]; // Blue
+        row[x + 3] = src[x + 3];
+        if (src[x + 0] == 0xFF && src[x + 1] == 0xFF && src[x + 2] == 0xFF) {
+          row[x + 3] = 0;
+          row[x + 2] = 0;
+          row[x + 1] = 0;
+          row[x + 0] = 0;
+        }
+      }
+    }
   }
   return hbmp;
 }
 
-HBITMAP Image::read_png_file(const wstring &filename, int &width, int &height, ImageMethod method) {
-  width = 0;
-  height = 0;
-  PngData inputStream;
-  inputStream.memory;
+uint64_t Image::computeHash(const vector<uint8_t>& data) {
+  uint64_t h = data.size();
+  size_t siz4 = data.size() / 4;
+  const uint32_t* ptr = (const uint32_t *)data.data();
+  size_t lim = siz4 * 4;
+  for (size_t e = siz4 * 4; e < data.size(); e++)
+    h = h * 256 + data[e];
 
+  for (size_t e = 0; e < siz4; e++) {
+    h = 997 * h + ptr[e];
+  }
+
+  return h;
+}
+
+void Image::read_file(const wstring& filename, vector<uint8_t>& data) {
   ifstream fin;
   fin.open(filename, ios::binary);
   fin.seekg(0, ios::end);
   int p2 = (int)fin.tellg();
   fin.seekg(0, ios::beg);
-  inputStream.memory.resize(p2);
-  fin.read((char *)&inputStream.memory[0], inputStream.memory.size());
+  data.resize(p2);
+  fin.read((char*)data.data(), data.size());
   fin.close();
-  return read_png(inputStream.memory, width, height, method);
+}
+
+HBITMAP Image::read_png_file(const wstring &filename, int &width, int &height, uint64_t &hash, ImageMethod method) {
+  width = 0;
+  height = 0;
+  PngData inputStream;
+  read_file(filename, inputStream.memory);
+  hash = computeHash(inputStream.memory);
+  return read_png(std::move(inputStream.memory), width, height, method);
 }
 
 HBITMAP Image::read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int &width, int &height, ImageMethod method) {
@@ -224,7 +256,7 @@ HBITMAP Image::read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int &width, int
   inputStream.memory = loadResourceToMemory(lpName, lpType);
   if (inputStream.memory.empty())
     return nullptr;
-  return read_png(inputStream.memory, width, height, method);
+  return read_png(std::move(inputStream.memory), width, height, method);
 }
 
 Image::Image()
@@ -236,7 +268,7 @@ Image::~Image()
 }
 
 // Loads the PNG containing the splash image into a HBITMAP.
-HBITMAP Image::loadImage(int resource, ImageMethod method) {
+HBITMAP Image::loadImage(uint64_t resource, ImageMethod method) {
   if (images.count(resource))
     return images[resource].image;
 
@@ -250,18 +282,22 @@ HBITMAP Image::loadImage(int resource, ImageMethod method) {
   return hbmp;
 }
 
-int Image::getWidth(int resource) {
+int Image::getWidth(uint64_t resource) {
   loadImage(resource, ImageMethod::Default);
   return images[resource].width;
 }
 
-int Image::getHeight(int resource) {
+int Image::getHeight(uint64_t resource) {
   loadImage(resource, ImageMethod::Default);
   return images[resource].height;
 }
 
-void Image::drawImage(int resource, ImageMethod method, HDC hDC, int x, int y, int width, int height) {
+void Image::drawImage(uint64_t resource, ImageMethod method, HDC hDC, int x, int y, int width, int height) {
   HBITMAP bmp = loadImage(resource, method);
+  auto res = images.find(resource);
+  if (res == images.end())
+    return;
+  
   HDC memdc = CreateCompatibleDC(hDC);
   SelectObject(memdc, bmp);
   
@@ -270,7 +306,130 @@ void Image::drawImage(int resource, ImageMethod method, HDC hDC, int x, int y, i
   bf.BlendFlags = 0;
   bf.SourceConstantAlpha =0xFF;  
   bf.AlphaFormat = AC_SRC_ALPHA;    
-  AlphaBlend(hDC, x, y, width, height, memdc, 0, 0, width, height, bf);
+  AlphaBlend(hDC, x, y, width, height, memdc, 0, 0, res->second.width, res->second.height, bf);
 
   DeleteDC(memdc);
+}
+
+uint64_t Image::loadFromFile(const wstring& path, ImageMethod method) {
+  vector<uint8_t> bytes;
+  read_file(path, bytes);
+
+  uint64_t hash = computeHash(bytes);
+
+  auto res = images.emplace(hash, Bmp());
+  if (res.second) {
+    wchar_t drive[20];
+    wchar_t dir[MAX_PATH];
+    wchar_t name[MAX_PATH];
+    wchar_t ext[MAX_PATH];
+    _wsplitpath_s(path.c_str(), drive, dir, name, ext);
+    Bmp &out = res.first->second;
+    out.fileName = wstring(name) + ext;
+    out.rawData = bytes;
+    out.image = read_png(std::move(bytes), out.width, out.height, method);
+  }
+  return hash;
+}
+
+uint64_t Image::loadFromMemory(const wstring& fileName, const vector<uint8_t>& bytes, ImageMethod method) {
+  uint64_t hash = computeHash(bytes);
+  return hash;
+}
+
+void Image::provideFromMemory(uint64_t id, const wstring& fileName, const vector<uint8_t>& bytes) {
+  uint64_t hash = computeHash(bytes);
+  if (id != hash) 
+    throw meosException(L"Corrupted image: " + fileName);
+
+  images[id].fileName = fileName;
+  images[id].rawData = bytes;
+}
+
+void Image::addImage(uint64_t id, const wstring& fileName) {
+  images[id].fileName = fileName;
+}
+
+void Image::reloadImage(uint64_t imgId, ImageMethod method) {
+  auto res = images.find(imgId);
+  if (res != images.end() && res->second.rawData.size() > 0) {
+    auto copy = res->second.rawData;
+    res->second.destroy();
+    res->second.image = read_png(std::move(copy), res->second.width, res->second.height, method);
+    return;
+  }
+  throw meosException("Unknown image " + itos(imgId));
+}
+
+void Image::clearLoaded() {
+  for (auto iter = images.begin(); iter != images.end(); ) {
+    if (iter->second.fileName.empty())
+      ++iter;
+    else {
+      iter = images.erase(iter);
+    }
+  }
+}
+
+Image::Bmp::~Bmp() {
+  destroy();
+}
+
+void Image::Bmp::destroy() {
+  if (image) {
+    DeleteObject(image);
+    image = nullptr;
+  }
+}
+
+
+void Image::enumerateImages(vector<pair<wstring, size_t>>& img) const {
+  img.clear();
+  for (auto& bmp : images) {
+    if (bmp.second.fileName.size() > 0)
+      img.emplace_back(bmp.second.fileName, img.size());
+  }
+  sort(img.begin(), img.end());
+}
+
+uint64_t Image::getIdFromEnumeration(int enumerationIx) const {
+  int ix = 0;
+  for (auto& bmp : images) {
+    if (bmp.second.fileName.size() > 0) {
+      if (enumerationIx == ix++) {
+        return bmp.first;
+      }
+    }
+  }
+  throw meosException("Internal error");
+}
+
+int Image::getEnumerationIxFromId(uint64_t imgId) const {
+  int ix = 0;
+  for (auto& bmp : images) {
+    if (bmp.second.fileName.size() > 0) {
+      if (imgId == bmp.first)
+        return ix;
+      ix++;
+    }
+  }
+  return -1;
+}
+
+const wstring& Image::getFileName(uint64_t imgId) const {
+  if (!hasImage(imgId))
+    throw meosException("Missing image: " + itos(imgId));
+  return images.at(imgId).fileName;
+}
+
+const vector<uint8_t>& Image::getRawData(uint64_t imgId) const {
+  if (!hasImage(imgId))
+    throw meosException("Missing image: " + itos(imgId));
+  return images.at(imgId).rawData;
+}
+
+
+bool Image::hasImage(uint64_t imgId) const {
+  auto res = images.find(imgId);
+  return res != images.end() && res->second.rawData.size() > 0;
 }

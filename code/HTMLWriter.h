@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,29 @@ class HTMLWriter {
 
   static string localize(const string &in);
 
+
+  class ImageWriter {
+    wstring destination;
+    const bool writeImages;
+    const wstring imageDirectoryDestination;
+    map<uint64_t, string> savedFiles;
+  public:
+    ImageWriter(const wstring& dst, bool writeImages) : destination(dst), writeImages(writeImages) {}
+
+
+    void write(ostream &fout, const string &xp, const string &yp, const wstring &img, int width, int height);
+  };
+
+  template<typename T, typename TI>
+  static void formatTL(ostream& fout,
+    ImageWriter& imageWriter,
+    const map< pair<gdiFonts, string>, pair<string, string> >& styles,
+    const T& tl,
+    double& yscale,
+    double& xscale,
+    int& offsetY,
+    int& offsetX);
+
 public:
 
   static void reset() {
@@ -76,10 +99,15 @@ public:
 
   void getPage(const oEvent &oe, string &out) const;
 
-  static void writeHTML(gdioutput &gdi, ostream &dout, const wstring &title, int refreshTimeOut, double scale);
+  static void writeHTML(gdioutput &gdi, ostream &dout, const wstring &title, 
+                        bool includeImages,
+                        const wstring& imageDirectoryDestination,
+                        int refreshTimeOut, double scale);
 
   static void writeTableHTML(gdioutput &gdi, ostream &fout,
                              const wstring &title,
+                             bool includeImages,
+                             const wstring &imageDirectoryDestination,
                              bool simpleFormat,
                              int refreshTimeOut,
                              double scale);
@@ -92,23 +120,17 @@ public:
   static void writeHTML(gdioutput &gdi, const wstring &file, 
                         const wstring &title, int refreshTimeOut, double scale);
 
-  static void write(gdioutput &gdi, const wstring &file, const wstring &title, const wstring &contentsDescription,
-                    bool respectPageBreak, const string &typeTag, int refresh,
-                    int rows, int cols, int time_ms, int margin, double scale);
+  static void write(gdioutput& gdi, const wstring& file, const wstring& title, int refresh, oListParam& param, const oEvent& oe);
+  static void write(gdioutput& gdi, ostream& fout, const wstring& title, int refresh, oListParam& param, const oEvent& oe);
 
-  static void write(gdioutput &gdi, ostream &fout, const wstring &title, const wstring &contentsDescription,
-                    bool respectPageBreak, const string &typeTag, int refresh,
-                    int rows, int cols, int time_ms, int margin, double scale);
+  static void write(gdioutput& gdi, const wstring& file, const wstring& title, const wstring& contentsDescription,
+    bool respectPageBreak, const string& typeTag, int refresh,
+    int rows, int cols, int time_ms, int margin, double scale);
 
-  static void write(gdioutput &gdi, const wstring &file, const wstring &title, int refresh, oListParam &param, const oEvent &oe);
-
-  template<typename T, typename TI>
-  static void formatTL(ostream &fout,
-                       const map< pair<gdiFonts, string>, pair<string, string> > &styles,
-                       const T &tl, 
-                       double &yscale,
-                       double &xscale,
-                       int &offsetY,
-                       int &offsetX);
-
+  static void write(gdioutput& gdi, ostream& fout, const wstring& title, 
+    bool includeImages,
+    const wstring& imageDirectoryDestination,
+    const wstring& contentsDescription,
+    bool respectPageBreak, const string& typeTag, int refresh,
+    int rows, int cols, int time_ms, int margin, double scale);
 };

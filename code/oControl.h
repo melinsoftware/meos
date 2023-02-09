@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,18 +24,14 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_OCONTROL_H__E86192B9_78D2_4EEF_AAE1_3BD4A8EB16F0__INCLUDED_)
-#define AFX_OCONTROL_H__E86192B9_78D2_4EEF_AAE1_3BD4A8EB16F0__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
+#include <limits>
+#include <algorithm>
 
 #include "xmlparser.h"
 #include "oBase.h"
-#include <limits>
-#include <algorithm>
+#include "oPunch.h"
 
 class oControl;
 
@@ -61,11 +57,19 @@ public:
   static pair<int, int> getIdIndexFromCourseControlId(int courseControlId);
   static int getCourseControlIdFromIdIndex(int controlId, int index);
 
-  enum ControlStatus {StatusOK=0, StatusBad=1, StatusMultiple=2,
-                      StatusStart = 4, StatusFinish = 5, StatusRogaining = 6, 
-                      StatusNoTiming = 7, StatusOptional = 8,
-                      StatusBadNoTiming = 9};
+  enum class ControlStatus {
+    StatusOK = 0, StatusBad = 1, StatusMultiple = 2,
+    StatusStart = 4, StatusFinish = 5, StatusRogaining = 6,
+    StatusNoTiming = 7, StatusOptional = 8,
+    StatusBadNoTiming = 9, StatusRogainingRequired = 10, StatusCheck = 11
+  };
   bool operator<(const oControl &b) const {return minNumber()<b.minNumber();}
+
+  static bool isSpecialControl(ControlStatus st) {
+    return st == ControlStatus::StatusFinish ||
+           st == ControlStatus::StatusStart ||
+           st == ControlStatus::StatusCheck;
+  }
 
 protected:
   int nNumbers;
@@ -76,7 +80,7 @@ protected:
   wstring Name;
   bool decodeNumbers(string s);
 
-  static const int dataSize = 32;
+  static const int dataSize = 64;
   int getDISize() const {return dataSize;}
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
@@ -119,6 +123,7 @@ protected:
   void changedObject();
 
 public:
+  void clearCache();
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
   static int getControlIdByName(const oEvent &oe, const string &name);
@@ -133,7 +138,7 @@ public:
 
   wstring getInfo() const;
 
-  bool isSingleStatusOK() const {return Status == StatusOK || Status == StatusNoTiming;}
+  bool isSingleStatusOK() const {return Status == ControlStatus::StatusOK || Status == ControlStatus::StatusNoTiming;}
 
   int getMissedTimeTotal() const;
   int getMissedTimeMax() const;
@@ -182,10 +187,15 @@ public:
   /// Get name or id
   wstring getIdS() const;
 
-  bool isRogaining(bool useRogaining) const {return useRogaining && (Status == StatusRogaining);}
+  bool isRogaining(bool useRogaining) const {return useRogaining &&
+    (Status == ControlStatus::StatusRogaining || Status == ControlStatus::StatusRogainingRequired);}
 
   void setStatus(ControlStatus st);
   void setName(wstring name);
+
+  bool isUnit() const;
+  int getUnitCode() const;
+  oPunch::SpecialPunch getUnitType() const;
 
   //Returns true if control has number and checks it.
   bool hasNumber(int i);
@@ -204,8 +214,8 @@ public:
 
   int getTimeAdjust() const;
   wstring getTimeAdjustS() const;
-  void setTimeAdjust(int v);
-  void setTimeAdjust(const wstring &t);
+  bool setTimeAdjust(int v);
+  bool setTimeAdjust(const wstring &t);
 
   int getMinTime() const;
   wstring getMinTimeS() const;
@@ -239,5 +249,3 @@ public:
   friend class TabAuto;
   friend class TabSpeaker;
 };
-
-#endif // !defined(AFX_OCONTROL_H__E86192B9_78D2_4EEF_AAE1_3BD4A8EB16F0__INCLUDED_)

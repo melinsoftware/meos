@@ -462,6 +462,7 @@
     <ClCompile Include="animationdata.cpp" />
     <ClCompile Include="autocomplete.cpp" />
     <ClCompile Include="autotask.cpp" />
+    <ClCompile Include="binencoder.cpp" />
     <ClCompile Include="classconfiginfo.cpp" />
     <ClCompile Include="csvparser.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -669,6 +670,7 @@
     <ClInclude Include="autocomplete.h" />
     <ClInclude Include="autocompletehandler.h" />
     <ClInclude Include="autotask.h" />
+    <ClInclude Include="binencoder.h" />
     <ClInclude Include="classconfiginfo.h" />
     <ClInclude Include="gdiconstants.h" />
     <ClInclude Include="gdifonts.h" />
@@ -710,6 +712,7 @@
     <ClInclude Include="speakermonitor.h" />
     <ClInclude Include="subcommand.h" />
     <ClInclude Include="testmeos.h" />
+    <ClInclude Include="timeconstants.hpp" />
     <ClInclude Include="toolbar.h" />
     <ClInclude Include="csvparser.h" />
     <ClInclude Include="download.h" />

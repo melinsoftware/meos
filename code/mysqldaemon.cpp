@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #include "MeosSQL.h"
 #include <process.h>
 
-MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-daemon", Machines::mMySQLReconnect), error(errorIn) {
+MySQLReconnect::MySQLReconnect(const wstring &errorIn) : AutoMachine("MySQL-service", Machines::mMySQLReconnect), error(errorIn) {
   timeError = getLocalTime();
   hThread=0;
 }
@@ -43,7 +43,7 @@ bool MySQLReconnect::stop() {
   if (interval==0)
     return true;
 
-  return MessageBox(0, L"If this daemon is stopped, then MeOS will not reconnect to the network. Continue?",
+  return MessageBox(0, L"If this service is stopped, MeOS will not reconnect to the network. Continue?",
     L"Warning", MB_YESNO|MB_ICONWARNING)==IDYES;
 }
 

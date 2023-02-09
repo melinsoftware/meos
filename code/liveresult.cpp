@@ -1,6 +1,6 @@
 ﻿/********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,10 +89,21 @@ void LiveResult::showTimer(gdioutput &gdi, const oListInfo &liIn) {
   gdi.setData("PunchSync", 1);
   gdi.setRestorePoint("LiveResult");
 
+  readoutResult();
+
+  resYPos = h/3;
+
+  calculateResults();
+  showResultList = 0;
+  gdi.addTimeoutMilli(1000, "res", 0).setHandler(this);
+  gdi.refreshFast();
+}
+
+void LiveResult::readoutResult() {
   lastTime = 0;
-  vector<const oFreePunch *> pp;
+  vector<const oFreePunch*> pp;
   oe->synchronizeList({ oListId::oLRunnerId, oListId::oLPunchId });
-  
+
   oe->getLatestPunches(lastTime, pp);
   processedPunches.clear();
 
@@ -103,14 +114,14 @@ void LiveResult::showTimer(gdioutput &gdi, const oListInfo &liIn) {
     fromPunch = oPunch::PunchStart;
   if (toPunch == 0)
     toPunch = oPunch::PunchFinish;
-    
+
   for (size_t k = 0; k < pp.size(); k++) {
     lastTime = max(pp[k]->getModificationTime(), lastTime);
     pRunner r = pp[k]->getTiedRunner();
     if (r) {
       pair<int, int> key = make_pair(r->getId(), pp[k]->getControlId());
       processedPunches[key] = max(processedPunches[key], pp[k]->getAdjustedTime());
-      
+
       if (!li.getParam().selection.empty() && !li.getParam().selection.count(r->getClassId(true)))
         continue; // Filter class
 
@@ -125,9 +136,9 @@ void LiveResult::showTimer(gdioutput &gdi, const oListInfo &liIn) {
   startFinishTime.clear();
   results.clear();
   for (map<int, pair<vector<int>, vector<int> > >::iterator it = storedPunches.begin();
-       it != storedPunches.end(); ++it) {
-    vector<int> &froms = it->second.first;
-    vector<int> &tos = it->second.second;
+    it != storedPunches.end(); ++it) {
+    vector<int>& froms = it->second.first;
+    vector<int>& tos = it->second.second;
     pRunner r = oe->getRunner(it->first, 0);
     for (size_t j = 0; j < tos.size(); j++) {
       int fin = pp[tos[j]]->getAdjustedTime();
@@ -141,22 +152,15 @@ void LiveResult::showTimer(gdioutput &gdi, const oListInfo &liIn) {
         }
       }
       if (time < 100000000 && r->getStatus() <= StatusOK) {
-//        results.push_back(Result());
-//        results.back().r = r;
-//        results.back().time = time;
+        //        results.push_back(Result());
+        //        results.back().r = r;
+        //        results.back().time = time;
         startFinishTime[r->getId()].first = sta;
         startFinishTime[r->getId()].second = fin;
 
       }
     }
   }
-
-  resYPos = h/3;
-
-  calculateResults();
-  showResultList = 0;
-  gdi.addTimeoutMilli(1000, "res", 0).setHandler(this);
-  gdi.refreshFast();
 }
 
 
@@ -352,20 +356,41 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
 
     if (doRefresh)
       gdi.refreshFast();
+    else {
+      auto resCopy = results;
+      calculateResults();
+      bool reshow = false;
+      if (resCopy.size() != results.size())
+        reshow = true;
+      else {
+        for (size_t i = 0; i < results.size(); i++) {
+          if (resCopy[i].name.empty())
+            break;
+          if (resCopy[i].runnerId != results[i].runnerId) {
+            reshow = true;
+            break;
+          }
+
+          if (resCopy[i].time != results[i].time) {
+            reshow = true;
+            break;
+          }
+
+          pRunner r = oe->getRunner(results[i].runnerId, 0);
+          if (!r || resCopy[i].name != r->getName()) {
+            reshow = true;
+            break;
+          }
+        }
+      }
+
+      if (reshow) {
+        showResults(gdi);
+      }
+    }
   }
   else if (type == GUI_TIMEOUT) {
-    gdi.restore("LiveResult", false);
-    int h,w;
-    gdi.getTargetDimension(w, h);
-    gdi.fillDown();
-    BaseInfo *bi = gdi.setTextTranslate("timing", L"MeOS Timing", false);
-    TextInfo &ti = dynamic_cast<TextInfo &>(*bi);
-    ti.changeFont(getFont(gdi, 0.7));
-    gdi.refreshFast();
-    resYPos = ti.textRect.bottom + gdi.scaleLength(20);
-    calculateResults();
-    showResultList = 0;
-    gdi.addTimeoutMilli(300, "res", 0).setHandler(this);
+    showResults(gdi);
   }
   else if (type == GUI_TIMER) {
     if (size_t(showResultList) >= results.size())
@@ -379,9 +404,10 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
       gdi.addTimeoutMilli(10, "res" + itos(showResultList), 0).setHandler(this);
     }
     else if (res.place > 0) {
+      res.name = r->getName();
       int h,w;
       gdi.getTargetDimension(w, h);
-   
+      
       gdi.takeShownStringsSnapshot();
       TextInfo &ti = gdi.addStringUT(y, 30, fontLarge, itow(res.place) + L".", 0, 0, font.c_str());
       int ht = ti.textRect.bottom - ti.textRect.top;
@@ -398,6 +424,22 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
         gdi.addTimeoutMilli(300, "res" + itos(showResultList), 0).setHandler(this);
     }
   }
+}
+
+void LiveResult::showResults(gdioutput &gdi) {
+  gdi.restore("LiveResult", false);
+  int h, w;
+  gdi.getTargetDimension(w, h);
+  gdi.fillDown();
+  BaseInfo* bi = gdi.setTextTranslate("timing", L"MeOS Timing", false);
+  TextInfo& ti = dynamic_cast<TextInfo&>(*bi);
+  ti.changeFont(getFont(gdi, 0.7));
+  gdi.refreshFast();
+  resYPos = ti.textRect.bottom + gdi.scaleLength(20);
+  calculateResults();
+  showResultList = 0;
+  gdi.addTimeoutMilli(300, "res", 0).setHandler(this);
+
 }
 
 void LiveResult::calculateResults() {

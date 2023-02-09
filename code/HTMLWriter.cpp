@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,9 @@
 #include "Printer.h"
 #include "oListInfo.h"
 #include "meosexception.h"
+#include "image.h"
+
+extern Image image;
 
 #include <sstream>
 #include <iomanip>
@@ -139,10 +142,11 @@ public:
 
 template<typename T, typename TI>
 void HTMLWriter::formatTL(ostream &fout,
-                            const map<pair<gdiFonts, string>, pair<string, string>> &styles,
-                            const T &tl,
-                            double &yscale, double &xscale,
-                            int &offsetY, int &offsetX) {
+                          ImageWriter& imageWriter,
+                          const map<pair<gdiFonts, string>, pair<string, string>> &styles,
+                          const T &tl,
+                          double &yscale, double &xscale,
+                          int &offsetY, int &offsetX) {
 
 
   auto itt = tl.begin();
@@ -157,6 +161,14 @@ void HTMLWriter::formatTL(ostream &fout,
 
     string yp = itos(int(yscale*TI::y(ctr_it)) + offsetY);
     string xp = itos(int(xscale*TI::x(ctr_it)) + offsetX);
+
+    if ((it.format & 0xFF) == textImage) {
+      int imgW = int((it.textRect.right - it.textRect.left) * xscale);
+      int imgH = int((it.textRect.bottom - it.textRect.top) * xscale);
+      imageWriter.write(fout, xp, yp, it.text, imgW, imgH);
+      ++itt;
+      continue;
+    }
 
     string estyle;
     if (it.format != 1 && it.format != boldSmall) {
@@ -274,17 +286,31 @@ void HTMLWriter::writeHTML(gdioutput &gdi, const wstring &file,
   if (fout.bad())
     throw std::exception("Bad output stream");
   
-  writeHTML(gdi, fout, title, refreshTimeOut, scale);
+  wchar_t drive[20];
+  wchar_t dir[MAX_PATH];
+  wchar_t name[MAX_PATH];
+  wchar_t ext[MAX_PATH];
+  _wsplitpath_s(file.c_str(), drive, dir, name, ext);
+  wstring path = wstring(drive) + dir;
+  
+  writeHTML(gdi, fout, title, true, path, refreshTimeOut, scale);
 }
 
-void HTMLWriter::writeHTML(gdioutput &gdi, ostream &fout, const wstring &title, int refreshTimeOut, double scale) {
+void HTMLWriter::writeHTML(gdioutput& gdi, ostream& fout,
+                           const wstring& title, 
+                           bool includeImages,
+                           const wstring& imageDirectoryDestination, 
+                           int refreshTimeOut, double scale) {
+
+  ImageWriter imgWriter(imageDirectoryDestination, includeImages);
+
   if (scale <= 0)
     scale = 1.0;
 
   fout << "<!DOCTYPE html>" << endl;
   fout << "<html>\n<head>\n";
   fout << "<meta charset=\"UTF-8\"/>\n";
-  
+
   if (refreshTimeOut > 0)
     fout << "<meta http-equiv=\"refresh\" content=\"" << refreshTimeOut << "\">\n";
 
@@ -299,16 +325,16 @@ void HTMLWriter::writeHTML(gdioutput &gdi, ostream &fout, const wstring &title, 
   double yscale = 1.3 * scale;
   double xscale = 1.2 * scale;
   int offsetY = 0, offsetX = 0;
-  HTMLWriter::formatTL<list<TextInfo>, InterpTextInfo>(fout, styles, gdi.getTL(), yscale, xscale, offsetY, offsetX);
- 
-  fout << "<p style=\"position:absolute;left:10px;top:" <<  int(yscale*(gdi.getPageY()-45)) + offsetY << "px\">";
+  HTMLWriter::formatTL<list<TextInfo>, InterpTextInfo>(fout, imgWriter, styles, gdi.getTL(), yscale, xscale, offsetY, offsetX);
+
+  fout << "<p style=\"position:absolute;left:10px;top:" << int(yscale * (gdi.getPageY() - 45)) + offsetY << "px\">";
 
   char bf1[256];
   char bf2[256];
   GetTimeFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf2, 256);
   GetDateFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf1, 256);
   //fout << "Skapad av <i>MeOS</i>: " << bf1 << " "<< bf2 << "\n";
-  fout << gdioutput::toUTF8(lang.tl("Skapad av ")) + "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: " << bf1 << " "<< bf2 << "\n";
+  fout << gdioutput::toUTF8(lang.tl("Skapad av ")) + "<a href=\"https://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: " << bf1 << " " << bf2 << "\n";
   fout << "</p>\n";
 
   fout << "</body>\n";
@@ -341,17 +367,28 @@ void HTMLWriter::writeTableHTML(gdioutput &gdi,
   if (fout.bad())
     return throw std::exception("Bad output stream");
 
-  writeTableHTML(gdi, fout, title, false, refreshTimeOut, scale);
+  wchar_t drive[20];
+  wchar_t dir[MAX_PATH];
+  wchar_t name[MAX_PATH];
+  wchar_t ext[MAX_PATH];
+  _wsplitpath_s(file.c_str(), drive, dir, name, ext);
+  wstring path = wstring(drive) + dir;
+
+  writeTableHTML(gdi, fout, title, true, path, false, refreshTimeOut, scale);
 }
 
-void HTMLWriter::writeTableHTML(gdioutput &gdi,
-                                ostream &fout,
-                                const wstring &title,
+void HTMLWriter::writeTableHTML(gdioutput& gdi,
+                                ostream& fout,
+                                const wstring& title,
+                                bool includeImages,
+                                const wstring& imageDirectoryDestination,
                                 bool simpleFormat,
                                 int refreshTimeOut,
                                 double scale) {
   if (scale <= 0)
     scale = 1.0;
+
+  ImageWriter imgWriter(imageDirectoryDestination, includeImages);
 
   fout << "<!DOCTYPE html>" << endl;
   fout << "<html>\n<head>\n";
@@ -366,14 +403,14 @@ void HTMLWriter::writeTableHTML(gdioutput &gdi,
   fout << "</head>\n";
 
   fout << "<body>\n";
-  auto &TL = gdi.getTL();
+  auto& TL = gdi.getTL();
   auto it = TL.begin();
   int MaxX = gdi.getPageX() - 100;
-  map<int,int> tableCoordinates;
+  map<int, int> tableCoordinates;
 
   //Get x-coordinates
-  while (it!=TL.end()) {
-      tableCoordinates[it->xp]=0;
+  while (it != TL.end()) {
+    tableCoordinates[it->xp] = 0;
     ++it;
   }
 
@@ -384,47 +421,47 @@ void HTMLWriter::writeTableHTML(gdioutput &gdi,
     ++mit;
   }
   tableCoordinates[MaxX] = kr;
-  
+
   vector<bool> sizeSet(kr + 1, false);
 
   fout << "<table cellspacing=\"0\" border=\"0\">\n";
 
-  int linecounter=0;
-  it=TL.begin();
+  int linecounter = 0;
+  it = TL.begin();
 
-  vector< pair<int, vector<const TextInfo *> > > rows;
+  vector< pair<int, vector<const TextInfo*> > > rows;
   rows.reserve(TL.size() / 3);
   vector<int> ypRow;
   int minHeight = 100000;
 
-  while (it!=TL.end()) {
-    int y=it->yp;
-    vector<const TextInfo *> row;
+  while (it != TL.end()) {
+    int y = it->yp;
+    vector<const TextInfo*> row;
 
     int subnormal = 0;
     int normal = 0;
     int header = 0;
     int mainheader = 0;
-    while (it!=TL.end() && it->yp==y) {
+    while (it != TL.end() && it->yp == y) {
       if (!gdioutput::skipTextRender(it->format)) {
         row.push_back(&*it);
         switch (it->getGdiFont()) {
-          case fontLarge:
-          case boldLarge:
-          case boldHuge:
-            mainheader++;
-            break;
-          case boldText:
-          case italicMediumPlus:
-          case fontMediumPlus:
-            header++;
-            break;
-          case fontSmall:
-          case italicSmall:
-            subnormal++;
-            break;
-          default:
-            normal++;
+        case fontLarge:
+        case boldLarge:
+        case boldHuge:
+          mainheader++;
+          break;
+        case boldText:
+        case italicMediumPlus:
+        case fontMediumPlus:
+          header++;
+          break;
+        case fontSmall:
+        case italicSmall:
+          subnormal++;
+          break;
+        default:
+          normal++;
         }
       }
       ++it;
@@ -444,27 +481,27 @@ void HTMLWriter::writeTableHTML(gdioutput &gdi,
     int last = ypRow.size();
     ypRow.push_back(y);
     if (last > 0) {
-      minHeight = min(minHeight, ypRow[last] - ypRow[last-1]);
+      minHeight = min(minHeight, ypRow[last] - ypRow[last - 1]);
     }
   }
   int numMin = 0;
   for (size_t gCount = 1; gCount < rows.size(); gCount++) {
-    int h = ypRow[gCount] - ypRow[gCount-1];
+    int h = ypRow[gCount] - ypRow[gCount - 1];
     if (h == minHeight)
       numMin++;
   }
   if (numMin == 0)
     numMin = 1;
 
-  int hdrLimit = (rows.size() / numMin) <= 4 ?  int(minHeight * 1.2) : int(minHeight * 1.5);
+  int hdrLimit = (rows.size() / numMin) <= 4 ? int(minHeight * 1.2) : int(minHeight * 1.5);
   for (size_t gCount = 1; gCount + 1 < rows.size(); gCount++) {
     int type = rows[gCount].first;
-    int lastType = gCount > 0 ? rows[gCount-1].first : 0;
+    int lastType = gCount > 0 ? rows[gCount - 1].first : 0;
     int nextType = gCount + 1 < rows.size() ? rows[gCount + 1].first : 0;
     if (type == 0 && (lastType == 1 || lastType == 2) && (nextType == 1 || nextType == 2))
       continue; // No reclassify
 
-    int h = ypRow[gCount] - ypRow[gCount-1];
+    int h = ypRow[gCount] - ypRow[gCount - 1];
     if (h > hdrLimit && rows[gCount].first == 0)
       rows[gCount].first = 2;
   }
@@ -472,12 +509,12 @@ void HTMLWriter::writeTableHTML(gdioutput &gdi,
   ypRow.clear();
   string lineclass;
   for (size_t gCount = 0; gCount < rows.size(); gCount++) {
-    vector<const TextInfo *> &row = rows[gCount].second;
+    vector<const TextInfo*>& row = rows[gCount].second;
     int type = rows[gCount].first;
-    int lastType = gCount > 0 ? rows[gCount-1].first : 0;
+    int lastType = gCount > 0 ? rows[gCount - 1].first : 0;
     int nextType = gCount + 1 < rows.size() ? rows[gCount + 1].first : 0;
 
-    vector<const TextInfo *>::iterator rit;
+    vector<const TextInfo*>::iterator rit;
     fout << "<tr>" << endl;
 
     if (simpleFormat) {
@@ -498,48 +535,55 @@ void HTMLWriter::writeTableHTML(gdioutput &gdi,
         lineclass = "";
       }
       else
-        lineclass = (linecounter&1) ? " class=\"e1\"" : " class=\"e0\"";
+        lineclass = (linecounter & 1) ? " class=\"e1\"" : " class=\"e0\"";
 
       linecounter++;
     }
 
-    for (size_t k=0;k<row.size();k++) {
-      int thisCol=tableCoordinates[row[k]->xp];
+    for (size_t k = 0; k < row.size(); k++) {
+      int thisCol = tableCoordinates[row[k]->xp];
 
-if (k == 0 && thisCol != 0)
-fout << "<td" << lineclass << " colspan=\"" << thisCol << "\">&nbsp;</td>";
+      if (k == 0 && thisCol != 0)
+        fout << "<td" << lineclass << " colspan=\"" << thisCol << "\">&nbsp;</td>";
 
-int nextCol;
-if (row.size() == k + 1)
-nextCol = tableCoordinates.rbegin()->second;
-else
-nextCol = tableCoordinates[row[k + 1]->xp];
+      int nextCol;
+      if (row.size() == k + 1)
+        nextCol = tableCoordinates.rbegin()->second;
+      else
+        nextCol = tableCoordinates[row[k + 1]->xp];
 
-int colspan = nextCol - thisCol;
+      int colspan = nextCol - thisCol;
 
-assert(colspan > 0);
+      assert(colspan > 0);
 
-string style;
+      string style;
 
-if (row[k]->format&textRight)
-style = " style=\"text-align:right\"";
+      if (row[k]->format & textRight)
+        style = " style=\"text-align:right\"";
 
-if (colspan == 1 && !sizeSet[thisCol]) {
-  fout << "  <td" << lineclass << style << " width=\"" << int((k + 1 < row.size()) ?
-    (row[k + 1]->xp - row[k]->xp) : (MaxX - row[k]->xp)) << "\">";
-  sizeSet[thisCol] = true;
-}
-else if (colspan > 1)
-fout << "  <td" << lineclass << style << " colspan=\"" << colspan << "\">";
-else
-fout << "  <td" << lineclass << style << ">";
+      if (colspan == 1 && !sizeSet[thisCol]) {
+        fout << "  <td" << lineclass << style << " width=\"" << int((k + 1 < row.size()) ?
+          (row[k + 1]->xp - row[k]->xp) : (MaxX - row[k]->xp)) << "\">";
+        sizeSet[thisCol] = true;
+      }
+      else if (colspan > 1)
+        fout << "  <td" << lineclass << style << " colspan=\"" << colspan << "\">";
+      else
+        fout << "  <td" << lineclass << style << ">";
 
-gdiFonts font = row[k]->getGdiFont();
-string starttag, endtag;
-getStyle(styles, font, gdioutput::narrow(row[k]->font), "", starttag, endtag);
+      if ((row[k]->format & 0xFF) == textImage) {
+        int imgW = int((row[k]->textRect.right - row[k]->textRect.left) * scale);
+        int imgH = int((row[k]->textRect.bottom - row[k]->textRect.top) * scale);
+        imgWriter.write(fout, "", "", row[k]->text, imgW, imgH);
+        fout << "</td>" << endl;
+      }
+      else {
+        gdiFonts font = row[k]->getGdiFont();
+        string starttag, endtag;
+        getStyle(styles, font, gdioutput::narrow(row[k]->font), "", starttag, endtag);
 
-fout << starttag << gdioutput::toUTF8(html_table_code(row[k]->text)) << endtag << "</td>" << endl;
-
+        fout << starttag << gdioutput::toUTF8(html_table_code(row[k]->text)) << endtag << "</td>" << endl;
+      }
     }
     fout << "</tr>\n";
 
@@ -555,7 +599,7 @@ fout << starttag << gdioutput::toUTF8(html_table_code(row[k]->text)) << endtag <
     GetTimeFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf2, 256);
     GetDateFormatA(LOCALE_USER_DEFAULT, 0, NULL, NULL, bf1, 256);
     wstring meos = getMeosCompectVersion();
-    fout << gdioutput::toUTF8(lang.tl("Skapad av ")) + "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS "
+    fout << gdioutput::toUTF8(lang.tl("Skapad av ")) + "<a href=\"https://www.melin.nu/meos\" target=\"_blank\"><i>MeOS "
       << gdioutput::toUTF8(meos) << "</i></a>: " << bf1 << " " << bf2 << "\n";
     fout << "</p><br>\n";
   }
@@ -781,8 +825,11 @@ void HTMLWriter::generate(gdioutput &gdi,
                           double scale) const {
   int w, h;
   gdi.getTargetDimension(w, h);
+
+
+  ImageWriter imgWriter(L"", false);
   
-  string meos = "<a href=\"http://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: "  + gdioutput::toUTF8(getMeosCompectVersion()) + "</a>";
+  string meos = "<a href=\"https://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: "  + gdioutput::toUTF8(getMeosCompectVersion()) + "</a>";
 
   int margin = (w * marginPercent) / 100;
   int height = nRows * gdi.getLineHeight();
@@ -886,7 +933,7 @@ void HTMLWriter::generate(gdioutput &gdi,
       double xscale = 1.2 * scale;
       int offsetY = 0, offsetX = 0;
 
-      formatTL<vector<PrintTextInfo>, InterpPrintTextInfo>(sout, styles, p.text, yscale, xscale, offsetY, offsetX);
+      formatTL<vector<PrintTextInfo>, InterpPrintTextInfo>(sout, imgWriter, styles, p.text, yscale, xscale, offsetY, offsetX);
 
       output = innerpage;
       replaceAll(output, "@P", itos(ipCounter++));
@@ -921,17 +968,27 @@ void HTMLWriter::write(gdioutput &gdi, const wstring &file, const wstring &title
   checkWriteAccess(file);
   ofstream fout(file.c_str());
 
-  write(gdi, fout, title, contentsDescription, respectPageBreak, typeTag, refresh,
+  wchar_t drive[20];
+  wchar_t dir[MAX_PATH];
+  wchar_t name[MAX_PATH];
+  wchar_t ext[MAX_PATH];
+  _wsplitpath_s(file.c_str(), drive, dir, name, ext);
+  wstring path = wstring(drive) + dir;
+
+  write(gdi, fout, title, true, path, contentsDescription, respectPageBreak, typeTag, refresh,
         rows, cols, time_ms, margin, scale);
 }
 
-void HTMLWriter::write(gdioutput &gdi, ostream &fout, const wstring &title, const wstring &contentsDescription,
+void HTMLWriter::write(gdioutput &gdi, ostream &fout, const wstring &title, 
+                       bool includeImages,
+                       const wstring& imageDirectoryDestination,
+                       const wstring &contentsDescription,
                        bool respectPageBreak, const string &typeTag, int refresh,
                        int rows, int cols, int time_ms, int margin, double scale) {
   if (typeTag == "table")
-    writeTableHTML(gdi, fout, title, false, refresh, scale);
+    writeTableHTML(gdi, fout, title, includeImages, imageDirectoryDestination, false, refresh, scale);
   else if (typeTag == "free") {
-    writeHTML(gdi, fout, title, refresh, scale);
+    writeHTML(gdi, fout, title, includeImages, imageDirectoryDestination, refresh, scale);
   }
   else {
    /* auto res = tCache.find(typeTag);
@@ -972,6 +1029,44 @@ void HTMLWriter::write(gdioutput &gdi, const wstring &file, const wstring &title
         param.timePerPage, param.margin, param.htmlScale);
 }
 
+void HTMLWriter::write(gdioutput& gdi, ostream& fout, const wstring& title, int refresh, oListParam& param, const oEvent& oe) {
+  write(gdi, fout, title, true, L"", param.getContentsDescriptor(oe), param.pageBreak, param.htmlTypeTag,
+    refresh != 0 ? refresh : param.timePerPage / 1000, param.htmlRows, param.nColumns,
+    param.timePerPage, param.margin, param.htmlScale);
+}
+
 void HTMLWriter::getPage(const oEvent &oe, string &out) const {
   out = page;
+}
+
+void HTMLWriter::ImageWriter::write(ostream& fout, const string& xp, const string& yp, const wstring& img, int width, int height) {
+  if (!writeImages) {
+    if (xp.empty())
+      fout << "&nbsp;";
+  }
+  else {
+    if (img.empty() || img[0] != 'L')
+      throw meosException("Unsupported image");
+    uint64_t imgId = _wcstoui64(img.c_str() + 1, nullptr, 10);
+
+    if (!savedFiles.count(imgId)) {
+      if (!destination.empty()) {
+        auto& data = image.getRawData(imgId);
+        wstring d = destination + img + L".png";
+        ofstream out(d, ofstream::out | ofstream::binary);
+        out.write((const char *)data.data(), data.size());
+        savedFiles[imgId] = "L" + itos(imgId) + ".png";
+      }
+      else {
+        savedFiles[imgId] = "/meos?image=ID" + itos(imgId) + ".png";
+      }      
+    }
+    string style;
+    if (xp.size() > 0) 
+      style = " style=\"position:absolute;left:" + xp + "px;top:" + yp + "px\"";
+        
+    fout << "<img src=\"" << savedFiles[imgId] << "\" width=\"" <<
+             width << "\" height=\"" << height << "\"" << style << ">";
+    
+  }
 }

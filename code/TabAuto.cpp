@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -716,7 +716,7 @@ void AutoMachine::startCancelInterval(gdioutput &gdi, const char *startCommand, 
 
 void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   settingsTitle(gdi, "Resultatutskrift / export");
-  wstring time = (state == State::Create && interval <= 0) ? L"10:00" : getTimeMS(interval);
+  wstring time = (state == State::Create && interval <= 0) ? L"10:00" : formatTimeMS(interval, false, SubSecond::Off);
   startCancelInterval(gdi, "Save", state, IntervalMinute, time);
 
   if (state == State::Create) {
@@ -822,12 +822,12 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   }
 }
 
-void PrintResultMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
+void PrintResultMachine::save(oEvent& oe, gdioutput& gdi, bool doProcess) {
   AutoMachine::save(oe, gdi, doProcess);
   wstring minute = gdi.getText("Interval");
-  int t = convertAbsoluteTimeMS(minute);
+  int t = convertAbsoluteTimeMS(minute) / timeConstSecond;
 
-  if (t < 2 || t>7200) {
+  if (t < 2 || t > 7200) {
     throw meosException("Intervallet måste anges på formen MM:SS.");
   }
   doExport = gdi.isChecked("DoExport");
@@ -980,7 +980,7 @@ void PrewarningMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.pushX();
   gdi.fillDown();
   vector< pair<wstring, size_t> > d;
-  oe.fillControls(d, oEvent::CTCourseControl);
+  oe.fillControls(d, oEvent::ControlType::CourseControl);
   gdi.addItem("Controls", d);
   gdi.setSelection("Controls", controls);
   gdi.popX();
@@ -998,7 +998,7 @@ void PrewarningMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
 
   controlsSI.clear();
   for (set<int>::iterator it = controls.begin(); it != controls.end(); ++it) {
-    pControl pc = oe.getControl(*it, false);
+    pControl pc = oe.getControl(*it, false, false);
     if (pc) {
       vector<int> n;
       pc->getNumbers(n);
@@ -1152,7 +1152,7 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
       sic.punchOnly = true;
       sic.nPunch = 1;
       sic.Punch[0].Code = radio;
-      sic.Punch[0].Time = 600 + rand() % 1200 + r->getStartTime();
+      sic.Punch[0].Time = timeConstHour/10 + rand() % (1200*timeConstSecond) + r->getStartTime();
       si.addCard(sic);
     }
   }
@@ -1205,7 +1205,7 @@ void SplitsMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
   if (doProcess) {
     //Try exporting.
     oe.exportIOFSplits(oEvent::IOF20, file.c_str(), true, false,
-                       set<int>(), -1, false, true, true, false);
+                       set<int>(), -1, false, true, true, false, false);
     interval = iv;
     synchronize = true;
   }
@@ -1245,7 +1245,7 @@ void SplitsMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
   if ((interval>0 && ast==SyncTimer) || (interval==0 && ast==SyncDataUp)) {
     if (!file.empty())
       oe->exportIOFSplits(oEvent::IOF20, file.c_str(), true, false, classes,
-                          leg, false, true, true, false);
+                          leg, false, true, true, false, false);
   }
 }
 
@@ -1276,16 +1276,16 @@ void SaveMachine::status(gdioutput &gdi) {
 void SaveMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   if (interval>0 && ast==SyncTimer) {
     if (!baseFile.empty()) {
-      wstring file = baseFile + L"meos_backup_" + oe->getDate() + L"_" + itow(saveIter++) + L".xml";
+      wstring file = baseFile + L"meos_backup_" + oe->getDate() + L"_" + itow(saveIter++) + L".meosxml";
       oe->autoSynchronizeLists(true);
-      oe->save(file);
+      oe->save(file, false);
     }
   }
 }
 
 void SaveMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   settingsTitle(gdi, "Säkerhetskopiering");
-  wstring time=state == State::Create ? L"10:00" : getTimeMS(interval);
+  wstring time=state == State::Create ? L"10:00" : formatTimeMS(interval, false, SubSecond::Off);
   startCancelInterval(gdi, "Save", state, IntervalMinute, time);
 
   int cx = gdi.getCX();
@@ -1295,12 +1295,12 @@ void SaveMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.setCX(cx);
 }
 
-void SaveMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
+void SaveMachine::save(oEvent& oe, gdioutput& gdi, bool doProcess) {
   AutoMachine::save(oe, gdi, doProcess);
-  wstring minute=gdi.getText("Interval");
-  int t=convertAbsoluteTimeMS(minute);
+  wstring minute = gdi.getText("Interval");
+  int t = convertAbsoluteTimeMS(minute) / timeConstSecond;
 
-  if (t<2 || t>7200) {
+  if (t < 2 || t>7200) {
     throw meosException("Intervallet måste anges på formen MM:SS.");
   }
   wstring f = gdi.getText("BaseFile");

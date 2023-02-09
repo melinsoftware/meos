@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1832,14 +1832,13 @@ bool getMeOSFile(wchar_t *FileNamePath, const wchar_t *FileName) {
   return true;
 }
 
-bool getUserFile(wchar_t *FileNamePath, const wchar_t *FileName)
-{
+bool getUserFile(wchar_t* FileNamePath, const wchar_t* FileName) {
   wchar_t Path[MAX_PATH];
   wchar_t AppPath[MAX_PATH];
 
-  if (SHGetSpecialFolderPath(hWndMain, Path, CSIDL_APPDATA, 1)!=NOERROR) {
-    int i=wcslen(Path);
-    if (Path[i-1]!='\\')
+  if (SHGetSpecialFolderPath(hWndMain, Path, CSIDL_APPDATA, 1) != NOERROR) {
+    int i = wcslen(Path);
+    if (Path[i - 1] != '\\')
       wcscat_s(Path, MAX_PATH, L"\\");
 
     wcscpy_s(AppPath, MAX_PATH, Path);

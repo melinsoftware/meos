@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -278,7 +278,8 @@ void Table::filter(int col, const wstring &filt, bool forceFilter)
 
   sortIndex.resize(2);
   for (size_t k=2;k<baseIndex.size();k++) {
-    if (filterMatchString(Data[baseIndex[k].index].cells[col].contents, filt_lc))
+    int score;
+    if (filterMatchString(Data[baseIndex[k].index].cells[col].contents, filt_lc, score))
       sortIndex.push_back(baseIndex[k]);
   }
 }

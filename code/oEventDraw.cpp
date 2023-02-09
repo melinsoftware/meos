@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,11 +52,11 @@ DrawInfo::DrawInfo() {
   extraFactor = 0.1;
   minVacancy = 1;
   maxVacancy = 10;
-  baseInterval = 60;
-  minClassInterval = 120;
-  maxClassInterval = 180;
+  baseInterval = timeConstMinute;
+  minClassInterval = 2*timeConstMinute;
+  maxClassInterval = 3*timeConstMinute;
   nFields = 10;
-  firstStart = 3600;
+  firstStart = timeConstHour;
   maxCommonControl = 3;
   allowNeighbourSameCourse = true;
   coursesTogether = false;
@@ -913,8 +913,8 @@ void oEvent::optimizeStartOrder(vector<pair<int, wstring>> &outLines, DrawInfo &
 }
 
 void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vector<ClassInfo> &cInfo) const {
-  drawInfo.firstStart = 3600 * 22;
-  drawInfo.minClassInterval = 3600;
+  drawInfo.firstStart = timeConstHour * 22;
+  drawInfo.minClassInterval = timeConstHour;
   drawInfo.maxClassInterval = 1;
   drawInfo.minVacancy = 10;
   drawInfo.maxVacancy = 1;
@@ -1785,10 +1785,10 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
   }
   else {
     // Find first/last start in class and interval:
-    vector<int> first(spec.size(), 7*24*3600);
+    vector<int> first(spec.size(), 7*24*timeConstHour);
     vector<int> last(spec.size(), 0);
     set<int> cinterval;
-    int baseInterval = 10*60;
+    int baseInterval = 10*timeConstMinute;
 
     for (it=Runners.begin(); it != Runners.end(); ++it) {
       if (!it->isRemoved() && clsId2Ix.count(it->getClassId(true))) {
@@ -1828,8 +1828,8 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
       if (last[k] == 0 || spec[k].firstStart<=0 ||  baseInterval == 10*60) {
         // Fallback if incorrect specification.
-        spec[k].firstStart = 3600;
-        spec[k].interval = 2*60;
+        spec[k].firstStart = timeConstHour;
+        spec[k].interval = 2*timeConstMinute;
       }
     }
   }
@@ -2406,7 +2406,7 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
         times[k].first = adjustedTimes[k];
     }
     else {
-      times[k].first = 3600 * 24 * 7 + runner[k]->inputStatus;
+      times[k].first = timeConstHour * 24 * 7 + runner[k]->inputStatus;
       if (runner[k]->isVacant())
         times[k].first += 10; // Vacansies last
     }
@@ -2416,7 +2416,7 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
 
   int delta = times[0].first;
 
-  if (delta >= 3600*24*7)
+  if (delta >= timeConstHour*24*7)
     delta = 0;
 
   int reverseDelta = 0;

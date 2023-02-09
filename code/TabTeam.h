@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,6 +73,10 @@ private:
   bool warnDuplicateCard(gdioutput &gdi, string id, int cno, pRunner r);
 
   void switchRunners(pTeam team, int leg, pRunner r, pRunner oldR);
+
+  /** Enable or disable edit for a team runner*/
+  void enableRunner(gdioutput &gdi, int index, bool enable);
+
 
 protected:
   void clearCompetitionData();

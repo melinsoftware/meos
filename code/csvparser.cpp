@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -189,11 +189,10 @@ bool csvparser::importOS_CSV(oEvent &event, const wstring &file)
       //Import runners!
       int runner=0;
       while( (rindex+OSRrentcard)<sp.size() && sp[rindex+OSRfname].length()>0 ){
-        int year = extendYear(wtoi(sp[rindex+OSRyb]));
         int cardNo = wtoi(sp[rindex+OSRcard]);
         wstring sname = sp[rindex+OSRsname] + L", "  + sp[rindex+OSRfname];
         pRunner r = event.addRunner(sname, ClubId,
-                                    ClassId, cardNo, year, false);
+                                    ClassId, cardNo, sp[rindex + OSRyb], false);
         
         r->setEntrySource(externalSourceId);
         oDataInterface DI=r->getDI();
@@ -697,10 +696,10 @@ bool csvparser::importRAID(oEvent &event, const wstring &file)
       }
 
       //Import runners!
-      pRunner r1=event.addRunner(sp[RAIDrunner1], ClubId, ClassId, 0, 0, false);
+      pRunner r1=event.addRunner(sp[RAIDrunner1], ClubId, ClassId, 0, L"", false);
       team->setRunner(0, r1, false);
 
-      pRunner r2=event.addRunner(sp[RAIDrunner2], ClubId, ClassId, 0, 0, false);
+      pRunner r2=event.addRunner(sp[RAIDrunner2], ClubId, ClassId, 0, L"", false);
       team->setRunner(1, r2, false);
 
       team->evaluate(oBase::ChangeType::Update);
@@ -812,15 +811,16 @@ bool csvparser::importPunches(const oEvent &oe, const wstring &file, vector<Punc
     if (ret == -1)
       return false; // Invalid file
     if (ret > 0) {
-      int card = wtoi(sp[cardIndex]);
-      int time = oe.getRelativeTime(processedTime);
+      const int card = wtoi(sp[cardIndex]);
+      const int time = oe.getRelativeTime(processedTime);
 
       if (card>0) {
         PunchInfo pi;
         pi.card = card;
         pi.time = time;
-        string pd(processedDate.begin(), processedDate.end());
-        strncpy_s(pi.date, sizeof(pi.date), pd.c_str(), 26);
+        //string pd(processedDate.begin(), processedDate.end());
+        string pd = gdioutput::narrow(processedDate);
+        strncpy_s(pi.date, pd.c_str(), 26);
         pi.date[26] = 0;
         punches.push_back(pi);
         nimport++;
@@ -1204,7 +1204,7 @@ void csvparser::parse(const wstring &file, list< vector<wstring> > &data) {
   string rbf;
 
   if (!fin.good())
-    throw meosException("Failed to read file");
+    throw meosException(L"Failed to read file, " + file);
 
   bool isUTF8 = false;
   bool firstLine = true;

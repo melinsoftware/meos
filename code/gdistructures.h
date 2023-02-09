@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,6 +82,10 @@ public:
   GuiHandler &getHandler() const;
   BaseInfo &setHandler(const GuiHandler *h) {handler = const_cast<GuiHandler *>(h); return *this;}
   BaseInfo &setHandler(const shared_ptr<GuiHandler> &h) { managedHandler = h; return *this; }
+  void clearHandler() {
+    handler = nullptr;
+    managedHandler.reset();
+  }
 };
 
 class RestoreInfo : public BaseInfo
@@ -107,6 +111,12 @@ public:
 
   GUICALLBACK onClear;
   GUICALLBACK postClear;
+
+  set<string> restorePoints;
+
+  bool operator<(const RestoreInfo &r) const {
+    return nLBI < r.nLBI || nBI < r.nBI || nII < r.nII || nTL < r.nTL || nRect < r.nRect || nData < r.nData;
+  }
 
   HWND getControlWindow() const {throw std::exception("Unsupported");}
 };
@@ -387,11 +397,12 @@ private:
   DWORD dataInt;
   wstring dataString;
   gdioutput *parent;
-  TimerInfo(gdioutput *gdi, GUICALLBACK cb) : parent(gdi), callBack(cb), setWnd(0), timerId(++globalTimerId) {}
   HWND setWnd;
 public:
   ~TimerInfo();
-
+  TimerInfo(gdioutput* gdi, GUICALLBACK cb) : parent(gdi), callBack(cb), setWnd(0), timerId(++globalTimerId) {}
+  TimerInfo(const TimerInfo&) = delete;
+  TimerInfo& operator=(const TimerInfo&) = delete;
   int getId() const { return timerId; }
   BaseInfo &setExtra(const wchar_t *e) {return BaseInfo::setExtra(e);}
   BaseInfo &setExtra(int e) {return BaseInfo::setExtra(e);}

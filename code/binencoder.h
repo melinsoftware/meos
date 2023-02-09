@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /************************************************************************
     MeOS - Orienteering Software
@@ -18,33 +18,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Melin Software HB - software@melin.nu - www.melin.nu
-    Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
+    Eksoppsv�gen 16, SE-75646 UPPSALA, Sweden
 
 ************************************************************************/
 
-class gdioutput;
-class oEvent;
-class BaseInfo;
+#include <cstdint>
 
-#include <vector>
-enum GDICOLOR;
-enum PropertyType;
-#include "guihandler.h"
-
-class PrefsEditor : public GuiHandler {
-private:
-  oEvent *oe;
-
-  int userCB(gdioutput &gdi, int type, const BaseInfo &data);
-
-  wstring codeValue(const wstring &in, PropertyType p) const;
-  GDICOLOR selectColor(const wstring &val, PropertyType p) const;
-
+class Encoder92 {
+  int8_t table[92];
+  int8_t reverse_table[128];
+  bool used[128];
 public:
-  void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
+  Encoder92();
 
-  PrefsEditor(oEvent *oe);
-  virtual ~PrefsEditor();
+  void encode92(const uint8_t datain[13], uint8_t dataout[16]);
+  void decode92(const uint8_t datain[16], uint8_t dataout[13]);
 
-  void showPrefs(gdioutput &gdi);
+  void encode92(const vector<uint8_t>& bytesIn, string& encodedString);
+  void decode92(const string& encodedString, vector<uint8_t>& bytesOut);
 };

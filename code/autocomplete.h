@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,10 +29,17 @@ class AutoCompleteHandler;
 
 struct AutoCompleteRecord {
   AutoCompleteRecord() : id(-1) {}
-  AutoCompleteRecord(const wstring &display, const wstring &name, int id) : display(display), name(name), id(id) {}
+  AutoCompleteRecord(const wstring &display, int prio, const wstring &name, int id) : display(display), prio(prio), name(name), id(id) {}
   wstring display;
   wstring name;
   int id;
+  int prio = 0;
+  bool operator<(const AutoCompleteRecord& rec) const {
+    if (prio != rec.prio)
+      return prio > rec.prio;
+    else
+      return display < rec.display;
+  }
 };
 
 class AutoCompleteInfo {

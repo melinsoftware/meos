@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2022 Melin Software HB
+Copyright (C) 2009-2023 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ AnimationData::AnimationData(gdioutput &gdi, int timePerPage, int nCol,
   double w = (gdi.getWidth() + 20) *nCol + margin;
   double s = width / w;
   if ((fabs(s - 1.0) > 1e-3)) {
-    gdi.scaleSize(s, true, false);
+    gdi.scaleSize(s, true, gdioutput::ScaleOperation::NoRefresh);
   }
   pageInfo.topMargin = 20;
   pageInfo.scaleX = 1.0f;

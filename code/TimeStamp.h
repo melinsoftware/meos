@@ -10,7 +10,7 @@
 #endif // _MSC_VER > 1000
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -38,6 +38,8 @@ public:
   void setStamp(const string &s);
   const string &getStamp() const;
   const string &getStamp(const string &sqlStampIn) const;
+
+  const wstring getUpdateTime() const;
 
   wstring getStampString() const;
   string getStampStringN() const;

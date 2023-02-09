@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -415,6 +415,7 @@ struct TableSortIndex {
 enum {TID_CLASSNAME, TID_COURSE, TID_NUM, TID_ID, TID_MODIFIED,
 TID_RUNNER, TID_CLUB, TID_START, TID_TIME,
 TID_FINISH, TID_STATUS, TID_RUNNINGTIME, TID_PLACE, TID_POINTS,
-TID_CARD, TID_TEAM, TID_LEG, TID_CONTROL, TID_CODES, TID_FEE, TID_PAID,
+TID_CARD, TID_TEAM, TID_LEG, TID_CONTROL, TID_UNIT, TID_CODES, TID_FEE, TID_PAID,
 TID_INPUTTIME, TID_INPUTSTATUS, TID_INPUTPOINTS, TID_INPUTPLACE,
-TID_NAME, TID_NATIONAL, TID_SEX, TID_YEAR, TID_INDEX, TID_ENTER, TID_STARTNO, TID_VOLTAGE};
+TID_NAME, TID_NATIONAL, TID_SEX, TID_YEAR, TID_INDEX, 
+TID_ENTER, TID_STARTNO, TID_VOLTAGE, TID_BATTERYDATE};

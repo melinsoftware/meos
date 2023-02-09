@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -133,6 +133,8 @@ bool TabCompetition::save(gdioutput &gdi, bool write)
     oe->updateStartTimes(delta);
   }
   
+  oe->supportSubSeconds(gdi.isChecked("SubSecond"));
+
   oe->setDate(date, true);
   oe->useLongTimes(longTimes);
   oe->setName(gdi.getText("Name"), true);
@@ -163,7 +165,7 @@ bool TabCompetition::importFile(HWND hWnd, gdioutput &gdi)
     return false;
 
   gdi.setWaitCursor(true);
-  if (oe->open(fileName, true, false)) {
+  if (oe->open(fileName, true, false, false)) {
     gdi.setWindowTitle(oe->getTitleName());
     resetSaveTimer();
 
@@ -171,7 +173,7 @@ bool TabCompetition::importFile(HWND hWnd, gdioutput &gdi)
     wstring base = constructBase(L"base", L"");
     wchar_t newBase[_MAX_PATH];
     getUserFile(newBase, base.c_str());
-    oe->save(newBase);
+    oe->save(newBase, false);
     return true;
   }
 
@@ -188,7 +190,7 @@ bool TabCompetition::exportFileAs(HWND hWnd, gdioutput &gdi)
     return false;
 
   gdi.setWaitCursor(true);
-  if (!oe->save(fileName.c_str())) {
+  if (!oe->save(fileName.c_str(), false)) {
     gdi.alert(L"Fel: Filen " + fileName+ L" kunde inte skrivas.");
     return false;
   }
@@ -662,7 +664,9 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       gdi.dropLine(3);
       gdi.popX();
-      gdi.addCheckbox("Clear", "Nollställ databaser", 0, true);
+      gdi.addCheckbox("Clear", "Nollställ databaser");
+      gdi.addCheckbox("IncludeWithoutClub", "Inkludera klubblösa");
+
       gdi.dropLine(3);
 
       gdi.popX();
@@ -680,6 +684,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       gdi.setWaitCursor(true);
       gdi.addString("", 0, "Importerar...");
       bool clear = gdi.isChecked("Clear");
+      bool requireClub = !gdi.isChecked("IncludeWithoutClub");
       wstring club = gdi.getText("ClubFile");
       wstring cmp = gdi.getText("CmpFile");
       if (club == cmp)
@@ -698,7 +703,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
        if (clubCsv)
           throw meosException("Klubbfil får inte anges vid CSV import.");
 
-        oe->importXML_IOF_Data(club, cmp, clear);
+        oe->importXML_IOF_Data(club, cmp, requireClub, clear);
       }
       
       gdi.dropLine();
@@ -780,7 +785,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       wchar_t newBase[_MAX_PATH];
       getUserFile(newBase, base.c_str());
       if (!fileExists(newBase))
-        oe->save(newBase);
+        oe->save(newBase, false);
 
       loadConnectionPage(gdi);
     }
@@ -911,7 +916,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       oEvent nextStage(gdi);
 
       if (!file.empty())
-        success = nextStage.open(file.c_str(), false, false);
+        success = nextStage.open(file.c_str(), false, false, false);
 
       if (success)
         success = nextStage.getNameId(0) == oe->getDCI().getString("PostEvent");
@@ -1138,7 +1143,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       wstring startlist = getTempFile();
       bool eventorUTC = oe->getPropertyInt("UseEventorUTC", 0) != 0;
       oe->exportIOFStartlist(oEvent::IOF30, startlist.c_str(), eventorUTC, 
-                             set<int>(), false, false, true);
+                             set<int>(), false, false, true, true);
       vector<wstring> fileList;
       fileList.push_back(startlist);
 
@@ -1232,7 +1237,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       bool eventorUTC = oe->getPropertyInt("UseEventorUTC", 0) != 0;
       oe->exportIOFSplits(oEvent::IOF30, resultlist.c_str(), false,
                           eventorUTC, classes, -1, false, true, 
-                          false, true);
+                          false, true, true);
       vector<wstring> fileList;
       fileList.push_back(resultlist);
 
@@ -1332,6 +1337,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       gdi.dropLine(3);
       gdi.popX();
       gdi.addCheckbox("EventorDb", "Uppdatera löpardatabasen", CompetitionCB, true);
+      gdi.addCheckbox("IncludeWithoutClub", "Inkludera klubblösa");
+
       gdi.dropLine(3);
       gdi.popX();
       gdi.addButton("Cancel", "Avbryt", CompetitionCB);
@@ -1339,14 +1346,16 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "EventorCmp") {
       gdi.setInputStatus("EventorSel", gdi.isChecked(bi.id));
-      gdi.setInputStatus("EventorNext", gdi.isChecked(bi.id) | gdi.isChecked("EventorDb"));
+      gdi.setInputStatus("EventorNext", gdi.isChecked(bi.id) || gdi.isChecked("EventorDb"));
     }
     else if (bi.id == "EventorDb") {
-      gdi.setInputStatus("EventorNext", gdi.isChecked(bi.id) | gdi.isChecked("EventorCmp"));
+      gdi.setInputStatus("EventorNext", gdi.isChecked(bi.id) || gdi.isChecked("EventorCmp"));
     }
     else if (bi.id == "EventorNext") {
       bool cmp = gdi.isChecked("EventorCmp");
       bool db = gdi.isChecked("EventorDb");
+      bool withNoClub = gdi.isChecked("IncludeWithoutClub");
+
       ListBoxInfo lbi;
       gdi.getSelectedItem("EventorSel", lbi);
       const CompetitionInfo *ci = 0;
@@ -1355,6 +1364,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       gdi.clearPage(true);
       gdi.setData("UpdateDB", db);
+      gdi.setData("IncludeWithoutClub", withNoClub);
+
       gdi.pushX();
       if (cmp && ci) {
         gdi.setData("EventIndex", lbi.data);
@@ -1412,11 +1423,14 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       gdi.popX();
     }
     else if (bi.id == "EventorImport") {
-      const int diffZeroTime = 3600;
+      const int diffZeroTime = timeConstHour;
       DWORD id;
       DWORD db;
+      DWORD withNoClub;
+
       gdi.getData("EventorId", id);
       gdi.getData("UpdateDB", db);
+      gdi.getData("IncludeWithoutClub", withNoClub);
 
       DWORD eventIndex;
       gdi.getData("EventIndex", eventIndex);
@@ -1444,7 +1458,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         firstStart = t;
         zeroTime = t - diffZeroTime;
         if (zeroTime<0)
-          zeroTime += 3600*24;
+          zeroTime += timeConstHour * 24;
 
         startType = gdi.getSelectedItem("StartType").first;
         lastEntry = gdi.getText("LastEntryDate");
@@ -1509,8 +1523,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         else
           tRunnerDB = extractedFiles[0];
       }
-
-      oe->importXML_IOF_Data(tClubs, tRunnerDB, true);
+      
+      oe->importXML_IOF_Data(tClubs, tRunnerDB, withNoClub == 0, true);
       removeTempFile(tClubs);
 
       if (id > 0) {
@@ -1522,6 +1536,12 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         if (createNew && id>0) {
           gdi.addString("", 1, "Skapar ny tävling");
           oe->newCompetition(L"New");
+          oe->loadDefaults();
+
+          bool importHiredCard = true;
+          if (importHiredCard)
+            importDefaultHiredCards(gdi);
+
           oe->importXML_EntryData(gdi, tEvent, false, false, noFilter, noType);
           oe->setZeroTime(formatTimeHMS(zeroTime), false);
           oe->getDI().setDate("OrdinaryEntry", lastEntry);
@@ -1546,7 +1566,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
         if (!course.empty()) {
           gdi.dropLine();
-          TabCourse::runCourseImport(gdi, course, oe, true);
+          TabCourse::runCourseImport(gdi, course, oe, true, false);
         }
 
         set<int> clsWithRef;
@@ -1563,7 +1583,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
           switch (startType) {
             case SMCommon:
-              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"0", 
+              oe->automaticDrawAll(gdi, formatTimeHMS(firstStart, SubSecond::Off), L"0",
                                    L"0", oEvent::VacantPosition::Mixed,
                                    false, false, oEvent::DrawMethod::Random, 1);
               break;
@@ -1589,7 +1609,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
                 }
               }
               if (!skip)  
-                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart), L"2:00", 
+                oe->automaticDrawAll(gdi, formatTimeHMS(firstStart, SubSecond::Off), L"2:00",
                                      L"2", oEvent::VacantPosition::Mixed,
                                      true, false, oEvent::DrawMethod::MeOS, 1);
               break;
@@ -1780,7 +1800,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       if (filterIndex == ImportFormats::IOF30 || filterIndex == ImportFormats::IOF203) {
         bool useUTC = oe->getDCI().getInt("UTC") != 0;
         oe->exportIOFStartlist(filterIndex == ImportFormats::IOF30 ? oEvent::IOF30 : oEvent::IOF20,
-                                save.c_str(), useUTC, allTransfer, individual, includeStage, false);
+                                save.c_str(), useUTC, allTransfer, individual, includeStage, false, false);
       }
       else if (filterIndex == ImportFormats::OE) {
         oe->exportOECSV(save.c_str(), cSVLanguageHeaderIndex, false);
@@ -1838,7 +1858,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
         if (!gdi.hasWidget("LegType")) {
           oe->exportIOFSplits(ver, save.c_str(), true, useUTC, 
-                              allTransfer, -1, false, unroll, includeStage, false);
+                              allTransfer, -1, false, unroll, includeStage, false, false);
         }
         else {
           ListBoxInfo leglbi;
@@ -1860,17 +1880,17 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
             for (int leg = 0; leg<legMax; leg++) {
               file = fileBase + L"_" + itow(leg+1) + fileEnd;
               oe->exportIOFSplits(ver, file.c_str(), true, useUTC, 
-                                  allTransfer, leg, false, unroll, includeStage, false);
+                                  allTransfer, leg, false, unroll, includeStage, false, false);
             }
           }
           else if (leglbi.data == 3) {
             oe->exportIOFSplits(ver, file.c_str(), true, useUTC, allTransfer, 
-                                -1, true, unroll, includeStage, false);
+                                -1, true, unroll, includeStage, false, false);
           }
           else {
             int leg = leglbi.data == 1 ? -1 : leglbi.data - 10;
             oe->exportIOFSplits(ver, file.c_str(), true, useUTC, allTransfer, 
-                                leg, false, unroll, includeStage, false);
+                                leg, false, unroll, includeStage, false, false);
           }
         }
       }
@@ -1951,6 +1971,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       }
 
       oe->newCompetition(lang.tl(L"Ny tävling"));
+      oe->loadDefaults();
       gdi.setWindowTitle(L"");
 
       if (useEventor()) {
@@ -2077,15 +2098,18 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       gdi.disableInput("Cancel");
       gdi.disableInput("BrowseCourse");
       gdi.disableInput("AddClasses");
+      gdi.disableInput("CreateClasses");
 
       try {
-        TabCourse::runCourseImport(gdi, filename, oe, gdi.isChecked("AddClasses"));
+        TabCourse::runCourseImport(gdi, filename, oe, gdi.isChecked("AddClasses"),
+                                                      gdi.isChecked("CreateClasses"));
       }
-      catch (std::exception &) {
+      catch (const std::exception &) {
         gdi.enableInput("DoImportCourse");
         gdi.enableInput("Cancel");
         gdi.enableInput("BrowseCourse");
         gdi.enableInput("AddClasses");
+        gdi.enableInput("CreateClasses");
         throw;
       }
       gdi.dropLine();
@@ -2136,7 +2160,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       gdi.setWaitCursor(true);
       xml.openOutput(fileName.c_str(), false);
-      IOF30Interface writer(oe, false);
+      IOF30Interface writer(oe, false, false);
       writer.writeRunnerDB(oe->getRunnerDatabase(), xml);
       gdi.setWaitCursor(false);
     }
@@ -2151,7 +2175,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       gdi.setWaitCursor(true);
       xml.openOutput(fileName.c_str(), false);
-      IOF30Interface writer(oe, false);
+      IOF30Interface writer(oe, false, false);
       writer.writeClubDB(oe->getRunnerDatabase(), xml);
       gdi.setWaitCursor(false);
     }
@@ -2242,6 +2266,9 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         gdi.setInputStatus(gdi.narrow(fn).c_str(), !ii.text.empty());
       }
     }
+    else if (ii.id == "Name") {
+      updateWarning(gdi);
+    }
   }
   else if (type==GUI_EVENT) {
     EventInfo ei=*(EventInfo *)data;
@@ -2277,16 +2304,16 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         gdi.setData("RunnerIx", ix);
         gdi.dropLine();
         gdi.addSelection("Classes", 200, 300, 0, L"Klasser:");
-        oe->fillClasses(gdi, "Classes", oEvent::extraNone, oEvent::filterNone);
+        oe->fillClasses(gdi, "Classes", oEvent::extraNone, oEvent::filterOnlySingle);
 
-        if (lastSelectedClass != -1)
-          gdi.selectItemByData("Classes", lastSelectedClass);
-        else
+        if (lastSelectedClass == -1 || !gdi.selectItemByData("Classes", lastSelectedClass))
           gdi.selectFirstItem("Classes");
 
         gdi.dropLine();
         gdi.fillRight();
         gdi.addButton("DBEntry", "Anmäl", CompetitionCB).setDefault();
+        gdi.setInputStatus("DBEntry", gdi.getSelectedItem("Classes").first > 0); // Cannot change
+
         gdi.addButton("CancelEntry", "Avbryt", CompetitionCB).setCancel();
         gdi.refresh();
       }
@@ -2339,7 +2366,7 @@ int TabCompetition::restoreCB(gdioutput &gdi, int type, void *data) {
 
   if (ti.id == "") {
     wstring fi(bi.FullPath);
-    if (!oe->open(fi, false, false)) {
+    if (!oe->open(fi, false, false, false)) {
       gdi.alert("Kunde inte öppna tävlingen.");
     }
     else {
@@ -2392,7 +2419,7 @@ void TabCompetition::copyrightLine(gdioutput &gdi) const
 
   gdi.dropLine(0.4);
   gdi.fillDown();
-  gdi.addString("", 0, makeDash(L"#Copyright © 2007-2022 Melin Software HB"));
+  gdi.addString("", 0, makeDash(L"#Copyright © 2007-2023 Melin Software HB"));
   gdi.dropLine(1);
   gdi.popX();
 
@@ -2422,7 +2449,7 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
   gdi.dropLine(1.5);
   gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
 
-  gdi.addStringUT(1, makeDash(L"Copyright © 2007-2022 Melin Software HB"));
+  gdi.addStringUT(1, makeDash(L"Copyright © 2007-2023 Melin Software HB"));
   gdi.dropLine();
   gdi.addStringUT(10, "The database connection used is MySQL++\nCopyright "
 				  "(c) 1998 by Kevin Atkinson, (c) 1999, 2000 and 2001 by MySQL AB,"
@@ -2461,6 +2488,20 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
   gdi.dropLine();
   gdi.addButton("Cancel", "Stäng", CompetitionCB);
   gdi.refresh();
+}
+
+void TabCompetition::updateWarning(gdioutput &gdi) const {
+  const wstring &n = gdi.getText("Name");
+  const wstring &w = gdi.getText("cmpwarning");
+  constexpr int limit = 32;
+  if (n.length() < limit && !w.empty()) {
+    gdi.setText("warningicon", L"", true);
+    gdi.setText("cmpwarning", L"", true);
+  }
+  else if (n.length() >= limit && w.empty()) {
+    gdi.setText("warningicon", L"514", true);
+    gdi.setText("cmpwarning", L"Ett långt tävlingsnamn kan ge oväntad nerskalning av utskrifter.", true);
+  }
 }
 
 bool TabCompetition::useEventor() const {
@@ -2566,7 +2607,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
 
     gdi.pushX();
     gdi.fillRight();
-    gdi.addInput("Name", oe->getName(), 24, 0, L"Tävlingsnamn:");
+    gdi.addInput("Name", oe->getName(), 24, CompetitionCB, L"Tävlingsnamn:");
     gdi.fillDown();
 
     gdi.addInput("Annotation", oe->getAnnotation(), 20, 0, L"Kommentar / version:")
@@ -2579,12 +2620,16 @@ bool TabCompetition::loadPage(gdioutput &gdi)
 
     gdi.fillDown();
     gdi.dropLine(1.2);
+    //int ccx = gdi.getCX();
     gdi.addCheckbox("LongTimes", "Aktivera stöd för tider över 24 timmar", CompetitionCB, oe->useLongTimes());
-
+    gdi.addCheckbox("SubSecond", "Aktivera stöd för tiondels sekunder", CompetitionCB, oe->supportSubSeconds());
+    
+    gdi.dropLine(0.3);
     if (false && oe->isClient()) {
       gdi.popX();
       gdi.disableInput("ZeroTime");
       gdi.disableInput("LongTimes");
+      gdi.disableInput("SubSecond");
       if (oe->useLongTimes())
         gdi.disableInput("Date");
     }
@@ -2649,6 +2694,14 @@ bool TabCompetition::loadPage(gdioutput &gdi)
 #endif
 
     gdi.fillDown();
+    gdi.popX();
+
+    gdi.fillRight();
+    gdi.addString("warningicon", textImage, "S25");
+    gdi.dropLine(0.2);
+    gdi.fillDown();
+    gdi.addString("cmpwarning", 0, "");
+    updateWarning(gdi);
     gdi.popX();
 
     gdi.newColumn();
@@ -2908,26 +2961,26 @@ void TabCompetition::getEventorCompetitions(gdioutput &gdi,
       date.getObjectString("Clock", ci.firstStart);
 
     if (useEventorUTC()) {
-      int offset = getTimeZoneInfo(ci.Date);
+      int offset = getTimeZoneInfo(ci.Date) * timeConstSecond;
       int t = convertAbsoluteTimeISO(ci.firstStart);
       int nt = t - offset;
       int dayOffset = 0;
       if (nt < 0) {
-        nt += 24*3600;
+        nt += 24 * timeConstHour;
         dayOffset = -1;
       }
-      else if (nt > 24*3600) {
-        nt -= 24*3600;
+      else if (nt > 24* timeConstHour) {
+        nt -= 24* timeConstHour;
         dayOffset = 1;
       }
-      ci.firstStart = formatTimeHMS(nt);
+      ci.firstStart = formatTimeHMS(nt, SubSecond::Off);
       //TODO: Take dayoffset into account
     }
 
     xmlEvents[k].getObjectString("WebURL", ci.url);
     xmlobject aco = xmlEvents[k].getObject("Account");
     if (aco) {
-      string type = aco.getAttrib("type").get();
+      string type = aco.getAttrib("type").getStr();
       wstring no;
       aco.getObjectString("AccountNo", no);
 
@@ -2960,8 +3013,8 @@ void TabCompetition::getEventorCompetitions(gdioutput &gdi,
 
         SYSTEMTIME st;
         convertDateYMS(breakDate, st, false);
-        __int64 time = SystemTimeToInt64Second(st) - 1;
-        breakDate = convertSystemDate(Int64SecondToSystemTime(time));
+        __int64 time = SystemTimeToInt64TenthSecond(st) - 10;
+        breakDate = convertSystemDate(Int64TenthSecondToSystemTime(time));
 
         if (ci.lastNormalEntryDate.empty() || ci.lastNormalEntryDate >= breakDate)
           ci.lastNormalEntryDate = breakDate;
@@ -3080,7 +3133,9 @@ void TabCompetition::getEventorCmpData(gdioutput &gdi, int id,
   if (dbFile.length() > 0) {
     gdi.addString("", 0, "Hämtar löpardatabasen...");
     gdi.refreshFast();
-    dwl.downloadFile(eventorBase + L"export/cachedcompetitors?organisationIds=1&includePreselectedClasses=false&zip=true" + iofExportVersion, dbFile, key);
+    //dwl.downloadFile(eventorBase + L"export/cachedcompetitors?organisationIds=1&includePreselectedClasses=false&zip=true" + iofExportVersion, dbFile, key);
+    dwl.downloadFile(eventorBase + L"export/cachedcompetitors?includePreselectedClasses=false&zip=true" + iofExportVersion, dbFile, key);
+
     dwl.createDownloadThread();
     while (dwl.isWorking()) {
       Sleep(100);
@@ -3640,7 +3695,7 @@ FlowOperation TabCompetition::checkStageFilter(gdioutput & gdi,
   xml.read(fname);
   xmlobject xo = xml.getObject("EntryList");
   set<int> scanFilter;
-  IOF30Interface reader(oe, false);
+  IOF30Interface reader(oe, false, false);
   vector<string> idProviders;
   if (xo) {
     if (xo.getAttrib("iofVersion")) {
@@ -3967,9 +4022,7 @@ void TabCompetition::loadSettings(gdioutput &gdi) {
   gdi.addString("", 1, "Tidszon");
 
   gdi.dropLine(0.3);
-  gdi.addCheckbox("UTC", "Exportera tider i UTC", 0,
-  oe->getDCI().getInt("UTC") == 1);
-
+  gdi.addCheckbox("UTC", "Exportera tider i UTC", nullptr, oe->getDCI().getInt("UTC") != 0);
 
   gdi.newColumn();
   gdi.popY();
@@ -3999,16 +4052,60 @@ void TabCompetition::loadSettings(gdioutput &gdi) {
   gdi.dropLine(3);
 
   gdi.addString("", 1, "Åldersgränser, reducerad anmälningsavgift");
-  fields.clear();
-  fields.push_back("YouthAge");
-  fields.push_back("SeniorAge");
+  gdi.addString("", 0, "Ungdomar och äldre kan få reducerad avgift");
+  gdi.dropLine(0.5);
+
   gdi.fillRight();
-  oe->getDI().buildDataFields(gdi, fields, 10);
+  auto yfields = oe->getDI().buildDataFields(gdi, { "YouthAge" , "SeniorAge" }, 10);
+  
+  class HandleAge : public GuiHandler {
+  public:
+    void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) final {
+      if (type == GuiEventType::GUI_INPUT)
+        update(gdi, true);
+    }
+
+    void update(gdioutput &gdi, bool update) {
+      int youth = gdi.getTextNo("YouthAge_odc");
+      int senior = gdi.getTextNo("SeniorAge_odc");
+
+      InputInfo &ii = dynamic_cast<InputInfo &>(gdi.getBaseInfo("SeniorAge_odc"));
+      bool warn = senior > 1 && senior <= youth + 1;
+      ii.setBgColor(warn ? colorLightRed : colorDefault);
+      
+      string i1, i2, i3;
+      if (youth <= 0 && senior <= 0) {
+        i1 = "Ingen reducerad avgift";
+      }
+      else {
+        i1 = "Reducerad avgift för:";
+
+        if (youth > 0) 
+          i2 = "Unga, till och med X år#" + itos(youth);
+        else 
+          i2 = "Äldre, från och med X år#" + itos(senior);
+        
+        if (youth > 0 && senior > 0)
+          i3 = "Äldre, från och med X år#" + itos(senior);
+      }
+      gdi.setText("ReduceInfo", lang.tl(i1), update);
+      gdi.setText("ReduceInfoL1", i2.empty() ? L"" : L"\u25AA " + lang.tl(i2), update);
+      gdi.setText("ReduceInfoL2", i3.empty() ? L"" : L"\u25AA " + lang.tl(i3), update);
+    }
+  };
 
   gdi.fillDown();
   gdi.popX();
-  gdi.dropLine(3);
+  gdi.dropLine(2.8);
+  gdi.addString("ReduceInfo", 0, "Ingen reducerad avgift");
+  gdi.addString("ReduceInfoL1", 0, "-");
+  gdi.addString("ReduceInfoL2", 0, "-");
 
+  auto handler = make_shared<HandleAge>();
+  yfields[0]->setHandler(handler);
+  yfields[1]->setHandler(handler);
+
+  gdi.dropLine(0.3);
 
   gdi.addString("", 1, "Valuta");
   fields.clear();
@@ -4052,6 +4149,8 @@ void TabCompetition::loadSettings(gdioutput &gdi) {
   gdi.fillDown();
   oe->getDI().buildDataFields(gdi, fields, 10);
   oe->getDI().fillDataFields(gdi);
+
+  handler->update(gdi, false);
 
   gdi.dropLine(1);
   int bottom = gdi.getCY();
@@ -4097,17 +4196,16 @@ void TabCompetition::loadSettings(gdioutput &gdi) {
 }
 
 void TabCompetition::saveSettings(gdioutput &gdi) {
-  vector<string> fields;
+  vector<string> fields = { "CardFee" ,"EliteFee" ,"EntryFee","YouthFee" };
   vector<int> fees(4);
-  fields.push_back("CardFee");
-  fields.push_back("EliteFee");
-  fields.push_back("EntryFee");
-  fields.push_back("YouthFee");
-
+  
   for (int k = 0; k<4; k++)
     fees[k] = oe->getDCI().getInt(fields[k]);
+  
   wstring factor = oe->getDCI().getString("LateEntryFactor");
-  oe->getDI().saveDataFields(gdi);
+  set<string> modified;
+
+  oe->getDI().saveDataFields(gdi, modified);
 
   bool changedFee = false;
   bool changedCardFee = false;
@@ -4119,33 +4217,60 @@ void TabCompetition::saveSettings(gdioutput &gdi) {
       else {
         changedCardFee = true;
         if (oe->getDCI().getInt(fields[k]) == 0)
-          oe->getDI().setInt(fields[k].c_str(), -1); // Disallow zero card fee. -1 means no fee.
+          oe->getDI().setInt(fields[k], -1); // Disallow zero card fee. -1 means no fee.
       }
     }
   }
   if (factor != oe->getDCI().getString("LateEntryFactor"))
     changedFee = true;
 
-  oe->getDI().setInt("UTC", gdi.isChecked("UTC") ? 1 : 0);
+  if (oe->getDI().setInt("UTC", gdi.isChecked("UTC") ? 1 : 0))
+    setEventorUTC(gdi.isChecked("UTC"));
 
-  oe->getDI().setInt("CurrencyFactor", gdi.isChecked("UseFraction") ? 100 : 1);
-  oe->getDI().setInt("CurrencyPreSymbol", gdi.isChecked("PreSymbol") ? 1 : 0);
+  if (oe->getDI().setInt("CurrencyFactor", gdi.isChecked("UseFraction") ? 100 : 1))
+    modified.insert("CurrencyFactor");
+
+  if (oe->getDI().setInt("CurrencyPreSymbol", gdi.isChecked("PreSymbol") ? 1 : 0))
+    modified.insert("CurrencyPreSymbol");
+
   oe->setCurrency(-1, L"", L"", false);
 
-  vector< pair<wstring, size_t> > modes;
+  wstring pm = oe->getDCI().getString("PayModes");
+  vector<pair<wstring, size_t>> modes;
   oe->getPayModes(modes);
   for (size_t k = 0; k < modes.size(); k++) {
     string field = "M"+itos(k);
     if (gdi.hasWidget(field)) {
       wstring mode = gdi.getText("M"+itos(k));
-      int id = gdi.getBaseInfo(field.c_str()).getExtraInt();
+      int id = gdi.getBaseInfo(field).getExtraInt();
       oe->setPayMode(id, mode);
     }
   }
+  if (pm != oe->getDCI().getString("PayModes"))
+    modified.insert("PayModes");
 
   // Read from model
   if (oe->isChanged()) {
-    oe->setProperty("Organizer", oe->getDCI().getString("Organizer"));
+    vector<string> props = { "Organizer" ,"Street" ,"Address" ,"EMail" ,"Homepage" ,
+      "YouthAge","SeniorAge","Account", "LateEntryFactor","CurrencySymbol",
+      "CurrencyFactor","CurrencyPreSymbol","CurrencySeparator",
+      "CardFee","EliteFee","EntryFee","YouthFee", "PayModes" };
+
+    auto dci = oe->getDCI();
+    for (const string &p : props) {
+      if (modified.count(p)) {
+        if (dci.isString(p))
+          oe->setProperty(p.c_str(), dci.getString(p));
+        else if (dci.isInt(p))
+          oe->setProperty(p.c_str(), dci.getInt(p));
+        else
+          throw std::exception();
+      }
+    }
+
+    //oe->setProperty("PayModes", oe->getDCI().getString("PayModes"));
+
+    /*oe->setProperty("Organizer", oe->getDCI().getString("Organizer"));
     oe->setProperty("Street", oe->getDCI().getString("Street"));
     oe->setProperty("Address", oe->getDCI().getString("Address"));
     oe->setProperty("EMail", oe->getDCI().getString("EMail"));
@@ -4166,8 +4291,8 @@ void TabCompetition::saveSettings(gdioutput &gdi) {
     oe->setProperty("CurrencyFactor", oe->getDCI().getInt("CurrencyFactor"));
     oe->setProperty("CurrencyPreSymbol", oe->getDCI().getInt("CurrencyPreSymbol"));
     oe->setProperty("CurrencySeparator", oe->getDCI().getString("CurrencySeparator"));
-
-    oe->setProperty("PayModes", oe->getDCI().getString("PayModes"));
+    */
+    //oe->setProperty("PayModes", oe->getDCI().getString("PayModes"));
   }
   oe->synchronize(true);
   set<int> dummy;
@@ -4260,7 +4385,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
           if (!thisFile.empty()) {
             wchar_t newBase[_MAX_PATH];
             getUserFile(newBase, thisFile.c_str());
-            mergeEvent->save(newBase);
+            mergeEvent->save(newBase, false);
           }
 
           tc->oe->merge(*mergeEvent, baseEvent.get(), allowRemove, numAdd, numRemove, numUpdate);
@@ -4285,7 +4410,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
           gdi.refresh();
         }
         else if (bi.id == "Browse") {
-          wstring fn = gdi.browseForOpen({ make_pair(L"xml", L"*.xml") }, L"xml");
+          wstring fn = gdi.browseForOpen({ make_pair(L"MeOS-data", L"*.meosxml;*.xml;*.bu?") }, L"meosxml");
           if (fn.empty())
             return;
 
@@ -4296,7 +4421,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
         else if (bi.id == "Read") {
           mergeEvent = make_shared<oEvent>(gdi);
 
-          if (!mergeEvent->open(tc->mergeFile, true, true))
+          if (!mergeEvent->open(tc->mergeFile, true, true, false))
             return;
 
           gdi.restore("merge", false);
@@ -4384,7 +4509,7 @@ void TabCompetition::mergeCompetition(gdioutput &gdi) {
             baseEvent = make_shared<oEvent>(gdi);
             bool ok = false;
             try {
-              ok = baseEvent->open(base, true, true);
+              ok = baseEvent->open(base, true, true, false);
               ok = true;
             }
             catch (...) {

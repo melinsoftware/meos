@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,10 +76,10 @@ TabClass::TabClass(oEvent *poe):TabBase(poe)
 void TabClass::clearCompetitionData() {
   currentResultModuleTags.clear();
   pSettings.clear();
-  pSavedDepth = 3600;
-  pFirstRestart = 3600;
+  pSavedDepth = timeConstHour;
+  pFirstRestart = timeConstHour;
   pTimeScaling = 1.0;
-  pInterval = 120;
+  pInterval = 2 * timeConstMinute;
 
   currentStage = -1;
   EditChanged = false;
@@ -241,6 +241,9 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
       return true;
     }
     else if (bi.id == "ApplyForking") {
+      int maxForking = gdi.getTextNo("MaxForkings");
+      if (maxForking < 2)
+        throw meosException("Du måste ange minst två gafflingsvarienater");
       showForkingGuide = false;
       pClass pc = oe->getClass(ClassId);
 
@@ -259,7 +262,7 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
             allR[k]->setCourseId(0);
         }
       }
-      pair<int,int> res = pc->autoForking(forkingSetup);
+      pair<int,int> res = pc->autoForking(forkingSetup, maxForking);
       gdi.alert("Created X distinct forkings using Y courses.#" +
                  itos(res.first) + "#" + itos(res.second));
       loadPage(gdi);
@@ -306,6 +309,10 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
       gdi.setSelection("AllCourses", set<int>());
       gdi.setSelection("AllStages", set<int>());
       gdi.disableInput("AssignCourses");
+    }
+    else if (bi.id == "AllCourses") {
+      gdi.setSelection("AllCourses", { -1 });
+      //gdi.enableInput("AssignCourses");
     }
     else if (bi.id == "ShowForking") {
       if (!checkClassSelected(gdi))
@@ -469,7 +476,7 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
 
         int nst = oe->convertAbsoluteTime(st);
         if (nst >= 0 && warnDrawStartTime(gdi, nst, true)) {
-          nst = 3600;
+          nst = timeConstHour;
           st = oe->getAbsTime(nst);
         }
         if (nst>0)
@@ -695,7 +702,26 @@ int TabClass::multiCB(gdioutput &gdi, int type, void *data)
     EditChanged=true;
     if (ii.id=="NStage")
       gdi.enableInput("SetNStage");
+    else if (ii.id == "CourseFilter") {
+      gdi.addTimeoutMilli(500, "FilterCourseTimer", MultiCB);
+    }
     //else if (ii.id=="")
+  }
+  else if (type == GUI_TIMER) {
+    TimerInfo& ti = *(TimerInfo*)(data);
+    if (ti.id == "FilterCourseTimer") {
+      const wstring &filter = gdi.getText("CourseFilter");
+      if (filter != courseFilter) {
+        courseFilter = filter;
+        vector<pair<wstring, size_t>> out;
+        oe->getCourses(out, courseFilter, true, false);
+        set<int> sel;
+        gdi.getSelection("AllCourses", sel);
+        gdi.addItem("AllCourses", out);
+        gdi.setSelection("AllCourses", sel);
+      }
+    }
+
   }
   return 0;
 }
@@ -832,8 +858,8 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           else ds.ctrl = 0;
 
           // Save settings with class
-          ds.firstStart = 3600;
-          ds.interval = 120;
+          ds.firstStart = timeConstHour;
+          ds.interval = 2 * timeConstMinute;
           ds.vacant = 1;
 
           res.push_back(ds);
@@ -1023,7 +1049,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       gdi.pushX();
       gdi.fillRight();
-      gdi.addInput("FirstStart", oe->getAbsTime(3600), 10, 0, L"Första (ordinarie) start:");
+      gdi.addInput("FirstStart", oe->getAbsTime(timeConstHour), 10, 0, L"Första (ordinarie) start:");
       gdi.addInput("MinInterval", L"2:00", 10, 0, L"Minsta startintervall:");
       gdi.addInput("Vacances", getDefaultVacant(), 10, 0, L"Andel vakanser:");
       gdi.fillDown();
@@ -1085,7 +1111,8 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "SelectAllNoneP") {
       bool select = bi.getExtraInt() != 0;
-      for (int k = 0; k < oe->getNumClasses(); k++) {
+      const int nc = oe->getNumClasses();
+      for (int k = 0; k < nc; k++) {
         gdi.check("PLUse" + itos(k), select);
         gdi.setInputStatus("First" + itos(k), select);
       }
@@ -1107,8 +1134,8 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       pInterval = interval;
 
       oListParam par;
-
-      for (int k = 0; k < oe->getNumClasses(); k++) {
+      const int nc = oe->getNumClasses();
+      for (int k = 0; k < nc; k++) {
         if (!gdi.hasWidget("PLUse" + itos(k)))
           continue;
         BaseInfo *biu = gdi.setText("PLUse" + itos(k), L"", false);
@@ -1260,7 +1287,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id == "DrawAll") {
       int origin = bi.getExtraInt();
-      wstring firstStart = oe->getAbsTime(3600);
+      wstring firstStart = oe->getAbsTime(timeConstHour);
       wstring minInterval = L"2:00";
       wstring vacances = getDefaultVacant();
       if (gdi.hasWidget("Vacances")) {
@@ -2529,7 +2556,7 @@ void TabClass::showClassSettings(gdioutput &gdi)
     if (ci.hasFixedTime) {
       ii->setBgColor(fixedColor).setExtra(fixedColor);
     }
-    ii = &gdi.addInput(xp + classW + width, y, "I" + itos(id), formatTime(ci.interval*drawInfo.baseInterval), 7, DrawClassesCB);
+    ii = &gdi.addInput(xp + classW + width, y, "I" + itos(id), formatTime(ci.interval*drawInfo.baseInterval, SubSecond::Auto), 7, DrawClassesCB);
     if (ci.hasFixedTime) {
       ii->setBgColor(fixedColor).setExtra(fixedColor);
     }
@@ -3323,8 +3350,23 @@ bool TabClass::loadPage(gdioutput &gdi)
 
   gdi.fillDown();
   gdi.addListBox("Classes", 200, showAdvanced ? 512 : 420, ClassesCB, L"").isEdit(false).ignore(true);
-  gdi.setTabStops("Classes", 185);
+  gdi.setTabStops("Classes", 170);
   oe->fillClasses(gdi, "Classes", oEvent::extraDrawn, oEvent::filterNone);
+
+
+  bool hasIgnoreStart = false;
+  bool hasFreeStart = false;
+
+  if (!showAdvanced) {
+    vector<pClass> clsList;
+    oe->getClasses(clsList, false);
+    for (auto c : clsList) {
+      if (c->ignoreStartPunch())
+        hasIgnoreStart = true;
+      if (c->hasFreeStart())
+        hasFreeStart = true;
+    }
+  }
 
   gdi.newColumn();
   gdi.dropLine(2);
@@ -3419,11 +3461,15 @@ bool TabClass::loadPage(gdioutput &gdi)
     gdi.addCheckbox("NoTiming", "Utan tidtagning", 0);
   }
 
-  if (showAdvanced) {
+  if (showAdvanced || hasIgnoreStart || hasFreeStart) {
     gdi.dropLine(2);
     gdi.popX();
-    gdi.addCheckbox("FreeStart", "Fri starttid", 0, false, "Klassen lottas inte, startstämpling");
-    gdi.addCheckbox("IgnoreStart", "Ignorera startstämpling", 0, false, "Uppdatera inte starttiden vid startstämpling");
+
+    if (showAdvanced || hasFreeStart) 
+      gdi.addCheckbox("FreeStart", "Fri starttid", 0, false, "Klassen lottas inte, startstämpling");
+    
+    if (showAdvanced || hasIgnoreStart)
+      gdi.addCheckbox("IgnoreStart", "Ignorera startstämpling", 0, false, "Uppdatera inte starttiden vid startstämpling");
     gdi.dropLine(2);
     gdi.popX();
   }
@@ -3721,8 +3767,8 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
     return;
   }
 
-  int firstStart = 3600,
-    interval = 120,
+  int firstStart = timeConstHour,
+    interval = 2 * timeConstMinute,
     vac = _wtoi(lastNumVac.c_str());
 
   int pairSize = lastPairSize;
@@ -3787,12 +3833,12 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
 
   if (method == oEvent::DrawMethod::Pursuit || method == oEvent::DrawMethod::ReversePursuit) {
     gdi.addInput("MaxAfter", lastMaxAfter, 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren för att delta i jaktstart").setSynchData(&lastMaxAfter);
-    gdi.addInput("TimeRestart", oe->getAbsTime(firstStart + 3600), 8, 0, L"Första omstartstid:");
+    gdi.addInput("TimeRestart", oe->getAbsTime(firstStart + timeConstHour), 8, 0, L"Första omstartstid:");
     gdi.addInput("ScaleFactor", lastScaleFactor, 8, 0, L"Tidsskalning:").setSynchData(&lastScaleFactor);
   }
 
   if (method != oEvent::DrawMethod::Simultaneous)
-    gdi.addInput("Interval", formatTime(interval), 10, 0, L"Startintervall (min):").setSynchData(&lastInterval);
+    gdi.addInput("Interval", formatTime(interval, SubSecond::Auto), 10, 0, L"Startintervall (min):").setSynchData(&lastInterval);
 
   if ((method == oEvent::DrawMethod::Random ||
       method == oEvent::DrawMethod::SOFT ||
@@ -3944,9 +3990,9 @@ void TabClass::pursuitDialog(gdioutput &gdi) {
 
   gdi.fillRight();
 
-  gdi.addInput("MaxAfter", formatTime(pSavedDepth), 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren för att delta i jaktstart");
-  gdi.addInput("TimeRestart", L"+" + formatTime(pFirstRestart),  8, 0, L"Första omstartstid:",  L"Ange tiden relativt klassens första start");
-  gdi.addInput("Interval", formatTime(pInterval),  8, 0, L"Startintervall:", L"Ange startintervall för minutstart");
+  gdi.addInput("MaxAfter", formatTime(pSavedDepth, SubSecond::Off), 10, 0, L"Maxtid efter:", L"Maximal tid efter ledaren för att delta i jaktstart");
+  gdi.addInput("TimeRestart", L"+" + formatTime(pFirstRestart, SubSecond::Off),  8, 0, L"Första omstartstid:",  L"Ange tiden relativt klassens första start");
+  gdi.addInput("Interval", formatTime(pInterval, SubSecond::Off),  8, 0, L"Startintervall:", L"Ange startintervall för minutstart");
   wchar_t bf[32];
   swprintf_s(bf, L"%f", pTimeScaling);
   gdi.addInput("ScaleFactor", bf,  8, 0, L"Tidsskalning:");
@@ -4027,7 +4073,7 @@ void TabClass::showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK 
   int cx = gdi.getCX();
   int width = gdi.scaleLength(230);
   gdi.addListBox("Classes", 200, 480, classesCB, L"Klasser:", L"", true);
-  gdi.setTabStops("Classes", 185);
+  gdi.setTabStops("Classes", 170);
   gdi.fillRight();
   gdi.pushX();
 
@@ -4258,6 +4304,9 @@ void TabClass::defineForking(gdioutput &gdi, bool clearSettings) {
 
   gdi.dropLine(2);
   gdi.pushY();
+
+  courseFilter = L"";
+  gdi.addInput("CourseFilter", courseFilter, 16, MultiCB, L"Filtrera:");
   gdi.addListBox("AllCourses", 180, 300, 0, L"Banor:", L"", true);
   oe->fillCourses(gdi, "AllCourses", true);
   int bxp = gdi.getCX();
@@ -4293,6 +4342,9 @@ void TabClass::defineForking(gdioutput &gdi, bool clearSettings) {
   }
 
   gdi.dropLine();
+  gdi.addInput("MaxForkings", L"100", 5, nullptr, L"Max antal gaffllingsvarianter att skapa:",
+    L"Det uppskattade antalet startade lag i klassen är ett lämpligt värde.");
+  gdi.dropLine();
   gdi.fillRight();
   gdi.addButton("ApplyForking", "Calculate and apply forking", MultiCB);
   gdi.addButton("Cancel", "Avbryt", ClassesCB).setCancel();
@@ -4300,9 +4352,11 @@ void TabClass::defineForking(gdioutput &gdi, bool clearSettings) {
 
   gdi.setCX(bxp);
   gdi.setCY(byp);
+  gdi.addButton("AllCourses", "Välj allt", MultiCB);
   gdi.fillDown();
   gdi.addButton("ClearCourses", "Clear selections", MultiCB);
 
+  gdi.setCX(bxp);
   gdi.addString("", 10, "help:assignforking");
   gdi.addString("", ty, tx, boldLarge, L"Assign courses and apply forking to X#" + pc->getName());
 
@@ -4384,7 +4438,7 @@ void TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
   gdi.addString("", yp, f, 1, "Direktanmälan");
   
   vector< pair<wstring,size_t> > arg;
-  oe->fillCourses(arg, true);
+  oe->getCourses(arg, L"", true);
   
   for (size_t k = 0; k < cls.size(); k++) {
     pClass it = cls[k];
@@ -4534,8 +4588,11 @@ void TabClass::updateStartData(gdioutput &gdi, pClass pc, int leg, bool updateDe
   if (st == STChange) {
     if (typeid(sdataBase) != typeid(ListBoxInfo)) {
       InputInfo sdII = dynamic_cast<InputInfo &>(sdataBase);
+      string rp;
+      gdi.getWidgetRestorePoint(sdKey, rp);
       gdi.removeWidget(sdKey);
-      gdi.addSelection(sdII.getX(), sdII.getY(), sdKey, sdII.getWidth(), 200, MultiCB);
+      gdi.addSelection(sdII.getX(), sdII.getY(), sdKey, int(sdII.getWidth()/gdi.getScale()), 200, MultiCB);
+      gdi.setWidgetRestorePoint(sdKey, rp);
       setParallelOptions(sdKey, gdi, pc, leg);
     }
     else if (forceWrite) {
@@ -4545,9 +4602,12 @@ void TabClass::updateStartData(gdioutput &gdi, pClass pc, int leg, bool updateDe
   else {
     if (typeid(sdataBase) != typeid(InputInfo)) {
       ListBoxInfo sdLBI = dynamic_cast<ListBoxInfo &>(sdataBase);
+      string rp;
+      gdi.getWidgetRestorePoint(sdKey, rp);
       gdi.removeWidget(sdKey);
       string val = "-";
       gdi.addInput(sdLBI.getX(), sdLBI.getY(), sdKey, pc->getStartDataS(leg), 8, MultiCB);
+      gdi.setWidgetRestorePoint(sdKey, rp);
     }
     else if (forceWrite) {
       gdi.setText(sdKey, pc->getStartDataS(leg), true);
@@ -4678,12 +4738,12 @@ void TabClass::writeDrawInfo(gdioutput &gdi, const DrawInfo &drawInfoIn) {
   gdi.setText("Vacances", itow(int(drawInfoIn.vacancyFactor *100.0)) + L"%");
   gdi.setText("Extra", itow(int(drawInfoIn.extraFactor * 100.0) ) + L"%");
 
-  gdi.setText("BaseInterval", formatTime(drawInfoIn.baseInterval));
+  gdi.setText("BaseInterval", formatTime(drawInfoIn.baseInterval, SubSecond::Off));
 
   gdi.check("AllowNeighbours", drawInfoIn.allowNeighbourSameCourse);
   gdi.check("CoursesTogether", drawInfoIn.coursesTogether);
-  gdi.setText("MinInterval", formatTime(drawInfoIn.minClassInterval));
-  gdi.setText("MaxInterval", formatTime(drawInfoIn.maxClassInterval));
+  gdi.setText("MinInterval", formatTime(drawInfoIn.minClassInterval, SubSecond::Off));
+  gdi.setText("MaxInterval", formatTime(drawInfoIn.maxClassInterval, SubSecond::Off));
   gdi.setText("nFields", drawInfoIn.nFields);
   gdi.setText("FirstStart", oe->getAbsTime(drawInfoIn.firstStart));
 }
@@ -4739,10 +4799,10 @@ bool TabClass::warnDrawStartTime(gdioutput &gdi, const wstring &firstStart) {
 
 bool TabClass::warnDrawStartTime(gdioutput &gdi, int time, bool absTime) {
   if (absTime) 
-    time = oe->getRelativeTime(formatTimeHMS(time));
+    time = oe->getRelativeTime(formatTimeHMS(time, SubSecond::Off));
 
-  if (!hasWarnedStartTime && (time > 3600 * 11 && !oe->useLongTimes())) {
-    bool res = gdi.ask(L"warn:latestarttime#" + itow(time/3600));
+  if (!hasWarnedStartTime && (time > timeConstHour * 11 && !oe->useLongTimes())) {
+    bool res = gdi.ask(L"warn:latestarttime#" + itow(time/timeConstHour));
     if (res)
       hasWarnedStartTime = true;
     return !res;
@@ -4812,7 +4872,7 @@ void DrawSettingsCSV::write(gdioutput &gdi, const oEvent &oe, const wstring &fn,
     else line.emplace_back("");
 
     line.push_back(gdi.narrow(oe.getAbsTime(ci.firstStart)));
-    line.push_back(gdi.narrow(formatTime(ci.interval)));
+    line.push_back(gdi.narrow(formatTime(ci.interval, SubSecond::Off)));
     line.push_back(itos(ci.vacant));
     writer.outputRow(line);
   }
@@ -5130,8 +5190,8 @@ public:
     else if (type == GuiEventType::GUI_BUTTON) {
       if (info.id == "AddGroup") {
         int id = 1;
-        int firstStart = 3600;
-        int length = 3600;
+        int firstStart = timeConstHour;
+        int length = timeConstHour;
         for (auto &g : oe.getStartGroups(false)) {
           id = max(id, g.first+1);
           firstStart = max(firstStart, g.second.lastStart);

@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,9 @@
 #include "oBase.h"
 #include "inthashmap.h"
 
+
 class Table;
+class InputInfo;
 enum CellType;
 
 class oDataDefiner {
@@ -103,7 +105,6 @@ protected:
   int dataPointer;
   size_t stringIndexPointer;
   size_t stringArrayIndexPointer;
-
   inthashmap index;
   vector<oDataInfo> ordered;
 
@@ -131,7 +132,10 @@ protected:
   static string C_STRING(const string & name, int len);
   static string SQL_quote(const wchar_t *in);
 public:
-  enum oIntSize{oISDecimal = 28, oISTime = 29, oISCurrency = 30, oISDate = 31, oIS64=64, oIS32=32, oIS16=16, oIS8=8, oIS16U=17, oIS8U=9};
+  enum oIntSize{oISDecimal = 28, oISTime = 29, oISCurrency = 30, 
+    oISDate = 31, oISDateOrYear = 27, oIS64=64,
+    oIS32=32, oIS16=16, oIS8=8, oIS16U=17, oIS8U=9};
+
   enum oStringSubType {oSSString = 0, oSSEnum = 1};
   string generateSQLDefinition(const std::set<string> &exclude) const;
   string generateSQLDefinition() const {
@@ -162,6 +166,9 @@ public:
 
   void initData(oBase *ob, int datasize);
 
+  bool isInt(const char *name) const;
+  bool isString(const char *name) const;
+
   bool setInt(void *data, const char *Name, int V);
   int getInt(const void *data, const char *Name) const;
 
@@ -181,11 +188,11 @@ public:
   // Get a measure of how much data is stored in this record.
   int getDataAmountMeasure(const void *data) const;
 
-  void buildDataFields(gdioutput &gdi, int maxFieldSize) const;
-  void buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const;
+  vector<InputInfo *> buildDataFields(gdioutput &gdi, int maxFieldSize) const;
+  vector<InputInfo *> buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const;
 
   void fillDataFields(const oBase *ob, gdioutput &gdi) const;
-  bool saveDataFields(oBase *ob, gdioutput &gdi);
+  bool saveDataFields(oBase *ob, gdioutput &gdi, std::set<string> &modified);
 
   int fillTableCol(const oBase &owner, Table &table, bool canEdit) const;
   void buildTableCol(Table *table);
@@ -210,18 +217,21 @@ private:
   oDataContainer *oDC;
   oBase *oB;
 public:
-  
+
   bool merge(const oBase &source, const oBase *base) {
     return oDC->merge(*oB, source, base);
   }
 
-  inline bool setInt(const char *Name, int Value)
-  {
-    if (oDC->setInt(Data, Name, Value)){
+  inline bool setInt(const char *name, int value) {
+    if (oDC->setInt(Data, name, value)) {
       oB->updateChanged();
       return true;
     }
     else return false;
+  }
+
+  inline bool setInt(const string &name, int value) {
+    return setInt(name.c_str(), value);
   }
 
   inline bool setInt64(const char *Name, __int64 Value)
@@ -233,26 +243,47 @@ public:
     else return false;
   }
 
-  inline int getInt(const char *Name) const
-    {return oDC->getInt(Data, Name);}
+  bool isInt(const string &name) const {
+    return oDC->isInt(name.c_str());
+  }
+
+  bool isString(const string &name) const {
+    return oDC->isString(name.c_str());
+  }
+
+  inline int getInt(const char *Name) const {
+    return oDC->getInt(Data, Name);
+  }
+
+  inline int getInt(const string &name) const {
+    return oDC->getInt(Data, name.c_str());
+  }
 
   inline __int64 getInt64(const char *Name) const
     {return oDC->getInt64(Data, Name);}
 
-  inline bool setStringNoUpdate(const char *Name, const wstring &Value)
-    {return oDC->setString(oB, Name, Value);}
+  inline bool setStringNoUpdate(const char *name, const wstring &value)
+    {return oDC->setString(oB, name, value);}
 
-  inline bool setString(const char *Name, const wstring &Value)
-  {
-    if (oDC->setString(oB, Name, Value)){
+  inline bool setString(const char *name, const wstring &value) {
+    if (oDC->setString(oB, name, value)) {
       oB->updateChanged();
       return true;
     }
     else return false;
   }
 
-  inline const wstring &getString(const char *Name) const
-    {return oDC->getString(oB, Name);}
+  inline bool setString(const string &name, const wstring &value) {
+    return setString(name.c_str(), value);
+  }
+
+  inline const wstring &getString(const char *name) const {
+    return oDC->getString(oB, name);
+  }
+
+  inline const wstring &getString(const string &name) const {
+    return oDC->getString(oB, name.c_str());
+  }
 
   inline const wstring &formatString(const oBase *oB, const char *name) const {
     return oDC->formatString(oB, name);
@@ -270,17 +301,17 @@ public:
   inline const wstring &getDate(const char *Name) const
     {return oDC->getDate(Data, Name);}
 
-  inline void buildDataFields(gdioutput &gdi, int maxFieldSize) const
-    {oDC->buildDataFields(gdi, maxFieldSize);}
+  inline vector<InputInfo *> buildDataFields(gdioutput &gdi, int maxFieldSize) const
+    {return oDC->buildDataFields(gdi, maxFieldSize);}
 
-  inline void buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const
-    {oDC->buildDataFields(gdi, fields, maxFieldSize);}
+  inline vector<InputInfo *> buildDataFields(gdioutput &gdi, const vector<string> &fields, int maxFieldSize) const
+    {return oDC->buildDataFields(gdi, fields, maxFieldSize);}
 
   inline void fillDataFields(gdioutput &gdi) const
     {oDC->fillDataFields(oB, gdi);}
 
-  inline bool saveDataFields(gdioutput &gdi)
-    {return oDC->saveDataFields(oB, gdi);}
+  inline bool saveDataFields(gdioutput &gdi, std::set<string> &modified)
+    {return oDC->saveDataFields(oB, gdi, modified);}
 
   inline string generateSQLDefinition() const
     {return oDC->generateSQLDefinition(std::set<string>());}
@@ -337,14 +368,31 @@ private:
   const oBase *oB;
 public:
 
-  inline int getInt(const char *Name) const
-    {return oDC->getInt(Data, Name);}
+  bool isInt(const string &name) const {
+    return oDC->isInt(name.c_str());
+  }
+
+  bool isString(const string &name) const {
+    return oDC->isString(name.c_str());
+  }
+
+  inline int getInt(const char *Name) const {
+    return oDC->getInt(Data, Name);
+  }
+
+  inline int getInt(const string &name) const {
+    return oDC->getInt(Data, name.c_str());
+  }
 
   inline __int64 getInt64(const char *Name) const
     {return oDC->getInt64(Data, Name);}
 
   inline const wstring &getString(const char *Name) const
     {return oDC->getString(oB, Name);}
+
+  inline const wstring &getString(const string &name) const {
+    return oDC->getString(oB, name.c_str());
+  }
 
   inline const wstring &formatString(const oBase *oB, const char *name) const {
     return oDC->formatString(oB, name);
@@ -353,14 +401,8 @@ public:
   inline const wstring &getDate(const char *Name) const
     {return oDC->getDate(Data, Name);}
 
-  inline int getInt(const string &name) const
-    {return oDC->getInt(Data, name.c_str());}
-
   inline __int64 getInt64(const string &name) const
     {return oDC->getInt64(Data, name.c_str());}
-
-  inline const wstring &getString(const string &name) const
-    {return oDC->getString(oB, name.c_str());}
 
   inline const wstring &getDate(const string &name) const
     {return oDC->getDate(Data, name.c_str());}

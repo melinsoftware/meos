@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "autocompletehandler.h"
 
 class Table;
+struct AutoCompleteRecord;
 
 class TabRunner :
   public TabBase, AutoCompleteHandler
@@ -106,6 +107,8 @@ private:
 
   shared_ptr<EconomyHandler> ecoHandler;
   EconomyHandler *getEconomyHandler(oRunner &r);
+
+  void getAutoCompleteUnpairedCards(gdioutput &gdi, const wstring& w, vector<AutoCompleteRecord>& records);
 
 protected:
   void clearCompetitionData();

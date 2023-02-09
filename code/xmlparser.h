@@ -10,7 +10,7 @@
 #endif // _MSC_VER > 1000
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,11 +55,26 @@ struct xmlattrib
   xmlattrib(const char *t, char *d, const xmlparser *parser);
   const char *tag;
   char *data;
-  operator bool() const {return data!=0;}
+  operator bool() const { return data != nullptr; }
 
   int getInt() const {if (data) return atoi(data); else return 0;}
-  const char *get() const;
-  const wchar_t *wget() const;
+  const char *getPtr() const;
+  const wchar_t *getWPtr() const;
+
+  string getStr() const {
+    const char* ptr = getPtr();
+    if (ptr == nullptr)
+      ptr = "";
+    return ptr;
+  }
+
+  wstring getWStr() const {
+    const wchar_t* ptr = getWPtr();
+    if (ptr == nullptr)
+      ptr = L"";
+    return ptr;
+  }
+
 private:
   const xmlparser *parser;
 };
@@ -139,8 +154,7 @@ public:
   void writeBool(const char *tag, const char *prop,
              const bool value);
 
-  //void write(const char *tag, const char *prop,
-  //           const string &propValue, const string &value);
+  void writeAscii(const char *tag, const vector<pair<string, wstring>> &propValue, const string &valueAscii);
   void write(const char *tag, const char *prop,
              const wstring &propValue, const wstring &value);
 
@@ -164,6 +178,7 @@ public:
   void write(const char *tag, const wstring &value);
   
   void write(const char *tag, int value);
+  void writeTime(const char *tag, int relativeTime);
 
   void writeBool(const char *tag, bool value);
   void write64(const char *tag, __int64);
@@ -252,13 +267,36 @@ public:
     return n[0] == pname[0] && strcmp(n, pname)==0;
   }
 
-  const char *getRaw() const {return parser->xmlinfo[index].data;}
+  const char *getRawPtr() const {return parser->xmlinfo[index].data;}
   
-  const char *get() const;
-  const wchar_t *getw() const;
+  string getRawStr() const {
+    const char* ptr = getRawPtr();
+    if (ptr == nullptr)
+      ptr = "";
+    return ptr;
+  }
+
+  const char *getPtr() const;
+  const wchar_t *getWPtr() const;
+
+  string getStr() const {
+    const char* ptr = getPtr();
+    if (ptr == nullptr)
+      ptr = "";
+    return ptr;
+  }
+
+  wstring getWStr() const {
+    const wchar_t* ptr = getWPtr();
+    if (ptr == nullptr)
+      ptr = L"";
+    return ptr;
+  }
 
   int getInt() const {const char *d = parser->xmlinfo[index].data;
                       return d ? atoi(d) : 0;}
+
+  int getRelativeTime() const;
 
   __int64 getInt64() const {const char *d = parser->xmlinfo[index].data;
                            return d ? _atoi64(d) : 0;}

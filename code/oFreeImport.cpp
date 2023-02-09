@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -829,7 +829,7 @@ bool oFreeImport::isTime(const wstring &m) const
         return false;
     }
   }
-  int t=hour*3600+minute*60+second;
+  int t = hour * timeConstHour + minute * timeConstMinute + second * timeConstSecond;
   if (t<=0)
     return false;
 
@@ -1766,7 +1766,7 @@ void oFreeImport::addEntries(pEvent oe, const vector<oEntryBlock> &entries)
       if (nr==1) {
         pRunner r=oe->addRunner(entries[k].getName(0),
                                 entries[k].getClub(0), pc->getId(),
-                                entries[k].getCard(0), 0, true);
+                                entries[k].getCard(0), L"", true);
 
         r->setStartTimeS(entries[k].eStartTime);
         r->setCardNo(entries[k].getCard(0), false);
@@ -1787,7 +1787,7 @@ void oFreeImport::addEntries(pEvent oe, const vector<oEntryBlock> &entries)
 
           for (int j=0;j<max(nr, entries[k].getNumPersons());j++) {
             pRunner r=oe->addRunner(entries[k].getName(j), entries[k].getClub(j),
-                                    pc->getId(), entries[k].getCard(j), 0, false);
+                                    pc->getId(), entries[k].getCard(j), L"", false);
             r->setCardNo(entries[k].getCard(j), false);
             r->addClassDefaultFee(false);
             t->setRunner(j, r, true);

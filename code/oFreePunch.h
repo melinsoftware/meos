@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,8 +32,7 @@ class oRunner;
 typedef oRunner *pRunner;
 class Table;
 
-class oFreePunch : public oPunch
-{
+class oFreePunch final : public oPunch {
 protected:
   int CardNo;
   int iHashType; //Index type used for lookup
@@ -43,7 +42,7 @@ protected:
   class FreePunchComp {
     public:
     bool operator()(pFreePunch a, pFreePunch b) {
-      return a->Time < b->Time;
+      return a->getTimeInt() < b->getTimeInt();
     }
   };
 
@@ -81,14 +80,14 @@ public:
   int getCardNo() const {return CardNo;}
   bool setCardNo(int cardNo, bool databaseUpdate = false);
   bool setType(const wstring &t, bool databaseUpdate = false);
-  void setTimeInt(int newTime, bool databaseUpdate);
+  void setTimeInt(int newTime, bool databaseUpdate) final;
 
   static void rehashPunches(oEvent &oe, int cardNo, pFreePunch newPunch);
   static bool disableHashing;
 
   void merge(const oBase &input, const oBase *base) final;
 
-  oFreePunch(oEvent *poe, int card, int time, int type);
+  oFreePunch(oEvent *poe, int card, int time, int type, int unit);
   oFreePunch(oEvent *poe, int id);
   virtual ~oFreePunch(void);
 

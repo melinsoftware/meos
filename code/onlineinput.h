@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,6 +73,7 @@ public:
 
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
   void settings(gdioutput &gdi, oEvent &oe, State state) final;
+  static void controlMappingView(gdioutput& gdi, GUICALLBACK cb, int widgetId);
   OnlineInput *clone() const {return new OnlineInput(*this);}
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;

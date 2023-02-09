@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,11 +97,13 @@ struct RunnerDBEntry {
   int clubNo;
   char national[3];
   char sex;
+private:
   short int birthYear;
   short int reserved;
   /** End of V1*/
   __int64 extId;
 
+public:
   bool isRemoved() const { return (reserved & 1) == 1; }
   void remove() { reserved |= 1; }
 
@@ -111,6 +113,22 @@ struct RunnerDBEntry {
   bool operator==(const RunnerDBEntry &d) const {
     return memcmp(this, &d, sizeof(RunnerDBEntry)) == 0;
   }
+
+  int getBirthYear() const { return birthYear; }
+  int getBirthMonth() const { return (reserved >> 2) & 0xF; }// 4 bits 
+  int getBirthDay() const { return (reserved >> 6) & 0x1F; } // 5 bits
+
+  void setBirthYear(int year) { birthYear = year; }
+  void setBirthMonth(int month) { reserved = (reserved & (~(0xF << 2))) | ((0xF & month) << 2); }// 4 bits 
+  void setBirthDay(int day) { reserved = (reserved & (~(0x1F << 6))) | ((0x1F & day) << 6); } // 5 bits
+
+  const wstring& getBirthDate() const;
+  void setBirthDate(const wstring& in);
+  void setBirthDate(int dateOrYear);
+  int getBirthDateInt() const;
+
+  void setExtId(__int64 id) { extId = id; }
+  __int64 getExtId() const { return extId; }
 };
 
 class RunnerDB;
@@ -125,6 +143,8 @@ public:
   void init(RunnerDB *p, size_t ix);
   RunnerWDBEntry();
  
+  size_t getIndex() const { return ix; }
+
   // Link to narrow DB Entry
   const RunnerDBEntry &dbe() const;
   RunnerDBEntry &dbe();
@@ -145,14 +165,14 @@ public:
   wstring getFamilyName() const;
 
   wstring getNationality() const;
-  int getBirthYear() const {return dbe().birthYear;}
+  int getBirthYear() const {return dbe().getBirthYear(); }
   wstring getSex() const;
 
   __int64 getExtId() const;
   void setExtId(__int64 id);
 
-  bool isRemoved() const {return (dbe().reserved & 1) == 1;}
-  void remove() {dbe().reserved |= 1;}
+  bool isRemoved() const { return dbe().isRemoved(); }
+  void remove() { dbe().remove(); }
 };
 
 typedef vector<RunnerDBEntry> RunnerDBVector;

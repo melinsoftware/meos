@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ enum StartTypes {
   STTime=0,
   STChange,
   STDrawn,
-  STHunting,
+  STPursuit,
   ST_max
 };
 enum { nStartTypes = ST_max };
@@ -101,12 +101,15 @@ struct oLegInfo {
   LegTypes legMethod;
   bool isParallel() const {return legMethod == LTParallel || legMethod == LTParallelOptional;}
   bool isOptional() const {return legMethod == LTParallelOptional || legMethod == LTExtra || legMethod == LTIgnore;}
-  //Interpreteation depends. Can be starttime/first start
-  //or number of earlier legs to consider.
+  //Interpreteation depends. Can be starttime/first start (if styp==STTime || styp==STPursuit)
+  // or number of earlier legs to consider.
   int legStartData;
   int legRestartTime;
   int legRopeTime;
   int duplicateRunner;
+
+  /** Return true if start data should be interpreted as a time.*/
+  bool isStartDataTime() const { return startMethod == STTime || startMethod == STPursuit; }
 
   // Transient, deducable data
   int trueSubLeg;
@@ -571,6 +574,10 @@ public:
   // Get the linear leg number of the preceeding leg
   int getPreceedingLeg(int leg) const;
 
+  // Get result defining leg (for parallel legs, the last leg in the currrent parallel set)
+  int getResultDefining(int leg) const;
+
+
   /// Get a string 1, 2a, etc describing the number of the leg
   wstring getLegNumber(int leg) const;
 
@@ -600,7 +607,9 @@ public:
 
   void setDirectResult(bool directResult);
   bool hasDirectResult() const;
-
+  bool isValidLeg(int legIndex) const {
+    return legIndex == -1 || legIndex == 0 || (legIndex > 0 && legIndex<int(MultiCourse.size()));
+  }
   bool isCourseUsed(int Id) const;
   wstring getLength(int leg) const;
 
@@ -713,7 +722,7 @@ public:
 
   // Automatically setup forkings using the specified courses.
   // Returns <number of forkings created, number of courses used>
-  pair<int, int> autoForking(const vector< vector<int> > &inputCourses);
+  pair<int, int> autoForking(const vector< vector<int> > &inputCourses, int numToGenerateMax);
 
   bool hasUnorderedLegs() const;
   void setUnorderedLegs(bool order);

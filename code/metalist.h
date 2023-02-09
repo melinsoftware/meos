@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -94,6 +94,15 @@ private:
   gdiFonts font;
   int textAdjust; // 0, textRight, textCenter
   GDICOLOR color;
+
+  // Image
+  int imageWidth = 0;
+  int imageHeight = 0;
+  int imageStyle = 0;
+  int imageOffsetX = 0;
+  int imageOffsetY = 0;
+  bool imageStyleUnderText = false;
+
 public:
 
   MetaListPost(EPostType type_, EPostType align_ = lNone, int leg_ = -1);
@@ -109,10 +118,46 @@ public:
   MetaListPost &limitBlockWidth(bool lim = true) { limitWidth = lim; return *this; }
   MetaListPost &packWithPrevious(bool pack = true) { packPrevious = pack; return *this; }
 
-
   MetaListPost &indent(int ind) {minimalIndent = ind; return *this;}
 
   void getTypes(vector< pair<wstring, size_t> > &types, int &currentType) const;
+
+  uint64_t getImageId() const;
+  void setImageDimension(int x, int y) {
+    imageWidth = x;
+    imageHeight = y;
+  }
+  int getImageWidth() const {
+    return imageWidth;
+  }
+  int getImageHeight() const {
+    return imageHeight;
+  }
+  void setImageOffset(int x, int y) {
+    imageOffsetX = x;
+    imageOffsetY = y;
+  }
+  int getImageOffsetX() const {
+    return imageOffsetX;
+  }
+  int getImageOffsetY() const {
+    return imageOffsetY;
+  }
+  int getImageStyle() const {
+    return imageStyle;
+  }
+
+  void setImageStyle(int style) {
+    imageStyle = style;
+  }
+
+  bool imageUnderText() const {
+    return imageStyleUnderText;
+  }
+
+  void imageUnderText(bool ut)  {
+    imageStyleUnderText = ut;
+  }
 
   const wstring &getType() const;
   MetaListPost &setType(EPostType type_) {type = type_; return *this;}
@@ -236,7 +281,19 @@ private:
 
   static bool isBreak(int x);
 
+  shared_ptr<SplitPrintListInfo> splitPrintInfo;
+
 public:
+
+  bool isSplitPrintList() const { return splitPrintInfo != nullptr; }
+
+  const shared_ptr<SplitPrintListInfo>& getSplitPrintInfo() const {
+    return splitPrintInfo;
+  }
+
+  void setSplitPrintInfo(const shared_ptr<SplitPrintListInfo>& info) {
+    splitPrintInfo = info;
+  }
 
   static wstring encode(EPostType type, const wstring &input, bool &foundSymbol);
   static const wstring &fromResultModuleNumber(const wstring &in, int nr, wstring &out);
@@ -246,10 +303,19 @@ public:
   MetaList();
   virtual ~MetaList() {}
 
+  void getUsedImages(set<uint64_t>& imgId) const;
+
   static constexpr bool isAllStageType(EPostType type) {
     return type == lRunnerStagePlace || type == lRunnerStageStatus ||
       type == lRunnerStageTime || type == lRunnerStageTimeStatus ||
       type == lRunnerStagePoints || type == lRunnerStageNumber;
+  }
+
+  static constexpr bool isAllLegType(EPostType type) {
+    return type == lTeamCourseName || type == lTeamCourseNumber ||
+      type == lTeamLegName || type == lTeamRunner || type == lTeamRunnerCard ||
+      type == lTeamLegTimeStatus || type == lTeamLegTimeAfter || 
+      type == lTeamPlace || type ==lTeamStart;
   }
 
   static constexpr bool isResultModuleOutput(EPostType type) {
@@ -329,7 +395,7 @@ public:
 
   bool isValidIx(size_t gIx, size_t lIx, size_t ix) const;
 
-  void save(xmlparser &xml, const oEvent *oe) const;
+  void save(xmlparser &xml, bool includeImages, const oEvent *oe) const;
   void load(const xmlobject &xDef);
 
   void interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const;
@@ -371,6 +437,8 @@ public:
   friend class MetaListPost;
 };
 
+class Image;
+
 class MetaListContainer {
 public:
   enum MetaListType {InternalList, ExternalList, RemovedList};
@@ -391,7 +459,6 @@ public:
 
   virtual ~MetaListContainer();
 
-
   void getFreeResultModules(vector<pair<string, shared_ptr<DynamicResult>>> &res) const;
 
   string getUniqueId(EStdListType code) const;
@@ -400,6 +467,8 @@ public:
 
   bool updateResultModule(const DynamicResult &res, bool updateSimilar);
  
+  void getUsedImages(set<uint64_t>& imgId) const;
+
   int getNumParam() const {return listParam.size();}
   int getNumLists() const {return data.size();}
   int getNumLists(MetaListType) const;
@@ -409,6 +478,7 @@ public:
 
   const MetaList &getList(int index) const;
   MetaList &getList(int index);
+  const MetaList& getList(EStdListType type) const;
 
   const oListParam &getParam(int index) const;
   oListParam &getParam(int index);
@@ -421,7 +491,8 @@ public:
   void getLists(vector< pair<wstring, size_t> > &lists, 
                 bool markBuiltIn, 
                 bool resultListOnly, 
-                bool noTeamList) const;
+                bool noTeamList,
+                bool onlyForSplitPrint) const;
 
   const string &getTag(int index) const;
 

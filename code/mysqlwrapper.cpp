@@ -38,11 +38,25 @@ CellWrapper::operator bool() const {
   return int(*this) != 0;
 }
 
-int64_t CellWrapper::ulonglong() const {
+int64_t CellWrapper::longlong() const {
   char *out;
   if (data != nullptr)
     return strtoll(data, &out, 10);
   return 0;
+}
+
+uint64_t CellWrapper::ulonglong() const {
+  char* out;
+  if (data != nullptr)
+    return strtoull(data, &out, 10);
+  return 0;
+}
+
+void CellWrapper::storeBlob(std::vector<uint8_t>& d) const {
+  if (data != nullptr) {
+    d.resize(length);
+    memcpy(d.data(), data, length);
+  }
 }
 
 bool CellWrapper::is_null() const {
@@ -347,7 +361,9 @@ void ConnectionWrapper::create_db(const string &db) {
 }
 
 void ConnectionWrapper::drop_db(const string &db) {
-  throw Exception("Not implemented");
+  string sql = "DROP DATABASE " + db + "";
+  if (mysql_query(get(), sql.c_str()) != 0)
+    throw Exception(mysql_error(mysql));
 }
 
 MYSQL *ConnectionWrapper::get() const {
@@ -357,7 +373,10 @@ MYSQL *ConnectionWrapper::get() const {
 }
 
 string ConnectionWrapper::server_info() const {  
-  return mysql_get_server_info(get());
+  const char *ptr =  mysql_get_server_info(get());
+  if (ptr)
+    return ptr;
+  return "";
 }
 
 bool ConnectionWrapper::connected() const {

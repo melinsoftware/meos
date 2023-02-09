@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -220,7 +220,7 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
       
       for (size_t k = 0; k < it->getNumStages(); k++) {
         StartTypes st = it->getStartType(k);
-        if (st == STDrawn || st == STHunting) {
+        if (st == STDrawn || st == STPursuit) {
           cnf.legNStart[k].push_back(it->getId());
           if (cnf.timeStart.size() <= k)
             cnf.timeStart.resize(k+1);
@@ -243,7 +243,7 @@ void oEvent::getClassConfigurationInfo(ClassConfigInfo &cnf) const
 
       for (size_t k = 0; k < it->getNumStages(); k++) {
         StartTypes st = it->getStartType(k);
-        if (st == STDrawn || st == STHunting) {
+        if (st == STDrawn || st == STPursuit) {
           cnf.raceNStart[k].push_back(it->getId());
           if (cnf.timeStart.size() <= k)
             cnf.timeStart.resize(k+1);

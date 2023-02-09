@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,8 +31,7 @@ typedef const oTeam* cTeam;
 
 const unsigned int maxRunnersTeam=32;
 
-class oTeam : public oAbstractRunner
-{
+class oTeam final : public oAbstractRunner {
 public:
   enum ResultCalcCacheSymbol {
     RCCCourse,
@@ -235,6 +234,9 @@ public:
   void importRunners(const vector<int> &rns);
   void importRunners(const vector<pRunner> &rns);
 
+
+  RunnerStatus getStatusComputed(bool allowUpdate) const final;
+
   int getPlace(bool allowUpdate = true) const override {return getLegPlace(-1, false, allowUpdate);}
   int getTotalPlace(bool allowUpdate = true) const override {return getLegPlace(-1, true, allowUpdate);}
 
@@ -251,13 +253,13 @@ public:
   wstring getLegStartTimeS(int leg) const;
   wstring getLegStartTimeCompact(int leg) const;
 
-  wstring getLegFinishTimeS(int leg) const;
+  wstring getLegFinishTimeS(int leg, SubSecond mode) const;
   int getLegFinishTime(int leg) const;
 
-  int getTimeAfter(int leg) const;
+  int getTimeAfter(int leg, bool allowUpdate) const override;
 
   //Get total running time after leg
-  wstring getLegRunningTimeS(int leg, bool computed, bool multidayTotal) const;
+  wstring getLegRunningTimeS(int leg, bool computed, bool multidayTotal, SubSecond mode) const;
 
   int getLegRunningTime(int leg, bool computed, bool multidayTotal) const;
  
@@ -274,7 +276,8 @@ public:
   static bool compareName(const oTeam &a, const oTeam &b) {return a.sName<b.sName;}
   static bool compareResult(const oTeam &a, const oTeam &b);
   static bool compareResultNoSno(const oTeam &a, const oTeam &b);
-  
+  static bool compareResultClub(const oTeam& a, const oTeam& b);
+
   static void checkClassesWithReferences(oEvent &oe, set<int> &clsWithRef);
   static void convertClassWithReferenceToPatrol(oEvent &oe, const set<int> &clsWithRef);
 

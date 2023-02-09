@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2022 Melin Software HB
+Copyright (C) 2009-2023 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include "RunnerDB.h"
 #include "image.h"
 
+extern Image image;
 using namespace restbed;
 
 vector< shared_ptr<RestServer> > RestServer::startedServers;
@@ -399,19 +400,24 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
     writer.getPage(ref, rq->answer);
   }
   else if (rq->parameters.count("image") > 0) {
-    ifstream fin;
-    string image = rq->parameters.find("image")->second;
-    if (imageCache.count(image)) {
-      rq->image = imageCache[image];
+    string imageId = rq->parameters.find("image")->second;
+    if (imageCache.count(imageId)) {
+      rq->image = imageCache[imageId];
     }
-    if (image == "meos") {      
-      imageCache[image] = rq->image = Image::loadResourceToMemory(MAKEINTRESOURCE(513), _T("PNG"));
+    else if (imageId == "meos") {      
+      imageCache[imageId] = rq->image = Image::loadResourceToMemory(MAKEINTRESOURCE(513), _T("PNG"));
+    }
+    else if (imageId.length() > 2 && imageId[0] == 'I' && imageId[1] == 'D') {
+      uint64_t imgId = _strtoui64(imageId.c_str() + 2, nullptr, 10);
+      ref.loadImage(imgId);
+      rq->image = image.getRawData(imgId);
     }
     else {
       wchar_t fn[260];
-      if (image.find_first_of("\\/.?*") == string::npos) {
-        wstring par = wideParam(image) + L".png";
+      if (imageId.find_first_of("\\/.?*") == string::npos) {
+        wstring par = wideParam(imageId) + L".png";
         getUserFile(fn, par.c_str());
+        ifstream fin;
         fin.open(fn, ios::binary);
         if (fin.good()) {
           fin.seekg(0, ios::end);
@@ -421,7 +427,7 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
           fin.read((char *)&rq->image[0], rq->image.size());
           fin.close();
 
-          imageCache[image] = rq->image;
+          imageCache[imageId] = rq->image;
         }
       }
     }
@@ -440,15 +446,16 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
         ref.generateListInfo(res->second.first, *res->second.second);
       }
       ref.generateList(gdiPrint, true, *res->second.second, false);
-      wstring exportFile = getTempFile();
-      HTMLWriter::write(gdiPrint, exportFile, ref.getName(), 30, res->second.first, ref);
-
-      ifstream fin(exportFile.c_str());
-      string rbf;
+      //wstring exportFile = getTempFile();
+      ostringstream fout;
+      HTMLWriter::write(gdiPrint, fout, ref.getName(), 30, res->second.first, ref);
+      rq->answer = fout.str();
+      //ifstream fin(exportFile.c_str());
+      /*string rbf;
       while (std::getline(fin, rbf)) {
         rq->answer += rbf;
       }
-      removeTempFile(exportFile);
+      removeTempFile(exportFile);*/
     }
     else {
       rq->answer = "Error (MeOS): Unknown list";
@@ -521,7 +528,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     if (param.count("class") > 0)
       getSelection(param.find("class")->second, cls);
 
-    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, -1, false, false, true, false);
+    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, -1, false, false, true, false, false);
     ifstream fin(exportFile.c_str());
     string rbf;
     while (std::getline(fin, rbf)) {
@@ -537,7 +544,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     if (param.count("class") > 0)
       getSelection(param.find("class")->second, cls);
 
-    oe.exportIOFStartlist(oEvent::IOF30, exportFile.c_str(), useUTC, cls, false, true, false);
+    oe.exportIOFStartlist(oEvent::IOF30, exportFile.c_str(), useUTC, cls, false, true, false, false);
     ifstream fin(exportFile.c_str());
     string rbf;
     while (std::getline(fin, rbf)) {
@@ -1122,11 +1129,11 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       xml.write("Club", { make_pair("id", itow(r->getClubId())) }, r->getClub());
       xml.write("Class", { make_pair("id", itow(r->getClassId(true))) }, r->getClass(true));
       xml.write("Card", r->getCardNo());
-      xml.write("Status", {make_pair("code", itow(r->getStatusComputed()))}, r->getStatusS(true, true));
+      xml.write("Status", {make_pair("code", itow(r->getStatusComputed(true)))}, r->getStatusS(true, true));
       xml.write("Start", r->getStartTimeS());
-      if (r->getFinishTime() > 0 && r->getStatusComputed() != StatusNoTiming && !r->noTiming()) {
-        xml.write("Finish", r->getFinishTimeS());
-        xml.write("RunningTime", r->getRunningTimeS(true));
+      if (r->getFinishTime() > 0 && r->getStatusComputed(true) != StatusNoTiming && !r->noTiming()) {
+        xml.write("Finish", r->getFinishTimeS(true, SubSecond::Auto));
+        xml.write("RunningTime", r->getRunningTimeS(true, SubSecond::Auto));
         xml.write("Place", r->getPlaceS());
         xml.write("TimeAfter", formatTime(r->getTimeAfter()));
       }
@@ -1138,7 +1145,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       }
       if ((r->getFinishTime() > 0 || r->getCard() != nullptr) && 
           r->getCourse(false) &&
-          r->getStatusComputed() != StatusNoTiming &&
+          r->getStatusComputed(true) != StatusNoTiming &&
           !r->noTiming()) {
         auto &sd = r->getSplitTimes(false);
         vector<int> after;
@@ -1162,7 +1169,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
             xml.startTag("Control", "number", itow(ix+1));
             xml.write("Name", ctrl->getName());
             if (s.hasTime()) {
-              xml.write("Time", formatTime(s.time - r->getStartTime()));
+              xml.write("Time", formatTime(s.getTime(true) - r->getStartTime()));
               
               if (size_t(ix) < delta.size() && size_t(ix) < after.size() && size_t(ix) < afterAcc.size()) {
                 if (after[ix] > 0)
@@ -1252,8 +1259,8 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
       wstring sex = r->getSex();
       if (!sex.empty())
         xml.write("Sex", sex);
-      if (r->dbe().birthYear > 0) 
-        xml.write("BirthYear", itow(r->dbe().birthYear));
+      if (r->dbe().getBirthYear() > 0)
+        xml.write("BirthYear", itow(r->dbe().getBirthYear()));
 
       xml.endTag();
     }
@@ -1392,7 +1399,7 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
     }
 
     if (!permissionDenied && error.empty()) {
-      pRunner r = oe.addRunner(name, club, classId, cardNo, 0, true);
+      pRunner r = oe.addRunner(name, club, classId, cardNo, L"", true);
       if (r && dbr) {
         r->init(*dbr, true);
       }

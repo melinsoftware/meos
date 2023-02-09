@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,9 +139,10 @@ void TestMeOS::runProtected(bool protect) const {
   oe_main->setProperty("Interactive", 0);
   oe_main->backupRunnerDatabase();
   TabSI *tsi = dynamic_cast<TabSI*>(gdi_main->getTabs().get(TabType::TSITab));
-  tsi->setMode(TabSI::ModeReadOut);
+  tsi->setMode(TabSI::SIMode::ModeReadOut);
   tsi->clearQueue();
-  
+  tsi->getSI(*gdi_main).resetPunchMap();
+
   OutputDebugString((L"Running test" + gdi_main->widen(test) + L"\n").c_str());
   try {
     status = RUNNING;
@@ -421,7 +422,7 @@ int TestMeOS::getResultModuleIndex(const char *tag) const {
 
 int TestMeOS::getListIndex(const char *name) const {
   vector< pair<wstring, size_t> > lst;
-  oe_main->getListContainer().getLists(lst, false, false, false);
+  oe_main->getListContainer().getLists(lst, false, false, false, false);
   for (size_t k = 0; k < lst.size(); k++) {
     if (lst[k].first == lang.tl(name))
       return lst[k].second;

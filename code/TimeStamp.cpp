@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ void TimeStamp::update()
 
   __int64 &currenttime=*(__int64*)&ft;
 
-  Time=unsigned((currenttime/10000000L) - minYearConstant*365*24*3600);
+  Time=unsigned((currenttime/10000000L) - minYearConstant*365*24*timeConstSecPerHour);
 }
 
 int TimeStamp::getAge() const
@@ -73,7 +73,7 @@ int TimeStamp::getAge() const
   SystemTimeToFileTime(&st, &ft);
   __int64 &currenttime=*(__int64*)&ft;
 
-  int CTime=int((currenttime/10000000)-minYearConstant*365*24*3600);
+  int CTime=int((currenttime/10000000)-minYearConstant*365*24* timeConstSecPerHour);
 
   return CTime-Time;
 }
@@ -84,7 +84,7 @@ const string &TimeStamp::getStamp() const
     return stampCode;
   
   stampCodeTime = Time;
-  __int64 ft64=(__int64(Time)+minYearConstant*365*24*3600)*10000000;
+  __int64 ft64=(__int64(Time)+minYearConstant*365*24* timeConstSecPerHour)*10000000;
   FILETIME &ft=*(FILETIME*)&ft64;
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
@@ -105,9 +105,20 @@ const string &TimeStamp::getStamp(const string &sqlStampIn) const {
   return stampCode;
 }
 
+const wstring TimeStamp::getUpdateTime() const {
+  __int64 ft64 = (__int64(Time) + minYearConstant * 365 * 24 * timeConstSecPerHour) * 10000000;
+  FILETIME& ft = *(FILETIME*)&ft64;
+  SYSTEMTIME st;
+  FileTimeToSystemTime(&ft, &st);
+  wchar_t bf[32];
+  swprintf_s(bf, L"%02d:%02d", st.wHour, st.wMinute);
+  return bf;
+}
+
+
 wstring TimeStamp::getStampString() const
 {
-  __int64 ft64=(__int64(Time)+minYearConstant*365*24*3600)*10000000;
+  __int64 ft64=(__int64(Time)+minYearConstant*365*24* timeConstSecPerHour)*10000000;
   FILETIME &ft=*(FILETIME*)&ft64;
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
@@ -120,7 +131,7 @@ wstring TimeStamp::getStampString() const
 
 string TimeStamp::getStampStringN() const
 {
-  __int64 ft64 = (__int64(Time) + minYearConstant * 365 * 24 * 3600) * 10000000;
+  __int64 ft64 = (__int64(Time) + minYearConstant * 365 * 24 * timeConstSecPerHour) * 10000000;
   FILETIME &ft = *(FILETIME*)&ft64;
   SYSTEMTIME st;
   FileTimeToSystemTime(&ft, &st);
@@ -147,19 +158,41 @@ void TimeStamp::setStamp(const string &s)
   SYSTEMTIME st;
   memset(&st, 0, sizeof(st));
 
+  auto parse = [](const char* data, int size, const char*& next) -> int {
+    int ix = 0;
+    int out = 0;
+    while (ix < size && data[ix] >= '0' && data[ix] <= '9') {
+      out = (out << 1) + (out << 3) + data[ix] - '0';
+      ix++;
+    }
+    while (data[ix] && (data[ix] == ' ' || data[ix] == '-' || data[ix] == ':')) {
+      ix++;
+    }
+    next = data + ix;
+    return out;
+  };
+
   //const char *ptr=s.c_str();
   //sscanf(s.c_str(), "%4hd%2hd%2hd%2hd%2hd%2hd", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
-  st.wYear=atoi(s.substr(0, 4).c_str());
+  /*st.wYear = atoi(s.substr(0, 4).c_str());
   st.wMonth=atoi(s.substr(4, 2).c_str());
   st.wDay=atoi(s.substr(6, 2).c_str());
   st.wHour=atoi(s.substr(8, 2).c_str());
   st.wMinute=atoi(s.substr(10, 2).c_str());
   st.wSecond=atoi(s.substr(12, 2).c_str());
+  */
+  const char* ptr = s.data();
 
+  st.wYear = parse(ptr, 4, ptr);
+  st.wMonth = parse(ptr, 2, ptr);
+  st.wDay = parse(ptr, 2, ptr);
+  st.wHour = parse(ptr, 2, ptr);
+  st.wMinute = parse(ptr, 2, ptr);
+  st.wSecond = parse(ptr, 2, ptr);
   FILETIME ft;
   SystemTimeToFileTime(&st, &ft);
 
   __int64 &currenttime=*(__int64*)&ft;
 
-  Time = unsigned((currenttime/10000000)-minYearConstant*365*24*3600);
+  Time = unsigned((currenttime/10000000)-minYearConstant*365*24* timeConstSecPerHour);
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include <cassert>
 #include <cmath>
 #include <io.h>
+#include "csvparser.h"
 
 int CompetitionCB(gdioutput *gdi, int type, void *data);
 
@@ -68,7 +69,9 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       gdi.refresh();
     }
     else if (bi.id == "DoImportEntries") {
+      auto baseOnId = gdi.getSelectedItem("CmpSel");
       createCompetition(gdi);
+
       try {
         gdi.autoRefresh(true);
         FlowOperation res = saveEntries(gdi, false, true);
@@ -87,11 +90,18 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       gdi.pushX();
       gdi.setRestorePoint("entrychoice");
 
-      newCompetitionGuide(gdi, 2);
+      if (!baseOnId.second || baseOnId.first <= 0)
+        newCompetitionGuide(gdi, 2);
+      else
+        createNewCmp(gdi, true);
     }
     else if (bi.id == "NoEntries") {
       gdi.restore("entrychoice");
-      newCompetitionGuide(gdi, 2);
+      auto baseOnId = gdi.getSelectedItem("CmpSel");
+      if (baseOnId.second && baseOnId.first <= 0)
+        newCompetitionGuide(gdi, 2);
+      else
+        createNewCmp(gdi, false);
     }
     else if (bi.id == "Cancel") {
       oe->clear();
@@ -101,14 +111,9 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "FAll") {
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
-      gdi.clearPage(true);
-      gdi.fillRight();
-      gdi.addString("", fontMediumPlus, "Skapar tävling...");
-      gdi.refresh();
-      Sleep(400);
+
       oe->getMeOSFeatures().useAll(*oe);
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
     else if (bi.id == "FBasic") {
       if (gdi.hasWidget("Name"))
@@ -117,8 +122,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Clubs, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
      
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
     else if (bi.id == "FSelect") {
       newCompetitionGuide(gdi, 3);
@@ -127,13 +131,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       saveMeosFeatures(gdi, true);
-      gdi.clearPage(true);
-      gdi.fillRight();
-      gdi.addString("", fontMediumPlus, "Skapar tävling...");
-      gdi.refresh();
-      Sleep(400);
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
     else if (bi.id == "FIndividual") {
       if (gdi.hasWidget("Name"))
@@ -148,13 +146,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
 
-      gdi.clearPage(true);
-      gdi.fillRight();
-      gdi.addString("", fontMediumPlus, "Skapar tävling...");
-      gdi.refresh();
-      Sleep(400);
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
     else if (bi.id == "FNoCourses" || bi.id == "FNoCoursesRelay") {
       if (gdi.hasWidget("Name"))
@@ -172,13 +164,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       if (bi.id == "FNoCoursesRelay")
         oe->getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *oe);
 
-      gdi.clearPage(true);
-      gdi.fillRight();
-      gdi.addString("", fontMediumPlus, "Skapar tävling...");
-      gdi.refresh();
-      Sleep(400);
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
     else if (bi.id == "FForked") {
       if (gdi.hasWidget("Name"))
@@ -194,13 +180,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
       oe->getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *oe);
 
-      gdi.clearPage(true);
-      gdi.fillRight();
-      gdi.addString("", fontMediumPlus, "Skapar tävling...");
-      gdi.refresh();
-      Sleep(400);
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
     else if (bi.id == "FTeam") {
       if (gdi.hasWidget("Name"))
@@ -219,13 +199,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       if (oe->hasMultiRunner())
         oe->getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *oe);
 
-      gdi.clearPage(true);
-      gdi.fillRight();
-      gdi.addString("", fontMediumPlus, "Skapar tävling...");
-      gdi.refresh();
-      Sleep(400);
-      oe->updateTabs(true, false);
-      loadPage(gdi);
+      createNewCmp(gdi, true);
     }
   }
   else if (type == GUI_INPUT) {
@@ -248,11 +222,11 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
         gdi.setTextTranslate("AllowedInterval", L"Felaktigt datum/tid", true);
       }
       else {
-        long long absT = SystemTimeToInt64Second(st);
-        absT += max(0, t - 3600);
-        long long stopT = absT + 23 * 3600;
-        SYSTEMTIME start = Int64SecondToSystemTime(absT);
-        SYSTEMTIME end = Int64SecondToSystemTime(stopT);
+        long long absT = SystemTimeToInt64TenthSecond(st);
+        absT += max(0, t - timeConstHour);
+        long long stopT = absT + 23 * timeConstHour;
+        SYSTEMTIME start = Int64TenthSecondToSystemTime(absT);
+        SYSTEMTIME end = Int64TenthSecondToSystemTime(stopT);
         wstring s = L"Tävlingen måste avgöras mellan X och Y.#" + convertSystemTime(start) + L"#" + convertSystemTime(end);
         gdi.setTextTranslate("AllowedInterval", s, true);
       }
@@ -295,6 +269,13 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
     gdi.addString("AllowedInterval", 0, "");
     newGuideCB(gdi, GUI_INPUT, &date);
     gdi.dropLine(2);
+
+    gdi.addSelection("CmpSel", 300, 400, CompetitionCB, L"Basera på en tidigare tävling:");
+    gdi.addItem("CmpSel", lang.tl("Ingen[competition]"), -1);
+    oe->fillCompetitions(gdi, "CmpSel", 0, L"", false);
+    gdi.autoGrow("CmpSel");
+    gdi.selectFirstItem("CmpSel");
+
     rc.right = rc.left + gdi.scaleLength(width);
     rc.bottom = gdi.getCY();
     gdi.addRectangle(rc, colorLightBlue, true);
@@ -412,8 +393,22 @@ void TabCompetition::newCompetitionGuide(gdioutput &gdi, int step) {
     gdi.fillDown();
 
     gdi.refresh();
-
   }
+}
+
+void TabCompetition::createNewCmp(gdioutput& gdi, bool useExisting) {
+  if (!useExisting)
+    createCompetition(gdi);
+  
+  gdi.clearPage(true);
+  gdi.fillRight();
+  gdi.addString("", fontMediumPlus, "Skapar tävling...");
+  gdi.refresh();
+  gdi.setWaitCursor(true);
+  Sleep(400);
+  oe->updateTabs(true, false);
+  gdi.setWaitCursor(false);
+  loadPage(gdi);
 }
 
 void TabCompetition::entryChoice(gdioutput &gdi) {
@@ -429,21 +424,84 @@ void TabCompetition::entryChoice(gdioutput &gdi) {
   gdi.dropLine(2);
 }
 
+wstring getHiredCardDefault() {
+  wchar_t path[_MAX_PATH];
+  getUserFile(path, L"hired_card_default.csv");
+  return path;
+}
+
+void resetSaveTimer();
+
 void TabCompetition::createCompetition(gdioutput &gdi) {
   wstring name = gdi.getText("Name");
   wstring date = gdi.getText("Date");
   wstring start = gdi.getText("FirstStart");
 
-  oe->newCompetition(L"tmp");
-  oe->setName(name, true);
-  oe->setDate(date, true);
-
   int t = convertAbsoluteTimeHMS(start, -1);
-  if (t > 0 && t < 3600*24) {
-    t = max(0, t-3600);
-    oe->setZeroTime(formatTimeHMS(t), true);
+  if (t > 0 && t < timeConstHour * 24) {
+    t = max(0, t - timeConstHour);
   }
   else
     throw meosException("Ogiltig tid");
+
+  int baseOnId = gdi.getSelectedItem("CmpSel").first;
+
+  if (baseOnId <= 0) {
+    oe->newCompetition(L"tmp");
+    oe->loadDefaults();
+  }
+  else {
+    openCompetition(gdi, baseOnId);
+    wstring cmpCopy = getTempFile();
+    oe->save(cmpCopy, false);
+    wstring rawName = oe->getName();
+    size_t posPar = rawName.find_first_of('(');
+    if (posPar != string::npos)
+      rawName = rawName.substr(0, posPar);
+
+    if (rawName.length() > 40)
+      rawName = trim(rawName.substr(0, 38)) + L"...";
+
+    wstring oldName = trim(rawName) + L" (" + oe->getDate() + L")";
+    oe->open(cmpCopy, true, false, true);
+    removeTempFile(cmpCopy);
+    
+    oe->clearData(true, true);
+    oe->setAnnotation(lang.tl(L"Baserad på X#" + oldName));
+    resetSaveTimer();
+  }
+
+  oe->setName(name, true);
+  oe->setDate(date, true);
+  oe->setZeroTime(formatTimeHMS(t), true);
+
+  bool importHiredCard = true;
+  if (importHiredCard) 
+    importDefaultHiredCards(gdi);
  }
 
+void TabCompetition::importDefaultHiredCards(gdioutput& gdi) {
+  csvparser csv;
+  list<vector<wstring>> data;
+  wstring fn = getHiredCardDefault();
+  if (fileExists(fn)) {
+    try {
+      csv.parse(fn, data);
+      set<int> rentCards;
+      for (auto& c : data) {
+        for (wstring wc : c) {
+          int cn = _wtoi(wc.c_str());
+          if (cn > 0) {
+            oe->setHiredCard(cn, true);
+          }
+        }
+      }
+    }
+    catch (const meosException& ex) {
+      gdi.addString("", 0, ex.wwhat()).setColor(colorRed);
+    }
+    catch (std::exception& ex) {
+      gdi.addString("", 0, ex.what()).setColor(colorRed);
+    }
+  }
+}

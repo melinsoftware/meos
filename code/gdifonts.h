@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,6 +61,7 @@ constexpr int absolutePosition = 1 << 17;
 constexpr int skipBoundingBox = 1 << 18;
 constexpr int hiddenText = 1 << 19;
 constexpr int textLimitEllipsis = 1 << 20;
+constexpr int imageNoUpdatePos = 1 << 21;
 
 enum GDICOLOR {
   colorBlack = RGB(0, 0, 0),

@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -147,7 +147,7 @@ public:
   };
 
   static void splitPrintSettings(oEvent &oe, gdioutput &gdi, bool setupPrinter, TabType returnMode, PrintSettingsSelection type);
-  static void customTextLines(oEvent &oe, const char *dataField, gdioutput &gdi);
+  static void customTextLines(oEvent &oe, const char *dataField, bool withSymbols, gdioutput &gdi);
   static void saveExtraLines(oEvent &oe, const char *dataField, gdioutput &gdi);
   static void enableWideFormat(gdioutput &gdi, bool wide);
 

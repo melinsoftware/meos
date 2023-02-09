@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2022 Melin Software HB
+    Copyright (C) 2009-2023 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -111,19 +111,19 @@ void oCourse::Set(const xmlobject *xo)
       Length=it->getInt();
     }
     else if (it->is("Name")){
-      Name=it->getw();
+      Name=it->getWStr();
     }
     else if (it->is("Controls")){
-      importControls(it->getRaw(), false, false);
+      importControls(it->getRawStr(), false, false);
     }
     else if (it->is("Legs")) {
-      importLegLengths(it->getRaw(), false);
+      importLegLengths(it->getRawStr(), false);
     }
     else if (it->is("oData")){
       getDI().set(*it);
     }
     else if (it->is("Updated")){
-      Modified.setStamp(it->getRaw());
+      Modified.setStamp(it->getRawStr());
     }
   }
 }
@@ -240,7 +240,7 @@ pControl oCourse::addControl(int Id)
 pControl oCourse::doAddControl(int Id)
 {
   if (nControls<NControlsMax) {
-    pControl c=oe->getControl(Id, true);
+    pControl c=oe->getControl(Id, true, false);
     if (c==0)
       throw meosException("Felaktig kontroll");
     Controls[nControls++]=c;
@@ -394,7 +394,10 @@ bool oCourse::fillCourse(gdioutput &gdi, const string &name)
     int submulti = 0;
     wchar_t bf[256];
     if (Controls[k]->isRogaining(rogaining)) {
-      swprintf_s(bf, 64, L"R\t%s", c.c_str());
+      if (Controls[k]->getStatus() == oControl::ControlStatus::StatusRogainingRequired)
+        swprintf_s(bf, 64, L"R!\t%s", c.c_str());
+      else
+        swprintf_s(bf, 64, L"R\t%s", c.c_str());
       offset--;
     }
     else if (multi == 1) {
@@ -433,8 +436,34 @@ vector<int> oCourse::getControlNumbers() const {
   return ret;
 }
 
-int oCourse::distance(const SICard &card)
-{
+int oCourse::distance(const SICard& card) const {
+  if (card.nPunch >= 192)
+    return -100;
+
+  int punches[192];
+  for (int i = 0; i < card.nPunch; i++) {
+    punches[i] = card.Punch[i].Code;
+  }
+  return distance(punches, card.nPunch);
+}
+
+int oCourse::distance(const oCard& card) const {
+  int np = card.getNumPunches();
+  if (np >= 192)
+    return -100;
+  vector<pPunch> p;
+  card.getPunches(p);
+  int punches[192];
+  int numRealPunch = 0;
+  for (int i = 0; i < np; i++) {
+    int c = p[i]->getControlNumber();
+    if (c > 0)
+      punches[numRealPunch++] = c;
+  }
+  return distance(punches, numRealPunch);
+}
+
+int oCourse::distance(int *punches, int numPunches) const {
   int matches=0;
 
   set<int> rogaining;
@@ -454,12 +483,12 @@ int oCourse::distance(const SICard &card)
   size_t orderIndex = 0;
   for (int k=0;k<nControls;k++) {
     if (Controls[k]->isRogaining(hasRogaining()) || 
-        Controls[k]->getStatus() == oControl::StatusBad || 
-        Controls[k]->getStatus() == oControl::StatusOptional ||
-        Controls[k]->getStatus() == oControl::StatusBadNoTiming)
+        Controls[k]->getStatus() == oControl::ControlStatus::StatusBad ||
+        Controls[k]->getStatus() == oControl::ControlStatus::StatusOptional ||
+        Controls[k]->getStatus() == oControl::ControlStatus::StatusBadNoTiming)
       continue;
 
-    if (Controls[k]->getStatus() == oControl::StatusMultiple) {
+    if (Controls[k]->getStatus() == oControl::ControlStatus::StatusMultiple) {
       for (int j = 0; j < Controls[k]->nNumbers; j++) {
         if (allowedControls.size() <= orderIndex)
           allowedControls.resize(orderIndex+1);
@@ -488,25 +517,25 @@ int oCourse::distance(const SICard &card)
   }
 
   size_t matchIndex = 0;
-  for (unsigned k=0; k<card.nPunch && matches < toMatch; k++) {
-    for (unsigned j = k; j < card.nPunch; j++) {
+  for (unsigned k = 0; k < numPunches && matches < toMatch; k++) {
+    for (unsigned j = k; j < numPunches; j++) {
       if (matchIndex < allowedControls.size() &&
-             allowedControls[matchIndex].count(card.Punch[j].Code) &&
-             allowedControls[matchIndex][card.Punch[j].Code] > 0) {
-        --allowedControls[matchIndex][card.Punch[j].Code];
+        allowedControls[matchIndex].count(punches[j]) &&
+        allowedControls[matchIndex][punches[j]] > 0) {
+        --allowedControls[matchIndex][punches[j]];
         k = j;
         matches++;
         break;
       }
     }
     matchIndex++;
-    if (commonCode.count(card.Punch[k].Code))
+    if (commonCode.count(punches[k]))
       matchIndex = 0;
   }
 
   if (matches==toMatch) {
     //This course is OK. Extra controls?
-    return card.nPunch-toMatch; //Positive return
+    return numPunches-toMatch; //Positive return
   }
   else {
     return matches-toMatch; //Negative return;
@@ -583,48 +612,60 @@ pCourse oEvent::getCourse(const wstring &n) const {
   return 0;
 }
 
-void oEvent::fillCourses(gdioutput &gdi, const string &id, bool simple)
-{
+void oEvent::fillCourses(gdioutput &gdi, const string &id, bool simple) {
   vector< pair<wstring, size_t> > d;
-  oe->fillCourses(d, simple);
+  oe->getCourses(d, L"", simple, true);
   gdi.addItem(id, d);
 }
 
-const vector< pair<wstring, size_t> > &oEvent::fillCourses(vector< pair<wstring, size_t> > &out, bool simple)
-{
+const vector< pair<wstring, size_t> > &oEvent::getCourses(vector<pair<wstring, size_t>>& out,
+                                                          const wstring& filter, bool simple, bool synchronize) {
   out.clear();
   oCourseList::iterator it;
-  synchronizeList(oListId::oLCourseId);
+  if (synchronize) {
+    synchronizeList(oListId::oLCourseId);
+    Courses.sort();
+  }
 
-  Courses.sort();
-
-  vector< pair<pCourse, pair<pCourse, bool>> > ac;
+  vector<pair<pCourse, pair<pCourse, bool>> > ac;
   ac.reserve(Courses.size());
   map<int,int> id2ix;
   for (it=Courses.begin(); it != Courses.end(); ++it) {
-    if (!it->Removed){
-      id2ix[it->getId()] = ac.size();
-      ac.push_back(make_pair(pCourse(&*it), make_pair(pCourse(0), false)));
+    if (!it->Removed) {
+      if (!simple)
+        id2ix[it->getId()] = ac.size();
+      ac.emplace_back(pCourse(&*it), make_pair(pCourse(0), false));
     }
   }
 
-  for (size_t k = 0; k < ac.size(); k++) {
-    pCourse sh = ac[k].first->getShorterVersion().second;
-    if (sh != 0) {
-      int ix = id2ix[sh->getId()];
-      if (!ac[ix].second.first)
-        ac[ix].second.first = ac[k].first;
-      else
-        ac[ix].second.second = true;
+  if (!simple) {
+    for (size_t k = 0; k < ac.size(); k++) {
+      pCourse sh = ac[k].first->getShorterVersion().second;
+      if (sh != 0) {
+        int ix = id2ix[sh->getId()];
+        if (!ac[ix].second.first)
+          ac[ix].second.first = ac[k].first;
+        else
+          ac[ix].second.second = true;
+      }
     }
   }
 
+  vector<wchar_t> filt_lc(filter.length() + 1);
+  wcscpy_s(filt_lc.data(), filt_lc.size(), filter.c_str());
+  CharLowerBuff(filt_lc.data(), filter.length());
+  int score;
   wstring b;
   for (size_t k = 0; k < ac.size(); k++) {
     pCourse it = ac[k].first;
 
-    if (simple) //gdi.addItem(name, it->Name, it->Id);
-      out.push_back(make_pair(it->Name, it->Id));
+    if (!filter.empty()) {
+      if (!filterMatchString(it->Name, filt_lc.data(), score))
+        continue;
+    }
+
+    if (simple) 
+      out.emplace_back(it->Name, it->Id);
     else {
       b = it->Name;
       if (ac[k].second.first) {
@@ -635,19 +676,17 @@ const vector< pair<wstring, size_t> > &oEvent::fillCourses(vector< pair<wstring,
       b += L"\t(" + itow(it->nControls) + L")";
       if (!it->getCourseProblems().empty())
         b = L"[!] " + b;
-      out.push_back(make_pair(b, it->Id));
+      out.emplace_back(b, it->Id);
     }
   }
   return out;
 }
 
-void oCourse::setNumberMaps(int block)
-{
+void oCourse::setNumberMaps(int block) {
   getDI().setInt("NumberMaps", block);
 }
 
-int oCourse::getNumberMaps() const
-{
+int oCourse::getNumberMaps() const {
   return getDCI().getInt("NumberMaps");
 }
 
@@ -866,9 +905,9 @@ int oCourse::calculateReduction(int overTime) const
   if (overTime > 0) {
     int method = getDCI().getInt("RReductionMethod");
     if (method == 0) // Linear model
-      reduction = (59 + overTime * getRogainingPointsPerMinute()) / 60;
+      reduction = (59 * timeConstSecond + overTime * getRogainingPointsPerMinute()) / timeConstMinute;
     else // Time (minute) discrete model
-      reduction = ((59 + overTime) / 60) * getRogainingPointsPerMinute();
+      reduction = ((59 * timeConstSecond + overTime) / timeConstMinute) * getRogainingPointsPerMinute();
   }
   return reduction;
 }
@@ -1143,6 +1182,7 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &n
   }
   assert(checksum == 0 && loopOrder.size() == ccIndex.size());
 
+  tmpCourse.setLocalObject();
   tmpCourse.cacheDataRevision = cacheDataRevision;
   tmpCourse.cachedControlOrdinal.clear();
   tmpCourse.cachedHasRogaining = cachedHasRogaining;
