@@ -770,9 +770,9 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.pushX();
       gdi.fillRight();
       oe->updateComputerTime();
-      int t=oe->getComputerTime()-(oe->getComputerTime()%60)+60;
+      int t=oe->getComputerTime()-(oe->getComputerTime()%timeConstMinute)+timeConstMinute;
       gdi.addInput("Rope", oe->getAbsTime(t), 6, 0, L"Repdragningstid");
-      gdi.addInput("Restart", oe->getAbsTime(t+600), 6, 0, L"Omstartstid");
+      gdi.addInput("Restart", oe->getAbsTime(t+10 * timeConstMinute), 6, 0, L"Omstartstid");
       gdi.dropLine(0.9);
       gdi.addButton("DoRestart","OK", ClassesCB);
       gdi.addButton("Cancel","Stäng", ClassesCB);
@@ -992,7 +992,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       for (size_t k=0; k<cInfo.size(); k++)
         par.selection.insert(cInfo[k].classId);
 
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }
@@ -1181,7 +1181,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
       gdi.dropLine();
       gdi.addButton("Cancel", "Återgå", ClassesCB);
@@ -1470,7 +1470,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       oListInfo info;
       par.listCode = EStdStartList;
       par.selection = classes;
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }
@@ -1693,7 +1693,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       oListInfo info;
       par.listCode = EStdStartList;
       par.setLegNumberCoded(leg);
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
 
       gdi.refresh();
@@ -1949,7 +1949,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
           par.listCode = EStdStartList;
         }
       }
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
 
       gdi.refresh();
@@ -2110,7 +2110,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       par.selection.insert(outClass.begin(), outClass.end());
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
     }
     else if (bi.id == "LockAllForks" || bi.id == "UnLockAllForks") {
@@ -2226,7 +2226,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       par.selection.insert(ClassId);
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }

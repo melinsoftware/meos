@@ -128,7 +128,7 @@ void gdioutput::printPage(PrinterObject &po, const PageInfo &pageInfo, RenderedP
   if (pageInfo.printHeader) {
     TextInfo t;
     t.yp = po.ds.MarginY;
-    t.xp = po.ds.PageX - po.ds.MarginX;
+    t.xp = po.ds.PageX - po.ds.MarginX; 
     t.text = pageInfo.pageInfo(page);
     t.format=textRight|fontSmall;
     RenderString(t, po.hDC);

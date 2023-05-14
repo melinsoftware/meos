@@ -778,10 +778,10 @@ public:
   void formatHeader(gdioutput& gdi, const oListInfo& li, const pRunner rInput);
   void generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, bool updateScrollBars);
   
-  void generateListInfo(oListParam &par, oListInfo &li);
-  void generateListInfo(vector<oListParam> &par, oListInfo &li);
-  void generateListInfo(EStdListType lt, const gdioutput &gdi, int classId, oListInfo &li);
-  void generateListInfoAux(oListParam &par, oListInfo &li, const wstring &name);
+  void generateListInfo(const gdioutput& target, oListParam &par, oListInfo &li);
+  void generateListInfo(const gdioutput& target, vector<oListParam> &par, oListInfo &li);
+  void generateListInfo(const gdioutput& target, EStdListType lt, int classId, oListInfo &li);
+  void generateListInfoAux(const gdioutput &target, oListParam &par, oListInfo &li, const wstring &name);
 
   /** Format a string for a list. Returns true of output is not empty*/
   const wstring &formatListString(const oPrintPost &pp, const oListParam &par,
@@ -826,7 +826,7 @@ public:
   //Speaker functions.
   void speakerList(gdioutput &gdi, int classId, int leg, int controlId,
                    int previousControlId, bool totalResults, bool shortNames);
-  int getComputerTime() const {return (computerTime+500)/1000;}
+  int getComputerTime() const {return timeConstSecond * ((computerTime+500)/1000);}
   int getComputerTimeMS() const {return computerTime;}
 
   void updateComputerTime();
@@ -1023,7 +1023,7 @@ public:
                           bool forceSplitFee,
                           bool useEventorQuirks);
 
-  bool exportOECSV(const wchar_t *file, int LanguageTypeIndex, bool includeSplits);
+  bool exportOECSV(const wchar_t *file, const set<int> &classes, int LanguageTypeIndex, bool includeSplits);
   bool save();
   void duplicate(const wstring &annotation, bool keepTags = false);
   
@@ -1340,7 +1340,8 @@ public:
   /** Import entry data */
   void importXML_EntryData(gdioutput &gdi, const wstring &file, 
                            bool updateClass, bool removeNonexisting,
-                           const set<int> &filter, const string &preferredIdType);
+                           const set<int> &filter, int classIdOffset, 
+                           int courseIdOffset, const string &preferredIdType);
 
 protected:
   pClass getXMLClass(const xmlobject &xentry);
@@ -1375,6 +1376,21 @@ protected:
   mutable int useSubsecondsVersion = -1;
 
 public:
+
+  /** Do some operation and disable (global) reevaluate/update */
+  template<typename OP>
+  void noReevaluateOperation(OP& operation) {
+    bool origState = disableRecalculate;
+    disableRecalculate = true;
+    try {
+      operation();
+    }
+    catch (...) {
+      disableRecalculate = origState;
+      throw;
+    }
+    disableRecalculate = origState;
+  }
 
   /** Return true if subseconds are used*/
   bool useSubSecond() const;

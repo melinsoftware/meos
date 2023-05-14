@@ -112,7 +112,7 @@ public:
   ListEditor(oEvent *oe);
   virtual ~ListEditor();
 
-  void load(const MetaListContainer &mlc, int index);
+  int load(const MetaListContainer &mlc, int index, bool autoSaveCopy);
   void show(TabBase *dst, gdioutput &gdi);
   bool isShown(TabBase *tab) const { return origin == tab; }
   MetaList *getCurrentList() const {return currentList;};

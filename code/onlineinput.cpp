@@ -100,13 +100,18 @@ int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
   }
   else if (bi.id == "UseUnitId") {
     useUnitId = gdi.isChecked(bi.id);
-    if (useUnitId)
-      gdi.setTextTranslate("CmpID_label", L"Enhetens ID-nummer (MAC):", true);
-    else
-      gdi.setTextTranslate("CmpID_label", L"Tävlingens ID-nummer:", true);
+    updateLabel(gdi);
   }
 
   return 0;
+}
+
+void OnlineInput::updateLabel(gdioutput& gdi)
+{
+  if (useUnitId)
+    gdi.setTextTranslate("CmpID_label", L"Enhetens ID-nummer (MAC):", true);
+  else
+    gdi.setTextTranslate("CmpID_label", L"Tävlingens ID-nummer:", true);
 }
 
 void OnlineInput::fillMappings(gdioutput &gdi) const{
@@ -134,7 +139,11 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.addCheckbox("UseROC", "Använd ROC-protokoll", OnlineCB, useROCProtocol).setExtra(getId());
   gdi.addCheckbox("UseUnitId", "Använd enhets-id istället för tävlings-id", OnlineCB, useROCProtocol && useUnitId).setExtra(getId());
   gdi.setInputStatus("UseUnitId", useROCProtocol);
-  gdi.addInput("CmpID", itow(cmpId), 10, 0, L"Tävlingens ID-nummer:");
+
+  if (useROCProtocol && useUnitId)
+    gdi.addInput("CmpID", unitId, 10, 0, L"Enhetens ID-nummer (MAC):");
+  else
+    gdi.addInput("CmpID", itow(cmpId), 10, 0, L"Tävlingens ID-nummer:");
 
   gdi.dropLine(1);
   gdi.addString("", boldText, "Kontrollmappning");

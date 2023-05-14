@@ -61,15 +61,11 @@ FlowOperation importFilterGUI(oEvent *oe,
                               set<int> & filter,
                               string &preferredIdProvider);
 
-string conv_is(int i)
-{
+string conv_is(int i) {
   char bf[256];
-//  if (i==0)
-//    return "";
-  //else
-   if (_itoa_s(i, bf, 10)==0)
+  if (_itoa_s(i, bf, 10)==0)
     return bf;
-   return "";
+  return "";
 }
 
 int ConvertStatusToOE(int i)
@@ -108,7 +104,7 @@ wstring &getFirst(wstring &inout, int maxNames) {
   return inout;
 }
 
-bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includeSplits)
+bool oEvent::exportOECSV(const wchar_t *file, const set<int>& classes, int languageTypeIndex, bool includeSplits)
 {
   enum {
     OEstno = 0, OEcard = 1, OEid = 2, OEsurname = 3, OEfirstname = 4,
@@ -120,12 +116,12 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
 
   csvparser csv;
 
-  oClass::initClassId(*this);
+  oClass::initClassId(*this, classes);
 
   if (!csv.openOutput(file))
     return false;
 
-  calculateResults({}, ResultType::ClassResult);
+  calculateResults(classes, ResultType::ClassResult);
   sortRunners(SortOrder::ClassResult);
   oRunnerList::iterator it;
   string maleString;
@@ -171,6 +167,11 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
 
   char bf[256];
   for (it = Runners.begin(); it != Runners.end(); ++it) {
+    if (it->isRemoved())
+      continue;
+    if (!classes.empty() && !classes.count(it->getClassId(true)))
+      continue;
+
     vector<string> row;
     row.resize(46);
     oDataInterface di = it->getDI();
@@ -226,7 +227,10 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
       row[OEclubcity] = gdibase.recodeToNarrow(it->getClub());
     }
     row[OEnat] = gdibase.recodeToNarrow(di.getString("Nationality"));
-    row[OEclassno] = conv_is(it->getClassId(true));
+    {
+      pClass pc = it->getClassRef(true);
+      row[OEclassno] = pc ? gdibase.recodeToNarrow(pc->getExtIdentifierString()) : "0";
+    }
     row[OEclassshortname] = gdibase.recodeToNarrow(it->getClass(true));
     row[OEclassname] = gdibase.recodeToNarrow(it->getClass(true));
 
@@ -305,8 +309,10 @@ bool oEvent::exportOECSV(const wchar_t *file, int languageTypeIndex, bool includ
 void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file, 
                                  bool updateClass, bool removeNonexisting,
                                  const set<int> &filter,
+                                 int classIdOffset,
+                                 int courseIdOffset,
                                  const string &preferredIdType) {
-  vector< pair<int, int> > runnersInTeam;
+  vector<pair<int, int>> runnersInTeam;
   for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isRemoved() && it->tInTeam) {
       runnersInTeam.push_back(make_pair(it->getId(), it->getClassId(false)) );
@@ -327,6 +333,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false, false);
+      reader.setIdOffset(classIdOffset, courseIdOffset);
       reader.setPreferredIdType(preferredIdType);
       reader.readEntryList(gdi, xo, removeNonexisting, filter, ent, fail, removed);
 
@@ -392,6 +399,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
     
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false, false);
+      reader.setIdOffset(classIdOffset, courseIdOffset);
       reader.readStartList(gdi, xo, ent, fail);
     }
     else {
@@ -441,6 +449,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
       gdi.addString("", 0, "Importerar resultat (IOF, xml)");
       gdi.refreshFast();
       IOF30Interface reader(this, false, false);
+      reader.setIdOffset(classIdOffset, courseIdOffset);
       reader.readResultList(gdi, xo, ent, fail);
     }
     gdi.addString("", 0, "Klart. Antal importerade: X#" + itos(ent));
@@ -463,6 +472,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false, false);
+      reader.setIdOffset(classIdOffset, courseIdOffset);
       reader.readClassList(gdi, xo, imp, fail);
     }
     else {
@@ -569,6 +579,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
 
     if (xo && xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false, false);
+      reader.setIdOffset(classIdOffset, courseIdOffset);
       reader.readCourseData(gdi, xo, updateClass, imp, fail);
     }
     else {
@@ -2678,7 +2689,7 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
   xmlparser xml;
 
   xml.openOutput(file, false);
-  oClass::initClassId(*this);
+  oClass::initClassId(*this, classes);
   reEvaluateAll(classes, true);
   if (version != IOF20)
     calculateResults(classes, ResultType::ClassCourseResult);
@@ -2708,7 +2719,7 @@ void oEvent::exportIOFStartlist(IOFVersion version, const wchar_t *file, bool us
                                 bool useEventorQuirks) {
   xmlparser xml;
   
-  oClass::initClassId(*this);
+  oClass::initClassId(*this, classes);
   xml.openOutput(file, false);
 
   if (version == IOF20)

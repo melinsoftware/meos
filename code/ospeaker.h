@@ -29,8 +29,8 @@ struct SpeakerString {
   wstring str;
   int format;
   bool hasTimer;
-  int timer;
-  int timeout;
+  int timer; // Timer time (in normal time units)
+  int timeout; // Timeout time (in seconds)
   string moveKey;
   GDICOLOR color;
   SpeakerString() : format(0), hasTimer(false), timer(0), timeout(NOTIMEOUT), color(colorDefault) {}

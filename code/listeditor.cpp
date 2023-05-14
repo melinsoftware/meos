@@ -66,7 +66,7 @@ void ListEditor::setCurrentList(MetaList *lst) {
   currentList = lst;
 }
 
-void ListEditor::load(const MetaListContainer &mlc, int index) {
+int ListEditor::load(const MetaListContainer &mlc, int index, bool autoSaveCopy) {
   const MetaList &mc = mlc.getList(index);
   setCurrentList(new MetaList());
   *currentList = mc;
@@ -74,6 +74,14 @@ void ListEditor::load(const MetaListContainer &mlc, int index) {
   if (mlc.isInternal(index)) {
     currentIndex = -1;
     currentList->clearTag();
+    wstring cpy = lang.tl(L" Kopia (X)#" + getLocalDate());
+    currentList->setListName(currentList->getListName() + cpy);
+
+    if (autoSaveCopy) {
+      oe->getListContainer().addExternal(*currentList);
+      currentIndex = oe->getListContainer().getNumLists() - 1;
+      oe->getListContainer().saveList(currentIndex, *currentList);
+    }
   }
   else
     currentIndex = index;
@@ -81,6 +89,7 @@ void ListEditor::load(const MetaListContainer &mlc, int index) {
   dirtyExt = true;
   dirtyInt = false;
   savedFileName.clear();
+  return currentIndex;
 }
 
 void ListEditor::show(TabBase *dst, gdioutput &gdi) {
@@ -101,7 +110,7 @@ void ListEditor::show(gdioutput &gdi) {
 
   int bx = gdi.getCX();
   int by = gdi.getCY();
-
+  gdi.fillDown();
   if (currentList)
     gdi.addString("", boldLarge, makeDash(L"Listredigerare - X#") + currentList->getListName());
   else
@@ -655,6 +664,10 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         spInfo->withSpeed = gdi.isChecked("Speed");
         spInfo->withResult = gdi.isChecked("Result");
         spInfo->withAnalysis = gdi.isChecked("Analysis");
+        auto res = gdi.getSelectedItem("NumResult");
+        if (res.second)
+          spInfo->numClassResults = res.first;
+
         list.setSplitPrintInfo(spInfo);
       }
 
@@ -781,7 +794,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
     else if (bi.id == "DoOpen" || bi.id == "DoOpenCopy" ) {
       ListBoxInfo lbi;
       if (gdi.getSelectedItem("OpenList", lbi)) {
-        load(oe->getListContainer(), lbi.data);
+        load(oe->getListContainer(), lbi.data, false);
       }
 
       if (bi.id == "DoOpenCopy") {
@@ -1405,7 +1418,7 @@ void ListEditor::editImage(gdioutput& gdi, const MetaListPost& mlp, int id) {
   gdi.addString("", 0, "Förskjutning:");
   gdi.dropLine(-1);
 
-  gdi.addInput("ImgOffsetX", xoff, 5, editListCB, L"Horizontell:");
+  gdi.addInput("ImgOffsetX", xoff, 5, editListCB, L"Horisontell:");
   gdi.addInput("ImgOffsetY", yoff, 5, editListCB, L"Vertikal:");
 
   gdi.popX();
@@ -1842,7 +1855,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
     gdi.setCX(gdi.getCX()+20);
     int f = list.getFontFaceFactor(k);
     wstring ff = f == 0 ? L"100 %" : itow(f) + L" %";
-    gdi.addInput("FontFactor" + itos(k), ff, 4, 0, L"Skalfaktor", L"Relativ skalfaktor för typsnittets storlek i procent");
+    gdi.addInput("FontFactor" + itos(k), ff, 5, 0, L"Skalfaktor", L"Relativ skalfaktor för typsnittets storlek i procent");
     f = list.getExtraSpace(k);
     gdi.addInput("ExtraSpace" + itos(k), itow(f), 4, 0, L"Avstånd", L"Extra avstånd ovanför textblock");
     if (k == 1) {
@@ -1892,6 +1905,7 @@ void ListEditor::statusSplitPrint(gdioutput& gdi, bool status) {
   gdi.setInputStatus("Speed", status);
   gdi.setInputStatus("Result", status);
   gdi.setInputStatus("Analysis", status);
+  gdi.setInputStatus("NumResult", status);
 }
 
 void ListEditor::splitPrintList(gdioutput& gdi) {
@@ -1934,16 +1948,32 @@ void ListEditor::splitPrintList(gdioutput& gdi) {
   gdi.addCheckbox("Result", "Inkludera individuellt resultat", nullptr, isSP ? sp->withResult : true);
   gdi.addCheckbox("Analysis", "Inkludera bomanalys", nullptr, isSP ? sp->withAnalysis : true);
 
+  int maxX = gdi.getCX();
+
+  gdi.setCX(x1 + margin);
+  gdi.dropLine(2);
+  gdi.addSelection("NumResult", 200, 400, nullptr, L"Topplista, N bästa");
+  vector<pair<wstring, size_t>> items;
+  for (int i = 1; i <= 10; i++)
+    items.emplace_back(itow(i), i);
+  for (int i = 15; i <= 50; i+=5)
+    items.emplace_back(itow(i), i);
+  for (int i = 60; i <= 100; i += 10)
+    items.emplace_back(itow(i), i);
+  items.emplace_back(lang.tl("Alla"), 1000);
+  gdi.addItem("NumResult", items);
+  gdi.selectItemByData("NumResult", isSP ? sp->numClassResults : 3);
+
   statusSplitPrint(gdi, isSP);
 
   gdi.dropLine(0.8);
-  gdi.setCX(gdi.getCX() + 20);
+  gdi.setCX(gdi.getCX() + gdi.scaleLength(40));
   gdi.addButton("ApplySplitList", "OK", editListCB);
   gdi.addButton("Cancel", "Avbryt", editListCB);
 
   gdi.dropLine(3);
   int maxY = gdi.getCY();
-  int maxX = gdi.getCX();
+  maxX = max(maxX, gdi.getCX());
 
   gdi.fillDown();
   gdi.popX();

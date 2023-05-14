@@ -7,6 +7,7 @@
 #define IDR_3007                        109
 #define IDR_3008                        110
 #define IDR_3011                        111
+#define IDR_3012                        112
 #define SND_OK                          50
 #define SND_LEADER                      51
 #define SND_NOTOK                       52
@@ -20,6 +21,8 @@ IDR_3005                300     DISCARDABLE     "russian.lng"
 IDR_3006                300     DISCARDABLE     "czech.lng"
 IDR_3008                300     DISCARDABLE     "french.lng"
 IDR_3011                300     DISCARDABLE     "spanish.lng"
+IDR_3012                300     DISCARDABLE     "ukrainian.lng"
+
 /////////////////////////////////////////////////////////////////////////////
 
 SND_OK                WAVE     DISCARDABLE     "./sound/ok.wav"

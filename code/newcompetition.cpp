@@ -74,7 +74,7 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
 
       try {
         gdi.autoRefresh(true);
-        FlowOperation res = saveEntries(gdi, false, true);
+        FlowOperation res = saveEntries(gdi, false, 0, true);
         if (res != FlowContinue) {
           if (res == FlowCancel)
             newCompetitionGuide(gdi, 1);

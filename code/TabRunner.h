@@ -99,6 +99,7 @@ private:
     int runnerId;
     oEvent *oe;
     oRunner &getRunner() const;
+    void updateColor(gdioutput& gdi);
   public:
     void init(oRunner &r);
     void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);

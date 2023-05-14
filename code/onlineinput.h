@@ -71,6 +71,8 @@ public:
 
   int processButton(gdioutput &gdi, ButtonInfo &bi);
 
+  void updateLabel(gdioutput& gdi);
+
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
   void settings(gdioutput &gdi, oEvent &oe, State state) final;
   static void controlMappingView(gdioutput& gdi, GUICALLBACK cb, int widgetId);

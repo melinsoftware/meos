@@ -2838,15 +2838,19 @@ const wstring &oRunner::getName() const {
   return tRealName;
 }
 
-const wstring &oRunner::getNameLastFirst() const {
+const wstring& getNameLastFirst(const wstring &sName) {
   if (sName.find_first_of(',') != sName.npos)
     return sName;  // Already "Fiske, Eric"
   if (sName.find_first_of(' ') == sName.npos)
     return sName; // No space "Vacant", "Eric"
-  
-  wstring &res = StringCache::getInstance().wget();
-  res = getFamilyName() + L", " + getGivenName();
+
+  wstring& res = StringCache::getInstance().wget();
+  res = getFamilyName(sName) + L", " + getGivenName(sName);
   return res;
+}
+
+const wstring &oRunner::getNameLastFirst() const {
+  return ::getNameLastFirst(sName);
 }
 
 void oRunner::getRealName(const wstring &input, wstring &output) const {
@@ -2883,7 +2887,7 @@ void oRunner::getRealName(const wstring &input, wstring &output) const {
     if (comma != string::npos)
       output = n;
     else
-      output = getNameLastFirst();
+      output = ::getNameLastFirst(n);
   }
 }
 
@@ -4353,11 +4357,18 @@ void oRunner::fillSpeakerObject(int leg, int courseControlId, int previousContro
       spk.status = getStatus();
   }
 
-  if (courseControlId == oPunch::PunchFinish)
-    spk.timeSinceChange = oe->getComputerTime() - FinishTime;
-  else
-    spk.timeSinceChange = oe->getComputerTime() - (spk.runningTime.time + tStartTime);
-
+  if (courseControlId == oPunch::PunchFinish) {
+    if (FinishTime > 0) 
+      spk.timeSinceChange = oe->getComputerTime() - FinishTime;
+    else
+      spk.timeSinceChange = -1;
+  }
+  else {
+    if (spk.runningTime.time > timeConstSecond * 10)
+      spk.timeSinceChange = oe->getComputerTime() - (spk.runningTime.time + tStartTime);
+    else
+      spk.timeSinceChange = -1;
+  }
   spk.bib = getBib();
   spk.names.push_back(getName());
 
@@ -4770,9 +4781,21 @@ void oRunner::printSplits(gdioutput& gdi) const {
   string listId;
   if (wListId.empty()) {
     if (cls1) {
-      if (cls1->getClassType() == ClassType::oClassIndividual)
-        listId = "split_indivudual";
+      if (cls1->getClassType() == ClassType::oClassIndividual) {
+        if (cls1->isRogaining())
+          listId = "Tsplit_result_rogaining";
+        else
+          listId = "Tsplit_result_individual";
+      }
+      else if (cls1->getClassType() == ClassType::oClassRelay) {
+        if (cls1->isRogaining())
+          listId = "Tsplit_result_team_rogaining";
+        else
+          listId = "Tsplit_result_team";
+      }
     }
+  }
+  else if (wListId == L"*") { // Standarad, no list
   }
   else {
     listId = gdioutput::narrow(wListId);
@@ -4791,15 +4814,18 @@ void oRunner::printSplits(gdioutput& gdi) const {
     oListInfo currentList;
 
     par.listCode = oe->getListContainer().getCodeFromUnqiueId(listId);
-    //auto &metaList = oe->getListContainer().getList(par.listCode);
     par.showInterTimes = false;
-    par.setLegNumberCoded(getLegNumber());
+    int legNo = getLegNumber(), legOrd;
+    if (Class)
+      Class->splitLegNumberParallel(getLegNumber(), legNo, legOrd);
+    par.setLegNumberCoded(legNo);
     par.filterMaxPer = 3;
     par.alwaysInclude = this;
     par.showHeader = false;
+    par.tightBoundingBox = true;
 
     try {
-      oe->generateListInfo(par, currentList);
+      oe->generateListInfo(gdi, par, currentList);
     }
     catch (const meosException&) {
       oe->gdiBase().addInfoBox("load_id_list", L"info:nosplitprint", 10000);
@@ -4823,6 +4849,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
   bool withAnalysis = (oe->getDI().getInt("Analysis") & 1) == 0;
   bool withSpeed = (oe->getDI().getInt("Analysis") & 2) == 0;
   bool withResult = (oe->getDI().getInt("Analysis") & 4) == 0;
+  
   bool includeStandardHeading = true;
   bool includeDefaultTitle = true;
   bool includeSplitTimes = true;
@@ -4834,6 +4861,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
     withSpeed = sp.withSpeed;
     withResult = sp.withResult;
     withAnalysis = sp.withAnalysis;
+    includeSplitTimes = sp.includeSplitTimes;
   }
   
   const bool wideFormat = oe->getPropertyInt("WideSplitFormat", 0) == 1;
@@ -4952,7 +4980,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
         if (headerPos.count(cx) == 0) {
           headerPos.insert(cx);
           gdi.addString("", cyHead, cx, italicSmall, "Kontroll");
-          gdi.addString("", cyHead, cx + c2 - gdi.scaleLength(spW/2), italicSmall, "Tid");
+          gdi.addString("", cyHead, cx + c2 - gdi.scaleLength(spW / 2), italicSmall, "Tid");
           if (withSpeed)
             gdi.addString("", cyHead, cx + c5, italicSmall | textRight, "min/km");
         }
@@ -4962,7 +4990,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
           const pControl c = pc->getControl(it->tRogainingIndex);
           string point = c ? itos(c->getRogainingPoints()) + "p." : "";
 
-          gdi.addStringUT(cy, cx + c1 + gdi.scaleLength(10/2), fontSmall, point);
+          gdi.addStringUT(cy, cx + c1 + gdi.scaleLength(10 / 2), fontSmall, point);
           any = true;
 
           sprintf_s(bf, "%d", it->type);
@@ -5158,7 +5186,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
         if (headerPos.count(cx) == 0) {
           headerPos.insert(cx);
           gdi.addString("", cyHead, cx, italicSmall, "Kontroll");
-          gdi.addString("", cyHead, cx + c2 - gdi.scaleLength(55/2), italicSmall, "Tid");
+          gdi.addString("", cyHead, cx + c2 - gdi.scaleLength(55 / 2), italicSmall, "Tid");
         }
 
         bool any = false;
@@ -5213,6 +5241,10 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
       }
     }
 
+  }
+
+  if (getStatus() != StatusUnknown && getFinishTime() > 0) {
+
     oe->calculateResults({ getClassId(true) }, oEvent::ResultType::ClassResult);
     if (hasInputData())
       oe->calculateResults({ getClassId(true) }, oEvent::ResultType::TotalResult);
@@ -5243,32 +5275,33 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
       gdi.addString("", normal, place + timestatus + after);
       gdi.popX();
     }
-  
-    if (Card->miliVolt > 0) {
-      gdi.dropLine(0.7);
-      auto stat = Card->isCriticalCardVoltage();
-      wstring warning;
-      if (stat == oCard::BatteryStatus::Bad)
-        warning = lang.tl("Replace[battery]");
-      else if (stat == oCard::BatteryStatus::Warning)
-        warning = lang.tl("Low");
-      else
-        warning = lang.tl("OK");
-      gdi.fillRight();
-      gdi.pushX();
-      gdi.addString("", fontSmall, L"Batteristatus:");
-      gdi.addStringUT(boldSmall, getCard()->getCardVoltage());
-      gdi.fillDown();
-      gdi.addStringUT(fontSmall, L"(" + warning + L")");
-      gdi.popX();
-    }
   }
-  gdi.dropLine(0.7);
 
+  if (Card && Card->miliVolt > 0) {
+    gdi.dropLine(0.7);
+    auto stat = Card->isCriticalCardVoltage();
+    wstring warning;
+    if (stat == oCard::BatteryStatus::Bad)
+      warning = lang.tl("Replace[battery]");
+    else if (stat == oCard::BatteryStatus::Warning)
+      warning = lang.tl("Low");
+    else
+      warning = lang.tl("OK");
+    gdi.fillRight();
+    gdi.pushX();
+    gdi.addString("", fontSmall, L"Batteristatus:");
+    gdi.addStringUT(boldSmall, getCard()->getCardVoltage());
+    gdi.fillDown();
+    gdi.addStringUT(fontSmall, L"(" + warning + L")");
+    gdi.popX();
+  }
 
-  if (li) {
+  if (li && !li->empty(false)) {
     oe->generateList(gdi, false, *li, false);
     gdi.dropLine();
+  }
+  else {
+    gdi.dropLine(0.7);
   }
 
   vector< pair<wstring, int> > lines;
@@ -5281,7 +5314,6 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
 
   gdi.addString("", fontSmall, "Av MeOS: www.melin.nu/meos");
 }
-
 
 void oRunner::printStartInfo(gdioutput &gdi) const {
   gdi.setCX(10);
@@ -5464,7 +5496,7 @@ void oRunner::setBirthYear(int year)
 
 int oRunner::getBirthYear() const
 {
-  return getDCI().getInt("BirthYear");
+  return getDCI().getYear("BirthYear");
 }
 
 void oRunner::setBirthDate(const wstring& date) {
@@ -6817,7 +6849,7 @@ bool oRunner::startTimeAvailable() const {
   if (st == restart && Class->getStartType(tLeg) == STChange) {
     int currentTime = oe->getComputerTime();
     int rope = Class->getRopeTime(tLeg);
-    return rope != 0 && currentTime + 600 > rope;
+    return rope != 0 && currentTime + 10 * timeConstMinute > rope;
   }
 
   return true;
@@ -7109,4 +7141,94 @@ bool oAbstractRunner::isStatusUnknown(bool computed, bool allowUpdate) const {
     return rt == 0;
   }
   return false;
+}
+
+bool oRunner::matchAbstractRunner(const oAbstractRunner* target) const {
+  if (target == nullptr)
+    return false;
+
+  if (target == this)
+    return true;
+
+  const oTeam* t = dynamic_cast<const oTeam*>(target);
+  if (t != nullptr)
+    return getTeam() == t;
+
+  return false;
+}
+
+/** Format the name according to the style. */
+wstring oRunner::formatName(NameFormat style) const {
+  switch (style) {
+  case NameFormat::Default:
+    return getName();
+  case NameFormat::FirstLast: {
+    size_t comma = sName.find_first_of(',');
+    if (comma == string::npos)
+      return sName;
+    else
+      return trim(sName.substr(comma + 1) + L" " + trim(sName.substr(0, comma)));
+  }
+  case NameFormat::LastFirst:
+    return getNameLastFirst();
+  case NameFormat::First:
+    return getGivenName();
+  case NameFormat::Last:
+    return getFamilyName();
+  case NameFormat::Init: {
+    wstring given = getGivenName();
+    wstring family = getFamilyName();
+    wchar_t out[5];
+    int ix = 0;
+    auto append = [&out, &ix](wchar_t w) {
+      out[ix++] = w;
+    };
+    if (!given.empty()) {
+      append(given[0]);
+      append('.');
+    }
+    if (!family.empty()) {
+      append(family[0]);
+      append('.');
+    }
+    append(0);
+    return out;
+  }
+  case NameFormat::InitLast: {
+    wstring given = getGivenName();
+    if (!given.empty()) {
+      given.resize(1);
+      given.append(L". ");
+    }
+    given.append(getFamilyName());
+    return given;
+  }
+  }
+  throw meosException("Unknown name style");
+}
+
+/** Get available name styles. */
+void oRunner::getNameFormats(vector<pair<wstring, size_t>> &  out) {
+/*enum class NameFormat {
+  Default,
+  FirstLast,
+  LastFirst,
+  Last,
+  First,
+  Init,
+  InitLast
+};
+*/
+  out.clear();
+  auto add = [&out](NameFormat f, const string& w) {
+    out.emplace_back(lang.tl(w), size_t(f));
+  };
+
+  add(NameFormat::Default, "Standard");
+  add(NameFormat::FirstLast, "Förnamn Efternamn");
+  add(NameFormat::LastFirst, "Efternamn, Förnamn");
+  add(NameFormat::Last, "Efternamn");
+  add(NameFormat::First, "Förnamn");
+  add(NameFormat::Init, "F.E.");
+  add(NameFormat::InitLast, "F. Efternamn");
 }

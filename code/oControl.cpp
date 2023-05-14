@@ -452,11 +452,11 @@ const vector<pair<wstring, size_t>>& oEvent::fillControls(vector< pair<wstring, 
       if (res == existingTypeUnits.end()) {
         wstring name;
         if (tu.first == oPunch::SpecialPunch::PunchFinish)
-          name = lang.tl("Målenhet") + L" " + itow(tu.second);
+          name = lang.tl(L"Målenhet", true) + L" " + itow(tu.second);
         else if (tu.first == oPunch::SpecialPunch::PunchStart)
-          name = lang.tl("Startenhet") + L" " + itow(tu.second);
+          name = lang.tl(L"Startenhet", true) + L" " + itow(tu.second);
         else if (tu.first == oPunch::SpecialPunch::PunchCheck)
-          name = lang.tl("Checkenhet") + L" " + itow(tu.second);
+          name = lang.tl(L"Checkenhet", true) + L" " + itow(tu.second);
         out.emplace_back(name, tu.first * 1100000 + tu.second);
       }
       else {

@@ -1542,7 +1542,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
           if (importHiredCard)
             importDefaultHiredCards(gdi);
 
-          oe->importXML_EntryData(gdi, tEvent, false, false, noFilter, noType);
+          oe->importXML_EntryData(gdi, tEvent, false, false, noFilter, 0, 0, noType);
           oe->setZeroTime(formatTimeHMS(zeroTime), false);
           oe->getDI().setDate("OrdinaryEntry", lastEntry);
           if (ci) {
@@ -1555,13 +1555,13 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         }
         removeTempFile(tEvent);
 
-        oe->importXML_EntryData(gdi, tClass.c_str(), false, false, noFilter, noType);
+        oe->importXML_EntryData(gdi, tClass.c_str(), false, false, noFilter, 0, 0, noType);
         removeTempFile(tClass);
 
         set<int> stageFilter;
         string preferredIdType;
         checkStageFilter(gdi, tEntry, stageFilter, preferredIdType);
-        oe->importXML_EntryData(gdi, tEntry.c_str(), false, removeRemoved, stageFilter, preferredIdType);
+        oe->importXML_EntryData(gdi, tEntry.c_str(), false, removeRemoved, stageFilter, 0, 0, preferredIdType);
         removeTempFile(tEntry);
 
         if (!course.empty()) {
@@ -1803,7 +1803,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
                                 save.c_str(), useUTC, allTransfer, individual, includeStage, false, false);
       }
       else if (filterIndex == ImportFormats::OE) {
-        oe->exportOECSV(save.c_str(), cSVLanguageHeaderIndex, false);
+        oe->exportOECSV(save.c_str(), allTransfer, cSVLanguageHeaderIndex, false);
       }
       else {
         oListParam par;
@@ -1811,8 +1811,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         par.setLegNumberCoded(-1);
         oListInfo li;
         par.selection = allTransfer;
-        oe->generateListInfo(par, li);
         gdioutput tGdi("temp", gdi.getScale());
+        oe->generateListInfo(tGdi, par, li);
         oe->generateList(tGdi, true, li, false);
         HTMLWriter::writeTableHTML(tGdi, save, oe->getName(), 0, 1.0);
         tGdi.openDoc(save.c_str());
@@ -1895,7 +1895,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         }
       }
       else if (filterIndex == ImportFormats::OE) {
-        oe->exportOECSV(save.c_str(), cSVLanguageHeaderIndex, includeSplits);
+        oe->exportOECSV(save.c_str(), allTransfer, cSVLanguageHeaderIndex, includeSplits);
       }
       else {
         oListParam par;
@@ -1903,8 +1903,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
         par.showSplitTimes = true;
         par.setLegNumberCoded(-1);
         oListInfo li;
-        oe->generateListInfo(par, li);
         gdioutput tGdi("temp", gdi.getScale());
+        oe->generateListInfo(tGdi, par, li);
         oe->generateList(tGdi, true, li, false);
         HTMLWriter::writeTableHTML(tGdi, save, oe->getName(), 0, 1.0);
         tGdi.openDoc(save.c_str());
@@ -2049,12 +2049,6 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
 
       entryForm(gdi, false);
 
-      gdi.pushX();
-      gdi.fillRight();
-      gdi.addButton("DoImport", "Importera", CompetitionCB);
-      gdi.fillDown();
-      gdi.addButton("Cancel", "Avbryt", CompetitionCB);
-      gdi.popX();
       gdi.refresh();
     }
     else if (bi.id=="DoImport") {
@@ -2063,9 +2057,13 @@ int TabCompetition::competitionCB(gdioutput &gdi, int type, void *data)
       gdi.disableInput("Cancel");
       gdi.disableInput("BrowseEntries");
       bool removeRemoved = gdi.isChecked("RemoveRemoved");
+      int classOffset = 0;
+      if (gdi.hasWidget("ClassOffset")) {
+        classOffset = gdi.getTextNo("ClassOffset");
+      }
       try {
         gdi.autoRefresh(true);
-        FlowOperation res = saveEntries(gdi, removeRemoved, false);
+        FlowOperation res = saveEntries(gdi, removeRemoved, classOffset, false);
 
         if (res != FlowContinue) {
           if (res == FlowCancel)
@@ -2463,6 +2461,7 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
           "\n\nMore French translations and documentation by Titouan Savart"
 				  "\n\nCzech Translation by Marek Kustka"
           "\n\nSpanish Translation by Manuel Pedre"
+          "\n\nUkranian Translation by Oleg Rozhko"
 				  "\n\nHelp with English documentation: Torbjörn Wikström");
 
   gdi.dropLine();
@@ -2500,7 +2499,7 @@ void TabCompetition::updateWarning(gdioutput &gdi) const {
   }
   else if (n.length() >= limit && w.empty()) {
     gdi.setText("warningicon", L"514", true);
-    gdi.setText("cmpwarning", L"Ett långt tävlingsnamn kan ge oväntad nerskalning av utskrifter.", true);
+    gdi.setTextTranslate("cmpwarning", L"Ett långt tävlingsnamn kan ge oväntad nerskalning av utskrifter.", true);
   }
 }
 
@@ -3512,7 +3511,15 @@ void TabCompetition::entryForm(gdioutput &gdi, bool isGuide) {
   gdi.addString("", 10, "help:import_entry_data");
   gdi.dropLine();
 
-  gdi.pushX();
+  if (!isGuide) {
+    gdi.pushX();
+    gdi.fillRight();
+    gdi.addButton("DoImport", "Importera", CompetitionCB).setDefault();
+    gdi.fillDown();
+    gdi.addButton("Cancel", "Avbryt", CompetitionCB).setCancel();
+    gdi.popX();
+    gdi.dropLine(0.5);
+  }
 
   gdi.fillRight();
   gdi.addInput("FileNameCmp", L"", 48, 0, L"Tävlingsinställningar (IOF, xml)");
@@ -3550,23 +3557,31 @@ void TabCompetition::entryForm(gdioutput &gdi, bool isGuide) {
   gdi.addButton("BrowseEntries", "Bläddra...", CompetitionCB).setExtra(L"FileNameServiceReq");
   
   gdi.popX();
-  gdi.dropLine(3.2);
+  gdi.dropLine(2.8);
 
   if (!isGuide && oe->getNumRunners() > 0) {
     gdi.addCheckbox("RemoveRemoved", "Ta bort eventuella avanmälda deltagare", 0, true);
+    gdi.dropLine(0.4);
   }
   gdi.popX();
 
-  gdi.dropLine(2.5);
+  gdi.dropLine(2);
   gdi.addInput("FileNameRank", L"", 48, 0, L"Ranking (IOF, xml, csv)");
   gdi.dropLine();
   gdi.addButton("BrowseEntries", "Bläddra...", CompetitionCB).setExtra(L"FileNameRank");
   gdi.popX();
   gdi.fillDown();
   gdi.dropLine(3);
+
+  if (!isGuide) {
+    gdi.addString("", 10, "info:offsetclassid");
+    gdi.dropLine(0.5);
+    gdi.addInput("ClassOffset", L"0", 10, nullptr, L"Förskjutning av klassers Id:");
+    gdi.dropLine();
+  }
 }
 
-FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide) {
+FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool removeRemoved, int classOffset, bool isGuide) {
 
   vector<string> fields = { "FileNameCmp", "FileNameCls", "FileNameClb", "FileName",
                             "FileNameRank", "FileNameService", "FileNameServiceReq"};
@@ -3645,7 +3660,9 @@ FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool removeRemoved, bo
       if (res != FlowContinue)
         return res;
 
-      oe->importXML_EntryData(gdi, filename[i], false, removeRemoved, stageFilter, preferredIdType);
+      const int courseIdOffset = 0;
+      oe->importXML_EntryData(gdi, filename[i], false, removeRemoved, stageFilter,
+                              classOffset, courseIdOffset, preferredIdType);
     }
     if (!isGuide) {
       gdi.setWindowTitle(oe->getTitleName());

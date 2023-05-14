@@ -867,7 +867,7 @@ void oEvent::optimizeStartOrder(vector<pair<int, wstring>> &outLines, DrawInfo &
   outLines.emplace_back(0, L"Identifierar X unika inledningar på banorna.#" + itow(di.numDistinctInit));
   outLines.emplace_back(0, L"Största gruppen med samma inledning har X platser.#" + itow(di.numRunnerSameInitMax));
   outLines.emplace_back(0, L"Antal löpare på vanligaste banan X.#" + itow(di.numRunnerSameCourseMax));
-  outLines.emplace_back(0, L"Kortast teoretiska startdjup utan krockar är X minuter.#" + itow(di.minimalStartDepth/60));
+  outLines.emplace_back(0, L"Kortast teoretiska startdjup utan krockar är X minuter.#" + itow(di.minimalStartDepth/timeConstMinute));
   outLines.emplace_back(0, L"");
   //Find last starter
   int last = opt.last;
@@ -878,7 +878,7 @@ void oEvent::optimizeStartOrder(vector<pair<int, wstring>> &outLines, DrawInfo &
     laststart=max(laststart, ci.firstStart+(ci.nRunners-1)*ci.interval);
   }
 
-  outLines.emplace_back(0, L"Faktiskt startdjup: X minuter.#" + itow(((last+1) * di.baseInterval)/60));
+  outLines.emplace_back(0, L"Faktiskt startdjup: X minuter.#" + itow(((last+1) * di.baseInterval)/timeConstMinute));
 
   outLines.emplace_back(1, L"Sista start (nu tilldelad): X.#" +
                         oe->getAbsTime(laststart*di.baseInterval+di.firstStart));
@@ -1553,7 +1553,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
     int leg = spec[0].leg;
     VacantPosition vp = VacantPosition::Mixed;
     DrawInfo di;
-    di.baseInterval = 60;
+    di.baseInterval = timeConstMinute;
     di.allowNeighbourSameCourse = true;
 
     di.extraFactor = 0;
@@ -1826,7 +1826,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
       spec[k].interval = baseInterval;
 
-      if (last[k] == 0 || spec[k].firstStart<=0 ||  baseInterval == 10*60) {
+      if (last[k] == 0 || spec[k].firstStart<=0 ||  baseInterval == 10*timeConstMinute) {
         // Fallback if incorrect specification.
         spec[k].firstStart = timeConstHour;
         spec[k].interval = 2*timeConstMinute;
@@ -1949,9 +1949,9 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
     Vacances--;
   }
 
-  for (it=Runners.begin(); it != Runners.end(); ++it)
-    if (it->Class && it->Class->Id==ClassID) nRunners++;
-
+  for (it = Runners.begin(); it != Runners.end(); ++it) {
+    if (it->Class && it->Class->Id == ClassID && !it->isRemoved()) nRunners++;
+  }
   if (nRunners==0) return;
 
   int *stimes=new int[nRunners];
@@ -1962,28 +1962,29 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
   int ginterval;
 
   if (nRunners>=Interval)
-    ginterval=10;
-  else if (Interval/nRunners>60){
-    ginterval=40;
+    ginterval=10 * timeConstSecond;
+  else if (Interval/nRunners>60*timeConstSecond){
+    ginterval=40 * timeConstSecond;
   }
-  else if (Interval/nRunners>30){
-    ginterval=20;
+  else if (Interval/nRunners>30 * timeConstSecond){
+    ginterval=20 * timeConstSecond;
   }
-  else if (Interval/nRunners>20){
-    ginterval=15;
+  else if (Interval/nRunners>20 * timeConstSecond){
+    ginterval=15 * timeConstSecond;
   }
-  else if (Interval/nRunners>10){
-    ginterval=1;
+  else if (Interval/nRunners>10 * timeConstSecond){
+    ginterval=12 * timeConstSecond;
   }
-  else ginterval=10;
+  else ginterval=10 * timeConstSecond;
 
   int nGroups=Interval/ginterval+1; //15 s. per interval.
+  nGroups = min(nGroups, 2*nRunners+1);
   int k;
 
   if (nGroups>0){
 
     int MaxRunnersGroup=max((2*nRunners)/nGroups, 4)+GetRandomNumber(2);
-    int *sgroups=new int[nGroups];
+    vector<int> sgroups(nGroups);
 
     for(k=0;k<nGroups; k++)
       sgroups[k]=FirstStart+((ginterval*k+2)/5)*5;
@@ -2015,11 +2016,11 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
       }
     }
 
-    //Permute some of the groups (not first and last group)
+    //Permute some of the groups (not first and last group = group 0 and 1)
     if (nGroups>5){
-      permute(sgroups+2, nGroups-2);
+      permute(sgroups.data() + 2, nGroups - 2); 
 
-      //Remove some random groups (except first and last).
+      //Remove some random groups (except first and last = group 0 and 1).
       for(k=2;k<nGroups; k++){
         if ((nRunners/nGroups)<MaxRunnersGroup && nGroups>5){
           sgroups[k]=sgroups[nGroups-1];
@@ -2029,11 +2030,10 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
     }
 
     //Premute all groups;
-    permute(sgroups, nGroups);
+    permute(sgroups.data(), nGroups);
 
-    int *counters=new int[nGroups];
-    memset(counters, 0, sizeof(int)*nGroups);
-
+    vector<int> counters(nGroups);
+    
     stimes[0]=FirstStart;
     stimes[1]=FirstStart+Interval;
 
@@ -2066,10 +2066,6 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
       stimes[k]=sgroups[g];
       counters[g]++;
     }
-
-    delete[] sgroups;
-    delete[] counters;
-
   }
   else{
     for(k=0;k<nRunners; k++) stimes[k]=FirstStart;
@@ -2081,7 +2077,7 @@ void oEvent::drawListClumped(int ClassID, int FirstStart, int Interval, int Vaca
   k=0;
 
   for (it = Runners.begin(); it != Runners.end(); ++it) {
-    if (it->Class && it->Class->Id == ClassID) {
+    if (it->Class && it->Class->Id == ClassID && !it->isRemoved()) {
       it->setStartTime(stimes[k++], true, oBase::ChangeType::Update, false);
       it->StartNo = k;
       it->synchronize();
@@ -2130,7 +2126,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi,
     return;
   }
 
-  if (baseInterval<1 || baseInterval>60*60)
+  if (baseInterval<timeConstSecond || baseInterval>timeConstHour)
     throw std::exception("Felaktigt tidsformat för intervall");
 
   int iFirstStart = getRelativeTime(firstStart);

@@ -398,7 +398,7 @@ void oListParam::getCustomTitle(wchar_t *t) const
 }
 
 bool oListParam::filterInclude(int count, const oAbstractRunner *r) const {
-  return filterMaxPer == 0 || count <= filterMaxPer || (r != nullptr && r == alwaysInclude);
+  return filterMaxPer == 0 || count <= filterMaxPer || (r != nullptr && r->matchAbstractRunner(alwaysInclude));
 }
 
 const wstring &oListParam::getCustomTitle(const wstring &t) const
@@ -591,7 +591,8 @@ void MetaList::addRow(int ix) {
   data[ix].push_back(vector<MetaListPost>());
 }
 
-static void setFixedWidth(oPrintPost &added, 
+static void setFixedWidth(const gdioutput &gdi,
+                          oPrintPost &added, 
                           const map<tuple<int,int,int>, int> &indexPosToWidth, 
                           int type, int j, int k,
                           const MetaListPost &mlp) {
@@ -606,7 +607,7 @@ static void setFixedWidth(oPrintPost &added,
   else {
     map<tuple<int, int, int>, int>::const_iterator res = indexPosToWidth.find(tuple<int, int, int>(type, j, k));
     if (res != indexPosToWidth.end())
-      added.fixedWidth = res->second;
+      added.fixedWidth = int (res->second / gdi.getScale());
     else
       added.fixedWidth = 0;
   }
@@ -975,7 +976,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                                           fontFaces[MLHead].scale);
 
         added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
-        setFixedWidth(added, indexPosToWidth, MLHead, j, k, mp);
+        setFixedWidth(gdi, added, indexPosToWidth, MLHead, j, k, mp);
         added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLHead, j, k)];
         added.color = mp.color;
         if (!mp.mergeWithPrevious && mp.type != lImage)
@@ -1034,7 +1035,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                                                     fontFaces[MLSubHead].scale);
 
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
-      setFixedWidth(added, indexPosToWidth, MLSubHead, j, k, mp);
+      setFixedWidth(gdi, added, indexPosToWidth, MLSubHead, j, k, mp);
       added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLSubHead, j, k)];
       added.color = mp.color;
       if (!mp.mergeWithPrevious && mp.type != lImage)
@@ -1096,7 +1097,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
                                                      fontFaces[MLList].scale);
 
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
-      setFixedWidth(added, indexPosToWidth, MLList, j, k, mp);
+      setFixedWidth(gdi, added, indexPosToWidth, MLList, j, k, mp);
       added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLList, j, k)];
       added.useStrictWidth = mp.getLimitBlockWidth();
       if (added.useStrictWidth)
@@ -1160,7 +1161,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         base = &added;
 
       added.resultModuleIndex = getResultModuleIndex(oe, li, mp);
-      setFixedWidth(added, indexPosToWidth, MLSubList, j, k, mp);
+      setFixedWidth(gdi, added, indexPosToWidth, MLSubList, j, k, mp);
       added.xlimit = indexPosToWidthSrc[tuple<int, int, int>(MLSubList, j, k)];
       added.useStrictWidth = mp.getLimitBlockWidth();
       if (added.useStrictWidth)
@@ -2201,6 +2202,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerName] = L"RunnerName";
     typeToSymbol[lRunnerGivenName] = L"RunnerGivenName";
     typeToSymbol[lRunnerFamilyName] = L"RunnerFamilyName";
+    typeToSymbol[lRunnerLegTeamLeaderName] = L"RunnerLegTeamLeaderName";
     typeToSymbol[lRunnerCompleteName] = L"RunnerCompleteName";
     typeToSymbol[lPatrolNameNames] = L"PatrolNameNames";
     typeToSymbol[lPatrolClubNameNames] = L"PatrolClubNameNames";
@@ -2868,6 +2870,10 @@ EStdListType MetaListContainer::getType(const std::string &tag) const {
 
 EStdListType MetaListContainer::getType(const int index) const {
   return EStdListType(index + EFirstLoadedList);
+}
+
+bool MetaListContainer::isSplitPrintList(int index) const {
+  return data[index].second.isSplitPrintList();
 }
 
 void MetaListContainer::getLists(vector<pair<wstring, size_t> > &lists, bool markBuiltIn, 

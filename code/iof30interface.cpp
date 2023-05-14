@@ -333,7 +333,7 @@ void IOF30Interface::classCourseAssignment(gdioutput &gdi, xmlList &xAssignment,
     xmlList xClsId;
     xClsAssignment.getObjects("ClassId", xClsId);
     for (size_t j = 0; j <xClsId.size(); j++) {
-      int id = xClsId[j].getInt();
+      int id = xClsId[j].getInt() + classIdOffset;
       if (oe.getClass(id) == 0) {
         gdi.addString("", 0, "Klass saknad").setColor(colorRed);
       }
@@ -1145,7 +1145,7 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
           t->synchronize(true);
         }
 
-        // If multi, for each class, store how the legs was multiplied
+        // If multi, for each class, store how the legs were multiplied
         if (hasMulti) {
           vector<int> key(it->second.size());
           for (size_t j = 0; j < key.size(); j++) 
@@ -2898,10 +2898,14 @@ void IOF30Interface::FeeInfo::add(IOF30Interface::FeeInfo &fi) {
 }
 
 pClass IOF30Interface::readClass(const xmlobject &xclass,
-                                 map<int, vector<LegInfo> > &teamClassConfig) {
+                                 map<int, vector<LegInfo>> &teamClassConfig) {
   if (!xclass)
     return 0;
   int classId = xclass.getObjectInt("Id");
+  int origId = classId;
+  if (classId > 0)
+    classId += classIdOffset;
+
   wstring name, shortName, longName;
   xclass.getObjectString("Name", name);
   xclass.getObjectString("ShortName", shortName);
@@ -2911,7 +2915,7 @@ pClass IOF30Interface::readClass(const xmlobject &xclass,
     name = shortName;
   }
 
-  pClass pc = 0;
+  pClass pc = nullptr;
 
   if (classId) {
     pc = oe.getClass(classId);
@@ -2921,8 +2925,12 @@ pClass IOF30Interface::readClass(const xmlobject &xclass,
       pc = oe.addClass(c);
     }
   }
-  else
+  else {
     pc = oe.addClass(name);
+  }
+
+  if (origId > 0)
+    pc->setExtIdentifier(origId);
 
   oDataInterface DI = pc->getDI();
   if (!pc->hasFlag(oClass::TransferFlags::FlagManualName)) {
@@ -3657,7 +3665,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
 }
 
 void IOF30Interface::writeFees(xmlparser &xml, const oRunner &r) const {
-  int cardFee = r.getDCI().getInt("CardFee");
+  int cardFee = max(0, r.getDCI().getInt("CardFee"));
   bool paidCard = r.getDCI().getInt("Paid") >= cardFee;
   
   writeAssignedFee(xml, r, paidCard ? cardFee : 0);

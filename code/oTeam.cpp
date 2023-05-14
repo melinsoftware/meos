@@ -1494,7 +1494,8 @@ void oTeam::fillSpeakerObject(int leg, int courseControlId, int previousControlC
                               bool totalResult, oSpeakerObject &spk) const {
   if (leg==-1)
     leg = Runners.size()-1;
-
+  oTeam *ths = (oTeam *)this;
+  ths->apply(oBase::ChangeType::Quiet, leg < Runners.size() ? Runners[leg] : nullptr);
   spk.club = getName();
   spk.missingStartTime = true;
   //Defaults (if early return)
@@ -1600,7 +1601,10 @@ void oTeam::fillSpeakerObject(int leg, int courseControlId, int previousControlC
     }
   }
 
-  spk.timeSinceChange = oe->getComputerTime() - (spk.runningTimeLeg.time + Runners[leg]->tStartTime);
+  if (spk.runningTimeLeg.time > 10)
+    spk.timeSinceChange = oe->getComputerTime() - (spk.runningTimeLeg.time + Runners[leg]->tStartTime);
+  else
+    spk.timeSinceChange = -1;
 
   spk.owner=Runners[leg];
   spk.finishStatus=getLegStatus(specifiedLeg, true, totalResult);
@@ -2589,4 +2593,46 @@ void oTeam::changedObject() {
   markClassChanged(-1);
   sqlChanged = true;
   oe->sqlTeams.changed = true;
+}
+
+bool oTeam::matchAbstractRunner(const oAbstractRunner* target) const {
+  if (target == nullptr)
+    return false;
+
+  if (target == this)
+    return true;
+
+  const oRunner* r = dynamic_cast<const oRunner*>(target);
+  if (r != nullptr) 
+    return r->getTeam() == this;
+  
+  return false;
+}
+
+pRunner oTeam::getRunnerBestTimePar(int linearLegInput) const {
+  if (!Class)
+    return getRunner(linearLegInput);
+
+  if (linearLegInput < 0)
+    linearLegInput = Runners.size() - 1;
+  int minL, maxL;
+  Class->getParallelOptionalRange(linearLegInput, minL, maxL);
+
+  int ft = numeric_limits<int>::max();
+  pRunner res = nullptr;
+  for (int i = minL; i <= maxL; i++) {
+    if (size_t(i) < Runners.size())
+      continue;
+    if (res == nullptr)
+      res = Runners[i]; // Ensure any
+
+    if (i < Runners.size() && Runners[i] && Runners[i]->prelStatusOK(false, false, false)) {
+      int f = Runners[i]->getFinishTime();
+      if (f > 0 && f < ft) {
+        ft = f;
+        res = Runners[i];
+      }
+    }
+  }
+  return res;
 }

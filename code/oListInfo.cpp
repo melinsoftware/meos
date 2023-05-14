@@ -429,7 +429,8 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
                           || type == lTeamRunner || type == lTeamClub)
       extras[k].add(L"IK Friskus Varberg");
 
-    if (type == lRunnerGivenName || type == lRunnerFamilyName || type == lRunnerNationality)
+    if (type == lRunnerGivenName || type == lRunnerFamilyName ||
+       type == lRunnerNationality || type == lRunnerLegTeamLeaderName)
       extras[k].add(L"Karl-Gunnar");
 
     if (type == lRunnerCompleteName || type == lPatrolNameNames || type == lPatrolClubNameNames)
@@ -1254,6 +1255,17 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
     case lRunnerCompleteName:
       if (r) wcscpy_s(wbf, r->getCompleteIdentification().c_str());
       break;
+    case lRunnerLegTeamLeaderName: {
+      pRunner rr = r;
+      if (t && r)
+        rr = t->getRunnerBestTimePar(r->getLegNumber());
+      else if (t)
+        rr = t->getRunnerBestTimePar(legIndex);
+
+      if (rr)
+        swprintf_s(wbf, L"%s", rr->formatName(oRunner::NameFormat::InitLast).c_str());
+    }
+    break;
     case lPatrolNameNames:
       if (t) {
         pRunner r1 = t->getRunner(0);
@@ -1459,7 +1471,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
           int len = pc->getLength();
           if (len > 0 && t > 0) {
             int sperkm = (1000 * t) / len;
-            wsptr = &formatTime(sperkm);
+            wsptr = &formatTime(sperkm, SubSecond::Off);
           }
         }
       }
@@ -2570,25 +2582,26 @@ bool oEvent::formatPrintPost(const list<oPrintPost> &ppli, PrintPostInfo &ppi,
 
     TextInfo *ti = 0;
     if (!text.empty()) {
+      int tightBBFlag = ppi.par.tightBoundingBox ? 0 : skipBoundingBox;
       pdy = ppi.gdi.scaleLength(pp.dy);
       pdx = ppi.gdi.scaleLength(pp.dx);
       if ((pp.type == lRunnerName || pp.type == lRunnerCompleteName ||
           pp.type == lRunnerFamilyName || pp.type == lRunnerGivenName ||
           pp.type == lTeamRunner || (pp.type == lPatrolNameNames && !t)) && rr) {
-        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format | skipBoundingBox, text,
+        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format | tightBBFlag, text,
                                   ppi.gdi.scaleLength(limit), ppi.par.cb, pp.fontFace.c_str());
         ti->setExtra(rr->getId());
         ti->id = "R";
       }
       else if ((pp.type == lTeamName || pp.type == lPatrolNameNames) && t) {
-        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format | skipBoundingBox, text,
+        ti = &ppi.gdi.addStringUT(y + pdy, x + pdx, pp.format | tightBBFlag, text,
                                   ppi.gdi.scaleLength(limit), ppi.par.cb, pp.fontFace.c_str());
         ti->setExtra(t->getId());
         ti->id = "T";
       }
       else {
         ti = &ppi.gdi.addStringUT(y + pdy, x + pdx,
-                                  pp.format | skipBoundingBox, text, ppi.gdi.scaleLength(limit), 0, pp.fontFace.c_str());
+                                  pp.format | tightBBFlag, text, ppi.gdi.scaleLength(limit), 0, pp.fontFace.c_str());
       }
       if (ti && ppi.keepToghether)
         ti->lineBreakPrioity = -1;
@@ -3975,16 +3988,13 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
 }
 
 
-void oEvent::generateListInfo(EStdListType lt, const gdioutput &gdi, int classId, oListInfo &li)
-{
+void oEvent::generateListInfo(const gdioutput& target, EStdListType lt, int classId, oListInfo &li) {
   oListParam par;
-
   if (classId!=0)
     par.selection.insert(classId);
 
   par.listCode=lt;
-
-  generateListInfo(par, li);
+  generateListInfo(target, par, li);
 }
 
 int openRunnerTeamCB(gdioutput *gdi, int type, void *data);
@@ -4087,12 +4097,12 @@ void oListInfo::setCallback(GUICALLBACK cb) {
   }
 }
 
-void oEvent::generateListInfo(oListParam &par, oListInfo &li) {
+void oEvent::generateListInfo(const gdioutput& target, oListParam &par, oListInfo &li) {
   vector<oListParam> parV(1, par);
-  generateListInfo(parV, li);
+  generateListInfo(target, parV, li);
 }
 
-void oEvent::generateListInfo(vector<oListParam> &par, oListInfo &li) {
+void oEvent::generateListInfo(const gdioutput& target, vector<oListParam> &par, oListInfo &li) {
   li.getParam().sourceParam = -1;// Reset source
   loadGeneralResults(false, false);
   for (size_t k = 0; k < par.size(); k++) {
@@ -4103,7 +4113,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, oListInfo &li) {
   getListTypes(listMap, false);
 
   if (par.size() == 1) {
-    generateListInfoAux(par[0], li, listMap[par[0].listCode].Name);
+    generateListInfoAux(target, par[0], li, listMap[par[0].listCode].Name);
     set<int> used;
     // Add linked lists
     oListParam *cPar = &par[0];
@@ -4115,7 +4125,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, oListInfo &li) {
       oListParam &nextPar = oe->getListContainer().getParam(cPar->nextList-1);
       li.next.push_back(oListInfo());
       nextPar.cb = 0;
-      generateListInfoAux(nextPar, li.next.back(), L"");
+      generateListInfoAux(target, nextPar, li.next.back(), L"");
       cPar = &nextPar;
     }
   }
@@ -4124,7 +4134,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, oListInfo &li) {
       if (k > 0) {
         li.next.push_back(oListInfo());
       }
-      generateListInfoAux(par[k], k == 0 ? li : li.next.back(), 
+      generateListInfoAux(target, par[k], k == 0 ? li : li.next.back(), 
                           li.Name = listMap[par[0].listCode].Name);
     }
   }
@@ -4132,7 +4142,7 @@ void oEvent::generateListInfo(vector<oListParam> &par, oListInfo &li) {
 
 extern Image image;
 
-void oEvent::generateListInfoAux(oListParam &par, oListInfo &li, const wstring &name) {
+void oEvent::generateListInfoAux(const gdioutput& target, oListParam &par, oListInfo &li, const wstring &name) {
   const int lh=14;
   const int vspace=lh/2;
   int bib;
@@ -4600,7 +4610,7 @@ void oEvent::generateListInfoAux(oListParam &par, oListInfo &li, const wstring &
         mList.addToSubList(lRunnerName);
         mList.addToSubList(lRunnerCard).align(lClassStartName);
 
-        mList.interpret(this, gdibase, par, li);
+        mList.interpret(this, target, par, li);
       }
       li.listType=li.EBaseTypeTeam;
       li.listSubType=li.EBaseTypeRunner;
@@ -4849,7 +4859,7 @@ void oEvent::generateListInfoAux(oListParam &par, oListInfo &li, const wstring &
       mList.setListType(li.EBaseTypeTeam);
       mList.setSortOrder(ClassStartTime);
       mList.addFilter(EFilterExcludeDNS);
-      mList.interpret(this, gdibase, par, li);
+      mList.interpret(this, target, par, li);
       break;
     }
     case EStdPatrolResultList:
@@ -5059,10 +5069,10 @@ void oEvent::generateListInfoAux(oListParam &par, oListInfo &li, const wstring &
           continue;
         par.setLegNumberCoded(out[k].second);
         if (k == 0)
-          generateListInfo(par, li);
+          generateListInfo(target, par, li);
         else {
           li.next.push_back(oListInfo());
-          generateListInfo(par, li.next.back());
+          generateListInfo(target, par, li.next.back());
         }
       }
     }
@@ -5080,7 +5090,7 @@ void oEvent::generateListInfoAux(oListParam &par, oListInfo &li, const wstring &
     break;
 
     default:
-      if (!getListContainer().interpret(this, gdibase, par, li))
+      if (!getListContainer().interpret(this, target, par, li))
         throw meosException("Could not load list 'X'#L" + itos(par.listCode));
   }
 }

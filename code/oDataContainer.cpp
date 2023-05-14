@@ -399,10 +399,8 @@ bool oDataContainer::setDate(void *data, const char *Name, const wstring &V)
   else return false;//Not modified
 }
 
-const wstring& oDataContainer::getDate(const void* data,
-  const char* Name) const
-{
-  const oDataInfo* odi = findVariable(Name);
+const wstring& oDataContainer::getDate(const void* data, const char* name) const {
+  const oDataInfo* odi = findVariable(name);
 
   if (!odi)
     throw std::exception("oDataContainer: Variable not found.");
@@ -433,6 +431,31 @@ const wstring& oDataContainer::getDate(const void* data,
   wstring& res = StringCache::getInstance().wget();
   res = bf;
   return res;
+}
+
+int oDataContainer::getYear(const void* data, const char *name) const {
+  const oDataInfo* odi = findVariable(name);
+
+  if (!odi)
+    throw std::exception("oDataContainer: Variable not found.");
+
+  if (odi->Type != oDTInt)
+    throw std::exception("oDataContainer: Variable of wrong type.");
+
+  LPBYTE vd = LPBYTE(data) + odi->Index;
+  int C = *((int*)vd);
+
+  if (odi->SubType == oISDateOrYear) {
+    if (C > 9999)
+      return C / 10000;
+    else if (C > 1900)
+      return C;
+    else
+      return 0;
+  }
+  else {
+    return C / 10000;
+  }
 }
 
 bool oDataContainer::write(const oBase *ob, xmlparser &xml) const {

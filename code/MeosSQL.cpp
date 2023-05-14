@@ -989,8 +989,8 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
       pw.init();
 
     size_t tz = cdb.size() + rdb.size();
-    int s1 = (1000 * cdb.size())/tz;
-    int s2 = (1000 * rdb.size())/tz;
+    int s1 = tz > 0 ? (1000 * cdb.size())/tz : 0;
+    int s2 = tz > 0 ? (1000 * rdb.size())/tz : 0;
 
     // Reset databases
     con->query().exec("DELETE FROM dbClub");

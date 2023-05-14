@@ -126,7 +126,7 @@ void Download::initInternet() {
     throw meosException(error);
   }
 
-  DWORD dwTimeOut = 180 * 1000;
+  DWORD dwTimeOut = 60 * 10 * 1000;
   InternetSetOption(hInternet, INTERNET_OPTION_RECEIVE_TIMEOUT, &dwTimeOut, sizeof(DWORD));
   InternetSetOption(hInternet, INTERNET_OPTION_SEND_TIMEOUT, &dwTimeOut, sizeof(DWORD));
 }

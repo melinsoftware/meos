@@ -24,12 +24,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_CSVPARSER_H__FD04656A_1D2A_4E6C_BE23_BD66052E276E__INCLUDED_)
-#define AFX_CSVPARSER_H__FD04656A_1D2A_4E6C_BE23_BD66052E276E__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 #include <vector>
 #include <map>
@@ -37,6 +32,8 @@
 class oEvent;
 struct SICard;
 class  ImportFormats;
+
+class CSVLineWrapper;
 
 struct PunchInfo {
   int code;
@@ -71,13 +68,13 @@ protected:
   string ErrorMessage;
 
   // Returns true if a SI-manager line is identified
-  bool checkSimanLine(const oEvent &oe, const vector<wstring> &sp, SICard &cards);
+  bool checkSimanLine(const oEvent &oe, const CSVLineWrapper &sp, SICard &cards);
 
   // Check and setup header for SIConfig import
-  void checkSIConfigHeader(const vector<wstring> &sp);
+  void checkSIConfigHeader(const CSVLineWrapper &sp);
 
   // Return true if SIConfig line was detected 
-  bool checkSIConfigLine(const oEvent &oe, const vector<wstring> &sp, SICard &card);
+  bool checkSIConfigLine(const oEvent &oe, const CSVLineWrapper &sp, SICard &card);
 
   enum SIConfigFields {
     sicSIID,
@@ -97,12 +94,12 @@ protected:
   };
 
   map<SIConfigFields, int> siconfigmap;
-  const wchar_t *getSIC(SIConfigFields sic, const vector<wstring> &sp) const;
+  const wchar_t *getSIC(SIConfigFields sic, const CSVLineWrapper&sp) const;
 
-  void parseUnicode(const wstring &file, list< vector<wstring> > &data);
+  void parseUnicode(const wstring &file, list<vector<wstring>> &data);
 
   // Check and process a punch line
-  static int selectPunchIndex(const wstring &competitionDate, const vector<wstring> &sp, 
+  static int selectPunchIndex(const wstring &competitionDate, const CSVLineWrapper &sp,
                               int &cardIndex, int &timeIndex, int &dateIndex,
                               wstring &processedTime, wstring &date);
 
@@ -153,5 +150,3 @@ public:
   virtual ~csvparser();
 
 };
-
-#endif // !defined(AFX_CSVPARSER_H__FD04656A_1D2A_4E6C_BE23_BD66052E276E__INCLUDED_)

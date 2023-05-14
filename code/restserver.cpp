@@ -443,7 +443,7 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
 
       if (!res->second.second) {
         res->second.second = make_shared<oListInfo>();
-        ref.generateListInfo(res->second.first, *res->second.second);
+        ref.generateListInfo(gdiPrint, res->second.first, *res->second.second);
       }
       ref.generateList(gdiPrint, true, *res->second.second, false);
       //wstring exportFile = getTempFile();

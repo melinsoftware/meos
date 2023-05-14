@@ -531,7 +531,7 @@ public:
   void formatString(const TextInfo& ti, HDC hDC) const;
 
   static wstring getTimerText(TextInfo* tit, DWORD T);
-  static wstring getTimerText(int ZeroTime, int format);
+  static wstring getTimerText(int ZeroTime, int format, bool timeInSeconds);
 
   void fadeOut(string Id, int ms);
   void setWaitCursor(bool wait);
@@ -629,6 +629,8 @@ public:
   void popY() { CurrentY = SY; }
 
   bool updatePos(int x, int y, int width, int height);
+  bool updatePosTight(int x, int y, int width, int height, int marginx, int marginy);
+
   void adjustDimension(int width, int height);
 
   /** Return a selected item*/

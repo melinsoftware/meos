@@ -906,7 +906,6 @@ int SportIdent::MonitorTCPSI(WORD port, int localZeroTime)
               card.FinishPunch.Code = -1;
               card.CardNumber = op.SICardNo;
               for (int k = 0; k < nPunch; k++) {
-                punches[k].Time /= 10;
                 if (punches[k].Code == oPunch::PunchStart)
                   card.StartPunch = punches[k];
                 else if (punches[k].Code == oPunch::PunchFinish)
@@ -2049,8 +2048,11 @@ void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode) {
     int unit = 0;
     if (mappedCode != code)
       unit = code;
-    else
+    else {
       unit = (Station >> 16) & 0xFFFF;
+      if (unit == 0)
+        unit = code;
+    }
 
     if (mappedCode > 30) {
       sic.Punch[0].Code = Station;

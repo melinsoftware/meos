@@ -408,7 +408,7 @@ public:
 
   void updateFinalClasses(oRunner *causingResult, bool updateStartNumbers);
 
-  static void initClassId(oEvent &oe);
+  static void initClassId(oEvent &oe, const set<int>& classes);
 
   // Return true if forking in the class is locked
   bool lockedForking() const;
@@ -730,6 +730,8 @@ public:
   // Returns 0 for no parallel selection (= normal mode)
   pCourse selectParallelCourse(const oRunner &r, const SICard &sic);
   void getParallelRange(int leg, int &parLegRangeMin, int &parLegRangeMax) const;
+  void getParallelOptionalRange(int leg, int& parLegRangeMin, int& parLegRangeMax) const;
+
   bool hasAnyCourse(const set<int> &crsId) const;
 
   GeneralResult *getResultModule() const;

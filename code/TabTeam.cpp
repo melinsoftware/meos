@@ -525,8 +525,34 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
   return true;
 }
 
-int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
-{
+wstring getForking(pClass pc, int key, int maxLen) {
+  wstring crsList;
+  bool hasCrs = false;
+  for (size_t k = 0; k < pc->getNumStages(); k++) {
+    pCourse crs = pc->getCourse(k, key);
+    wstring cS;
+    if (crs != 0) {
+      cS = crs->getName();
+      hasCrs = true;
+    }
+    else
+      cS = makeDash(L"-");
+
+    if (!crsList.empty())
+      crsList += L", ";
+    crsList += cS;
+
+    if (hasCrs && crsList.length() > maxLen) {
+      return crsList;
+    }
+  }
+  if (!hasCrs)
+    crsList.clear();
+
+  return crsList;
+}
+
+int TabTeam::teamCB(gdioutput &gdi, int type, void *data) {
   if (type==GUI_BUTTON) {
     ButtonInfo bi=*(ButtonInfo *)data;
 
@@ -712,12 +738,14 @@ int TabTeam::teamCB(gdioutput &gdi, int type, void *data)
       gdi.dropLine();
       gdi.addSelection("ForkKey", 100, 400, 0, L"Gafflingsnyckel:");
       int nf = pc->getNumForks();
-      vector< pair<wstring, size_t> > keys;
+      vector<pair<wstring, size_t>> keys;
+      keys.reserve(nf);
       for (int f = 0; f < nf; f++) {
-        keys.push_back( make_pair(itow(f+1), f));
+        keys.push_back(make_pair(itow(f+1) + L": " + getForking(pc, f+1, 30), f));
       }
       int currentKey = max(t->getStartNo()-1, 0) % nf;
       gdi.addItem("ForkKey", keys);
+      gdi.autoGrow("ForkKey");
       gdi.selectItemByData("ForkKey", currentKey);
 
       gdi.dropLine(0.9);
@@ -1315,8 +1343,8 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
   
   if (numF>1 && t) {
     gdi.addString ("", 1, "Gafflingsnyckel X#" + itos(1+(max(t->getStartNo()-1, 0) % numF))).setColor(colorGreen);
-    wstring crsList;
-    bool hasCrs = false;
+    wstring crsList = getForking(pc, t->getStartNo(), 50);
+    /*bool hasCrs = false;
     for (size_t k = 0; k < pc->getNumStages(); k++) {
       pCourse crs = pc->getCourse(k, t->getStartNo());
       wstring cS; 
@@ -1338,9 +1366,10 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
     }
     if (hasCrs && !crsList.empty()) {
       gdi.addStringUT(0, crsList);
-    }
+    }*/
 
-    if (hasCrs) {
+    if (!crsList.empty()) {
+      gdi.addStringUT(0, crsList);
       gdi.dropLine(0.5);
       gdi.setRestorePoint("ChangeKey");
       gdi.addButton("ChangeKey", "Ändra lagets gaffling", TeamCB);

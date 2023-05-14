@@ -159,8 +159,8 @@ __int64 SystemTimeToInt64TenthSecond(const SYSTEMTIME &st) {
   ULARGE_INTEGER u;
   u.HighPart = ft.dwHighDateTime;
   u.LowPart = ft.dwLowDateTime;
-  __int64 qp = u.QuadPart;
-  qp /= __int64(1000 * 1000 * timeUnitsPerSecond);
+  __int64 qp = u.QuadPart; // Time resolution 100 ns
+  qp /= __int64(1000 * 1000 * 10 / timeUnitsPerSecond);
   return qp;
 }
 
@@ -168,8 +168,8 @@ SYSTEMTIME Int64TenthSecondToSystemTime(__int64 time) {
   SYSTEMTIME st;
   FILETIME ft;
 
-  ULARGE_INTEGER u;
-  u.QuadPart = time * __int64(1000 * 1000 * timeUnitsPerSecond);
+  ULARGE_INTEGER u; // Time resolution 100 ns
+  u.QuadPart = time * __int64(1000 * 1000 * 10 / timeUnitsPerSecond);
   ft.dwHighDateTime = u.HighPart;
   ft.dwLowDateTime = u.LowPart;
 
@@ -680,9 +680,6 @@ const wstring &formatTime(int rt, SubSecond mode) {
         swprintf_s(bf, L"%d:%02d:%02d.%d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt%timeConstSecond);
       else
         swprintf_s(bf, L"%d:%02d.%d", (rt / timeConstMinute), (rt / timeConstSecond) % 60, rt%timeConstSecond);
-
-  
-
     }
     res = bf;
     return res;

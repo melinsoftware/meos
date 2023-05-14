@@ -500,6 +500,7 @@ public:
   void saveList(int index, const MetaList &ml);
   bool isInternal(int index) const {return data[index].first == InternalList;}
   bool isExternal(int index) const {return data[index].first == ExternalList;}
+  bool isSplitPrintList(int index) const;
 
   void updateGeneralResult(string tag, const shared_ptr<DynamicResult> &res);
   void getGeneralResults(vector<DynamicResultRef> &resMod);

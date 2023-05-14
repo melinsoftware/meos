@@ -25,17 +25,17 @@
 
 //ABCDEFGHIJKLMNOP
 int getMeosBuild() {
-  string revision("$Rev: 1225 $");
+  string revision("$Rev: 1263 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2023-02-08 19:30:10 +0100 (ons, 08 feb 2023) $");
+  wstring date(L"$Date: 2023-05-12 16:11:34 +0200 (fre, 12 maj 2023) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Beta 1"; // No parantheses (...)
+  return L"U1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -103,7 +103,6 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Säterbygdens OK");
   supp.emplace_back(L"OK Orinto");
   supp.emplace_back(L"Trosabygdens OK");
-  supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Hans Wilhelmsson, Säffle OK");
   supp.emplace_back(L"Cent Vallées Orientation 12 (C.V.O. 12)");
   supp.emplace_back(L"OK Tyr, Karlstad");
@@ -129,13 +128,19 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   supp.emplace_back(L"Mats Kågeson");
   supp.emplace_back(L"Lerums SOK");
   supp.emplace_back(L"OSC Hamburg");
-  supp.emplace_back(L"HEYRIES, ACA Aix en Provence");
   developSupp.emplace_back(L"IFK Mora OK");
   supp.emplace_back(L"OK Rodhen");
   supp.emplace_back(L"Big Foot Orienteers");
   developSupp.emplace_back(L"OK Måsen");
   supp.emplace_back(L"Ligue PACA");
   supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
-
+  supp.emplace_back(L"Foothills Wanderers Orienteering Club");  
+  supp.emplace_back(L"Per Eklöf / PE Design / PE Timing"); 
+  supp.emplace_back(L"HEYRIES, ACA Aix en Provence");
+  supp.emplace_back(L"Järla Orientering");
+  supp.emplace_back(L"Kvarnsvedens GOIF OK");
+  supp.emplace_back(L"Ingemar Lindström, OK Österåker");
+  supp.emplace_back(L"OK Österåker");
+  
   reverse(supp.begin(), supp.end());
 }

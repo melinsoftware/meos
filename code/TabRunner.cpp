@@ -1999,7 +1999,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
       par.selection.insert(classId);
       oListInfo info;
       par.listCode = EStdStartList;
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
     }
   }
@@ -3067,6 +3067,21 @@ TabRunner::EconomyHandler *TabRunner::getEconomyHandler(oRunner &r) {
   return ecoHandler.get();
 }
 
+void TabRunner::EconomyHandler::updateColor(gdioutput& gdi) {
+  int paid = oe->interpretCurrency(gdi.getText("PaidAmount"));
+  int fee = oe->interpretCurrency(gdi.getText("Fee"));
+  int cf = oe->interpretCurrency(gdi.getText("Card"));
+  bool invoice = gdi.getSelectedItem("PayMode").first == 1000;
+
+  auto& ii = ((InputInfo&)gdi.getBaseInfo("PaidAmount"));
+  if ((!invoice && paid == cf + fee) || (invoice && paid == 0))
+    ii.setBgColor(GDICOLOR::colorDefault);
+  else 
+    ii.setBgColor(GDICOLOR::colorLightRed);
+
+  ii.refresh();
+}
+
 void TabRunner::EconomyHandler::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
   if (type == GuiEventType::GUI_BUTTON) {
     ButtonInfo &bi = dynamic_cast<ButtonInfo &>(info);
@@ -3086,10 +3101,35 @@ void TabRunner::EconomyHandler::handle(gdioutput &gdi, BaseInfo &info, GuiEventT
     InputInfo &ii = dynamic_cast<InputInfo &>(info);
     if (ii.id == "Fee") {
       gdi.check("ModFee", ii.changed() || getRunner().hasFlag(oAbstractRunner::FlagFeeSpecified));
+      updateColor(gdi);
+    }
+    else if (ii.id == "Card") {
+      updateColor(gdi);
     }
     else if (ii.id == "PaidAmount") {
       int paid = oe->interpretCurrency(ii.text);
-      gdi.setInputStatus("PayMode", paid != 0);
+      if (paid == 0) {
+        gdi.selectItemByData("PayMode", 1000);
+      } else {
+        if (gdi.getSelectedItem("PayMode").first == 1000)
+          gdi.selectItemByData("PayMode", 0);
+      }
+      updateColor(gdi);
+    }
+  }
+  else if (type == GuiEventType::GUI_LISTBOX) {
+    ListBoxInfo& lbi = dynamic_cast<ListBoxInfo&>(info);
+    if (lbi.id == "PayMode") {
+      if (lbi.data != 1000) {
+        int paid = oe->interpretCurrency(gdi.getText("PaidAmount"));
+        if (paid == 0) {
+          int fee = oe->interpretCurrency(gdi.getText("Fee"));
+          int cf = oe->interpretCurrency(gdi.getText("Card"));
+          paid = cf + fee;
+          gdi.setText("PaidAmount", oe->formatCurrency(paid), true);
+        }
+      }
+      updateColor(gdi);
     }
   }
 }
@@ -3108,7 +3148,7 @@ void TabRunner::EconomyHandler::save(gdioutput &gdi) {
   }
   r.getDI().setInt("Fee", fee);
   int cf = oe->interpretCurrency(gdi.getText("Card"));
-  if (cf > 0 || cf == 0 && r.getDCI().getInt("CardFee") != -1)
+  if (cf > 0 || (cf == 0 && r.getDCI().getInt("CardFee") != -1))
     r.getDI().setInt("CardFee", cf);
   int paid = oe->interpretCurrency(gdi.getText("PaidAmount"));
   r.getDI().setInt("Paid", paid);
@@ -3138,25 +3178,27 @@ void TabRunner::loadEconomy(gdioutput &gdi, oRunner &r) {
   gdi.dropLine();
 
   gdi.fillRight();
-  gdi.addInput("Fee", oe->formatCurrency(r.getDCI().getInt("Fee")), 5, 0, L"Avgift:").setHandler(h);
+  gdi.addInput("Fee", oe->formatCurrency(r.getDCI().getInt("Fee")), 6, 0, L"Avgift:").setHandler(h);
   int cf = r.getDCI().getInt("CardFee");
   if (cf == -1) // Borrowed, zero fee
     cf = 0;
-  gdi.addInput("Card", oe->formatCurrency(cf), 5, 0, L"Brickhyra:");
+  gdi.addInput("Card", oe->formatCurrency(cf), 6, 0, L"Brickhyra:").setHandler(h);
   int paid = r.getDCI().getInt("Paid");
-  gdi.addInput("PaidAmount", oe->formatCurrency(paid), 5, 0, L"Betalat:").setHandler(h);
+  gdi.addInput("PaidAmount", oe->formatCurrency(paid), 6, 0, L"Betalat:").setHandler(h);
   gdi.fillDown();
   gdi.dropLine();
   vector< pair<wstring, size_t> > pm;
   oe->getPayModes(pm);
   int mypm = r.getDCI().getInt("PayMode");
-  //pm.insert(pm.begin(), make_pair(lang.tl(L"Faktureras"), 1000));
-  gdi.addSelection("PayMode", 110, 100, SportIdentCB);
-  gdi.addItem("PayMode", pm);
-  gdi.selectItemByData("PayMode", mypm);
-  gdi.autoGrow("PayMode");
-  gdi.setInputStatus("PayMode", paid != 0);
+  if (paid == 0)
+    mypm = 1000;
 
+  pm.insert(pm.begin(), make_pair(lang.tl(L"Faktureras"), 1000));
+  gdi.addSelection("PayMode", 110, 100).setHandler(h);
+  gdi.addItem("PayMode", pm);
+  gdi.autoGrow("PayMode");
+  gdi.selectItemByData("PayMode", mypm);
+  
   gdi.dropLine();
   gdi.popX();
 

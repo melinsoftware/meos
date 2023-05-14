@@ -856,7 +856,7 @@ void PrintResultMachine::save(oEvent& oe, gdioutput& gdi, bool doProcess) {
       else
         par.setLegNumberCoded(0);
 
-      oe.generateListInfo(par, listInfo);
+      oe.generateListInfo(gdi, par, listInfo);
     }
   }
   po.onlyChanged = gdi.isChecked("OnlyChanged");

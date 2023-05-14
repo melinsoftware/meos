@@ -634,6 +634,7 @@ int TabSI::siCB(gdioutput& gdi, int type, void* data)
             gdi.addButton("SavePunches", "Spara", SportIdentCB).setExtra(origin);
             gdi.addButton("Cancel", "Avbryt", SportIdentCB).setExtra(origin);
             gdi.fillDown();
+            gdi.scrollToBottom();
             gdi.popX();
           }
           else {
@@ -1853,25 +1854,33 @@ void TabSI::showReadPunches(gdioutput& gdi, vector<PunchInfo>& punches, set<stri
   int yp = gdi.getCY();
   int xp = gdi.getCX();
   dates.clear();
+  vector<int> off = { 40, 100, 280, 360 };
+  int margin = gdi.scaleLength(5);
+  for (int& o : off)
+    o = gdi.scaleLength(o);
+
   for (size_t k = 0; k < punches.size(); k++) {
+    if (k % 5 == 0)
+      yp += gdi.scaleLength(6);
+
     sprintf_s(bf, "%d.", int(k + 1));
     gdi.addStringUT(yp, xp, 0, bf);
 
     pRunner r = oe->getRunnerByCardNo(punches[k].card, punches[k].time, oEvent::CardLookupProperty::Any);
     sprintf_s(bf, "%d", punches[k].card);
-    gdi.addStringUT(yp, xp + 40, 0, bf, 240);
+    gdi.addStringUT(yp, xp + off[0], 0, bf, off[1]-off[0] + margin);
 
     if (r != 0)
-      gdi.addStringUT(yp, xp + 100, 0, r->getName(), 170);
+      gdi.addStringUT(yp, xp + off[1], 0, r->getName(), off[2] - off[1] + margin);
 
     if (punches[k].date[0] != 0) {
-      gdi.addStringUT(yp, xp + 280, 0, punches[k].date, 75);
+      gdi.addStringUT(yp, xp + off[2], 0, punches[k].date, off[3] - off[2] + margin);
       dates.insert(punches[k].date);
     }
     if (punches[k].time > 0)
-      gdi.addStringUT(yp, xp + 360, 0, oe->getAbsTime(punches[k].time));
+      gdi.addStringUT(yp, xp + off[3], 0, oe->getAbsTime(punches[k].time));
     else
-      gdi.addStringUT(yp, xp + 360, 0, makeDash(L"-"));
+      gdi.addStringUT(yp, xp + off[3], 0, makeDash(L"-"));
 
     yp += gdi.getLineHeight();
   }
@@ -1882,18 +1891,25 @@ void TabSI::showReadCards(gdioutput& gdi, vector<SICard>& cards)
   char bf[64];
   int yp = gdi.getCY();
   int xp = gdi.getCX();
+  vector<int> off = { 40, 100, 300 };
+  int margin = gdi.scaleLength(5);
+  for (int& o : off)
+    o = gdi.scaleLength(o);
+
   for (size_t k = 0; k < cards.size(); k++) {
+    if (k % 5 == 0)
+      yp += gdi.scaleLength(6);
     sprintf_s(bf, "%d.", int(k + 1));
     gdi.addStringUT(yp, xp, 0, bf);
 
     pRunner r = oe->getRunnerByCardNo(cards[k].CardNumber, 0, oEvent::CardLookupProperty::Any);
     sprintf_s(bf, "%d", cards[k].CardNumber);
-    gdi.addStringUT(yp, xp + 40, 0, bf, 240);
+    gdi.addStringUT(yp, xp + off[0], 0, bf, off[1] - off[0] + margin);
 
     if (r != 0)
-      gdi.addStringUT(yp, xp + 100, 0, r->getName(), 240);
+      gdi.addStringUT(yp, xp + off[1], 0, r->getName(), off[2] - off[1] + margin);
 
-    gdi.addStringUT(yp, xp + 300, 0, oe->getAbsTime(cards[k].FinishPunch.Time));
+    gdi.addStringUT(yp, xp + off[2], 0, oe->getAbsTime(cards[k].FinishPunch.Time));
     yp += gdi.getLineHeight();
   }
 }
@@ -1914,10 +1930,16 @@ bool TabSI::loadPage(gdioutput& gdi) {
   oe->checkDB();
   gdi.setData("SIPageLoaded", 1);
 
-  if (!gSI) {
+  if (!gSI) 
     getSI(gdi);
-    if (oe->isClient())
+
+  if (firstLoadedAfterNew) {
+    if (oe->getNumRunners() == 0)
+      interactiveReadout = true;
+    else if (oe->isClient())
       interactiveReadout = false;
+
+    firstLoadedAfterNew = false;
   }
 #ifdef _DEBUG
   gdi.fillRight();
@@ -3904,6 +3926,11 @@ void TabSI::EditCardData::handle(gdioutput& gdi, BaseInfo& info, GuiEventType ty
 }
 
 void TabSI::printCard(gdioutput& gdi, int lineBreak, int cardId, SICard* crdRef, bool forPrinter) const {
+  const bool wideFormat = oe->getPropertyInt("WideSplitFormat", 0) == 1;
+  if (!wideFormat && forPrinter)
+    gdi.setCX(10);
+
+  
   if (crdRef == nullptr)
     crdRef = &getCard(cardId);
 
@@ -4242,6 +4269,7 @@ void TabSI::StoredStartInfo::clear() {
 }
 
 void TabSI::clearCompetitionData() {
+  firstLoadedAfterNew = true;
   printSplits = false;
   interactiveReadout = oe->getPropertyInt("Interactive", 1) != 0;
   useDatabase = oe->getPropertyInt("Database", 1) != 0;

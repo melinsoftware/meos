@@ -461,7 +461,7 @@ void TabSpeaker::drawTimeLine(gdioutput &gdi) {
   gdi.addItem("WatchNumber", lang.tl("X senaste#10"), 10);
   gdi.addItem("WatchNumber", lang.tl("X senaste#20"), 20);
   gdi.addItem("WatchNumber", lang.tl("X senaste#50"), 50);
-  gdi.addItem("WatchNumber", L"Alla", 0);
+  gdi.addItem("WatchNumber", lang.tl("Alla"), 0);
   gdi.selectItemByData("WatchNumber", watchNumber);
   gdi.dropLine(2);
   gdi.popX();

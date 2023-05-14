@@ -141,6 +141,8 @@ protected:
 
 public:
 
+  bool matchAbstractRunner(const oAbstractRunner* target) const override;
+
   /** Deduce from computed runner times.*/
   RunnerStatus deduceComputedStatus() const;
   int deduceComputedRunningTime() const;
@@ -229,6 +231,10 @@ public:
     for (auto &r : Runners) if (r) cnt++;
     return cnt;
   }
+
+  /** For legs with many parallel / extra runner, get the runner with the 
+      first finish time */
+  pRunner getRunnerBestTimePar(int linearLegInput) const;
 
   void decodeRunners(const string &rns, vector<int> &rid);
   void importRunners(const vector<int> &rns);

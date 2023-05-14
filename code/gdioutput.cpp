@@ -748,7 +748,7 @@ TextInfo &gdioutput::addTimer(int yp, int xp, int format, DWORD zeroTime, int xl
                               GUICALLBACK cb, int timeOut, const wchar_t *fontFace) {
   hasAnyTimer = true;
   DWORD zt=GetTickCount()-1000*zeroTime;
-  wstring text = getTimerText(zeroTime, format);
+  wstring text = getTimerText(zeroTime, format, true);
   
   addStringUT(yp, xp, format, text, xlimit, cb, fontFace);
   TextInfo &ti=TL.back();
@@ -996,12 +996,14 @@ TextInfo& gdioutput::addStringUT(int yp, int xp, int format, const wstring& text
         calcStringSize(TI, hDC);
 
       if (xlimit == 0 || (format & (textRight | textCenter)) == 0) {
-        updatePos(TI.textRect.right + OffsetX, TI.yp, scaleLength(10),
-          TI.textRect.bottom - TI.textRect.top + scaleLength(2));
+        updatePosTight(TI.textRect.left, TI.yp,
+          TI.realWidth, TI.textRect.bottom - TI.textRect.top,
+          scaleLength(10), scaleLength(2));
       }
       else {
-        updatePos(TI.xp, TI.yp, TI.realWidth + scaleLength(10),
-          TI.textRect.bottom - TI.textRect.top + scaleLength(2));
+        updatePosTight(TI.xp, TI.yp,
+          TI.realWidth, TI.textRect.bottom - TI.textRect.top,
+          scaleLength(10), scaleLength(2));
       }
       ReleaseDC(hWndTarget, hDC);
       maxTextBlockHeight = max<int>(maxTextBlockHeight, 1 + TI.textRect.bottom - TI.textRect.top);
@@ -1191,12 +1193,6 @@ ButtonInfo &ButtonInfo::setDefault()
 }
 
 void ButtonInfo::moveButton(gdioutput &gdi, int nxp, int nyp) {
-  /*WINDOWPLACEMENT wpl;
-  GetWindowPlacement(hWnd, &wpl);
-  wpl.
-
-    SetWindowPos*/
-  //SetWindowPos(hWnd, NULL, xp, yp, 0, 0,
   xp = nxp;
   yp = nyp;
   int w, h;
@@ -2140,7 +2136,7 @@ bool gdioutput::autoGrow(const char *id) {
         
         ReleaseDC(hWndTarget, hDC);
 
-        size += scaleLength(20);
+        size += scaleLength(30);
         if (size > it->width) {
           it->width = size;
           SetWindowPos(it->hWnd, 0, 0, 0, (int)it->width, (int)it->height, SWP_NOZORDER|SWP_NOCOPYBITS|SWP_NOMOVE);
@@ -2173,7 +2169,7 @@ bool gdioutput::autoGrow(const char *id) {
         }
         
         ReleaseDC(hWndTarget, hDC);
-        size += scaleLength(20);
+        size += scaleLength(30);
         if (size > it->width) {
           it->width = size;
           SetWindowPos(it->hWnd, 0, 0, 0, (int)it->width, (int)it->height, SWP_NOZORDER|SWP_NOCOPYBITS|SWP_NOMOVE);
@@ -3618,8 +3614,7 @@ bool gdioutput::hasData(const char *id) const {
   return getData(id, dummy);
 }
 
-
-bool gdioutput::updatePos(int x, int y, int width, int height) {
+bool gdioutput::updatePosTight(int x, int y, int width, int height, int marginx, int marginy) {
   int ox = MaxX;
   int oy = MaxY;
 
@@ -3646,12 +3641,17 @@ bool gdioutput::updatePos(int x, int y, int width, int height) {
   }
 
   if (flowDirection == FlowDirection::Down) {
-    CurrentY = max(y + height, CurrentY);
+    CurrentY = max(y + height + marginy, CurrentY);
   }
   else if (flowDirection == FlowDirection::Right) {
-    CurrentX = max(x + width, CurrentX);
+    CurrentX = max(x + width + marginx, CurrentX);
   }
   return changed;
+}
+
+bool gdioutput::updatePos(int x, int y, int width, int height) {
+  return updatePosTight(x, y, width, height, 0, 0);
+
 }
 
 void gdioutput::adjustDimension(int width, int height)
@@ -4924,13 +4924,15 @@ bool gdioutput::RemoveFirstInfoBox(const string &id)
 }
 
 
-wstring gdioutput::getTimerText(int zeroTime, int format)
-{
+wstring gdioutput::getTimerText(int zeroTime, int format, bool timeInSeconds) {
   TextInfo temp;
   temp.zeroTime=0;
   //memset(&temp, 0, sizeof(TextInfo));
   temp.format=format;
-  return getTimerText(&temp, 1000*zeroTime);
+  if (timeInSeconds)
+    return getTimerText(&temp, 1000*zeroTime);
+  else
+    return getTimerText(&temp, (1000/timeUnitsPerSecond) * zeroTime);
 }
 
 wstring gdioutput::getTimerText(TextInfo *tit, DWORD T)

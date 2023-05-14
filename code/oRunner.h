@@ -118,6 +118,9 @@ protected:
 
   vector<vector<wstring>> dynamicData;
 public:
+  /** Return true if this and target are the same, or target is in this team, or this is in the target team.*/
+  virtual bool matchAbstractRunner(const oAbstractRunner *target) const = 0;
+
   /** Encode status as a two-letter code, non-translated*/
   static const wstring &encodeStatus(RunnerStatus st, bool allowError = false);
 
@@ -712,6 +715,8 @@ protected:
   int getBuiltinAdjustment() const override;
 
 public:
+  bool matchAbstractRunner(const oAbstractRunner* target) const override;
+
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
   oRunner *getMainRunner() { return tParentRunner != nullptr ? tParentRunner : this; }
@@ -753,6 +758,30 @@ public:
   virtual const wstring &getName() const;
   const wstring &getNameLastFirst() const;
   void getRealName(const wstring &input, wstring &output) const;
+
+  enum class NameFormat {
+    Default,
+    FirstLast,
+    LastFirst,
+    Last,
+    First,
+    Init,
+    InitLast
+  };
+
+  /** Format the name according to the style. */
+  wstring formatName(NameFormat style) const;
+
+  /** Get available name styles. */
+  static void getNameFormats(vector<pair<wstring, size_t>>& out);
+
+  static constexpr int encodeNameFormst(NameFormat f) {
+    return int(f);
+  }
+  
+  static constexpr NameFormat decodeNameFormst(int f) {
+    return NameFormat(f);
+  }
 
   /** Returns true if this runner can use the specified card, 
    or false if it conflicts with the card of the other runner. */

@@ -590,7 +590,7 @@ int TabCourse::courseCB(gdioutput &gdi, int type, void *data)
       for (size_t k=0; k<courseDrawClasses.size(); k++)
         par.selection.insert(courseDrawClasses[k].classID);
 
-      oe->generateListInfo(par, info);
+      oe->generateListInfo(gdi, par, info);
       oe->generateList(gdi, false, info, true);
       gdi.refresh();
     }
@@ -925,10 +925,16 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
       if (strlen(bf) < 2)
         continue;
 
-      if (0 == line && uint8_t(bf[0]) == 0xEF && uint8_t(bf[1]) == 0xBB && uint8_t(bf[2]) == 0xBF)
-        split(bf+3, " ;,", sw);
-      else
-        split(bf, " ;,", sw);
+      if (0 == line && uint8_t(bf[0]) == 0xEF && uint8_t(bf[1]) == 0xBB && uint8_t(bf[2]) == 0xBF) {
+        split(bf + 3, "\t;,", sw);
+        if (sw.size() == 1)
+          split(bf + 3, " ", sw);
+      }
+      else {
+        split(bf, "\t;,", sw);
+        if (sw.size() == 1)
+          split(bf, " ", sw);
+      }
       line++;
 
       if (sw.size() <= 1)
@@ -965,7 +971,10 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
   else {
     set<int> noFilter;
     string noType;
-    oe->importXML_EntryData(gdi, filename.c_str(), addToClasses, false, noFilter, noType);
+    int classIdOffset = 0;
+    int courseIdOffset = 0;
+    oe->importXML_EntryData(gdi, filename.c_str(), addToClasses, false, 
+                             noFilter, classIdOffset, courseIdOffset, noType);
   }
   if (addToClasses) {
     // There is specific course-class matching inside the import of each format,

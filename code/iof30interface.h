@@ -74,6 +74,9 @@ class IOF30Interface {
   // Include data on stage number
   bool includeStageRaceInfo;
 
+  int classIdOffset = 0;
+  int courseIdOffset = 0;
+
   const IOF30Interface &operator=(const IOF30Interface &) = delete;
 
   set<wstring> matchedClasses;
@@ -302,7 +305,14 @@ class IOF30Interface {
 
 public:
   IOF30Interface(oEvent *oe, bool forceSplitFee, bool useEventorQuirks);
-  virtual ~IOF30Interface() {}
+  virtual ~IOF30Interface() = default;
+
+  void setIdOffset(int classIdOffsetIn, int courseIdOffsetIn) {
+    classIdOffset = classIdOffsetIn;
+    assert(courseIdOffsetIn == 0);
+    courseIdOffset = courseIdOffsetIn;
+  }
+
 
   static void getLocalDateTime(const wstring &datetime, wstring &dateOut, wstring &timeOut);
 

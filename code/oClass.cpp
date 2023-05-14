@@ -1513,6 +1513,24 @@ void oClass::getParallelRange(int leg, int &parLegRangeMin, int &parLegRangeMax)
   }
 }
 
+void oClass::getParallelOptionalRange(int leg, int& parLegRangeMin, int& parLegRangeMax) const {
+  parLegRangeMin = leg;
+  while (parLegRangeMin > 0 && size_t(parLegRangeMin) < legInfo.size()) {
+    if (legInfo[parLegRangeMin].isParallel() || legInfo[parLegRangeMin].isOptional())
+      parLegRangeMin--;
+    else
+      break;
+  }
+  parLegRangeMax = leg;
+  while (size_t(parLegRangeMax + 1) < legInfo.size()) {
+    if (legInfo[parLegRangeMax + 1].isParallel() || legInfo[parLegRangeMax + 1].isOptional())
+      parLegRangeMax++;
+    else
+      break;
+  }
+}
+
+
 void oClass::getParallelCourseGroup(int leg, int startNo, vector< pair<int, pCourse> > &group) const {
   group.clear();
   // Assume hasUnorderedLegs
@@ -4259,15 +4277,49 @@ pair<int, int> oClass::autoForking(const vector<vector<int>> &inputCourses, int 
       fperm[i] = i;*/
     break;
   }
-  
+
+  // Determine first bib in class (if defined)
+  wstring bibInfo = getDCI().getString("Bib");
+  wchar_t pattern[32];
+  int firstNumber = extractBibPattern(bibInfo, pattern);
+  if (firstNumber == 0) {
+    // Not explicitly defined. Look at any teams
+    vector<pTeam> tl;
+    oe->getTeams(getId(), tl);
+    int minBib = 10000000;
+    int minSN = 10000000;
+    for (pTeam t : tl) {
+      t->getBib();
+      int n = extractBibPattern(bibInfo, pattern);
+      if (n > 0)
+        minBib = std::min(minBib, n);
+
+      int no = t->getStartNo();
+      if (no > 0)
+        minSN = std::min(minSN, no);
+    }
+    if (minBib > 0)
+      firstNumber = minBib;
+    else if (minSN > 0)
+      firstNumber = minSN;
+  }
+
+  unsigned int off = 0;
+  if (firstNumber > 0) {
+    // index = (index-1) % courses.size();
+    unsigned firstCourse = unsigned(firstNumber - 1) % fperm.size();
+    off = fperm.size() - firstCourse;
+  }
+
   set<int> coursesUsed;
   int lastSet = -1;
   for (int j = 0; j < legs; j++) {
     if (nf[j] > 0) {
       lastSet = j;
       for (size_t k = 0; k < fperm.size(); k++) {
-        coursesUsed.insert(courseMatrix[j][fperm[k]]->getId());
-        addStageCourse(j, courseMatrix[j][fperm[k]], -1);
+        int kk = unsigned(k + off) % fperm.size();
+        coursesUsed.insert(courseMatrix[j][fperm[kk]]->getId());
+        addStageCourse(j, courseMatrix[j][fperm[kk]], -1);
       }
     }
     else if (lastSet >= 0 && getLegType(j) == LTExtra) {
@@ -4441,8 +4493,14 @@ pair<int, wstring> oClass::getNextBib() {
     }
   }
 
-  if (bibs.empty())
+  if (bibs.empty()) {
+    wstring bibInfo = getDCI().getString("Bib");
+    int firstNumber = extractBibPattern(bibInfo, pattern);
+    if (firstNumber > 0)
+      return make_pair(firstNumber, bibInfo);
+
     return make_pair(0, _EmptyWString);
+  }
   int candidate = -1;
   for (set<int>::iterator it = bibs.begin(); it != bibs.end(); ++it) {
     if (candidate > 0 && *it != candidate) {
@@ -4702,11 +4760,14 @@ set<oClass::DrawSpecified> oClass::getDrawSpecification() const {
   return res;
 }
 
-void oClass::initClassId(oEvent &oe) {
+void oClass::initClassId(oEvent &oe, const set<int>& classes) {
   vector<pClass> cls;
   oe.getClasses(cls, true);
   map<long long, wstring> id2Cls;
   for (size_t k = 0; k < cls.size(); k++) {
+    if (!classes.empty() && !classes.count(cls[k]->getId()))
+      continue;
+
     long long extId = cls[k]->getExtIdentifier();
     if (extId > 0) {
       if (id2Cls.count(extId)) {
@@ -4718,8 +4779,11 @@ void oClass::initClassId(oEvent &oe) {
   }
   // Generate external identifiers when not set
   for (size_t k = 0; k < cls.size(); k++) {
+    if (!classes.empty() && !classes.count(cls[k]->getId()))
+      continue;
+
     long long extId = cls[k]->getExtIdentifier();
-    if (extId <= 0) {
+    if (extId == 0) {
       long long id = cls[k]->getId();
       while (id2Cls.count(id)) {
         id += 100000;

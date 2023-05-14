@@ -750,11 +750,11 @@ void oClub::generateInvoice(gdioutput &gdi, int &toPay, int &hasPaid,
   for (map<int,int>::iterator it = data.paidPerMode.begin(); it != data.paidPerMode.end(); ++it) {
     paidPerMode[it->first] += it->second;
   }
-  gdi.addString("", yp, xs, boldText, L"Att betala: X#" + oe->formatCurrency(toPay));
+  gdi.addString("", yp, xs, fontMediumPlus, L"Att betala: X#" + oe->formatCurrency(toPay));
 
   gdi.updatePos(gdi.scaleLength(710),0,0,0);
 
-  yp+=lh*2;
+  yp+=int(lh*2.5);
 
   gdi.addStringUT(yp, xs, normalText, lang.tl(L"Vänligen betala senast ") 
                  + pdate + lang.tl(L" till ") + account + L".");

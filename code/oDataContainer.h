@@ -180,7 +180,8 @@ public:
   const wstring &formatString(const oBase *ob, const char *name) const;
 
   bool setDate(void *data, const char *Name, const wstring &V);
-  const wstring &getDate(const void *data, const char *Name) const;
+  const wstring &getDate(const void *data, const char *name) const;
+  int getYear(const void* data, const char* name) const;
 
   bool write(const oBase *ob, xmlparser &xml) const;
   void set(oBase *ob, const xmlobject &xo);
@@ -298,8 +299,12 @@ public:
     else return false;
   }
 
-  inline const wstring &getDate(const char *Name) const
-    {return oDC->getDate(Data, Name);}
+  inline const wstring &getDate(const char *name) const
+    {return oDC->getDate(Data, name);}
+
+  inline int getYear(const char* name) const {
+    return oDC->getYear(Data, name);
+  }
 
   inline vector<InputInfo *> buildDataFields(gdioutput &gdi, int maxFieldSize) const
     {return oDC->buildDataFields(gdi, maxFieldSize);}
@@ -398,9 +403,12 @@ public:
     return oDC->formatString(oB, name);
   }
 
-  inline const wstring &getDate(const char *Name) const
-    {return oDC->getDate(Data, Name);}
-
+  inline const wstring &getDate(const char *name) const
+    {return oDC->getDate(Data, name);}
+  
+  inline int getYear(const char* name) const {
+    return oDC->getYear(Data, name);
+  }
   inline __int64 getInt64(const string &name) const
     {return oDC->getInt64(Data, name.c_str());}
 

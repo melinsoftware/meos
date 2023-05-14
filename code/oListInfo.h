@@ -65,6 +65,7 @@ enum EPostType {
   lRunnerGivenName,
   lRunnerFamilyName,
   lRunnerCompleteName,
+  lRunnerLegTeamLeaderName, // The runner on the (parallell) leg (in the team) with best result
   lPatrolNameNames, // Single runner's name or both names in a patrol
   lPatrolClubNameNames, // Single runner's club or combination of patrol clubs
   lRunnerFinish,
@@ -484,6 +485,8 @@ struct oListParam {
 
   int sourceParam = -1;
 
+  bool tightBoundingBox = false;
+
 private:
    int legNumber;
 };
@@ -506,6 +509,14 @@ public:
 
   bool isTeamList() const {return listType == EBaseTypeTeam;}
   bool isSplitPrintList() const { return splitPrintInfo != nullptr; }
+
+  /** Return true, if includeHeader is set, also considers the header. */
+  bool empty(bool includeHeader = true) const {
+    if (includeHeader)
+      return head.empty() && subHead.empty() && listPost.empty() && subListPost.empty();
+    else
+      return subHead.empty() && listPost.empty() && subListPost.empty();
+  }
 
   enum ResultType {
     Global,
@@ -551,9 +562,10 @@ protected:
   list<oPrintPost> head;
   list<oPrintPost> subHead;
   list<oPrintPost> listPost;
+  list<oPrintPost> subListPost;
+  
   vector<char> listPostFilter;
   vector<char> listPostSubFilter;
-  list<oPrintPost> subListPost;
   bool fixedType;
   
   PunchMode needPunches;

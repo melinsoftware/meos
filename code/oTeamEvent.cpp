@@ -692,17 +692,12 @@ void oEvent::adjustTeamMultiRunners(pClass cls)
       tr.pop_back();
     }
   }
-  disableRecalculate = true;
-  try {
-    for (auto &t : Teams) {
+
+  noReevaluateOperation([&]() {
+    for (auto& t : Teams) {
       t.adjustMultiRunners();
     }
-  }
-  catch(...) {
-    disableRecalculate = false;
-    throw;
-  }
-  disableRecalculate = false;
+  });
 }
 
 void oTeam::adjustMultiRunners() {

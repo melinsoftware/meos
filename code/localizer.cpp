@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2022 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -457,20 +457,42 @@ void LocalizerImpl::loadTable(const vector<string> &raw, const wstring &language
   string nline = "\n";
   for (size_t k=0;k<raw.size();k++) {
     const string &s = raw[order[k]];
-    int pos = s.find_first_of('=');
+    size_t pos = s.find_first_of('=');
 
     if (pos==string::npos)
       throw std::exception("Bad file format.");
-    int spos = pos;
-    int epos = pos+1;
-    while (spos>0 && s[spos-1]==' ')
-      spos--;
+    size_t spos = pos;
+    size_t epos = pos+1;
+    const unsigned char *udata = (const unsigned char*)s.data();
 
-    while (unsigned(epos)<s.size() && s[epos]==' ')
-      epos++;
+    // Trim spaces
+    while (spos > 0) {
+      if (isspace(udata[spos - 1]))
+        spos--;
+      else if (udata[spos - 1] == 0xC2 && spos > 1 && udata[spos - 2] == 0xA0) //NBSP
+        spos -= 2;
+      else
+        break;
+    }
+
+    while (epos < s.size()) {
+      if (isspace(udata[epos]))
+        epos++;
+      else if (udata[epos] == 0xC2 && epos + 1 < s.size() && udata[epos + 1] == 0xA0) //NBSP
+        epos += 2;
+      else
+        break;
+    }
 
     string key = s.substr(0, spos);
     string value = s.substr(epos);
+
+    if (value.empty())
+      throw std::exception("Bad file format.");
+
+    if (value.size() > 1 && value[0] == 'Â') {
+      value = value.substr(2);
+    }
 
     int nl = value.find("\\n");
     while (nl!=string::npos) {

@@ -46,9 +46,6 @@ public:
   void setMode(SIMode m) { mode = m; }
 private:
 
-
-
-
   /** Try to automatcally assign a class to runner (if none is given)
       Return true if runner has a class on exist */
   bool autoAssignClass(pRunner r, const SICard &sic);
@@ -70,6 +67,7 @@ private:
   bool manualInput;
   bool multipleStarts = false;
 
+  bool firstLoadedAfterNew = true;
   PrinterObject splitPrinter;
   list< pair<unsigned, int> > printPunchRunnerIdQueue;
   void addToPrintQueue(pRunner r);

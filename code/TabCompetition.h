@@ -123,7 +123,7 @@ class TabCompetition :
   void createNewCmp(gdioutput &gdi, bool useExisting);
 
   void entryForm(gdioutput &gdi, bool isGuide);
-  FlowOperation saveEntries(gdioutput &gdi, bool removeRemoved, bool isGuide);
+  FlowOperation saveEntries(gdioutput &gdi, bool removeRemoved, int classOffset, bool isGuide);
   
   FlowOperation checkStageFilter(gdioutput &gdi, const wstring &fname, set<int> &filter, string &preferredIdProvider);
   
