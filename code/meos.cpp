@@ -463,6 +463,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   gdi_main->init(hWndWorkspace, hWndMain, hMainTab);
   gdi_main->getTabs().get(TCmpTab)->loadPage(*gdi_main);
 
+  image.loadImage(IDI_MEOSEDIT, Image::ImageMethod::Default);
+
   autoTask = new AutoTask(hWndMain, *gEvent, *gdi_main);
 
   autoTask->setTimers();

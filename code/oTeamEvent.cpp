@@ -240,7 +240,7 @@ pTeam oEvent::findTeam(const wstring &s, int lastId, unordered_set<int> &filter)
   int len = trm.length();
   wchar_t s_lc[1024];
   wcscpy_s(s_lc, trm.c_str());
-  CharLowerBuff(s_lc, len);
+  prepareMatchString(s_lc, len);
 
   int sn = _wtoi(s.c_str());
   oTeamList::const_iterator it;

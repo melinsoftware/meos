@@ -404,7 +404,7 @@ int oClass::getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNo
     }
   }
   string key = getCountTypeKey(checkFirstLeg ? 0 : -1, 
-                               noCountNotCompeting ? CountKeyType::All : CountKeyType::IncludeNotCompeting,
+                               noCountNotCompeting ? CountKeyType::AllCompeting : CountKeyType::IncludeNotCompeting,
                                !noCountVacant);
 
   auto res = tTypeKeyToRunnerCount.second.find(key);
@@ -419,7 +419,7 @@ int oClass::getNumRunners(bool checkFirstLeg, bool noCountVacant, bool noCountNo
       continue;
     if (noCountVacant && r.isVacant())
       continue;
-    if (noCountNotCompeting && r.getStatus() == StatusNotCompetiting)
+    if (noCountNotCompeting && (r.getStatus() == StatusNotCompetiting || r.getStatus() == StatusCANCEL))
       continue;
 
     int id = r.getClassId(true);
@@ -3371,6 +3371,16 @@ int oClass::getLegPlace(int ifrom, int ito, int time) const
   return 0;
 }
 
+int oClass::getAccLegControlLeader(int teamLeg, int courseControlId) const {
+  assert(false);
+  return 0;
+}
+
+int oClass::getAccLegControlPlace(int teamLeg, int courseControlId, int time) const {
+  assert(false);
+  return 0;
+}
+
 void oClass::insertAccLegPlace(int courseId, int controlNo, int time, int place)
 { /*
   char bf[256];
@@ -3441,7 +3451,6 @@ int oClass::getAccLegPlace(int courseId, int controlNo, int time) const
   return 0;
 }
 
-
 void oClass::calculateSplits() {
   clearSplitAnalysis();
   set<pCourse> cSet;
@@ -3460,33 +3469,50 @@ void oClass::calculateSplits() {
   LegResult legBestTime;
   vector<pRunner> rCls;
   oe->getRunners(Id, -1, rCls, false);
-  /*
-  if (isQualificationFinalBaseClass() || isQualificationFinalBaseClass()) {
-    
-    for (auto &r : oe->Runners) {
-      if (!r.isRemoved() && r.getClassRef(true) == this)
-        rCls.push_back(&r);
+
+  for (pRunner it : rCls) {
+    pCourse tpc = it->getCourse(false);
+    if (tpc == nullptr)
+      continue;
+    cSet.insert(tpc);
+  }
+
+  map<int, vector<pRunner>> rClsCrs;
+  if (cSet.size() > 1) {
+    for (pRunner it : rCls) {
+      pCourse tpc = it->getCourse(false);
+      if (tpc)
+        rClsCrs[tpc->getId()].push_back(it);
     }
   }
-  else {
-    for (auto &r : oe->Runners) {
-      if (!r.isRemoved() && r.Class == this)
-        rCls.push_back(&r);
-    }
-  }*/
 
-  for (set<pCourse>::iterator cit = cSet.begin(); cit!= cSet.end(); ++cit)  {
-    pCourse pc = *cit;
+  bool multiLeg = getNumStages() > 1; // Perhaps ignore parallell legs...
+
+  if (multiLeg) {
+    teamLegCourseControlToLeaderPlace.resize(getNumStages());
+    for (auto& lp : teamLegCourseControlToLeaderPlace)
+      lp.clear();
+  }
+  else {
+    teamLegCourseControlToLeaderPlace.clear();
+  }
+
+  for (pCourse pc : cSet) {
     // Store all split times in a matrix
     const unsigned nc = pc->getNumControls();
     if (nc == 0)
       return;
 
-    vector< vector<int> > splits(nc+1);
-    vector< vector<int> > splitsAcc(nc+1);
-    vector<bool> acceptMissingPunch(nc+1, true);
+    vector<vector<int>> splits(nc+1);
+    vector<vector<int>> splitsAcc(nc+1);
+    vector<int8_t> acceptMissingPunch(nc+1, true);
+    vector<pRunner>* rList;
+    if (rClsCrs.empty())
+      rList = &rCls;
+    else
+      rList = &rClsCrs[pc->getId()];
 
-    for (pRunner it : rCls) {
+    for (pRunner it : *rList) {
       pCourse tpc = it->getCourse(false);
       if (tpc != pc || tpc == 0)
         continue;
@@ -3504,7 +3530,7 @@ void oClass::calculateSplits() {
       }
     }
 
-    for (pRunner it : rCls) {
+    for (pRunner it : *rList) {
       pCourse tpc = it->getCourse(false);
 
       if (tpc != pc)
@@ -3513,17 +3539,46 @@ void oClass::calculateSplits() {
       const vector<SplitData> &sp = it->getSplitTimes(true);
       const int s = min<int>(nc, sp.size());
 
+      int off = 0;
+      unordered_map<int, PlaceTime>* teamAccTimes = nullptr;
+      if (multiLeg && it->tInTeam) 
+        off = it->tInTeam->getTotalRunningTimeAtLegStart(it->tLeg, false);
+
+      if (off > 0 && it->tLeg < teamLegCourseControlToLeaderPlace.size()) 
+        teamAccTimes = &teamLegCourseControlToLeaderPlace[it->tLeg];
+
       vector<int> &tLegTimes = it->tLegTimes;
       tLegTimes.resize(nc + 1);
       bool ok = true;
+
+      // Acc team finish time
+      if (teamAccTimes && it->FinishTime > 0 && (it->tStatus == StatusOK || it->tStatus == StatusUnknown)) {
+        int ccId = oPunch::PunchFinish;
+        int t = it->getRunningTime(false);
+        auto& res = (*teamAccTimes)[ccId];
+        if (res.leader <= 0 || res.leader > t + off)
+          res.leader = t + off;
+        // Count times
+        ++res.timeToPlace[t + off];
+      }
 
       for (int k = 0; k < s; k++) {
         if (sp[k].getTime(true) > 0) {
           if (ok) {
             // Store accumulated times
             int t = sp[k].getTime(true) - it->tStartTime;
-            if (it->tStartTime>0 && t>0)
+            if (it->tStartTime > 0 && t > 0) {
               splitsAcc[k].push_back(t);
+              if (teamAccTimes) {
+                int ccId = pc->getCourseControlId(k);
+                auto& res = (*teamAccTimes)[ccId];
+                if (res.leader <= 0 || res.leader > t + off)
+                  res.leader = t + off;
+
+                // Count times
+                ++res.timeToPlace[t + off];
+              }
+            }
           }
 
           if (k == 0) { // start -> first
@@ -3636,8 +3691,7 @@ void oClass::calculateSplits() {
     }
   }
 
-  for (set<pCourse>::iterator cit = cSet.begin(); cit != cSet.end(); ++cit)  {
-    pCourse pc = *cit;
+  for (pCourse pc : cSet)  {
     const unsigned nc = pc->getNumControls();
     vector<int> normRes(nc+1);
     vector<int> bestRes(nc+1);
@@ -3654,6 +3708,18 @@ void oClass::calculateSplits() {
 
     swap(tSplitAnalysisData[pc->getId()], normRes);
     swap(tCourseLegLeaderTime[pc->getId()], bestRes);
+  }
+
+  // Convert number of competitors with time to place
+  for (auto& courseControlLeaderPlace : teamLegCourseControlToLeaderPlace) {
+    for (auto& leaderPlace : courseControlLeaderPlace) {
+      int place = 1;
+      for (auto& numTimes : leaderPlace.second.timeToPlace) {
+        int num = numTimes.second;
+        numTimes.second = place;
+        place += num;
+      }
+    }
   }
 }
 

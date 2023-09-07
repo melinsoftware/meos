@@ -331,7 +331,8 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
         break;
       case lPunchName:
       case lControlName:
-      case lPunchNamedTime: {
+      case lPunchNamedTime:
+      case lPunchTeamTotalNamedTime: {
         wstring maxcn = lang.tl("Mål");
         vector<pControl> ctrl;
         oe->getControls(ctrl, false);
@@ -342,6 +343,8 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
         }
         if (pps[k].type == lPunchNamedTime)
           extra = maxcn + L": 50:50 (50:50)";
+        if (pps[k].type == lPunchTeamTotalNamedTime)
+          extra = maxcn + L": 2:50:50 (50:50)";
         else
           maxcn.swap(extra);
       }
@@ -366,6 +369,7 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lRunnerTimeAdjustment:
       case lRunnerGeneralTimeAfter:
       case lPunchTotalTimeAfter:
+      case lPunchTeamTotalTimeAfter:
         extra = L"+10:00";
         break;
       case lTeamRogainingPointOvertime:
@@ -390,11 +394,14 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lRunnerStageStatus:
       case lRunnerTimePlaceFixed:
       case lPunchLostTime:
-      case lPunchTotalTime:
       case lPunchTimeSinceLast:
       case lPunchSplitTime:
       case lPunchNamedSplit:
         extra = L"50:50";
+        break;
+      case lPunchTotalTime:
+      case lPunchTeamTotalTime:
+        extra = L"1:50:50";
         break;
       case lRunnerGeneralTimeStatus:
       case lClassStartTimeRange:
@@ -415,6 +422,7 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       case lTeamTotalPlace:
       case lPunchControlPlace:
       case lPunchControlPlaceAcc:
+      case lPunchControlPlaceTeamAcc:
       case lRunnerStagePlace:           
         extra = L"99.";
         break;
@@ -517,7 +525,7 @@ int oListInfo::getMaxCharWidth(const oEvent *oe,
       pp.linearLegIndex = true;
       int numIter = 1;
 
-      if (pp.type == lPunchNamedTime || pp.type == lPunchTime) {
+      if (pp.type == lPunchNamedTime || pp.type == lPunchTime || pp.type == lPunchTeamTime) {
         row[k] = max(row[k], 10);
         pRunner r = pRunner(&*it);
         numIter = (r && r->getCard()) ? r->getCard()->getNumPunches() + 1 : 1;
@@ -693,14 +701,16 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
     }
     break;
   case lPunchTime:
+  case lPunchTeamTime:
   case lPunchControlNumber:
   case lPunchControlCode:
   case lPunchLostTime:
   case lPunchControlPlace:
   case lPunchControlPlaceAcc:
-  
+  case lPunchControlPlaceTeamAcc:
   case lPunchSplitTime:
   case lPunchTotalTime:
+  case lPunchTeamTotalTime:
   case lPunchAbsTime:
     if (punch && r && !invalidClass) {
       if (punch->tIndex >= 0) {
@@ -710,9 +720,14 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
         break;
       }
       switch (pp.type) {
-        case lPunchTime: {
+        case lPunchTime:
+        case lPunchTeamTime: {
           if (punch->hasTime()) {
-            swprintf_s(bfw, L"\u2013 (%s)", formatTime(punch->getTimeInt() - r->getStartTime()).c_str());
+            int off = 0;
+            if (pp.type == lPunchTeamTime && r->getTeam())
+              off = r->getTeam()->getTotalRunningTimeAtLegStart(r->getLegNumber(), false);
+
+            swprintf_s(bfw, L"\u2013 (%s)", formatTime(off + punch->getTimeInt() - r->getStartTime(), SubSecond::Off).c_str());
           }
           else {
             wsptr = &makeDash(L"- (-)");
@@ -733,12 +748,24 @@ const wstring &oEvent::formatPunchStringAux(const oPrintPost &pp, const oListPar
         }
         case lPunchAbsTime: {
           if (punch->hasTime())
-            wsptr = &getAbsTime(punch->getTimeInt());
+            wsptr = &getAbsTime(punch->getTimeInt(), SubSecond::Off);
           break;
         }
         case lPunchTotalTime: {
           if (punch->hasTime())
-            wsptr = &formatTime(punch->getTimeInt() - r->getStartTime());
+            wsptr = &formatTime(punch->getTimeInt() - r->getStartTime(), SubSecond::Off);
+          break;
+        }
+        case lPunchTeamTotalTime: {
+          if (punch->hasTime()) {
+            pTeam t = r->getTeam();
+            if (!t || r->getLegNumber() == 0)
+              wsptr = &formatTime(punch->getTimeInt() - r->getStartTime(), SubSecond::Off);
+            else {
+              int input = t->getTotalRunningTimeAtLegStart(r->getLegNumber(), false);
+              wsptr = &formatTime(input + punch->getTimeInt() - r->getStartTime(), SubSecond::Off);
+            }
+          }
           break;
         }
       }
@@ -863,6 +890,11 @@ const wstring &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListP
       if (pc) {
         wsptr = &itow(pc->getNumUsedMaps(true));
       }
+    break;
+
+    case lCourseNumControls:
+      if (pc)
+        wsptr = &itow(pc->getNumControls());
     break;
 
     case lCourseClasses:
@@ -1175,11 +1207,21 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       break;
 
     case lCourseClimb:
+    case lCourseUsageNoVacant:
+    case lCourseUsage:
       if (r) {
         pCourse crs = r->getCourse(false);
          return formatSpecialStringAux(pp, par, t, 0, crs, 0, counter);
       }
     break;
+
+    case lCourseNumControls:
+      if (r) {
+        pCourse crs = r->getCourse(true);
+        return formatSpecialStringAux(pp, par, t, 0, crs, 0, counter);
+      }
+      break;
+
     case lCourseShortening:
       if (r) {
         int sh = r->getNumShortening();
@@ -1783,7 +1825,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
     case lRunnerTimePlaceFixed:
       if (r && !invalidClass) {
         int t = r->getTimeWhenPlaceFixed();
-        if (t == 0 || (t>0 && t < getComputerTime())) {
+        if (t == 0 || (t > 0 && t < getComputerTime())) {
           wcscpy_s(wbf, lang.tl("klar").c_str());
         }
         else if (t == -1)
@@ -2259,17 +2301,22 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
     case lControlName:
     case lPunchName:
     case lPunchNamedTime:
+    case lPunchTeamTotalNamedTime:
     case lPunchNamedSplit:
     case lPunchTime:
+    case lPunchTeamTime:
     case lPunchSplitTime:
     case lPunchTotalTime:
+    case lPunchTeamTotalTime:
     case lPunchControlNumber:
     case lPunchControlCode:
     case lPunchLostTime:
     case lPunchControlPlace:
     case lPunchControlPlaceAcc:
+    case lPunchControlPlaceTeamAcc:
     case lPunchAbsTime:
     case lPunchTotalTimeAfter:
+    case lPunchTeamTotalTimeAfter:
       if (r && r->getCourse(false) && !invalidClass) {
         const pCourse crs=r->getCourse(true);
         const oControl *ctrl = nullptr;
@@ -2281,22 +2328,23 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         }
         switch (pp.type) {
           case lPunchNamedSplit:
-            if (ctrl && ctrl->hasName() && r->getPunchTime(counter.level3, false, true) > 0) {
-              swprintf_s(wbf, L"%s", r->getNamedSplitS(counter.level3).c_str());
+            if (ctrl && ctrl->hasName() && r->getPunchTime(counter.level3, false, true, false) > 0) {
+              swprintf_s(wbf, L"%s", r->getNamedSplitS(counter.level3, SubSecond::Off).c_str());
             }
           break;
 
           case lPunchNamedTime:
-            if (ctrl && ctrl->hasName() && (!par.lineBreakControlList || r->getPunchTime(counter.level3, false, true) > 0)) {
+          case lPunchTeamTotalNamedTime:
+            if (ctrl && ctrl->hasName() && (!par.lineBreakControlList || r->getPunchTime(counter.level3, false, true, false) > 0)) {
               swprintf_s(wbf, L"%s: %s (%s)", ctrl->getName().c_str(),
-                          r->getNamedSplitS(counter.level3).c_str(),
-                          r->getPunchTimeS(counter.level3, false, true, SubSecond::Off).c_str());
+                          r->getNamedSplitS(counter.level3, SubSecond::Off).c_str(),
+                          r->getPunchTimeS(counter.level3, false, true, pp.type == lPunchTeamTotalNamedTime, SubSecond::Off).c_str());
             }
           break;
 
           case lControlName:
           case lPunchName:
-            if (ctrl && ctrl->hasName() && (!par.lineBreakControlList || r->getPunchTime(counter.level3, false, true) > 0)) {
+            if (ctrl && ctrl->hasName() && (!par.lineBreakControlList || r->getPunchTime(counter.level3, false, true, false) > 0)) {
               swprintf_s(wbf, L"%s", ctrl->getName().c_str());
             }
             else if (counter.level3 == nCtrl) {
@@ -2304,27 +2352,30 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             }
             break;
 
-          case lPunchTime: {
+          case lPunchTime:
+          case lPunchTeamTime: {
             swprintf_s(wbf, L"%s (%s)",
-                       r->getSplitTimeS(counter.level3, false).c_str(),
-                       r->getPunchTimeS(counter.level3, false, true, SubSecond::Off).c_str());
+                       r->getSplitTimeS(counter.level3, false, SubSecond::Off).c_str(),
+                       r->getPunchTimeS(counter.level3, false, true, pp.type == lPunchTeamTime, SubSecond::Off).c_str());
             break;
           }
           case lPunchSplitTime: {
-            wcscpy_s(wbf, r->getSplitTimeS(counter.level3, false).c_str());
+            wcscpy_s(wbf, r->getSplitTimeS(counter.level3, false, SubSecond::Off).c_str());
             break;
           }
-          case lPunchTotalTime: {
-            if (r->getPunchTime(counter.level3, false, true) > 0) {
-              wcscpy_s(wbf, r->getPunchTimeS(counter.level3, false, true, SubSecond::Off).c_str());
-            }
+          case lPunchTotalTime:
+          case lPunchTeamTotalTime: {
+            int pt = r->getPunchTime(counter.level3, false, true, pp.type == lPunchTeamTotalTime);
+            if (pt > 0) 
+              wsptr = &formatTime(pt, SubSecond::Off);
             break;
           }
-          case lPunchTotalTimeAfter: {
-            if (r->getPunchTime(counter.level3, false, true) > 0) {
-              int rt = r->getLegTimeAfterAcc(counter.level3);
+          case lPunchTotalTimeAfter:
+          case lPunchTeamTotalTimeAfter: {
+            if (r->getPunchTime(counter.level3, false, true, false) > 0) {
+              int rt = r->getLegTimeAfterAcc(counter.level3, pp.type == lPunchTeamTotalTimeAfter);
               if (rt > 0)
-                wcscpy_s(wbf, (L"+" + formatTime(rt)).c_str());
+                wcscpy_s(wbf, (L"+" + formatTime(rt, SubSecond::Off)).c_str());
             }
             break;
           }
@@ -2350,8 +2401,9 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
               swprintf_s(wbf, L"%d", p);
             break;
           }
-          case lPunchControlPlaceAcc: {
-            int p = r->getLegPlaceAcc(counter.level3);
+          case lPunchControlPlaceAcc:
+          case lPunchControlPlaceTeamAcc: {
+            int p = r->getLegPlaceAcc(counter.level3, pp.type == lPunchControlPlaceTeamAcc);
             if (p > 0)
               swprintf_s(wbf, L"%d", p);
             break;
@@ -2361,7 +2413,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
             break;
           }
           case lPunchAbsTime: {
-            int t = r->getPunchTime(counter.level3, false, true);
+            int t = r->getPunchTime(counter.level3, false, true, false);
             if (t > 0)
               wsptr = &getAbsTime(r->tStartTime + t);
             break;
@@ -3359,8 +3411,8 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
         }
       }
       else if (li.listSubType == li.EBaseTypeCoursePunches ||
-        li.listSubType == li.EBaseTypeAllPunches) {
-        pRunner r = it->Runners.empty() ? 0 : it->Runners[0];
+               li.listSubType == li.EBaseTypeAllPunches) {
+        pRunner r = it->getRunner(linearLegSpec);
         if (!r) 
           return true;
 

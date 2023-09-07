@@ -653,7 +653,8 @@ const vector< pair<wstring, size_t> > &oEvent::getCourses(vector<pair<wstring, s
 
   vector<wchar_t> filt_lc(filter.length() + 1);
   wcscpy_s(filt_lc.data(), filt_lc.size(), filter.c_str());
-  CharLowerBuff(filt_lc.data(), filter.length());
+  prepareMatchString(filt_lc.data(), filter.length());
+
   int score;
   wstring b;
   for (size_t k = 0; k < ac.size(); k++) {

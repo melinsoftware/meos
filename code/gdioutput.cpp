@@ -888,6 +888,7 @@ TextInfo& gdioutput::addImage(const string& id, int yp, int xp, int format,
 
   imageReferences.push_back(&TI);
 
+  TI.id = id;
   TI.format = format | textImage;
   TI.xp = xp;
   TI.yp = yp;
@@ -1256,7 +1257,7 @@ ButtonInfo &gdioutput::addButton(int x, int y, int w, const string &id,
     updatePos(x, y, w+scaleLength(GDI_BUTTON_SPACING), height+5);
 
   bi.xp=x;
-  bi.yp=y;
+  bi.yp = y - 1;
   bi.width = w;
   bi.text=ttext;
   bi.id=id;
@@ -1321,23 +1322,23 @@ ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const string 
   return addCheckbox(x,y,id, widen(text), cb, Checked, widen(tooltip), AbsPos);
 }
 
-ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const wstring &text,
-                                   GUICALLBACK cb, bool Checked, const wstring &tooltip, bool AbsPos)
+ButtonInfo& gdioutput::addCheckbox(int x, int y, const string& id, const wstring& text,
+  GUICALLBACK cb, bool Checked, const wstring& tooltip, bool AbsPos)
 {
   ButtonInfo bi;
   SIZE size;
 
   wstring ttext = lang.tl(text);
-  HDC hDC=GetDC(hWndTarget);
+  HDC hDC = GetDC(hWndTarget);
   SelectObject(hDC, GetStockObject(DEFAULT_GUI_FONT));
   GetTextExtentPoint32(hDC, L"M", 1, &size);
 
-  int ox=OffsetX;
-  int oy=OffsetY;
+  int ox = OffsetX;
+  int oy = OffsetY;
 
   if (AbsPos) {
-    ox=0;
-    oy=0;
+    ox = 0;
+    oy = 0;
   }
 
   int h = size.cy;
@@ -1345,15 +1346,16 @@ ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const wstring
   GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
   ReleaseDC(hWndTarget, hDC);
 
-  bi.hWnd=CreateWindowEx(0,L"BUTTON", L"",  WS_TABSTOP|WS_VISIBLE|
-          WS_CHILD | WS_CLIPSIBLINGS |BS_AUTOCHECKBOX|BS_NOTIFY,
-          x-ox, y-oy + (size.cy-h)/2, h, h, hWndTarget, NULL,
-          (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
+  int cbY = y + (size.cy - h) / 2;
+  bi.hWnd = CreateWindowEx(0, L"BUTTON", L"", WS_TABSTOP | WS_VISIBLE |
+    WS_CHILD | WS_CLIPSIBLINGS | BS_AUTOCHECKBOX | BS_NOTIFY,
+    x - ox, cbY - oy, h, h, hWndTarget, NULL,
+    (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
-  TextInfo &desc = addStringUT(y , x + (3*h)/2, 0, ttext, 0, checkBoxCallback);
+  TextInfo& desc = addStringUT(y, x + (3 * h) / 2, 0, ttext, 0, checkBoxCallback);
   desc.id = "T" + id;
 
-  SendMessage(bi.hWnd, WM_SETFONT, (WPARAM) getGUIFont(), 0);
+  SendMessage(bi.hWnd, WM_SETFONT, (WPARAM)getGUIFont(), 0);
 
   if (Checked)
     SendMessage(bi.hWnd, BM_SETCHECK, BST_CHECKED, 0);
@@ -1366,18 +1368,18 @@ ButtonInfo &gdioutput::addCheckbox(int x, int y, const string &id, const wstring
     else
       updatePos(x, y, size.cx + int(30 * scale), desc.textRect.bottom - desc.textRect.top + scaleLength(4));
   }
-  if (tooltip.length()>0) {
+  if (tooltip.length() > 0) {
     addToolTip(id, tooltip, bi.hWnd);
     addToolTip(desc.id, tooltip, 0, &desc.textRect);
   }
   bi.isCheckbox = true;
-  bi.xp=x;
-  bi.yp=y;
-  bi.width = desc.textRect.right - (x-ox);
-  bi.text=ttext;
-  bi.id=id;
-  bi.callBack=cb;
-  bi.AbsPos=AbsPos;
+  bi.xp = x;
+  bi.yp = cbY;
+  bi.width = desc.textRect.right - (x - ox);
+  bi.text = ttext;
+  bi.id = id;
+  bi.callBack = cb;
+  bi.AbsPos = AbsPos;
   bi.originalState = Checked;
   bi.isEdit(true);
   BI.push_back(bi);
@@ -2240,7 +2242,7 @@ void gdioutput::processButtonMessage(ButtonInfo &bi, WPARAM wParam)
       if (bi.isCheckbox)
         bi.checked = SendMessage(bi.hWnd, BM_GETCHECK, 0, 0)==BST_CHECKED;
       bi.synchData();
-      if (bi.callBack || bi.handler) {
+      if (bi.callBack || bi.hasEventHandler()) {
         setWaitCursor(true);
         if (!bi.handleEvent(*this, GUI_BUTTON) && bi.callBack)
           bi.callBack(this, GUI_BUTTON, &bi); //it may be destroyed here...
@@ -3027,10 +3029,8 @@ void gdioutput::doEnter() {
   HWND hWnd=GetFocus();
 
   for (list<ButtonInfo>::iterator it=BI.begin(); it!=BI.end(); ++it)
-    if (it->isDefaultButton() && (it->callBack || it->handler)) {
-      if (it->handler)
-        it->handleEvent(*this, GUI_BUTTON);
-      else
+    if (it->isDefaultButton()) {
+      if (!it->handleEvent(*this, GUI_BUTTON) && it->callBack)
         it->callBack(this, GUI_BUTTON, &*it);
       return;
     }
@@ -3038,13 +3038,11 @@ void gdioutput::doEnter() {
   list<InputInfo>::iterator it;
 
   for(it=II.begin(); it != II.end(); ++it)
-    if (it->hWnd==hWnd && (it->callBack || it->handler)){
+    if (it->hWnd==hWnd && (it->hasEventHandler() || it->callBack)){
       TCHAR bf[1024];
       GetWindowText(hWnd, bf, 1024);
-      it->text=bf;
-      if (it->handler)
-        it->handleEvent(*this, GUI_INPUT);
-      else
+      it->text = bf;
+      if (!it->handleEvent(*this, GUI_INPUT))
         it->callBack(this, GUI_INPUT, &*it);
       return;
     }
@@ -3139,10 +3137,8 @@ void gdioutput::doEscape()
       tit->table->escape(*this);
 
   for (list<ButtonInfo>::iterator it=BI.begin(); it!=BI.end(); ++it) {
-    if (it->isCancelButton() && (it->callBack || it->handler) ) {
-      if (it->handler)
-        it->handleEvent(*this, GUI_BUTTON);
-      else
+    if (it->isCancelButton() && (it->callBack || it->hasEventHandler()) ) {
+      if (!it->handleEvent(*this, GUI_BUTTON))
         it->callBack(this, GUI_BUTTON, &*it);
       return;
     }
@@ -3517,15 +3513,15 @@ BaseInfo *gdioutput::setText(const char *id, const wstring &text, bool Update, i
 
 bool gdioutput::insertText(const string &id, const wstring &text)
 {
-  for (list<InputInfo>::iterator it=II.begin();
-                         it != II.end(); ++it) {
-    if (it->id==id) {
+  for (list<InputInfo>::iterator it = II.begin();
+    it != II.end(); ++it) {
+    if (it->id == id) {
       SetWindowText(it->hWnd, text.c_str());
       it->text = text;
 
-      if (it->handler)
+      if (it->hasEventHandler())
         it->handleEvent(*this, GUI_INPUT);
-      else if (it->callBack) 
+      else if (it->callBack)
         it->callBack(this, GUI_INPUT, &*it);
 
       return true;
@@ -4385,9 +4381,6 @@ void gdioutput::RenderString(TextInfo &ti, HDC hDC) {
         h = ti.textRect.bottom - ti.textRect.top;
 
         image.drawImage(imgId, Image::ImageMethod::Default, hDC, rc.left, rc.top, w, h);
-
-        //width = image.getWidth(imgId);
-        //height = image.getHeight(imgId);
       }
     }
     if (!fixedRect) {
@@ -5503,7 +5496,7 @@ int gdioutput::sendCtrlMessage(const string &id)
 {
   for (list<ButtonInfo>::iterator it=BI.begin(); it != BI.end(); ++it) {
     if (id==it->id) {
-      if (it->handler)
+      if (it->hasEventHandler())
         return it->handleEvent(*this, GUI_BUTTON);
       else if (it->callBack) 
         return it->callBack(this, GUI_BUTTON, &*it); //it may be destroyed here...
@@ -7201,11 +7194,11 @@ string gdioutput::dbPress(const string &id, int extra) {
       if (it->isCheckbox) {
         check(id, !isChecked(id));
       }
-      else if(!it->callBack && !it->handler)
+      else if(!it->callBack && !it->hasEventHandler())
         throw meosException("Button " + id + " is not active.");
 
       wstring val = it->text;
-      if (it->handler)
+      if (it->hasEventHandler())
         it->handleEvent(*this, GUI_BUTTON);
       else if (it->callBack)
         it->callBack(this, GUI_BUTTON, &*it); //it may be destroyed here...
@@ -7229,11 +7222,11 @@ string gdioutput::dbPress(const string &id, const char *extra) {
       if (it->isCheckbox) {
         check(id, !isChecked(id));
       }
-      else if(!it->callBack && !it->handler)
+      else if(!it->callBack && !it->hasEventHandler())
         throw meosException("Button " + id + " is not active.");
 
       wstring val = it->text;
-      if (it->handler)
+      if (it->hasEventHandler())
         it->handleEvent(*this, GUI_BUTTON);
       else if (it->callBack)
         it->callBack(this, GUI_BUTTON, &*it); //it may be destroyed here...
@@ -7272,12 +7265,12 @@ string gdioutput::dbSelect(const string &id, int data) {
 
 void gdioutput::internalSelect(ListBoxInfo &bi) {
   bi.syncData();
-  if (bi.callBack || bi.handler) {
+  if (bi.callBack || bi.handler || bi.managedHandler) {
     setWaitCursor(true);
     hasCleared = false;
     try {
       bi.writeLock = true;
-      if (bi.handler)
+      if (bi.hasEventHandler())
         bi.handleEvent(*this, GUI_LISTBOX);
       else
         bi.callBack(this, GUI_LISTBOX, &bi); //it may be destroyed here... Then hasCleared is set.
@@ -7304,7 +7297,7 @@ void gdioutput::dbInput(const string &id, const string &text) {
       SetWindowText(it->hWnd, widen(text).c_str());
       it->text = widen(text);
       it->data = -1;
-      if (it->handler)
+      if (it->hasEventHandler())
         it->handleEvent(*this, GUI_COMBO);
       else if (it->callBack)
         it->callBack(this, GUI_COMBO, &*it); //it may be destroyed here...
@@ -7319,7 +7312,7 @@ void gdioutput::dbInput(const string &id, const string &text) {
 
       it->text = widen(text);
       SetWindowText(it->hWnd, widen(text).c_str());
-      if (it->handler)
+      if (it->hasEventHandler())
         it->handleEvent(*this, GUI_INPUT);
       else if (it->callBack)
         it->callBack(this, GUI_INPUT, &*it);
@@ -7357,7 +7350,7 @@ void gdioutput::dbDblClick(const string &id, int data) {
       if (!IsWindowEnabled(it->hWnd))
         throw meosException("Selection " + id + " is not active.");
       selectItemByData(id, data);
-      if (it->handler)
+      if (it->hasEventHandler())
         it->handleEvent(*this, GUI_LISTBOXSELECT);
       else if (it->callBack)
         it->callBack(this, GUI_LISTBOXSELECT, &*it); //it may be destroyed here...

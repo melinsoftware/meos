@@ -274,7 +274,7 @@ void Table::filter(int col, const wstring &filt, bool forceFilter)
 
   wchar_t filt_lc[1024];
   wcscpy_s(filt_lc, filt.c_str());
-  CharLowerBuff(filt_lc, filt.length());
+  prepareMatchString(filt_lc, filt.length());
 
   sortIndex.resize(2);
   for (size_t k=2;k<baseIndex.size();k++) {

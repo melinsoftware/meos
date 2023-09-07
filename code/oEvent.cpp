@@ -70,7 +70,7 @@
 extern Image image;
 
 //Version of database
-int oEvent::dbVersion = 90;
+int oEvent::dbVersion = 91;
 
 bool oEvent::useSubSecond() const {
   if (useSubsecondsVersion == dataRevision)
@@ -540,6 +540,8 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oEventData->addVariableString("MergeTag", 12, "Tag");
   oEventData->addVariableString("MergeInfo", "MergeInfo");
   oEventData->addVariableString("SplitPrint", 40, "Sträcktidslista"); // Id from MetaListContainer::getUniqueId
+  oEventData->addVariableInt("NoVacantBib", oDataContainer::oIS8U, "Inga vakanta nummerlappar");
+  
   oEventData->initData(this, dataSize);
 
   oClubData=new oDataContainer(oClub::dataSize);
@@ -4781,7 +4783,7 @@ bool oEvent::hasTeam() const
   return Teams.size() > 0;
 }
 
-void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
+void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber, bool assignToVacant) {
   if ( !classHasTeams(ClassId) ) {
     sortRunners(ClassStartTimeClub);
     oRunnerList::iterator it;
@@ -4804,6 +4806,8 @@ void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
         if (it->isRemoved())
           continue;
         if ( (ClassId==0 || it->getClassId(true)==ClassId) && (it->legToRun()==leg || leg == -1)) {
+          if (!assignToVacant && it->isVacant())
+            continue;
           wchar_t bib[32];
           swprintf_s(bib, pattern, num);
           pClass pc = it->getClassRef(true);
@@ -4832,6 +4836,8 @@ void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
       for (auto it = Teams.begin(); it != Teams.end(); ++it) {
         if (it->isRemoved())
           continue;
+        if (!assignToVacant && it->isVacant())
+          continue;
         if (ClassId == 0 || it->getClassId(false) == ClassId) {
           if (it->getClassRef(false) && it->getClassRef(false)->getBibMode() != BibFree) {
             for (size_t i = 0; i < it->Runners.size(); i++) {
@@ -4847,7 +4853,7 @@ void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
       }
     }
 
-    sortTeams(ClassStartTime, 0, true); // Sort on first leg starttime and sortindex
+    sortTeams(ClassStartTimeClub, 0, true); // Sort on first leg starttime and sortindex
 
     if (!firstNumber.empty()) {
       wchar_t pattern[32];
@@ -4855,6 +4861,8 @@ void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
     
       for (auto it=Teams.begin(); it != Teams.end(); ++it) {
         if (it->isRemoved())
+          continue;
+        if (!assignToVacant && it->isVacant())
           continue;
 
         if (ClassId == 0 || it->getClassId(false) == ClassId) {
@@ -4887,6 +4895,8 @@ void oEvent::addBib(int ClassId, int leg, const wstring &firstNumber) {
 }
 
 void oEvent::addAutoBib() {
+  bool noBibToVacant = oe->getDCI().getInt("NoVacantBib") != 0;
+
   sortRunners(ClassStartTimeClub);
   oRunnerList::iterator it;
   int clsId = -1;
@@ -4907,6 +4917,7 @@ void oEvent::addAutoBib() {
     pClass cls = tit->getClassRef(false);
     if (cls == 0)
       continue;
+
     teamStartNo[tit->getId()] = tit->getStartNo();
 
     wstring bibInfo = cls->getDCI().getString("Bib");
@@ -4935,7 +4946,7 @@ void oEvent::addAutoBib() {
     }
   }
 
-  sortTeams(ClassStartTime, 0, true); // Sort on first leg starttime and sortindex
+  sortTeams(ClassStartTimeClub, 0, true); // Sort on first leg starttime and sortindex
   map<int, vector<pTeam> > cls2TeamList;
 
   for (oTeamList::iterator tit = Teams.begin(); tit != Teams.end(); ++tit) {
@@ -4946,7 +4957,7 @@ void oEvent::addAutoBib() {
   }
 
   map<int, vector<pRunner> > cls2RunnerList;
-  for (it=Runners.begin(); it != Runners.end(); ++it) {
+  for (it = Runners.begin(); it != Runners.end(); ++it) {
     if (it->isRemoved() || !it->getClassId(false))
       continue;
     int clsId = it->getClassId(true);
@@ -5015,17 +5026,23 @@ void oEvent::addAutoBib() {
       else  {
         bool lockedForking = cls->lockedForking();
         for (size_t k = 0; k < tl.size(); k++) {
-          wchar_t buff[32];
-          swprintf_s(buff, pattern, number);
 
-          if (lockedForking) {
-            tl[k]->setBib(buff, number, false);
-            tl[k]->setStartNo(teamStartNo[tl[k]->getId()], ChangeType::Update);
+          if (noBibToVacant && tl[k]->isVacant()) {
+            tl[k]->getDI().setString("Bib", L""); //Remove only bib
           }
           else {
-            tl[k]->setBib(buff, number, true);
+            wchar_t buff[32];
+            swprintf_s(buff, pattern, number);
+
+            if (lockedForking) {
+              tl[k]->setBib(buff, number, false);
+              tl[k]->setStartNo(teamStartNo[tl[k]->getId()], ChangeType::Update);
+            }
+            else {
+              tl[k]->setBib(buff, number, true);
+            }
+            number += interval;
           }
-          number += interval;
           tl[k]->applyBibs();
           tl[k]->evaluate(ChangeType::Update);
         }
@@ -5046,7 +5063,7 @@ void oEvent::addAutoBib() {
         cls->synchronize(true);
       }
       for (size_t k = 0; k < rl.size(); k++) {
-        if (pattern[0]) {
+        if (pattern[0] && (!noBibToVacant || !rl[k]->isVacant())) {
           wchar_t buff[32];
           swprintf_s(buff, pattern, number);
           rl[k]->setBib(buff, number, !locked);
@@ -5267,19 +5284,73 @@ bool compareClubClassTeamName(const oRunner &a, const oRunner &b)
     return a.getClub()<b.getClub();
 }
 
-void oEvent::assignCardInteractive(gdioutput &gdi, GUICALLBACK cb)
+void oEvent::assignCardInteractive(gdioutput& gdi, GUICALLBACK cb, SortOrder& orderRunners)
 {
   gdi.fillDown();
   gdi.dropLine(1);
   gdi.addString("", 2, "Tilldelning av hyrbrickor");
 
-  Runners.sort(compareClubClassTeamName);
+  class SortUpdate : public GuiHandler {
+    SortOrder& orderRunners;
+    oEvent* oe;
+    GUICALLBACK cb;
+  public:
+    SortUpdate(oEvent *oe, GUICALLBACK cb, SortOrder& orderRunners) : 
+      orderRunners(orderRunners), cb(cb), oe(oe) { }
+
+    void handle(gdioutput& gdi, BaseInfo& info, GuiEventType type) final {
+      ListBoxInfo& lb = dynamic_cast<ListBoxInfo&>(info);
+      orderRunners = SortOrder(lb.data);
+      oe->assignCardInteractive(gdi, cb, orderRunners);
+    }
+    ~SortUpdate() {
+    }
+  };
+
+  if (gdi.hasData("AssignCardMark")) {
+    gdi.restore("AssignCardRP", false);
+  }
+  else {
+    auto h = make_shared<SortUpdate>(this, cb, orderRunners);
+    gdi.dropLine(0.5);
+    gdi.addSelection("Sorting", 200, 300, nullptr, L"Sortering:").setHandler(h);
+
+    vector<pair<wstring, size_t> > orders;
+    for (auto ord : MetaList::getOrderToSymbol()) {
+      if (ord.first != SortOrder::Custom && ord.first != SortOrder::ClassDefaultResult)
+        orders.push_back(make_pair(lang.tl(ord.second), ord.first));
+    }
+    sort(orders.begin(), orders.end());
+    orders.insert(orders.begin(), make_pair(lang.tl("Standard"), SortOrder::Custom));
+
+    gdi.addItem("Sorting", orders);
+    gdi.selectItemByData("Sorting", orderRunners);
+
+    gdi.dropLine();
+    gdi.setData("AssignCardMark", 1);
+    gdi.setRestorePoint("AssignCardRP");
+  }
+  
+  if (orderRunners == SortOrder::Custom) {
+    Runners.sort(compareClubClassTeamName);
+  }
+  else {
+    CurrentSortOrder = orderRunners;
+    Runners.sort();
+  }
 
   oRunnerList::iterator it;
-  pClub lastClub=0;
+  pClub lastClub = nullptr;
+  pClass lastClass = nullptr;
 
-  int k=0;
-  for (it=Runners.begin(); it != Runners.end(); ++it) {
+  const int px4 = gdi.scaleLength(4);
+  const int px450 = gdi.scaleLength(450);
+
+  int k = 0;
+  bool groupByClub = orderRunners == SortOrder::Custom || orderRunners == ClubClassStartTime;
+  bool groupByClass = orderByClass(orderRunners);
+
+  for (it = Runners.begin(); it != Runners.end(); ++it) {
 
     if (it->skip() || it->getCardNo() || it->isVacant() || it->needNoCard())
       continue;
@@ -5287,37 +5358,54 @@ void oEvent::assignCardInteractive(gdioutput &gdi, GUICALLBACK cb)
     if (it->getStatus() == StatusDNS || it->getStatus() == StatusCANCEL || it->getStatus() == StatusNotCompetiting)
       continue;
 
-    if (it->Club!=lastClub) {
-      lastClub=it->Club;
+    if (groupByClub && it->Club != lastClub) {
+      lastClub = it->Club;
       gdi.dropLine(0.5);
-      gdi.addString("", 1, it->getClub());
+      gdi.addStringUT(1, it->getClub());
+    }
+    else if (groupByClass && it->Class != lastClass) {
+      lastClass = it->getClassRef(true);
+      gdi.dropLine(0.5);
+      gdi.addStringUT(1, it->getClass(true));
     }
 
     wstring r;
-    if (it->Class)
-      r+=it->getClass(false)+L", ";
+    if (!groupByClass && it->Class)
+      r += it->getClass(false) + L", ";
+    
+    if (!groupByClub && it->Club)
+      r += it->getClub() + L", ";
 
     if (it->tInTeam) {
-      r+=itow(it->tInTeam->getStartNo()) + L" " + it->tInTeam->getName() + L", ";
-    }
+      if (!it->tInTeam->getBib().empty())
+        r += it->tInTeam->getBib() + L" ";
 
+      r += it->tInTeam->getName() + L", ";
+    }
+    else {
+      if (!it->getBib().empty())
+        r += it->getBib() + L" ";
+    }
     r += it->getName() + L":";
+
     gdi.fillRight();
     gdi.pushX();
     gdi.addStringUT(0, r);
     char id[24];
     sprintf_s(id, "*%d", k++);
 
-    gdi.addInput(max(gdi.getCX(), 450), gdi.getCY()-4,
-                 id, L"", 10, cb).setExtra(it->getId());
+    gdi.addInput(max(gdi.getCX(), px450), gdi.getCY() - px4,
+      id, L"", 10, cb).setExtra(it->getId());
 
     gdi.popX();
     gdi.dropLine(1.6);
     gdi.fillDown();
   }
 
-  if (k==0)
+  if (k == 0)
     gdi.addString("", 0, "Ingen löpare saknar bricka");
+
+  gdi.refresh();
 }
 
 void oEvent::calcUseStartSeconds()

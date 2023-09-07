@@ -49,6 +49,8 @@ protected:
 
   static void createListButtons(gdioutput &gdi);
 
+  static bool hasSelectedClass(gdioutput& gdi);
+
   void generateList(gdioutput &gdi, bool forceUpdate = false);
   void selectGeneralList(gdioutput &gdi, EStdListType type);
 

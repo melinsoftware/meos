@@ -17,6 +17,7 @@
 #define IDI_SPLASHIMAGE                 512
 #define IDI_MEOSIMAGE                   513
 #define IDI_MEOSINFO                    514
+#define IDI_MEOSEDIT                    515
 
 // Next default values for new objects
 // 

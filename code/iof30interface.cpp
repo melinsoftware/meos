@@ -2417,7 +2417,10 @@ pRunner IOF30Interface::readPersonResult(gdioutput &gdi, pClass pc, xmlobject &x
         wstring s;
         for (auto &split : splits) {
           int code = split.getObjectInt("ControlCode");
-          int time = split.getObjectInt("Time");
+          wstring out;
+          split.getObjectString("Time", out);
+          double t = _wtof(out.c_str());
+          int time = int(t * timeConstSecond);
           split.getObjectString("status", s);
           if (s != L"missing")
             card->addPunch(code, st + time, 0, 0);

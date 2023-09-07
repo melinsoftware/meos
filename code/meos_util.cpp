@@ -919,16 +919,10 @@ string itos(uint64_t i)
   return bf;
 }
 
-
-bool filterMatchString(const string &c, const char *filt_lc)
-{
-  if (filt_lc[0] == 0)
-    return true;
-  char key[2048];
-  strcpy_s(key, c.c_str());
-  CharLowerBuffA(key, c.length());
-
-  return strstr(key, filt_lc)!=0;
+void prepareMatchString(wchar_t* data_c, int size) {
+  CharLowerBuff(data_c, size);
+  for (int j = 0; j < size; j++)
+    data_c[j] = toLowerStripped(data_c[j]);
 }
 
 bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score) {
@@ -937,7 +931,11 @@ bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score) {
     return true;
   wchar_t key[2048];
   wcscpy_s(key, c.c_str());
-  CharLowerBuff(key, c.length());
+  int cl = c.length();
+  CharLowerBuff(key, cl);
+  for (int j = 0; j < cl; j++)
+    key[j] = toLowerStripped(key[j]);
+
   bool match = wcsstr(key, filt_lc) != 0;
   if (match) {
     while (filt_lc[score] && key[score] && filt_lc[score] == key[score])
@@ -1259,14 +1257,14 @@ int toLowerStripped(wchar_t c) {
     return c;
 
   static wchar_t *map = 0;
-  if (map == 0) {
+  if (map == nullptr) {
     map = new wchar_t[65536];
     for (int i = 0; i < 65536; i++)
       map[i] = i;
 
-    setChar(map, L'Å', L'å');
-    setChar(map, L'Ä', L'ä');
-    setChar(map, L'Ö', L'ö');
+    setChar(map, L'Å', L'a');
+    setChar(map, L'Ä', L'a');
+    setChar(map, L'Ö', L'o');
 
     setChar(map, L'É', L'e');
     setChar(map, L'é', L'e');
@@ -1289,6 +1287,8 @@ int toLowerStripped(wchar_t c) {
     setChar(map, L'ñ', L'n');
     setChar(map, L'Ñ', L'n');
 
+    setChar(map, L'ä', L'a');
+    setChar(map, L'å', L'a');
     setChar(map, L'á', L'a');
     setChar(map, L'Á', L'a');
     setChar(map, L'à', L'a');
@@ -1315,19 +1315,29 @@ int toLowerStripped(wchar_t c) {
     setChar(map, L'Õ', L'o');
     setChar(map, L'ô', L'o');
     setChar(map, L'Ô', L'o');
+    setChar(map, L'ö', L'o');
 
     setChar(map, L'ý', L'y');
     setChar(map, L'Ý', L'Y');
     setChar(map, L'ÿ', L'y');
+    
+    setChar(map, L'Æ', L'a');
+    setChar(map, L'æ', L'a');
 
-    setChar(map, L'Æ', L'ä');
-    setChar(map, L'æ', L'ä');
-
-    setChar(map, L'Ø', L'ö');
-    setChar(map, L'ø', L'ö');
+    setChar(map, L'Ø', L'o');
+    setChar(map, L'ø', L'o');
 
     setChar(map, L'Ç', L'c');
     setChar(map, L'ç', L'c');
+
+    wstring srcEx = L"ĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻĽľĿŀŁł"
+                    L"ŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž";
+    wstring dstEx = L"aaaaccccccccddddeeeeeeeeeegggggggghhhhiiiiiiiiiijjjjkkklllllllll"
+                    L"nnnnnnnnnooooooaarrrrrrssssssssttttttuuuuuuuuuuuuwwyyyzzzzzz";
+
+    assert(srcEx.size() == dstEx.size());
+    for (int j = 0; j < srcEx.size(); j++)
+      setChar(map, srcEx[j], dstEx[j]);
   }
   int a = map[c];
   return a;

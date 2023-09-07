@@ -152,9 +152,12 @@ wstring itow(int64_t i);
 wstring itow(uint64_t i);
 
 
-///Lower case match (filt_lc must be lc)
-bool filterMatchString(const string &c, const char *filt_lc);
+///Lower case match (filt_lc must be lc and stripped of accents)
 bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score);
+
+/** To lower case and strip accants */
+void prepareMatchString(wchar_t* data_c, int size);
+
 
 bool matchNumber(int number, const wchar_t *key);
 

@@ -478,7 +478,7 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     bool paid = entry.getObjectBool("paid");
 
     xmlobject xname = entry.getObject("name");
-    wstring birthyear = 0;
+    wstring birthyear;
     if (xname) {
       xname.getObjectString("birthyear", birthyear);
     }

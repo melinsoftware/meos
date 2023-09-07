@@ -1150,7 +1150,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
         auto &sd = r->getSplitTimes(false);
         vector<int> after;
         r->getLegTimeAfter(after);
-        vector<int> afterAcc;
+        vector<oRunner::ResultData> afterAcc;
         r->getLegTimeAfterAcc(afterAcc);
         vector<int> delta;
         r->getSplitAnalysis(delta);
@@ -1177,8 +1177,8 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
                 else
                   analysis[0].second = L"";
 
-                if (afterAcc[ix] > 0)
-                  analysis[1].second = formatTime(afterAcc[ix]);
+                if (afterAcc[ix].get(0) > 0)
+                  analysis[1].second = formatTime(afterAcc[ix].get(false));
                 else
                   analysis[1].second = L"";
 
@@ -1190,7 +1190,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
                 int place = r->getLegPlace(ix);
                 analysis[3].second = place > 0 ? itow(place) : L"";
                  
-                int placeAcc = r->getLegPlaceAcc(ix);
+                int placeAcc = r->getLegPlaceAcc(ix, false);
                 analysis[4].second = placeAcc > 0 ? itow(placeAcc) : L"";
 
                 xml.write("Analysis", analysis, L"");

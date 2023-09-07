@@ -1585,10 +1585,14 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
 
       wstring bib;
       bool doBibs = false;
-
+      bool bibToVacant = true;
       if (gdi.hasWidget("Bib")) {
         bib = gdi.getText("Bib");
         doBibs = gdi.isChecked("HandleBibs");
+        if (gdi.hasWidget("VacantBib")) {
+          bibToVacant = gdi.isChecked("VacantBib");
+          oe->getDI().setInt("NoVacantBib", bibToVacant ? 0 : 1);
+        }
       }
 
       wstring time = gdi.getText("FirstStart");
@@ -1680,7 +1684,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         throw std::exception("Not implemented");
 
       if (doBibs)
-        oe->addBib(cid, leg, bib);
+        oe->addBib(cid, leg, bib, bibToVacant);
 
       // Clear input
       gdi.restore("", false);
@@ -1703,6 +1707,7 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
     }
     else if (bi.id=="HandleBibs") {
       gdi.setInputStatus("Bib", gdi.isChecked("HandleBibs"));
+      gdi.setInputStatus("VacantBib", gdi.isChecked("HandleBibs"), true);
     }
     else if (bi.id == "DoDeleteStart") {
       pClass pc=oe->getClass(ClassId);
@@ -1878,10 +1883,19 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
       gdi.fillRight();
       gdi.popX();
       gdi.addString("", 0, "Antal reserverade nummerlappsnummer mellan klasser:");
-      gdi.dropLine(-0.1);
+      gdi.dropLine(-0.2);
       gdi.addInput("BibGap", itow(oe->getBibClassGap()), 5);
-      gdi.dropLine(3);
+      
+      gdi.dropLine(2.4);
       gdi.popX();
+
+      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+        bool bibToVacant = oe->getDCI().getInt("NoVacantBib") == 0;
+        gdi.addCheckbox("VacantBib", "Tilldela nummerlapp till vakanter", nullptr, bibToVacant);
+        gdi.dropLine(2.5);
+        gdi.popX();
+      }
+
       gdi.fillRight();
       gdi.addButton("DoBibs", "Tilldela", ClassesCB).setDefault();
     
@@ -1914,11 +1928,17 @@ int TabClass::classCB(gdioutput &gdi, int type, void *data)
         pc->setBibMode(BibMode(teamBib.first));
       }
 
+      bool bibToVacant = true;
+      if (gdi.hasWidget("VacantBib")) {
+        bibToVacant = gdi.isChecked("VacantBib");
+        oe->getDI().setInt("NoVacantBib", bibToVacant ? 0 : 1);
+      }
+
       pc->getDI().setString("Bib", getBibCode(bt, gdi.getText("Bib")));
       pc->synchronize();
       int leg = pc->getParentClass() ? -1 : 0;
       if (bt == AutoBibManual) {
-        oe->addBib(cid, leg, gdi.getText("Bib"));
+        oe->addBib(cid, leg, gdi.getText("Bib"), bibToVacant);
       }
       else {
         oe->setBibClassGap(gdi.getTextNo("BibGap"));
@@ -3691,6 +3711,16 @@ void TabClass::saveClassSettingsTable(gdioutput &gdi) {
     }
   }
   
+  if (gdi.hasWidget("VacantBib")) {
+    bool vacantBib = gdi.isChecked("VacantBib");
+    bool vacantBibStored = oe->getDCI().getInt("NoVacantBib") == 0;
+
+    if (vacantBib != vacantBibStored) {
+      oe->getDI().setInt("NoVacantBib", vacantBib ? 0 : 1);
+      modifiedBib = true;
+    }
+  }
+
   if (!modifiedFee.empty() && oe->getNumRunners() > 0) {
     bool updateFee = gdi.ask(L"ask:changedclassfee");
 
@@ -3724,10 +3754,18 @@ void TabClass::prepareForDrawing(gdioutput &gdi) {
   if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Bib)) {
     gdi.fillRight();
     gdi.addString("", 0, "Antal reserverade nummerlappsnummer mellan klasser:");
-    gdi.dropLine(-0.1);
+    gdi.dropLine(-0.2);
     gdi.addInput("BibGap", itow(oe->getBibClassGap()), 5);
+    
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+      bool bibToVacant = oe->getDCI().getInt("NoVacantBib") == 0;
+      gdi.dropLine(0.2);
+      gdi.setCX(gdi.getCX() + gdi.scaleLength(15));
+      gdi.addCheckbox("VacantBib", "Tilldela nummerlapp till vakanter", nullptr, bibToVacant);
+    }
+    
     gdi.popX();
-    gdi.dropLine(1.5);
+    gdi.dropLine(2.4);
     gdi.fillDown();
   }
 
@@ -3868,7 +3906,15 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
     gdi.addCheckbox("HandleBibs", "Tilldela nummerlappar:", ClassesCB, lastHandleBibs).setSynchData(&lastHandleBibs);
     gdi.dropLine(-0.2);
     gdi.addInput("Bib", L"", 10, 0, L"", L"Mata in första nummerlappsnummer, eller blankt för att ta bort nummerlappar");
-    gdi.setInputStatus("Bib", lastHandleBibs);
+    
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+      bool bibToVacant = oe->getDCI().getInt("NoVacantBib") == 0;
+      gdi.dropLine(0.2);
+      gdi.addCheckbox("VacantBib", "Tilldela nummerlapp till vakanter", nullptr, bibToVacant);
+      gdi.setInputStatus("VacantBib", lastHandleBibs);
+    }
+
+    gdi.setInputStatus("Bib", lastHandleBibs);    
     gdi.fillDown();
     gdi.dropLine(2.5);
     gdi.popX();
@@ -3968,6 +4014,7 @@ void TabClass::setMultiDayClass(gdioutput &gdi, bool hasMulti, oEvent::DrawMetho
     if (hasMulti) {
       gdi.check("HandleBibs", false);
       gdi.setInputStatus("Bib", false);
+      gdi.setInputStatus("VacantBib", false, true);
     }
   }
 

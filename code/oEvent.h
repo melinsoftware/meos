@@ -726,7 +726,7 @@ public:
   inline bool useStartSeconds() const {return tUseStartSeconds;}
   void calcUseStartSeconds();
 
-  void assignCardInteractive(gdioutput &gdi, GUICALLBACK cb);
+  void assignCardInteractive(gdioutput &gdi, GUICALLBACK cb, SortOrder& orderRunners);
 
   int getPropertyInt(const char *name, int def);
   const string &getPropertyString(const char *name, const string &def);
@@ -820,7 +820,7 @@ public:
 
   void checkOrderIdMultipleCourses(int ClassId);
 
-  void addBib(int ClassId, int leg, const wstring &firstNumber);
+  void addBib(int ClassId, int leg, const wstring &firstNumber, bool assignVacant);
   void addAutoBib();
 
   //Speaker functions.

@@ -53,6 +53,7 @@ IDB_ECO                 BITMAP                  "bmp00001.bmp"
 IDI_SPLASHIMAGE PNG "meos.png"
 IDI_MEOSIMAGE PNG "title.png"
 IDI_MEOSINFO PNG "info24.png"
+IDI_MEOSEDIT PNG "edit.png"
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources
 

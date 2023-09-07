@@ -2027,19 +2027,9 @@ bool oRunner::operator<(const oRunner &c) const {
     pClub cl = getClubRef();
     pClub ocl = c.getClubRef();
     if (cl != ocl) {
-      if (cl == nullptr && ocl)
-        return true;
-      else if (ocl == nullptr)
-        return false;
-      
-      const wstring a = cl->getName();
-      const wstring b = ocl->getName();
-      int res = CompareString(LOCALE_USER_DEFAULT, 0,
-          a.c_str(), a.length(),
-          b.c_str(), b.length());
-
-      if (res != CSTR_EQUAL)
-        return res == CSTR_LESS_THAN;
+      int cres = compareClubs(cl, ocl);
+      if (cres != 2)
+        return cres != 0;
     }
   }
 
@@ -2401,7 +2391,9 @@ bool oRunner::operator<(const oRunner &c) const {
       else return tStartTime < c.tStartTime;
     }
     else if (Club != c.Club) {
-      return getClub() < c.getClub();
+      int cres = compareClubs(Club, c.Club);
+      if (cres != 2)
+        return cres != 0;
     }
   }
   else if (oe->CurrentSortOrder == ClassTeamLeg) {
@@ -4173,11 +4165,11 @@ int oRunner::getSplitTime(int controlNumber, bool normalized) const
 {
   if (!Card) {
     if (controlNumber == 0)
-      return getPunchTime(0, false, true);
+      return getPunchTime(0, false, true, false);
     else {
-      int ct = getPunchTime(controlNumber, false, true);
+      int ct = getPunchTime(controlNumber, false, true, false);
       if (ct > 0) {
-        int dt = getPunchTime(controlNumber - 1, false, true);
+        int dt = getPunchTime(controlNumber - 1, false, true, false);
         if (dt > 0 && ct > dt)
           return ct - dt;
       }
@@ -4219,7 +4211,7 @@ int oRunner::getNamedSplit(int controlNumber) const {
     return -1;
 
   int k=controlNumber-1;
-  int ct = getPunchTime(controlNumber, false, true);
+  int ct = getPunchTime(controlNumber, false, true, false);
   if (ct <= 0)
     return -1;
  
@@ -4228,7 +4220,7 @@ int oRunner::getNamedSplit(int controlNumber) const {
     pControl c = crs->Controls[k];
 
     if (c && c->hasName()) {
-      int dt = getPunchTime(k, false, true);
+      int dt = getPunchTime(k, false, true, false);
       if (dt > 0 && ct > dt)
         return max(ct - dt, -1);
       else return -1;
@@ -4240,52 +4232,53 @@ int oRunner::getNamedSplit(int controlNumber) const {
   return ct;
 }
 
-wstring oRunner::getSplitTimeS(int controlNumber, bool normalized) const
+const wstring &oRunner::getSplitTimeS(int controlNumber, bool normalized, SubSecond mode) const
 {
-  return formatTime(getSplitTime(controlNumber, normalized));
+  return formatTime(getSplitTime(controlNumber, normalized), mode);
 }
 
-wstring oRunner::getNamedSplitS(int controlNumber) const
+const wstring &oRunner::getNamedSplitS(int controlNumber, SubSecond mode) const
 {
-  return formatTime(getNamedSplit(controlNumber));
+  return formatTime(getNamedSplit(controlNumber), mode);
 }
 
-int oRunner::getPunchTime(int controlNumber, bool normalized, bool adjusted) const
+int oRunner::getPunchTime(int controlIndex, bool normalized, bool adjusted, bool teamTotal) const
 {
+  int off = teamTotal && tInTeam ? tInTeam->getTotalRunningTimeAtLegStart(getLegNumber(), false) : 0;
+
   if (!Card) {
     pCourse pc = getCourse(false);
-    if (!pc || controlNumber > pc->getNumControls())
+    if (!pc || controlIndex > pc->getNumControls())
       return -1;
 
-    if (controlNumber == pc->getNumControls())
-      return getFinishTime() - tStartTime;
+    if (controlIndex == pc->getNumControls())
+      return getFinishTime() - tStartTime + off;
 
-    int ccId = pc->getCourseControlId(controlNumber);
+    int ccId = pc->getCourseControlId(controlIndex);
     pFreePunch fp = oe->getPunch(Id, ccId, getCardNo());
     if (fp)
-      return fp->getTimeInt() - tStartTime;
+      return fp->getTimeInt() - tStartTime + off;
     return -1;
   }
   const vector<SplitData> &st = getSplitTimes(normalized);
 
-  if (unsigned(controlNumber) < st.size()) {
-    if (st[controlNumber].hasTime())
-      return st[controlNumber].getTime(adjusted) - tStartTime;
+  if (unsigned(controlIndex) < st.size()) {
+    if (st[controlIndex].hasTime())
+      return st[controlIndex].getTime(adjusted) - tStartTime + off;
     else return -1;
   }
-  else if (unsigned(controlNumber) == st.size())
-    return FinishTime - tStartTime;
+  else if (unsigned(controlIndex) == st.size())
+    return FinishTime - tStartTime + off;
 
   return -1;
 }
 
-wstring oRunner::getPunchTimeS(int controlNumber, bool normalized, bool adjusted, SubSecond mode) const
-{
-  return formatTime(getPunchTime(controlNumber, normalized, adjusted), mode);
+const wstring &oRunner::getPunchTimeS(int controlIndex, bool normalized, bool adjusted,
+                                      bool teamTotal, SubSecond mode) const {
+  return formatTime(getPunchTime(controlIndex, normalized, adjusted, teamTotal), mode);
 }
 
-bool oAbstractRunner::isVacant() const
-{
+bool oAbstractRunner::isVacant() const {
   int vacClub = oe->getVacantClubIfExist(false);
   return vacClub > 0 && getClubId()==vacClub;
 }
@@ -4409,7 +4402,8 @@ void oRunner::fillSpeakerObject(int leg, int courseControlId, int previousContro
   }
 }
 
-pRunner oEvent::findRunner(const wstring &s, int lastId, const unordered_set<int> &inputFilter,
+pRunner oEvent::findRunner(const wstring &s, int lastId, 
+                           const unordered_set<int> &inputFilter,
                            unordered_set<int> &matchFilter) const
 {
   matchFilter.clear();
@@ -4417,8 +4411,8 @@ pRunner oEvent::findRunner(const wstring &s, int lastId, const unordered_set<int
   int len = trm.length();
   int sn = _wtoi(trm.c_str());
   wchar_t s_lc[1024];
-  wcscpy_s(s_lc, s.c_str());
-  CharLowerBuff(s_lc, len);
+  wcscpy_s(s_lc, s.c_str());  
+  prepareMatchString(s_lc, len);
   int score;
   pRunner res = 0;
 
@@ -4929,7 +4923,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
   if (pc) {
     for (int n = 0; n < pc->nControls; n++) {
       spMax = max(spMax, getSplitTime(n, false));
-      totMax = max(totMax, getPunchTime(n, false, false));
+      totMax = max(totMax, getPunchTime(n, false, false, false));
     }
   }
   bool moreThanHour = max(totMax, getRunningTime(true)) >= timeConstHour;
@@ -5082,7 +5076,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
             adjust = getTimeAdjust(controlLegIndex);
             sp = getSplitTime(controlLegIndex, false);
             if (sp > 0) {
-              punchTime = getPunchTimeS(controlLegIndex, false, false, SubSecond::Off);
+              punchTime = getPunchTimeS(controlLegIndex, false, false, false, SubSecond::Off);
               gdi.addStringUT(cy, cx + c2, fontSmall | textRight, formatTime(sp, SubSecond::Off));
             }
           }
@@ -5807,7 +5801,7 @@ void oRunner::getLegTimeAfter(vector<int> &times) const
   }
 }
 
-void oRunner::getLegTimeAfterAcc(vector<int> &times) const
+void oRunner::getLegTimeAfterAcc(vector<ResultData> &times) const
 {
   times.clear();
   if (splitTimes.empty() || !Class || tStartTime<=0)
@@ -5835,6 +5829,9 @@ void oRunner::getLegTimeAfterAcc(vector<int> &times) const
   //xxx reorder output
   times.resize(nc+1);
 
+  bool isRelayTeam = tInTeam != nullptr;
+  int off = tInTeam ? tInTeam->getTotalRunningTimeAtLegStart(tLeg, false) : 0;
+
   for (unsigned k = 0; k<=nc; k++) {
     int s = 0;
     if (k < sp.size())
@@ -5843,18 +5840,27 @@ void oRunner::getLegTimeAfterAcc(vector<int> &times) const
       s = FinishTime;
 
     if (s>0) {
-      times[k] = s - tStartTime - leaders[k];
-      if (times[k]<0)
-        times[k] = -1;
+      times[k].data = s - tStartTime - leaders[k];
+      if (times[k].data < 0)
+        times[k].data = -1;
     }
     else
-      times[k] = -1;
+      times[k].data = -1;
+
+    if (!isRelayTeam || times[k].data < 0)
+      times[k].teamTotalData = times[k].data;
+    else {
+      if (k < nc)
+        times[k].teamTotalData = s - tStartTime + off - cls->getAccLegControlLeader(tLeg, pc->getCourseControlId(k));
+      else
+        times[k].teamTotalData = s - tStartTime + off - cls->getAccLegControlLeader(tLeg, oPunch::PunchFinish);
+    }
   }
 
    // Normalized order
   const vector<int> &reorder = getCourse(true)->getMapToOriginalOrder();
   if (!reorder.empty()) {
-    vector<int> orderedTimes(times.size());
+    vector<ResultData> orderedTimes(times.size());
     for (size_t k = 0; k < min(reorder.size(), times.size()); k++) {
       orderedTimes[k] = times[reorder[k]];
     }
@@ -5862,7 +5868,7 @@ void oRunner::getLegTimeAfterAcc(vector<int> &times) const
   }
 }
 
-void oRunner::getLegPlacesAcc(vector<int> &places) const
+void oRunner::getLegPlacesAcc(vector<ResultData> &places) const
 {
   places.clear();
   pCourse pc = getCourse(false);
@@ -5880,6 +5886,10 @@ void oRunner::getLegPlacesAcc(vector<int> &places) const
   const unsigned nc = pc->getNumControls();
   const vector<SplitData> &sp = getSplitTimes(true);
   places.resize(nc+1);
+
+  bool isRelayTeam = tInTeam != nullptr;
+  int off = tInTeam ? tInTeam->getTotalRunningTimeAtLegStart(tLeg, false) : 0;
+
   for (unsigned k = 0; k<=nc; k++) {
     int s = 0;
     if (k < sp.size())
@@ -5890,17 +5900,24 @@ void oRunner::getLegPlacesAcc(vector<int> &places) const
     if (s>0) {
       int time = s - tStartTime;
 
-      if (time>0)
-        places[k] = cls->getAccLegPlace(id, k, time);
-      else
-        places[k] = 0;
+      if (time > 0) {
+        places[k].data = cls->getAccLegPlace(id, k, time);
+        if (k < nc)
+          places[k].teamTotalData = cls->getAccLegControlPlace(tLeg, pc->getCourseControlId(k), time + off);
+        else
+          places[k].teamTotalData = cls->getAccLegControlPlace(tLeg, oPunch::PunchFinish, time + off);
+      }
+      else {
+        places[k].data = 0;
+        places[k].teamTotalData = 0;
+      }
     }
   }
 
   // Normalized order
   const vector<int> &reorder = getCourse(true)->getMapToOriginalOrder();
   if (!reorder.empty()) {
-    vector<int> orderedPlaces(reorder.size());
+    vector<ResultData> orderedPlaces(reorder.size());
     for (size_t k = 0; k < reorder.size(); k++) {
       orderedPlaces[k] = places[reorder[k]];
     }
@@ -5974,31 +5991,31 @@ int oRunner::getLegTimeAfter(int ctrlNo) const {
     return -1;
 }
 
-int oRunner::getLegPlaceAcc(int ctrlNo) const {
+int oRunner::getLegPlaceAcc(int ctrlNo, bool teamTotal) const {
   for (auto &res : tOnCourseResults.res) {
     if (res.controlIx == ctrlNo)
-      return res.place;
+      return teamTotal ? res.place : res.teamTotalPlace;
   }
   if (!Card) {
     return 0;
   }
   setupRunnerStatistics();
   if (unsigned(ctrlNo) < tPlaceLegAcc.size())
-    return tPlaceLegAcc[ctrlNo];
+    return tPlaceLegAcc[ctrlNo].get(teamTotal);
   else
     return 0;
 }
 
-int oRunner::getLegTimeAfterAcc(int ctrlNo) const {
+int oRunner::getLegTimeAfterAcc(int ctrlNo, bool teamTotal) const {
   for (auto &res : tOnCourseResults.res) {
     if (res.controlIx == ctrlNo)
-      return res.after;
+      return teamTotal ? res.teamTotalAfter : res.after;
   }
   if (!Card) 
     return -1;
   setupRunnerStatistics();
   if (unsigned(ctrlNo) < tAfterLegAcc.size())
-    return tAfterLegAcc[ctrlNo];
+    return tAfterLegAcc[ctrlNo].get(teamTotal);
   else
     return -1;
 }

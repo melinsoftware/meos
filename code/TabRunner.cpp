@@ -207,8 +207,8 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   vector<int> delta;
   vector<int> place;
   vector<int> after;
-  vector<int> placeAcc;
-  vector<int> afterAcc;
+  vector<oRunner::ResultData> placeAcc;
+  vector<oRunner::ResultData> afterAcc;
 
   r->getSplitAnalysis(delta);
   r->getLegTimeAfter(after);
@@ -221,13 +221,13 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   for (size_t k = 0; k < delta.size(); k++) {
     out += itow(place[k]);
     if (k < placeAcc.size())
-      out += L" (" + itow(placeAcc[k]) + L")";
+      out += L" (" + itow(placeAcc[k].get(false)) + L")";
 
     if (after[k] > 0)
       out += L" +" + formatTimeMS(after[k], false);
 
-    if (k < afterAcc.size() && afterAcc[k]>0)
-      out += L" (+" + formatTimeMS(afterAcc[k], false) + L")";
+    if (k < afterAcc.size() && afterAcc[k].get(false)>0)
+      out += L" (+" + formatTimeMS(afterAcc[k].get(false), false) + L")";
 
     if (delta[k] > 0)
       out += L" B: " + formatTimeMS(delta[k], false);
@@ -463,7 +463,7 @@ int TabRunner::searchCB(gdioutput &gdi, int type, void *data) {
 
       bool formMode = currentMode == 0;
 
-      vector< pair<wstring, size_t> > runners;
+      vector<pair<wstring, size_t>> runners;
       oe->fillRunners(runners, !formMode, formMode ? 0 : oEvent::RunnerFilterShowAll, filter);
 
       if (filter.size() == runners.size()){
@@ -813,6 +813,15 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
     else if (bi.id == "ListenReadout") {
       listenToPunches = gdi.isChecked(bi.id);
     }
+    else if (bi.id == "HideControls") {
+      hideReportControls = true;
+      listenToPunches = true;
+      PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TRunnerTab, 0);
+    }
+    /*else if (bi.id == "ShowReportHeader") {
+      showReportHeader = gdi.isChecked(bi.id);
+      PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TRunnerTab, 0);
+    }*/
     else if (bi.id=="Unpair") {
       ListBoxInfo lbi;
       int cid = bi.getExtraInt();
@@ -1225,7 +1234,14 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
         return 0;
       }
       runnerId = bi.data;
-      //loadPage(gdi);
+      PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TRunnerTab, 0);
+    }
+    else if (bi.id == "NumCols") {
+      numReportColumn = bi.data;
+      PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TRunnerTab, 0);
+    }
+    else if (bi.id == "NumRows") {
+      numReportRow = bi.data;
       PostMessage(gdi.getHWNDTarget(), WM_USER + 2, TRunnerTab, 0);
     }
     else if (bi.id=="RClass") {
@@ -1322,24 +1338,20 @@ int TabRunner::runnerCB(gdioutput &gdi, int type, void *data)
       
       cellAction(gdi, ei.getData(), b);
     }
-    else if ((ei.id == "DataUpdate") && listenToPunches && currentMode == 5) {
-      if (ei.getData() > 0) {
-        runnerId = ei.getData();
+    else if (currentMode == 5 && ei.id == "PunchCard") {
+      if (listenToPunches && ei.getData() > 0) {
+        addToReport(ei.getData(), true);
+
+        loadPage(gdi);
       }
-      loadPage(gdi);
     }
-    else if ((ei.id == "ReadCard") &&
-            (listenToPunches || oe->isReadOnly()) && currentMode == 5) {
-      if (ei.getData() > 0) {
-        vector<pRunner> rs;
-        oe->getRunnersByCardNo(ei.getData(), true, oEvent::CardLookupProperty::Any, rs);
-        if (!rs.empty()) {
-          runnersToReport.resize(rs.size());
-          for (size_t k = 0; k<rs.size(); k++)
-            runnersToReport[k] = make_pair(rs[k]->getId(), false);
-        }
-        runnerId = 0;
-      }
+    else if (currentMode == 5 && ei.id == "DataUpdate" && currentMode == 5) {
+      showRunnerReport(gdi);
+    }
+    else if (currentMode == 5 && ei.id == "ReadCard" &&
+            (listenToPunches || oe->isReadOnly())) {
+      if (ei.getData() > 0)
+        addToReport(ei.getData(), oe->isReadOnly());
       loadPage(gdi);
     }
   }
@@ -1610,127 +1622,392 @@ void TabRunner::setCardNo(gdioutput &gdi, int cardNo) {
   }
 }
 
+string TabRunner::computeKeyForReport() {
+  string key = itos(runnersToReport.size());
+  for (auto &id : runnersToReport) {
+    key += "|" + itos(id.first);
+    pRunner r = oe->getRunner(id.first, 0);
+    if (r) {
+      key += gdioutput::toUTF8(r->getCompleteIdentification() + r->getClass(true));
+      key += itos(r->getStatus()) + itos(r->getFinishTime()) + itos(r->getStartTime());
+      vector<pFreePunch> pl;
+      oe->getPunchesForRunner(id.first, true, pl);
+      for (auto p : pl)
+        key += itos(p->getTimeInt());
+
+      if (r->getCard()) {
+        auto ch = r->getCard()->getCardHash();
+        key += itos(ch.first) + itos(ch.second);
+      }
+    }
+  }
+  return key;
+}
+
 void TabRunner::showRunnerReport(gdioutput &gdi) {
+  string oldHash, newHash = computeKeyForReport();
+ 
+  if (gdi.getData("ReportHash", oldHash) && oldHash == newHash)
+    return;
+  
   gdi.clearPage(true);
+  gdi.setData("ReportHash", newHash);
   currentMode = 5;
 
   if (!ownWindow && !oe->isReadOnly())
     addToolbar(gdi);
-  else if (oe->isReadOnly())
+  else if (oe->isReadOnly() && !listenToPunches)
     gdi.addString("", fontLarge, makeDash(L"MeOS - Resultatkiosk")).setColor(colorDarkBlue);
 
-  gdi.dropLine();
+  if (!hideReportControls) {
+    bool any = false;
+    gdi.pushX();
+    gdi.fillRight();
 
-  gdi.pushX();
-  gdi.fillRight();
-
-  gdi.addSelection("ReportRunner", 300, 300, RunnerCB);
-  oe->fillRunners(gdi, "ReportRunner", true, oEvent::RunnerFilterShowAll | oEvent::RunnerCompactMode);
-  gdi.selectItemByData("ReportRunner", runnerId);
-
-  if (!oe->isReadOnly()) {
-    if (!ownWindow) {
-      gdi.addButton("Kiosk", "Resultatkiosk", RunnerCB);
-      gdi.addButton("Window", "Eget fönster", RunnerCB, "Öppna i ett nytt fönster.");
+    if (!oe->isReadOnly() || !listenToPunches) {
+      gdi.dropLine();
+      gdi.addSelection("ReportRunner", 300, 300, RunnerCB);
+      oe->fillRunners(gdi, "ReportRunner", true, oEvent::RunnerFilterShowAll | oEvent::RunnerCompactMode);
+      gdi.selectItemByData("ReportRunner", runnerId);
+      gdi.autoGrow("ReportRunner");
+      any = true;
     }
-    gdi.dropLine(0.2);
-    gdi.addCheckbox("ListenReadout", "Visa senast inlästa deltagare", RunnerCB, listenToPunches);
-  }
 
-  gdi.dropLine(3);
+    if (!oe->isReadOnly() && !hideReportControls) {
+      if (!ownWindow) {
+        gdi.addButton("Kiosk", "Resultatkiosk", RunnerCB);
+        gdi.addButton("Window", "Eget fönster", RunnerCB, "Öppna i ett nytt fönster.");
+      }
+      else {
+        gdi.addButton("HideControls", "Dölj inställningar", RunnerCB);
+      }
+
+      any = true;
+      gdi.dropLine(0.2);
+      gdi.addCheckbox("ListenReadout", "Visa senast inlästa deltagare", RunnerCB, listenToPunches);
+      gdi.dropLine(2);
+      gdi.popX();
+      vector<pair<wstring, size_t>> options;
+      for (int i = 1; i <= 10; i++)
+        options.emplace_back(itow(i), i);
+
+      gdi.addString("", 0, "Layout");
+
+      gdi.addSelection("NumRows", 100, 200, RunnerCB);
+      gdi.addString("", 0, "rader");
+      gdi.addItem("NumRows", options);
+      gdi.selectItemByData("NumRows", numReportRow);
+
+      gdi.addSelection("NumCols", 100, 200, RunnerCB);
+      gdi.addString("", 0, "kolumner");
+      gdi.addItem("NumCols", options);
+      gdi.selectItemByData("NumCols", numReportColumn);
+
+      //gdi.addCheckbox("ShowReportHeader", "Visa sidhuvud", RunnerCB);
+    }
+
+    if (any)
+      gdi.dropLine(3);
+  }
   gdi.popX();
   gdi.registerEvent("DataUpdate", RunnerCB);
   gdi.registerEvent("ReadCard", RunnerCB);
-  
-  if (runnerId > 0) {
-    runnersToReport.resize(1);
-    runnersToReport[0] = make_pair(runnerId, false);
-  }
-  generateRunnerReport(*oe, gdi, runnersToReport);
+  gdi.registerEvent("PunchCard", RunnerCB);
+  gdi.setData("DataSync", 1);
+  gdi.setData("PunchSync", 1);
 
-  if (runnersToReport.size() == 1)
+  if (runnerId > 0) {
+    bool found = false;
+    addToReport(runnerId); 
+  }
+  while (runnersToReport.size() > numReportRow * numReportColumn)
+    runnersToReport.pop_back();
+
+  generateRunnerReport(*oe, gdi, numReportColumn, numReportRow, true, runnersToReport);
+
+  if (runnersToReport.size() > 0)
     runnerId = runnersToReport[0].first;
 }
 
- void TabRunner::generateRunnerReport(oEvent &oe, gdioutput &gdi, vector<pair<int, bool>> &runnersToReport) {
-   oe.synchronizeList({ oListId::oLRunnerId, oListId::oLTeamId, oListId::oLPunchId });
-  gdi.fillDown();
+void TabRunner::addToReport(int id) {
+  bool found = false;
+  for (auto& rr : runnersToReport) {
+    if (rr.first == id)
+      found = true;
+  }
+  if (!found) {
+    runnersToReport.emplace_front(id, false);
+  }
+}
 
-  cTeam t = 0;
+void TabRunner::addToReport(int cardNo, bool punchForShowReport) {
+  vector<pRunner> rs;
+  oe->getRunnersByCardNo(cardNo, true, oEvent::CardLookupProperty::Any, rs);
+
+  if (!punchForShowReport) {
+    // Take away runners with no card
+    vector<pRunner> rsFilter;
+    for (pRunner r : rs) {
+      if (r->getCard())
+        rsFilter.push_back(r);
+    }
+    rs.swap(rsFilter);
+  }
+
+  if (!rs.empty()) {
+    if (rs.size() == 1) {
+      addToReport(rs[0]->getId());
+    }
+    else {
+      map<int, vector<pRunner>> runnersPerTeam;
+      for (pRunner r : rs) {
+        if (r->getTeam())
+          runnersPerTeam[r->getTeam()->getId()].push_back(r);
+        else
+          runnersPerTeam[0].push_back(r);
+      }
+
+      for (auto& rpt : runnersPerTeam) {
+        if (rpt.second.size() == 1) {
+          addToReport(rpt.second[0]->getId());
+        }
+        else if (rpt.first == 0) {
+          sort(rpt.second.begin(), rpt.second.end(),
+            [](const pRunner& a, const pRunner& b) {return unsigned(a->getStartTime() - 1) < unsigned(b->getStartTime() - 1); });
+          // Take the last competitor using the card
+          addToReport(rpt.second.back()->getId());
+        }
+        else {
+          sort(rpt.second.begin(), rpt.second.end(),
+            [](const pRunner& a, const pRunner& b) {return a->getLegNumber() < b->getLegNumber(); });
+          bool hasResultAny = false;
+          bool done = false;
+          for (pRunner r : rpt.second) {
+            if (r->hasFinished())
+              hasResultAny = true;
+            else if (hasResultAny) {
+              // Prefer to report the next runner to run
+              addToReport(r->getId());
+              done = true;
+              break;
+            }
+          }
+          if (!done) {
+            if (hasResultAny) {
+              // Take the last one (final result)
+              addToReport(rpt.second.back()->getId());
+            }
+            else {
+              // None finished. Take first
+              addToReport(rpt.second.front()->getId());
+            }
+          }
+        }
+      }
+    }
+    /*runnersToReport.resize(rs.size());
+    for (size_t k = 0; k<rs.size(); k++)
+      runnersToReport[k] = make_pair(rs[k]->getId(), false);*/
+  }
+  runnerId = 0;
+}
+
+
+void TabRunner::generateRunnerReport(oEvent &oe, gdioutput &gdi, 
+                                      int numX, int numY,
+                                      bool onlySelectedRunner,
+                                      const deque<pair<int, bool>> &runnersToReport) {
+  oe.synchronizeList({ oListId::oLRunnerId, oListId::oLTeamId, oListId::oLPunchId });
+  gdi.fillDown();
+  int xx, yy;
+  int margin = gdi.scaleLength(16);
+  gdi.getTargetDimension(xx, yy);
+
+  int maxWidth = max(gdi.scaleLength(130 * 3) + 2*margin, xx / numX - margin * (numX + 1));
+  if (numX == 1 && numY == 1)
+    maxWidth = min(maxWidth, gdi.scaleLength(130)*6+margin);
+  
+  bool frame = true;
+
+  vector<const oTeam *> tList;
   set<int> clsSet;
+  
   for (size_t k = 0; k < runnersToReport.size(); k++) {
     pRunner r = oe.getRunner(runnersToReport[k].first, 0);
     if (!r)
       continue;
     clsSet.insert(r->getClassId(true));
-    if (r && r->getTeam()) {
+    pTeam t = r->getTeam();
+    if (t) {
       pClass cls = r->getClassRef(true);
       if (cls && cls->getClassType() != oClassRelay)
         continue;
 
-      if (t == 0)
-        t = r->getTeam();
+      bool added = count(tList.begin(), tList.end(), t) > 0;
+      if (added)
+        continue;
+      tList.push_back(t);
     }
   }
   oe.calculateResults(clsSet, oEvent::ResultType::PreliminarySplitResults, true);
   oe.calculateResults(clsSet, oEvent::ResultType::ClassResult);
 
-  if (t == 0) {
-    for (size_t k = 0; k < runnersToReport.size(); k++)
-      runnerReport(oe, gdi, runnersToReport[k].first, runnersToReport[k].second);
-  }
-  else {
-    oe.calculateTeamResults(clsSet, oEvent::ResultType::ClassResult);
+  RECT rcFrame;
+  
+  auto drawBox = [&gdi](RECT &rcFrame) {
+    RECT rc = rcFrame;
+    int mg = gdi.scaleLength(5);
+    rc.left -= mg;
+    rc.top -= mg;
+    rc.right += mg;
+    rc.bottom += mg;
+    gdi.addRectangle(rc, GDICOLOR::colorLightCyan, true, true);
+  };
 
-    set<int> selectedRunners;
-    bool selHasRes = false;
-    for (size_t k = 0; k < runnersToReport.size(); k++) {
-      selectedRunners.insert(runnersToReport[k].first);
-      pRunner r = oe.getRunner(runnersToReport[k].first, 0);
-      if (r && r->hasOnCourseResult())
-        selHasRes = true;
-    }
+  int baseX = gdi.getCX();
+  int baseY = gdi.getCY();
+  vector<RECT> rcList;
 
-    wstring tInfo = t->getName();
-    if (t->statusOK(true, true)) {
-      tInfo += L", "  + t->getRunningTimeS(true, SubSecond::Auto) +  lang.tl(", Placering: ") + t->getPlaceS();
-      if (t->getTimeAfter(-1, true) > 0)
-        tInfo += L", +" + formatTime(t->getTimeAfter(-1, true));
-    }
-    else if (t->getStatusComputed(true) != StatusUnknown) {
-      tInfo += L" " + t->getStatusS(true, true);
-    }
+  auto updatePositionDrawBox = [&](bool force) {
+    if (!force)
+      rcList.push_back(rcFrame);
 
-    gdi.addStringUT(fontMediumPlus, t->getClass(true));
-    gdi.addStringUT(boldLarge, tInfo);
-    gdi.dropLine();
-
-    bool visitedSelected = false;
-    for (int leg = 0; leg < t->getNumRunners(); leg++) {
-      if (selHasRes && visitedSelected)
-          break;
-
-      pRunner r = t->getRunner(leg);
-      pRunner nextR = t->getRunner(leg + 1);
-      bool nextSelected = nextR && selectedRunners.count(nextR->getId());
-
-      if (r) {
-        bool selected = selectedRunners.count(r->getId()) > 0;
-      
-        if (selHasRes) {
-          runnerReport(oe, gdi, r->getId(), !selected);
-        }
-        else {
-          runnerReport(oe, gdi, r->getId(), !nextSelected);
-        }
-
-        visitedSelected |= selected;
+    if ((force && !rcList.empty()) || rcList.size() == numX) {
+      int maxYP = 0;
+      for (RECT& rc : rcList)
+        maxYP = max<int>(maxYP, rc.bottom);
+      for (RECT& rc : rcList) {
+        rc.bottom = maxYP;
+        drawBox(rc);
       }
+      rcList.clear();
+      baseY = maxYP + margin;
+    }
+
+    gdi.setCY(baseY);
+    gdi.setCX(baseX + (maxWidth + margin) * rcList.size());
+  };
+
+  for (size_t k = 0; k < runnersToReport.size(); k++) {
+    pRunner r = oe.getRunner(runnersToReport[k].first, 0);
+    if (!r)
+      continue;
+
+    if (count(tList.begin(), tList.end(), r->getTeam()) == 0) {
+      runnerReport(oe, gdi, runnersToReport[k].first, runnersToReport[k].second, maxWidth, rcFrame);
+      updatePositionDrawBox(false);
     }
   }
+  if (tList.size() > 0) {
+    oe.calculateTeamResults(clsSet, oEvent::ResultType::ClassResult);
+    for (const oTeam *t : tList) {
+      teamReport(oe, gdi, t, onlySelectedRunner, runnersToReport, maxWidth, rcFrame);
+      updatePositionDrawBox(false);
+    }
+  }  
+
+  updatePositionDrawBox(true);
 }
 
-void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
+void TabRunner::teamReport(oEvent& oe, gdioutput& gdi,
+                           const oTeam* t,
+                           bool onlySelectedRunner,
+                           const deque<pair<int, bool>>& runnersToReport,
+                           int maxWidth,
+                           RECT& rc) {
+  rc.top = gdi.getCY();
+  rc.left = gdi.getCX();
+  rc.right = rc.left + maxWidth;
+
+  set<int> selectedRunners;
+  bool selHasPartialRes = false;
+  for (size_t k = 0; k < runnersToReport.size(); k++) {
+    pRunner r = oe.getRunner(runnersToReport[k].first, 0);
+    if (r && r->getTeam() == t) {
+      selectedRunners.insert(runnersToReport[k].first);
+      if (r && r->hasOnCourseResult())
+        selHasPartialRes = true; //Partial (radio) or complete result
+    }
+  }
+
+  wstring tInfo = t->getName();
+  if (t->statusOK(true, true)) {
+    tInfo += L", " + t->getRunningTimeS(true, SubSecond::Auto) + lang.tl(", Placering: ") + t->getPlaceS();
+    if (t->getTimeAfter(-1, true) > 0)
+      tInfo += L", +" + formatTime(t->getTimeAfter(-1, true));
+  }
+  else if (t->getStatusComputed(true) != StatusUnknown) {
+    tInfo += L" " + t->getStatusS(true, true);
+  }
+
+  gdi.addStringUT(fontMediumPlus, t->getClass(true));
+  gdi.addStringUT(boldLarge, tInfo);
+  gdi.dropLine();
+
+  pClass cls = t->getClassRef(false);
+
+  bool visitedSelected = false;
+  for (int leg = 0; leg < t->getNumRunners(); leg++) {
+    if ((selHasPartialRes || onlySelectedRunner) && visitedSelected)
+      break;
+
+    pRunner r = t->getRunner(leg);
+
+    pRunner nextR = t->getRunner(leg + 1);
+    bool nextSelected = false;
+    if (cls) {
+      // Check if leg has the selected runner (parallel legs)
+      int legNr, legOrd;
+      cls->splitLegNumberParallel(leg, legNr, legOrd);
+      int nextLeg = leg;
+      while (++nextLeg < t->getNumRunners()) {
+        int legNrN, legOrdN;
+        cls->splitLegNumberParallel(leg, legNrN, legOrdN);
+        if (legNrN == legNr + 1) {
+          nextR = t->getRunner(nextLeg);
+          nextSelected = nextR && selectedRunners.count(nextR->getId());
+          if (nextSelected)
+            break;
+        }
+      }
+    }
+    else {
+      nextSelected = nextR && selectedRunners.count(nextR->getId());
+    }
+
+    if (r) {
+      bool selected = selectedRunners.count(r->getId()) > 0;
+
+      if (onlySelectedRunner && !selected) {
+        if (!nextSelected)
+          continue; // Always skip if next is not selected
+        if (nextR->hasResult())
+          continue; // Only include previous if next does not have results
+      }
+      RECT dmy;
+      if (selHasPartialRes) {
+        // The selected runner has some result. Focus on that
+        runnerReport(oe, gdi, r->getId(), !selected, maxWidth, dmy);
+      }
+      else {
+        // The selected runner has not started. Focus on previous result
+        runnerReport(oe, gdi, r->getId(), !nextSelected, maxWidth, dmy);
+      }
+
+      visitedSelected |= selected;
+    }
+  }
+  rc.bottom = gdi.getCY();
+}
+
+void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi,
+                             int id, bool compact, 
+                             int maxWidth, RECT &rc) {
+
+  rc.top = gdi.getCY();
+  rc.left = gdi.getCX();
+  rc.right = rc.left + maxWidth;
+
   pRunner r = oe.getRunner(id, 0);
   if (!r || ! r->getClassRef(false))
     return;
@@ -1739,7 +2016,8 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
   gdi.fillDown();
   if (r->getTeam() == 0) {
     gdi.addStringUT(fontMediumPlus, r->getClass(true));
-    gdi.addStringUT(boldLarge, r->getCompleteIdentification());
+    gdi.addStringUT(gdi.getCY(), gdi.getCX(), boldLarge, 
+                    r->getCompleteIdentification(), maxWidth - 4);
   }
   else {
     wstring s;
@@ -1784,20 +2062,31 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
 
   gdi.popX();
   gdi.fillRight();
+  int ww = gdi.scaleLength(120);
+  auto optionalBreakLine = [&] {
+    if (gdi.getCX() + ww > rc.left + maxWidth) {
+      gdi.popX();
+      gdi.dropLine();
+    }
+  };
 
-  if (r->getStartTime() > 0)
+  if (r->getStartTime() > 0) {
+    optionalBreakLine();
     gdi.addString("", fontMedium, L"Starttid: X  #" + r->getStartTimeCompact());
-
-  if (r->getFinishTime() > 0)
+  }
+  if (r->getFinishTime() > 0) {
+    optionalBreakLine();
     gdi.addString("", fontMedium, L"Måltid: X  #" + r->getFinishTimeS(false, SubSecond::Auto));
-
+  }
   const wstring &after = oe.formatListString(lRunnerTimeAfter, r);
   if (!after.empty()) {
+    optionalBreakLine();
     gdi.addString("", fontMedium, L"Tid efter: X  #" + after);
   }
 
   const wstring &lost = oe.formatListString(lRunnerLostTime, r);
   if (!lost.empty()) {
+    optionalBreakLine();
     gdi.addString("", fontMedium, L"Bomtid: X  #" + lost).setColor(colorDarkRed);
   }
 
@@ -1813,17 +2102,28 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
   int xp = gdi.getCX();
   int yp = gdi.getCY();
   int xw = gdi.scaleLength(130);
-  int cx = xp;
+  int mg4 = gdi.scaleLength(4);
+  int cx = xp + mg4;
   int limit = (9*xw)/10;
   int lh = gdi.getLineHeight();
+  int maxTimesPerLine = min(10, max(3, maxWidth / xw));
+
+  auto drawBox = [&gdi, xw, mg4, lh](int yp, int cx, GDICOLOR color) {
+    RECT rc;
+    rc.top = yp - mg4 / 2;
+    rc.bottom = yp + lh * 5 - mg4;
+    rc.left = cx - mg4;
+    rc.right = cx + xw - mg4 * 2;
+    gdi.addRectangle(rc, color);
+  };
 
   if (crs && r->getStatus() != StatusUnknown) {
     int nc = crs->getNumControls();
     vector<int> delta;
     vector<int> place;
     vector<int> after;
-    vector<int> placeAcc;
-    vector<int> afterAcc;
+    vector<oRunner::ResultData> placeAcc;
+    vector<oRunner::ResultData> afterAcc;
 
     r->getSplitAnalysis(delta);
     r->getLegTimeAfter(after);
@@ -1844,7 +2144,7 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
       else
         gdi.addStringUT(yp, cx, boldText, name, limit);
 
-      wstring split = r->getSplitTimeS(k, false);
+      wstring split = r->getSplitTimeS(k, false, SubSecond::Off);
 
       int bestTime = 0;
       if ( k < int(after.size()) && after[k] >= 0)
@@ -1865,14 +2165,14 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
       gdi.addStringUT(yp + lh, cx, fontMedium, split, limit);
 
       if (k>0 && k < int(placeAcc.size())) {
-        split = r->getPunchTimeS(k, false, false, SubSecond::Auto);
-        wstring pl = placeAcc[k] > 0 ? itow(placeAcc[k]) : L"-";
+        split = r->getPunchTimeS(k, false, false, false, SubSecond::Auto);
+        wstring pl = placeAcc[k].get(false) > 0 ? itow(placeAcc[k].get(false)) : L"-";
         if (k < int(afterAcc.size()) ) {
-          if (afterAcc[k] > 0)
-            split += L" (" + pl + L", +"  + formatTimeMS(afterAcc[k], false) + L")";
-        else if (placeAcc[k] == 1)
+          if (afterAcc[k].get(false) > 0)
+            split += L" (" + pl + L", +"  + formatTimeMS(afterAcc[k].get(false), false) + L")";
+        else if (placeAcc[k].get(false) == 1)
           split += lang.tl(" (ledare)");
-          else if (placeAcc[k] > 0)
+          else if (placeAcc[k].get(false) > 0)
             split += L" " + pl;
         }
         gdi.addStringUT(yp + 2*lh, cx, fontMedium, split, limit).setColor(colorDarkBlue);
@@ -1885,18 +2185,10 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
                   colorMediumDarkRed : colorMediumRed;
       }
 
-      RECT rc;
-      rc.top = yp - 2;
-      rc.bottom = yp + lh*5 - 4;
-      rc.left = cx - 4;
-      rc.right = cx + xw - 8;
-
-      gdi.addRectangle(rc, color);
-
+      drawBox(yp, cx, color);
       cx += xw;
-
-      if (k % 6 == 5) {
-        cx = xp;
+      if ( (k+1) % maxTimesPerLine == 0) {
+        cx = xp + mg4;
         yp += lh * 5;
       }
     }
@@ -1950,25 +2242,18 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compact) {
 
       GDICOLOR color = colorDefault;
 
-      RECT rc;
-      rc.top = yp - 2;
-      rc.bottom = yp + lh*5 - 4;
-      rc.left = cx - 4;
-      rc.right = cx + xw - 8;
-
-      gdi.addRectangle(rc, color);
+      drawBox(yp, cx, color);
       cx += xw;
-      if (k % 6 == 5) {
-        cx = xp;
+      if ((k + 1) % maxTimesPerLine == 0) {
+        cx = xp + mg4;
         yp += lh * 5;
       }
     }
   }
 
-  gdi.dropLine(3);
   gdi.popX();
+  rc.bottom = gdi.getCY();
 }
-
 
 void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classId)
 {

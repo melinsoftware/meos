@@ -815,7 +815,7 @@ wstring oCard::getCardVoltage() const {
 }
 
 wstring oCard::getCardVoltage(int miliVolt) {
-  if (miliVolt == 0)
+  if (miliVolt <= 10)
     return L"";
   int vi = miliVolt / 1000;
   int vd = (miliVolt % 1000) / 10;
@@ -830,9 +830,9 @@ oCard::BatteryStatus oCard::isCriticalCardVoltage() const {
 }
 
 oCard::BatteryStatus oCard::isCriticalCardVoltage(int miliVolt)  {
-  if (miliVolt > 0 && miliVolt < 2445)
+  if (miliVolt > 10 && miliVolt < 2445)
     return BatteryStatus::Bad;
-  else if (miliVolt > 0 && miliVolt <= 2710)
+  else if (miliVolt > 10 && miliVolt <= 2710)
     return BatteryStatus::Warning;
 
   return BatteryStatus::OK;

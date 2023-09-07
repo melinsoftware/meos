@@ -94,6 +94,8 @@ private:
   shared_ptr<GuiHandler> resetHiredCardHandler;
   GuiHandler *getResetHiredCardHandler();
 
+  SortOrder sortAssignCards = SortOrder::Custom;
+
   int runnerMatchedId;
   bool printErrorShown;
   void printProtected(gdioutput &gdi, gdioutput &gdiprint);
@@ -185,17 +187,32 @@ private:
 
   static int analyzePunch(SIPunch &p, int &start, int &accTime, int &days);
 
-
   void createCompetitionFromCards(gdioutput &gdi);
 
-  int NC;
+  int NC = 8;
+  int  testType = 0;
+  bool showTestingPanel = false;
+  wstring testStartTime;
+  bool useTestStart = true;
+  wstring testFinishTime;
+  bool useTestFinish = true;
+  wstring testCheckTime;
+  bool useTestCheck = false;
+  int testRadioNumber = 50;
+  wstring testPunchTime;
+  vector<int> testControls;
+  int testCardNumber = 0;
+
+  void readTestData(gdioutput& gdi);
+
 
   class EditCardData : public GuiHandler {
     TabSI *tabSI;
-    EditCardData(const EditCardData&);
-    EditCardData &operator=(const EditCardData&);
   public:
     EditCardData() : tabSI(0) {}
+    EditCardData(const EditCardData&) = delete;
+    EditCardData& operator=(const EditCardData&) = delete;
+
     void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
     friend class TabSI;
   };
@@ -252,6 +269,7 @@ private:
     vector<int> MP;
     GDICOLOR color;
     bool rentCard = false;
+    int runnerId = 0;
 
     RECT computeRC(gdioutput &gdi) const;
     void render(gdioutput &gdi, const RECT &rc) const;

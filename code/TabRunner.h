@@ -23,6 +23,7 @@
 #include "tabbase.h"
 #include "Printer.h"
 #include "autocompletehandler.h"
+#include <deque>
 
 class Table;
 struct AutoCompleteRecord;
@@ -43,6 +44,15 @@ private:
 
   void selectRunner(gdioutput &gdi, pRunner r);
 
+  int numReportRow = 1;
+  int numReportColumn = 1;
+  bool hideReportControls = false;
+  bool showReportHeader = true;
+  void addToReport(int cardNo, bool punchForShowReport);
+  void addToReport(int id);
+  
+  string computeKeyForReport();
+  
   wstring lastSearchExpr;
   unordered_set<int> lastFilter;
   DWORD timeToFill;
@@ -64,7 +74,7 @@ private:
   int runnerId;
   bool ownWindow;
   bool listenToPunches;
-  vector< pair<int, bool> > runnersToReport;
+  deque<pair<int, bool>> runnersToReport;
 
   vector<pRunner> unknown_dns;
   vector<pRunner> known_dns;
@@ -76,7 +86,19 @@ private:
   PrinterObject splitPrinter;
 
   void showRunnerReport(gdioutput &gdi);
-  static void runnerReport(oEvent &oe, gdioutput &gdi, int id, bool compactReport);
+
+  static void runnerReport(oEvent &oe, gdioutput &gdi, 
+                           int id, bool compactReport, 
+                           int maxWidth, 
+                           RECT& rc);
+
+  static void teamReport(oEvent& oe, gdioutput& gdi,
+                         const oTeam *team,
+                         bool onlySelectedRunner,
+                         const deque<pair<int, bool>> &runners,
+                         int maxWidth,
+                         RECT &rc);
+
 
   void showVacancyList(gdioutput &gdi, const string &method="", int classId=0);
   void showCardsList(gdioutput &gdi);
@@ -126,7 +148,11 @@ public:
   bool loadPage(gdioutput &gdi);
   bool loadPage(gdioutput &gdi, int runnerId);
 
-  static void generateRunnerReport(oEvent &oe, gdioutput &gdi,  vector<pair<int, bool>> &runnersToReport);
+  static void generateRunnerReport(oEvent &oe, 
+    gdioutput &gdi, 
+    int numX, int numY,
+    bool onlySelectedRunner,
+    const deque<pair<int, bool>> &runnersToReport);
 
   TabRunner(oEvent *oe);
   ~TabRunner(void);

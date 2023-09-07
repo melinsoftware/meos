@@ -436,6 +436,17 @@ int oTeam::getLegFinishTime(int leg) const
   else return 0;
 }
 
+int oTeam::getTotalRunningTimeAtLegStart(int leg, bool multidayTotal) const {
+  int off = multidayTotal ? max(0, getInputTime()) : 0;
+  if (!Class || leg == 0)
+    return off;
+  int pleg = Class->getPreceedingLeg(leg);
+  if (pleg < 0)
+    return off;
+
+  return getLegRunningTime(pleg, false, multidayTotal);
+}
+
 int oTeam::getRunningTime(bool computedTime) const {
   return getLegRunningTime(-1, computedTime, false);
 }
@@ -812,9 +823,7 @@ wstring oTeam::getLegPrintPlaceS(int leg, bool multidayTotal, bool withDot) cons
   return _EmptyWString;
 }
 
-bool oTeam::compareResultClub(const oTeam& a, const oTeam& b) {
-  pClub ca = a.getClubRef();
-  pClub cb = b.getClubRef();
+int oAbstractRunner::compareClubs(const oClub* ca, const oClub* cb) {
   if (ca != cb) {
     if (ca == nullptr && cb)
       return true;
@@ -829,6 +838,17 @@ bool oTeam::compareResultClub(const oTeam& a, const oTeam& b) {
 
     if (res != CSTR_EQUAL)
       return res == CSTR_LESS_THAN;
+  }
+  return 2;
+}
+
+bool oTeam::compareResultClub(const oTeam& a, const oTeam& b) {
+  pClub ca = a.getClubRef();
+  pClub cb = b.getClubRef();
+  if (ca != cb) {
+    int cres = compareClubs(ca, cb);
+    if (cres != 2)
+      return cres != 0;
   }
   return compareResult(a, b);
 }
@@ -855,8 +875,13 @@ bool oTeam::compareResult(const oTeam &a, const oTeam &b)
 
   int aix = a.getDCI().getInt("SortIndex");
   int bix = b.getDCI().getInt("SortIndex");
-  if (aix != bix)
+  if (aix != bix) {
+    if (aix == 0)
+      aix = numeric_limits<int>::max();
+    if (bix == 0)
+      bix = numeric_limits<int>::max();
     return aix < bix;
+  }
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
                        a.sName.c_str(), a.sName.length(),
@@ -876,6 +901,24 @@ bool oTeam::compareResultNoSno(const oTeam &a, const oTeam &b)
     return a.tmpSortStatus<b.tmpSortStatus;
   else if (a.tmpSortTime != b.tmpSortTime)
     return a.tmpSortTime<b.tmpSortTime;
+
+  int aix = a.getDCI().getInt("SortIndex");
+  int bix = b.getDCI().getInt("SortIndex");
+  if (aix != bix) {
+    if (aix == 0)
+      aix = numeric_limits<int>::max();
+    if (bix == 0)
+      bix = numeric_limits<int>::max();
+    return aix < bix;
+  }
+
+  pClub ca = a.getClubRef();
+  pClub cb = b.getClubRef();
+  if (ca != cb) {
+    int cres = compareClubs(ca, cb);
+    if (cres != 2)
+      return cres != 0;
+  }
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
                        a.sName.c_str(), a.sName.length(),
@@ -1751,7 +1794,7 @@ pRunner oTeam::getRunner(unsigned leg) const {
   if (leg==-1)
     leg=Runners.size()-1;
 
-  return leg<Runners.size() ? Runners[leg] : 0;
+  return leg<Runners.size() ? Runners[leg] : nullptr;
 }
 
 int oTeam::getRogainingPoints(bool computed, bool multidayTotal) const {

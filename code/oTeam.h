@@ -268,7 +268,10 @@ public:
   wstring getLegRunningTimeS(int leg, bool computed, bool multidayTotal, SubSecond mode) const;
 
   int getLegRunningTime(int leg, bool computed, bool multidayTotal) const;
- 
+  
+  // Get the team's total running time when starting specified leg
+  int getTotalRunningTimeAtLegStart(int leg, bool multidayTotal) const;
+
   RunnerStatus getLegStatus(int leg, bool computed, bool multidayTotal) const;
   const wstring &getLegStatusS(int leg, bool computed, bool multidayTotal) const;
 

@@ -61,6 +61,7 @@ enum EPostType {
   lCourseUsage,
   lCourseUsageNoVacant,
   lCourseClasses,
+  lCourseNumControls,
   lRunnerName,
   lRunnerGivenName,
   lRunnerFamilyName,
@@ -172,19 +173,28 @@ enum EPostType {
   lTeamPlaceDiff,
 
   lPunchNamedTime,
+  lPunchTeamTotalNamedTime,
   lPunchNamedSplit,
+  
   lPunchName,
 
   lPunchTime,
+  lPunchTeamTime,
+
   lPunchControlNumber,
   lPunchControlCode,
   lPunchLostTime,
   lPunchControlPlace,
   lPunchControlPlaceAcc,
+  lPunchControlPlaceTeamAcc,
 
   lPunchSplitTime,
   lPunchTotalTime,
   lPunchTotalTimeAfter,
+
+  lPunchTeamTotalTime,
+  lPunchTeamTotalTimeAfter,
+
   lPunchAbsTime,
   lPunchTimeSinceLast,
 

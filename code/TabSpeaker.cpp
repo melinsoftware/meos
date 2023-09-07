@@ -241,11 +241,11 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.dropLine(3);
     gdi.popX();
     gdi.registerEvent("DataUpdate", tabSpeakerCB);
-    vector<pair<int, bool>> runnersToReport;
+    deque<pair<int, bool>> runnersToReport;
     if (runnerId > 0) {
       runnersToReport.emplace_back(runnerId, false);
     }
-    TabRunner::generateRunnerReport(*oe, gdi, runnersToReport);
+    TabRunner::generateRunnerReport(*oe, gdi, 1, 1, false, runnersToReport);
     gdi.refresh();
   }
   else if (bu.id == "Priority") {

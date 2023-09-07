@@ -1051,8 +1051,9 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
       if (ccId <= 0)
         continue;
       int crs = r->getCourse(false)->getId();
-      int time = p.getTimeInt() - r->getStartTime(); //XXX Team time
-      r->tOnCourseResults.emplace_back(ccId, courseCCid2CourseIx[make_pair(crs, ccId)], time);
+      int time = p.getTimeInt() - r->getStartTime(); 
+      int teamTotalTime = time + (r->tInTeam ? r->tInTeam->getTotalRunningTimeAtLegStart(r->tLeg, false) : 0);
+      r->tOnCourseResults.emplace_back(ccId, courseCCid2CourseIx[make_pair(crs, ccId)], time, teamTotalTime);
       int clsId = r->getClassId(true);
       int leg = r->getLegNumber();
       if (cls->getQualificationFinal())
@@ -1072,6 +1073,8 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
 
     const set<int> &expectedCCid = classLeg2ExistingCCId[make_pair(clsId, leg)];
     size_t nRT = 0;
+    int teamTotalOff = r.tInTeam ? r.tInTeam->getTotalRunningTimeAtLegStart(r.tLeg, false) : 0;
+
     for (auto &radioTimes : r.tOnCourseResults.res) {
       if (expectedCCid.count(radioTimes.courseControlId))
         nRT++;
@@ -1091,8 +1094,9 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
               }
             }
             if (!added) {
-              int time = p.getTimeInt() - r.getStartTime(); //XXX Team time
-              r.tOnCourseResults.emplace_back(ccId, p.tIndex, time);
+              int time = p.getTimeInt() - r.getStartTime(); 
+              int teamTotalTime = time + teamTotalOff;
+              r.tOnCourseResults.emplace_back(ccId, p.tIndex, time, teamTotalTime);
             }
           }
         }
@@ -1101,11 +1105,13 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
   }
 
   vector<tuple<int, int, int>> timeRunnerIx;
+  vector<tuple<int, int, int>> totalTimeRunnerIx;
+
   for (auto rList : runnerByClassLeg) {
     auto &rr = rList.second;
     pClass cls = getClass(rList.first.first);
     assert(cls);
-    bool totRes = cls->getNumStages() > 1;
+    //bool totRes = cls->getNumStages() > 1;
 
     set<int> &legCCId = classLeg2ExistingCCId[rList.first];
     legCCId.insert(oPunch::PunchFinish);
@@ -1113,18 +1119,17 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
       // Leg with negative sign
       int negLeg = 0;
       timeRunnerIx.clear();
+      totalTimeRunnerIx.clear();
+
       int nRun = rr.size();
       if (ccId == oPunch::PunchFinish) {
         negLeg = -1000; //Finish, smallest number
         for (int j = 0; j < nRun; j++) {
           auto r = rr[j];
           if (r->prelStatusOK(true, false, false)) {
-            int time;
-            if (!r->tInTeam || !totRes)
-              time = r->getRunningTime(true);
-            else {
-              time = r->tInTeam->getLegRunningTime(r->tLeg, true, false);
-            }
+            int time = r->getRunningTime(true);
+            int teamTotalTime = r->tInTeam ? r->tInTeam->getLegRunningTime(r->tLeg, true, false) : time;
+            
             int ix = -1;
             int nr = r->tOnCourseResults.res.size();
             for (int i = 0; i < nr; i++) {
@@ -1139,9 +1144,10 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
               pCourse crs = r->getCourse(false);
               if (crs)
                 nc = crs->getNumControls();
-              r->tOnCourseResults.emplace_back(ccId, nc, time);
+              r->tOnCourseResults.emplace_back(ccId, nc, time, teamTotalTime);
             }
             timeRunnerIx.emplace_back(time, j, ix);
+            totalTimeRunnerIx.emplace_back(teamTotalTime, j, ix);
           }
         }
       }
@@ -1152,37 +1158,51 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
           for (int i = 0; i < nr; i++) {
             if (r->tOnCourseResults.res[i].courseControlId == ccId) {
               timeRunnerIx.emplace_back(r->tOnCourseResults.res[i].time, j, i);
+              totalTimeRunnerIx.emplace_back(r->tOnCourseResults.res[i].teamTotalTime, j, i);
+
               negLeg = min(negLeg, -r->tOnCourseResults.res[i].controlIx);
               break;
             }
           }
         }
       }
-      sort(timeRunnerIx.begin(), timeRunnerIx.end());
+      
+      auto computeResult = [&rr, &negLeg](vector<tuple<int, int, int>>& timeRunnerIx, bool total) {
+        sort(timeRunnerIx.begin(), timeRunnerIx.end());
 
-      int place = 0;
-      int time = 0;
-      int leadTime = 0;
-      int numPlace = timeRunnerIx.size();
-      for (int i = 0; i < numPlace; i++) {
-        int ct = get<0>(timeRunnerIx[i]);
-        if (time != ct) {
-          time = ct;
-          place = i + 1;
-          if (leadTime == 0)
-            leadTime = time;
-        }
-        auto r = rr[get<1>(timeRunnerIx[i])];
-        int locIx = get<2>(timeRunnerIx[i]);
-        r->tOnCourseResults.res[locIx].place = place;
-        r->tOnCourseResults.res[locIx].after = time - leadTime;
+        int place = 0;
+        int time = 0;
+        int leadTime = 0;
+        int numPlace = timeRunnerIx.size();
+        for (int i = 0; i < numPlace; i++) {
+          int ct = get<0>(timeRunnerIx[i]);
+          if (time != ct) {
+            time = ct;
+            place = i + 1;
+            if (leadTime == 0)
+              leadTime = time;
+          }
+          auto r = rr[get<1>(timeRunnerIx[i])];
+          int locIx = get<2>(timeRunnerIx[i]);
+          if (total) {
+            r->tOnCourseResults.res[locIx].teamTotalPlace = place;
+            r->tOnCourseResults.res[locIx].teamTotalAfter = time - leadTime;
+          }
+          else {
+            r->tOnCourseResults.res[locIx].place = place;
+            r->tOnCourseResults.res[locIx].after = time - leadTime;
 
-        int &legWithTimeIndexNeg = r->currentControlTime.first;
-        if (negLeg < legWithTimeIndexNeg) {
-          legWithTimeIndexNeg = negLeg;
-          r->currentControlTime.second = ct;
+            int& legWithTimeIndexNeg = r->currentControlTime.first;
+            if (negLeg < legWithTimeIndexNeg) {
+              legWithTimeIndexNeg = negLeg;
+              r->currentControlTime.second = ct;
+            }
+          }
         }
-      }
+      };
+
+      computeResult(timeRunnerIx, false);
+      computeResult(totalTimeRunnerIx, true);
     }
   }
 }

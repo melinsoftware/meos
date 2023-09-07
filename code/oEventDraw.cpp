@@ -510,9 +510,12 @@ private:
       else {
         vector<pRunner> cr;
         oe->getRunners(c_it->getId(), 0, cr, false);
-        for (pRunner r : cr)
+        for (pRunner r : cr) {
+          if (r->getStatus() == StatusNotCompetiting || r->getStatus() == StatusCANCEL)
+            continue;
           if (r->getStartGroup(true) == ci.startGroupId)
             nr++;
+        }
       }
 
       if (ci.nVacant == -1 || !ci.nVacantSpecified || di.changedVacancyInfo) {
@@ -982,7 +985,7 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
 
       cInfo[i].nRunners = pc->getNumRunners(true, true, true) + cInfo[i].nVacant;
 
-      if (cInfo[i].nRunners>0) {
+      if (cInfo[i].nRunners > 0) {
         runnerPerGroup[cInfo[i].unique] += cInfo[i].nRunners;
         runnerPerCourse[cInfo[i].courseId] += cInfo[i].nRunners;
       }
@@ -996,6 +999,7 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
     cInfo[k].nRunnersCourse = runnerPerCourse[cInfo[k].courseId];
   }
 }
+
 void oEvent::drawRemaining(DrawMethod method, bool placeAfter)
 {
   DrawType drawType = placeAfter ? DrawType::RemainingAfter : DrawType::RemainingBefore;
@@ -1770,7 +1774,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     for (it=Runners.begin(); it != Runners.end(); ++it) {
       int cid = it->getClassId(true);
       if (!it->isRemoved() && clsId2Ix.count(cid)) {
-        if (it->getStatus() == StatusNotCompetiting)
+        if (it->getStatus() == StatusNotCompetiting || it->getStatus() == StatusCANCEL)
           continue;
         int ix = clsId2Ix[cid];
         if (spec[ix].startGroup != 0 && it->getStartGroup(true) != spec[ix].startGroup)
@@ -1792,7 +1796,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
     for (it=Runners.begin(); it != Runners.end(); ++it) {
       if (!it->isRemoved() && clsId2Ix.count(it->getClassId(true))) {
-        if (it->getStatus() == StatusNotCompetiting)
+        if (it->getStatus() == StatusNotCompetiting || it->getStatus() == StatusCANCEL)
           continue;
 
         int st = it->getStartTime();

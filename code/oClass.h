@@ -25,6 +25,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <unordered_map>
 #include "inthashmap.h"
 class oClass;
 typedef oClass* pClass;
@@ -260,9 +261,20 @@ protected:
   inthashmap *tLegTimeToPlace;
   inthashmap *tLegAccTimeToPlace;
 
+  struct PlaceTime {
+    int leader = -1;
+    map<int, int> timeToPlace;
+  };
+
+  vector<unordered_map<int, PlaceTime>> teamLegCourseControlToLeaderPlace;
+  
   void insertLegPlace(int from, int to, int time, int place);
   void insertAccLegPlace(int courseId, int controlNo, int time, int place);
 
+  /** Get relay/team accumulated leader time/place at control. */
+  int getAccLegControlLeader(int teamLeg, int courseControlId) const;
+  int getAccLegControlPlace(int teamLeg, int courseControlId, int time) const;
+     
   // For sub split times
   int tLegLeaderTime;
   mutable int tNoTiming;
@@ -357,7 +369,7 @@ protected:
   mutable pair<int, map<string, int>> tTypeKeyToRunnerCount;
 
   enum CountKeyType {
-    All,
+    AllCompeting,
     Finished,
     ExpectedStarting,
     DNS,
@@ -620,7 +632,7 @@ public:
   bool hasTrueMultiCourse() const;
 
   unsigned getNumStages() const {return MultiCourse.size();}
-  /** Get the set of true legs, identifying parallell legs etc. Returns indecs into
+  /** Get the set of true legs, identifying parallell legs etc. Returns indices into
    legInfo of the last leg of the true leg (first), and true leg (second).*/
   struct TrueLegInfo {
   protected:

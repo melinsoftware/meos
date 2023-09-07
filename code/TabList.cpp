@@ -636,7 +636,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
       ListBoxInfo lbi;
       bool advancedResults = false;
       if (gdi.getSelectedItem("ListType", lbi)) {
-        currentListType=EStdListType(lbi.data);
+        currentListType = EStdListType(lbi.data);
       }
       else if (gdi.getSelectedItem("ResultType", lbi)) {
         currentListType = getTypeFromResultIndex(lbi.data);
@@ -1230,6 +1230,7 @@ int TabList::listCB(gdioutput &gdi, int type, void *data)
     else if (lbi.id == "ListSelection") {
       gdi.getSelection(lbi.id, lastClassSelection);
       if (gdi.hasWidget("ResultType")) {
+        lastResultClassSelection = lastClassSelection;
         ListBoxInfo entry;
         gdi.getSelectedItem("ResultType", entry);
         gdi.setInputStatus("Generate", !lastClassSelection.empty() && int(entry.data) >= 0);
@@ -3010,8 +3011,7 @@ void TabList::setResultOptionsFromType(gdioutput &gdi, int data) {
 
     gdi.setInputStatus("ShowInterResults", builtIn);
     gdi.setInputStatus("ShowSplits", builtIn);
-      
-
+ 
     set<int> clsUnused;
     vector< pair<wstring, size_t> > out;
       
@@ -3022,22 +3022,14 @@ void TabList::setResultOptionsFromType(gdioutput &gdi, int data) {
     if (!out.empty() && lastLeg >= 0)
       gdi.selectItemByData("LegNumber", lastLeg);
   
-    //oe->fillLegNumbers(gdi, "LegNumber", li.isTeamList(), true);
     gdi.setInputStatus("InputNumber", false);
   }
-  else {
-      
+  else {     
     gdi.setInputStatus("UseLargeSize", li.supportLarge);
     gdi.setInputStatus("InputNumber", li.supportParameter);
   
-    //gdi.setInputStatus("SplitAnalysis", li.supportSplitAnalysis);
-    //gdi.setInputStatus("ShowInterResults", li.supportInterResults);
-    //gdi.setInputStatus("PageBreak", li.supportPageBreak);
-    //gdi.setInputStatus("ClassLimit", li.supportClassLimit);
-      
     if (li.supportLegs) {
       gdi.enableInput("LegNumber");
-      //oe->fillLegNumbers(gdi, "LegNumber", li.isTeamList(), true);
       set<int> clsUnused;
       vector< pair<wstring, size_t> > out;
       oe->fillLegNumbers(clsUnused, li.isTeamList(), true, out);
@@ -3095,12 +3087,19 @@ void TabList::setResultOptionsFromType(gdioutput &gdi, int data) {
     gdi.setSelection("ListSelection", lastResultClassSelection);
   }
 
-  gdi.setInputStatus("Generate", data >= 0 && !lastResultClassSelection.empty());
+  gdi.setInputStatus("Generate", data >= 0 && hasSelectedClass(gdi));
+}
+
+bool TabList::hasSelectedClass(gdioutput& gdi) {
+  set<int> sel;
+  gdi.getSelection("ListSelection", sel);
+  return !sel.empty();
 }
 
 void TabList::clearCompetitionData() {
   SelectedList = "";
   lastResultClassSelection.clear();
+  lastClassSelection.clear();
 
   ownWindow = false;
   hideButtons = false;

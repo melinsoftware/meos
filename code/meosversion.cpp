@@ -25,12 +25,12 @@
 
 //ABCDEFGHIJKLMNOP
 int getMeosBuild() {
-  string revision("$Rev: 1263 $");
+  string revision("$Rev: 1266 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2023-05-12 16:11:34 +0200 (fre, 12 maj 2023) $");
+  wstring date(L"$Date: 2023-06-01 22:17:24 +0200 (tor, 01 jun 2023) $");
   return date.substr(7,10);
 }
 
@@ -39,7 +39,7 @@ wstring getBuildType() {
 }
 
 wstring getMajorVersion() {
-  return L"3.9";
+  return L"4.0";
 }
 
 wstring getMeosFullVersion() {
