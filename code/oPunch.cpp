@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,12 +34,11 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-oPunch::oPunch(oEvent *poe): oBase(poe) {
-  type=0;
-  punchTime=0;
-  tTimeAdjust=0;
-  isUsed=false;
-  hasBeenPlayed=false;
+oPunch::oPunch(oEvent* poe) : oBase(poe) {
+  type = 0;
+  punchTime = 0;
+  isUsed = false;
+  hasBeenPlayed = false;
   tMatchControlId = -1;
   tRogainingIndex = 0;
   anyRogainingMatchControlId = -1;
@@ -67,18 +66,24 @@ void oPunch::appendCodeString(string &dst) const {
   else
     ubf[0] = 0;
 
+  char ubo[16];
+  if (origin != 0)
+    sprintf_s(ubo, "#%d", origin);
+  else
+    ubo[0] = 0;
+
   char bf[48];
   if (timeConstSecond > 1 && punchTime != -1) {
     if (punchTime >= 0)
-      sprintf_s(bf, 32, "%d-%d.%d%s;", type, punchTime / timeConstSecond,
-        punchTime % timeConstSecond, ubf);
+      sprintf_s(bf, 32, "%d-%d.%d%s%s;", type, punchTime / timeConstSecond,
+        punchTime % timeConstSecond, ubf, ubo);
     else {
-      sprintf_s(bf, 32, "%d--%d.%d%s;", type, (-punchTime) / timeConstSecond, 
-        (-punchTime) % timeConstSecond, ubf);
+      sprintf_s(bf, 32, "%d--%d.%d%s%s;", type, (-punchTime) / timeConstSecond, 
+        (-punchTime) % timeConstSecond, ubf, ubo);
     }
   }
   else
-    sprintf_s(bf, 32, "%d-%d%s;", type, punchTime, ubf);
+    sprintf_s(bf, 32, "%d-%d%s%s;", type, punchTime, ubf, ubo);
 
   dst.append(bf);
 }
@@ -127,6 +132,18 @@ void oPunch::decodeString(const char *s) {
   else {
     punchUnit = 0;
   }
+
+  while (*s && *s != '#' && *s != ';') {
+    s++;
+  }
+
+  if (*s == '#') {
+    ++s;
+    origin = atoi(s);
+  }
+  else {
+    origin = 0;
+  }
 }
 
 wstring oPunch::getString() const {
@@ -134,8 +151,14 @@ wstring oPunch::getString() const {
 
   const wchar_t *ct;
   wstring time(getTime(false, SubSecond::Auto));
-  ct=time.c_str();
-
+  if (!isOriginal() && origin != 0) {
+    if (time.length() == 1)
+      time = L"\u270E";
+    else
+      time = L"\u270E" + time;
+  }
+  ct = time.c_str();
+  
   wstring typeS = getType();
   const wchar_t *tp = typeS.c_str();
 
@@ -173,24 +196,25 @@ wstring oPunch::getSimpleString() const
 wstring oPunch::getTime(bool adjust, SubSecond mode) const
 {
   if (punchTime >= 0) {
+    int at = getTimeInt();
     if (adjust)
-      return oe->getAbsTime(getTimeInt() + tTimeAdjust, mode);
-    else
-      return oe->getAbsTime(getTimeInt(), mode);
+      at += tTimeAdjust.second;
+    if (at > 0)
+      return oe->getAbsTime(at, mode);
   }
-  else return makeDash(L"-");
+  return makeDash(L"-");
 }
 
 int oPunch::getTimeInt() const {
   if (punchUnit > 0)
     return punchTime + oe->getUnitAdjustment(oPunch::SpecialPunch(type), punchUnit);
-  return punchTime;
+  return punchTime + tTimeAdjust.first; // Adjustment "wrong time" at control
 }
 
 int oPunch::getAdjustedTime() const
 {
   if (punchTime>=0)
-    return getTimeInt() +tTimeAdjust;
+    return getTimeInt() + tTimeAdjust.second;
   else return -1;
 }
 
@@ -201,18 +225,19 @@ void oPunch::setTime(const wstring &t)
     return;
   }
  
-  int tt = oe->getRelativeTime(t);
+  int tt = oe->getRelativeTime(t) - tTimeAdjust.first;
   if (tt < 0)
     tt = 0;
   else if (punchUnit > 0) {
     tt -= oe->getUnitAdjustment(oPunch::SpecialPunch(type), punchUnit);
-
   }
   setTimeInt(tt, false);
 }
 
 void oPunch::setTimeInt(int tt, bool databaseUpdate) {
   if (tt != punchTime) {
+    if (origin == 0)
+      origin = -1; // Manual change
     punchTime = tt;
     if (!databaseUpdate)
       updateChanged();
@@ -268,4 +293,41 @@ const wstring &oPunch::getType(int t) {
 
 void oPunch::changedObject() {
   // Does nothing
+}
+
+namespace {
+  constexpr uint64_t origin_key = 1300602071;
+}
+
+int oPunch::computeOrigin(int time, int code) {
+  if (time <= 0 || code <= 0)
+    return false;
+  static_assert(timeConstHour == 36000);
+  time = time % (36000 * 24 * 7);
+  code = code % 29;
+  uint64_t xcode = (time * 29 + code) * 7;
+  assert(xcode > 0 && xcode < 1300000000);
+  return (xcode*53458ul) % origin_key;
+}
+
+bool oPunch::isOriginal() const {
+  if (origin <= 0)
+    return false;
+  return computeOrigin(oe->getZeroTimeNum() + punchTime, type) == origin;
+}
+
+int oPunch::getOriginalTime() const {
+  if (origin <= 0)
+    return 0;
+
+  constexpr uint64_t inv = 91551603;
+  int xcode = int((inv * uint64_t(origin)) % origin_key);
+  if (xcode % 7 != 0)
+    return 0;
+
+  int pt = ((xcode/7)-type%29) / 29;
+
+  if (punchUnit > 0)
+    return pt + oe->getUnitAdjustment(oPunch::SpecialPunch(type), punchUnit);
+  return pt + tTimeAdjust.first; // Adjustment "wrong time" at control
 }

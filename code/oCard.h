@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ protected:
   pRunner tOwner;
   oPunch *getPunch(const pPunch punch);
 
-  int getDISize() const {return -1;}
+  int getDISize() const final {return -1;}
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -125,7 +125,15 @@ public:
 
   bool fillPunches(gdioutput &gdi, const string &name, oCourse *crs);
 
-  void addPunch(int type, int time, int matchControlId, int unit);
+  enum class PunchOrigin {
+    Unknown,
+    Original,
+    Manual,
+  };
+
+  PunchOrigin isOriginalCard() const;
+
+  void addPunch(int type, int time, int matchControlId, int unit, PunchOrigin origin);
   oPunch *getPunchByType(int type) const;
 
   //Get punch by (matched) control punch id.

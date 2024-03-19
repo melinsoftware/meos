@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -136,7 +136,7 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
   }
 }
 
-int AutomaticCB(gdioutput *gdi, int type, void *data);
+int AutomaticCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 
 void MySQLReconnect::status(gdioutput &gdi) {
   AutoMachine::status(gdi);

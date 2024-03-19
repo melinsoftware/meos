@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -155,7 +155,8 @@ class IOF30Interface {
   bool matchStageFilter(const set<int> &stageFilter, const xmlList &races);
 
   set<string> idProviders;
-  string preferredIdProvider;
+  pair<string, string> preferredIdProvider;
+  vector<vector<pair<string, wstring>>> externalIdTypes;
 
   void readEvent(gdioutput &gdi, const xmlobject &xo,
                  map<int, vector<LegInfo> > &teamClassConfig);
@@ -259,7 +260,7 @@ class IOF30Interface {
 
   bool readXMLCompetitorDB(const xmlobject &xCompetitor,
                            bool onlyWithClub, 
-                           unordered_multimap<size_t, int> &duplicateCheck,
+                           std::unordered_multimap<size_t, int> &duplicateCheck,
                            int &duplicateCount);
   void writeXMLCompetitorDB(xmlparser &xml, const RunnerDB &db, const RunnerWDBEntry &rde) const;
 
@@ -297,7 +298,7 @@ class IOF30Interface {
   void writeFullCourse(xmlparser &xml, const oCourse &c,
                          const map<int, wstring> &ctrlId2ExportId);
 
-  void readId(const xmlobject &person, int &pid, __int64 &extId) const;
+  void readId(const xmlobject &person, int &pid, int64_t &extId, int64_t& extId2) const;
 
   set<int> readCrsIds;
 
@@ -322,7 +323,7 @@ public:
                                string &dateOut, string &timeOut);
 
   void getIdTypes(vector<string> &types);
-  void setPreferredIdType(const string &type);
+  void setPreferredIdType(const pair<string, string>&type);
 
   void readEventList(gdioutput &gdi, xmlobject &xo);
 

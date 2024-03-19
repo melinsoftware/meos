@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ public:
 };
 
 struct oDataInfo {
-  char Name[20];
+  char Name[28];
   int Index;
   int Size;
   int Type;
@@ -132,9 +132,11 @@ protected:
   static string C_STRING(const string & name, int len);
   static string SQL_quote(const wchar_t *in);
 public:
-  enum oIntSize{oISDecimal = 28, oISTime = 29, oISCurrency = 30, 
-    oISDate = 31, oISDateOrYear = 27, oIS64=64,
-    oIS32=32, oIS16=16, oIS8=8, oIS16U=17, oIS8U=9};
+  enum oIntSize {
+    oISDecimal = 28, oISTime = 29, oISTimeAdjust = 26, oISCurrency = 30,
+    oISDate = 31, oISDateOrYear = 27, oIS64 = 64,
+    oIS32 = 32, oIS16 = 16, oIS8 = 8, oIS16U = 17, oIS8U = 9
+  };
 
   enum oStringSubType {oSSString = 0, oSSEnum = 1};
   string generateSQLDefinition(const std::set<string> &exclude) const;

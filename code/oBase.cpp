@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -140,18 +140,18 @@ bool oBase::synchronize(bool writeOnly)
   return true;
 }
 
-void oBase::setExtIdentifier(__int64 id)
+void oBase::setExtIdentifier(int64_t id)
 {
   getDI().setInt64("ExtId", id);
 }
 
-__int64 oBase::getExtIdentifier() const
+int64_t oBase::getExtIdentifier() const
 {
   return getDCI().getInt64("ExtId");
 }
 
 wstring oBase::getExtIdentifierString() const {
-  __int64 raw = getExtIdentifier();
+  int64_t raw = getExtIdentifier();
   wchar_t res[16];
   if (raw == 0)
     return L"";
@@ -164,7 +164,7 @@ wstring oBase::getExtIdentifierString() const {
   return res;
 }
 
-void oBase::converExtIdentifierString(__int64 raw, wchar_t bf[16])  {
+void oBase::converExtIdentifierString(int64_t raw, wchar_t bf[16])  {
   if (raw & BaseGenStringFlag)
     convertDynamicBase(raw & ExtStringMask, 256-32, bf);
   else if (raw & Base36StringFlag)
@@ -173,8 +173,8 @@ void oBase::converExtIdentifierString(__int64 raw, wchar_t bf[16])  {
     convertDynamicBase(raw, 10, bf);
 }
 
-__int64 oBase::converExtIdentifierString(const wstring &str) {
-  __int64 val;
+int64_t oBase::converExtIdentifierString(const wstring &str) {
+  int64_t val;
     int base = convertDynamicBase(str, val);
   if (base == 36)
     val |= Base36StringFlag;
@@ -184,16 +184,16 @@ __int64 oBase::converExtIdentifierString(const wstring &str) {
 }
 
 void oBase::setExtIdentifier(const wstring &str) {
-  __int64 val = converExtIdentifierString(str);
+  int64_t val = converExtIdentifierString(str);
   setExtIdentifier(val);
 }
 
-int oBase::idFromExtId(__int64 val) {
+int oBase::idFromExtId(int64_t val) {
   int basePart = int(val & 0x0FFFFFFF);
   if (basePart == val)
     return basePart;
 
-  __int64 hash = (val&ExtStringMask) % 2000000011ul;
+  int64_t hash = (val&ExtStringMask) % 2000000011ul;
   
   int res = basePart + int(hash&0xFFFFFF);
   if (res == 0)
@@ -203,7 +203,7 @@ int oBase::idFromExtId(__int64 val) {
 }
 
 bool oBase::isStringIdentifier() const {
-  __int64 raw = getExtIdentifier();
+  int64_t raw = getExtIdentifier();
   return (raw & (BaseGenStringFlag|Base36StringFlag)) != 0;
 }
 

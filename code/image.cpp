@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -230,11 +230,11 @@ uint64_t Image::computeHash(const vector<uint8_t>& data) {
 }
 
 void Image::read_file(const wstring& filename, vector<uint8_t>& data) {
-  ifstream fin;
-  fin.open(filename, ios::binary);
-  fin.seekg(0, ios::end);
+  std::ifstream fin;
+  fin.open(filename, std::ios::binary);
+  fin.seekg(0, std::ios::end);
   int p2 = (int)fin.tellg();
-  fin.seekg(0, ios::beg);
+  fin.seekg(0, std::ios::beg);
   data.resize(p2);
   fin.read((char*)data.data(), data.size());
   fin.close();

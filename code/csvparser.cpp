@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,13 +35,7 @@
 
 #include "meosexception.h"
 
-#ifdef _DEBUG
-#undef THIS_FILE
-static char THIS_FILE[]=__FILE__;
-#define new DEBUG_NEW
-#endif
-
-#include <vector>
+using namespace std;
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -216,7 +210,7 @@ bool csvparser::importOS_CSV(oEvent &oe, const wstring &file) {
           DI.setString("Nationality", sp[OSnat]);
 
           if (sp[rindex + OSRrentcard].length() > 0)
-            DI.setInt("CardFee", oe.getDCI().getInt("CardFee"));
+            r->setRentalCard(true);
 
           //r->setCardNo(atoi(sp[rindex+OSRcard]), false);
           r->setStartTime(oe.convertAbsoluteTime(sp[rindex + OSRstart]), true, oBase::ChangeType::Update);
@@ -383,7 +377,7 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
       oDataInterface DI=pr->getDI();
 
       pr->setSex(interpretSex(sp[OEsex]));
-      DI.setInt("BirthYear", extendYear(wtoi(sp[OEbirth])));
+      pr->setBirthDate(sp[OEbirth]);
       DI.setString("Nationality", sp[OEnat]);
 
       if (sp.size()>OEbib && needBib)
@@ -391,7 +385,9 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
 
       if (sp.size()>=38) {//ECO
         DI.setInt("Fee", wtoi(sp[OEfee]));
-        DI.setInt("CardFee", wtoi(sp[OErent]));
+        if (wtoi(sp[OErent]))
+          pr->setRentalCard(true);
+
         DI.setInt("Paid", wtoi(sp[OEpaid]));
       }
 

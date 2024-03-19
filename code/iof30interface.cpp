@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,8 @@
 #include "meos_util.h"
 #include "meosException.h"
 #include "localizer.h"
+
+using namespace std;
 
 wstring &getFirst(wstring &inout, int maxNames);
 wstring getMeosCompectVersion();
@@ -2160,7 +2162,6 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   di.setInt("Paid", oe.interpretCurrency(paid, currency));
   di.setInt("Taxable", oe.interpretCurrency(fee, currency));
 
-
   // StartTimeAllocationRequest
   xmlobject sar = xo.getObject("StartTimeAllocationRequest");
   if (sar) {
@@ -2171,7 +2172,7 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
       if (pRef) {
         wstring sid;
         pRef.getObjectString("Id", sid);
-        __int64 extId = oBase::converExtIdentifierString(sid);
+        int64_t extId = oBase::converExtIdentifierString(sid);
         int pid = oBase::idFromExtId(extId);
         pRunner rRef = oe.getRunner(pid, 0);
         if (rRef && rRef->getExtIdentifier() == extId) {
@@ -2417,17 +2418,20 @@ pRunner IOF30Interface::readPersonResult(gdioutput &gdi, pClass pc, xmlobject &x
         wstring s;
         for (auto &split : splits) {
           int code = split.getObjectInt("ControlCode");
-          int time = split.getObjectInt("Time");
+          wstring out;
+          split.getObjectString("Time", out);
+          double t = _wtof(out.c_str());
+          int time = int(t * timeConstSecond);
           split.getObjectString("status", s);
           if (s != L"missing")
-            card->addPunch(code, st + time, 0, 0);
+            card->addPunch(code, st + time, 0, 0, oCard::PunchOrigin::Original);
 
           if (s != L"additional")
             controls.push_back(code);
         }
 
         if (ft > 0)
-          card->addPunch(oPunch::PunchFinish, ft, 0, 0);
+          card->addPunch(oPunch::PunchFinish, ft, 0, 0, oCard::PunchOrigin::Original);
 
         //Update to SQL-source
         card->synchronize();
@@ -2461,25 +2465,35 @@ pRunner IOF30Interface::readPersonResult(gdioutput &gdi, pClass pc, xmlobject &x
   return r;
 }
 
-void IOF30Interface::readId(const xmlobject &person, int &pid, __int64 &extId) const {
+void IOF30Interface::readId(const xmlobject &person, int &pid, int64_t& extId, int64_t& extId2) const {
   wstring sid;
   pid = 0;
   extId = 0;
-  if (preferredIdProvider.empty()) {
+  extId2 = 0;
+  if (preferredIdProvider.first.empty()) {
     person.getObjectString("Id", sid);
   }
   else {
     xmlList sids;
-    wstring bsid;
+    wstring bsid, sid2;
     person.getObjects("Id", sids);
     for (auto &x : sids) {
       auto type = x.getAttrib("type");
-      if (type && type.getPtr() == preferredIdProvider) {
+      if (type && type.getPtr() == preferredIdProvider.first) {
         sid = x.getWStr();
+      }
+      else if (type && type.getPtr() == preferredIdProvider.second) {
+        sid2 = x.getWStr();
+        if (!sid2.empty())
+          bsid = sid2;
       }
       else if (bsid.empty())
         bsid = x.getWStr();
     }
+
+    if (!sid2.empty())
+      extId2 = oBase::converExtIdentifierString(sid2);
+
     if (sid.empty())
       pid = oBase::idFromExtId(oBase::converExtIdentifierString(bsid));
   }
@@ -2504,34 +2518,8 @@ pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
     name = lang.tl("N.N.");
   }
   int pid = 0;
-  __int64 extId = 0;
-  readId(person, pid, extId);
-  /*
-  wstring sid;
-  int pid = 0;
-  __int64 extId = 0;
-  if (preferredIdProvider.empty()) {
-    person.getObjectString("Id", sid);
-  }
-  else {
-    xmlList sids;
-    wstring bsid;
-    person.getObjects("Id", sids);
-    for (auto &x : sids) {
-      auto type = x.getAttrib("type");
-      if (type && type.get() == preferredIdProvider) {
-        sid = x.getw();
-      }
-      else if (bsid.empty())
-        bsid = x.getw();
-    }
-    if (sid.empty())
-      pid = oBase::idFromExtId(oBase::converExtIdentifierString(bsid));
-  }
-  if (!sid.empty()) {
-    extId = oBase::converExtIdentifierString(sid);
-    pid = oBase::idFromExtId(extId);
-  }*/
+  int64_t extId = 0, extId2 = 0;
+  readId(person, pid, extId, extId2);
   pRunner r = 0;
 
   if (pid) {
@@ -2580,6 +2568,8 @@ pRunner IOF30Interface::readPerson(gdioutput &gdi, const xmlobject &person) {
   }
 
   r->setExtIdentifier(extId);
+  if (extId2 != 0)
+    r->setExtIdentifier2(extId2);
 
   oDataInterface DI=r->getDI();
   wstring tmp;
@@ -2602,7 +2592,7 @@ pClub IOF30Interface::readOrganization(gdioutput &gdi, const xmlobject &xclub, b
     return 0;
   wstring clubIdS;
   xclub.getObjectString("Id", clubIdS);
-  __int64 extId = oBase::converExtIdentifierString(clubIdS);
+  int64_t extId = oBase::converExtIdentifierString(clubIdS);
   int clubId = oBase::idFromExtId(extId);
   wstring name, shortName;
   xclub.getObjectString("Name", name);
@@ -2870,7 +2860,7 @@ void IOF30Interface::getAgeLevels(const vector<FeeInfo> &fees, const vector<int>
 int getAgeFromDate(const wstring &date) {
   int y = getThisYear();
   SYSTEMTIME st;
-  convertDateYMS(date, st, false);
+  convertDateYMD(date, st, false);
   if (st.wYear > 1900)
     return y - st.wYear;
   else
@@ -2887,8 +2877,8 @@ void IOF30Interface::FeeInfo::add(IOF30Interface::FeeInfo &fi) {
     fi.toTime = fromTime;
     if (!fi.toTime.empty()) {
       SYSTEMTIME st;
-      convertDateYMS(fi.toTime, st, false);
-      __int64 sec = SystemTimeToInt64TenthSecond(st);
+      convertDateYMD(fi.toTime, st, false);
+      int64_t sec = SystemTimeToInt64TenthSecond(st);
       sec -= timeConstHour;
       fi.toTime = convertSystemDate(Int64TenthSecondToSystemTime(sec));
     }
@@ -3183,7 +3173,7 @@ void IOF30Interface::getLocalDateTime(const string &date, const string &time,
   memset(&st, 0, sizeof(SYSTEMTIME));
 
   int atime = convertAbsoluteTimeISO(wTime);
-  int idate = convertDateYMS(date, st, true);
+  int idate = convertDateYMD(date, st, true);
   if (idate != -1) {
     if (zone == "Z" || zone == "z") {
       st.wHour = atime / timeConstHour;
@@ -3246,7 +3236,7 @@ void IOF30Interface::getLocalDateTime(const wstring &date, const wstring &time,
   memset(&st, 0, sizeof(SYSTEMTIME));
 
   const int atime = convertAbsoluteTimeISO(wTime);
-  int idate = convertDateYMS(date, st, true);
+  int idate = convertDateYMD(date, st, true);
   if (idate != -1) {
     if (zone == L"Z" || zone == L"z") {
       st.wHour = atime / timeConstHour;
@@ -3665,7 +3655,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
 }
 
 void IOF30Interface::writeFees(xmlparser &xml, const oRunner &r) const {
-  int cardFee = max(0, r.getDCI().getInt("CardFee"));
+  int cardFee = r.getRentalCardFee(false);
   bool paidCard = r.getDCI().getInt("Paid") >= cardFee;
   
   writeAssignedFee(xml, r, paidCard ? cardFee : 0);
@@ -3777,11 +3767,26 @@ void IOF30Interface::writeEvent(xmlparser &xml) {
 void IOF30Interface::writePerson(xmlparser &xml, const oRunner &r) {
   xml.startTag("Person");
 
-  if (r.getExtIdentifier() != 0)
-    xml.write("Id", r.getExtIdentifierString());
-  else if (r.getMainRunner()->getExtIdentifier() != 0)
-    xml.write("Id", r.getMainRunner()->getExtIdentifierString());
- 
+  if (externalIdTypes.empty()) {
+    if (r.getExtIdentifier() != 0)
+      xml.write("Id", r.getExtIdentifierString());
+    else if (r.getMainRunner()->getExtIdentifier() != 0)
+      xml.write("Id", r.getMainRunner()->getExtIdentifierString());
+  }
+  else if (!externalIdTypes[0].empty()) {
+    if (r.getExtIdentifier() != 0)
+      xml.write("Id", externalIdTypes[0], r.getExtIdentifierString());
+    else if (r.getMainRunner()->getExtIdentifier() != 0)
+      xml.write("Id", externalIdTypes[0], r.getMainRunner()->getExtIdentifierString());
+  }
+
+  if (externalIdTypes.size()>1 && !externalIdTypes[1].empty()) {
+    if (r.getExtIdentifier2() != 0)
+      xml.write("Id", externalIdTypes[1], r.getExtIdentifierString2());
+    else if (r.getMainRunner()->getExtIdentifier2() != 0)
+      xml.write("Id", externalIdTypes[1], r.getMainRunner()->getExtIdentifierString2());
+  }
+
   xml.startTag("Name");
   xml.write("Family", r.getFamilyName());
   xml.write("Given", r.getGivenName());
@@ -3804,7 +3809,7 @@ void IOF30Interface::writeClub(xmlparser &xml, const oClub &c, bool writeExtende
   else {
     xml.startTag("Organisation");
   }
-  __int64 id = c.getExtIdentifier();
+  int64_t id = c.getExtIdentifier();
   if (id != 0)
     xml.write("Id", c.getExtIdentifierString());
 
@@ -4143,8 +4148,9 @@ bool IOF30Interface::readXMLCompetitorDB(const xmlobject &xCompetitor,
   if (!person) return false;
   
   int pidI;
-  long long pid;
-  readId(person, pidI, pid);
+  int64_t pid;
+  int64_t ext2; // Ignored
+  readId(person, pidI, pid, ext2);
   
   xmlobject pname = person.getObject("Name");
   if (!pname) return false;
@@ -4693,6 +4699,19 @@ void IOF30Interface::getIdTypes(vector<string> &types) {
   types.insert(types.begin(), idProviders.begin(), idProviders.end());
 }
 
-void IOF30Interface::setPreferredIdType(const string &type) {
+void IOF30Interface::setPreferredIdType(const pair<string, string> &type) {
   preferredIdProvider = type;
+  externalIdTypes.clear();
+  if (!type.first.empty() || !type.second.empty()) {
+    string stype = "type";
+    if (!type.first.empty())
+      externalIdTypes.emplace_back(vector<pair<string, wstring>>({
+             make_pair(stype, gdioutput::widen(type.first)) }));
+    else
+      externalIdTypes.emplace_back();
+
+    if (!type.second.empty())
+      externalIdTypes.emplace_back(vector<pair<string, wstring>>({ 
+             make_pair(stype, gdioutput::widen(type.second)) }));
+  }
 }

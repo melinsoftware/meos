@@ -10,7 +10,7 @@
 #endif // _MSC_VER > 1000
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,10 +91,10 @@ protected:
   int tagStackPointer;
 
   bool toString;
-  ofstream foutFile;
-  ostringstream foutString;
+  std::ofstream foutFile;
+  std::ostringstream foutString;
 
-  ifstream fin;
+  std::ifstream fin;
 
   std::ostream &fOut() {
     if (toString)
@@ -122,8 +122,8 @@ protected:
   bool cutMode;
 
   bool isUTF;
-  char strbuff[buff_pre_alloc]; // Temporary buffer for processing (no threading allowed)
-  wchar_t strbuffw[buff_pre_alloc]; // Temporary buffer for processing (no threading allowed)
+  vector<char> strbuff; // Temporary buffer for processing (no threading allowed)
+  vector<wchar_t> strbuffw; // Temporary buffer for processing (no threading allowed)
 
   ProgressWindow *progress;
   int lastIndex;

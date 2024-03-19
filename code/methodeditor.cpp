@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ void MethodEditor::setCurrentResult(DynamicResult *lst, const wstring &fileSrc) 
   fileNameSource = fileSrc;
 }
 
-int methodCB(gdioutput *gdi, int type, void *data) {
+int methodCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   void *clz = gdi->getData("MethodEditorClz");
   MethodEditor *le = (MethodEditor *)clz;
   BaseInfo *bi = (BaseInfo *)data;
@@ -233,7 +233,7 @@ void makeScore(wstring &str, const pair<int, int> &score) {
   str = itow(v);
 }
 
-int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
+int MethodEditor::methodCb(gdioutput &gdi, GuiEventType type, BaseInfo &data) {
   if (type == GUI_BUTTON) {
     ButtonInfo bi = dynamic_cast<ButtonInfo &>(data);
 
@@ -432,7 +432,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       sort(lists.begin(), lists.end());
       gdi.fillRight();
       gdi.addSelection("OpenList", 350, 400, methodCB, L"Choose result module:", L"Rader markerade med (*) kommer från en lista i tävlingen.");
-      gdi.addItem("OpenList", lists);
+      gdi.setItems("OpenList", lists);
       gdi.autoGrow("OpenList");
       gdi.selectFirstItem("OpenList");
 
@@ -802,7 +802,7 @@ int MethodEditor::methodCb(gdioutput &gdi, int type, BaseInfo &data) {
       currentResult->declareSymbols(m, true);
       vector< pair<wstring, size_t> > symb;
       currentResult->getSymbols(symb);
-      gdi.addItem("Symbols", symb);
+      gdi.setItems("Symbols", symb);
     }
     else if (lbi.id == "Symbols") {
       wstring name, desc;

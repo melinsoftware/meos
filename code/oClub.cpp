@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -263,7 +263,7 @@ void oEvent::fillClubs(gdioutput &gdi, const string &id)
 {
   vector< pair<wstring, size_t> > d;
   oe->fillClubs(d);
-  gdi.addItem(id, d);
+  gdi.setItems(id, d);
 }
 
 
@@ -530,7 +530,7 @@ void oClub::addRunnerInvoiceLine(const pRunner r, bool inTeam,
   }
 
   int fee = r->getDCI().getInt("Fee");
-  int card = r->getDCI().getInt("CardFee");
+  int card = r->getRentalCardFee(false);
   int paid = r->getDCI().getInt("Paid");
   int pm = r->getPaymentMode();
   
@@ -831,7 +831,7 @@ void oEvent::printInvoices(gdioutput &gdi, InvoicePrintType type,
     path.push_back('\\');
 
   if (toFile) {
-    ofstream fout;
+    std::ofstream fout;
 
     if (type == IPTElectronincHTML)
       fout.open((path + L"invoices.txt").c_str());
@@ -861,7 +861,7 @@ void oEvent::printInvoices(gdioutput &gdi, InvoicePrintType type,
         if (type == IPTElectronincHTML && pay > 0) {
           fout << it->getId() << ";" << gdi.toUTF8(it->getName()) << ";" <<
             nr << ";" << gdi.toUTF8(filename) << ";" << gdi.toUTF8(email) << ";"
-                << gdi.toUTF8(formatCurrency(pay))  <<endl;
+                << gdi.toUTF8(formatCurrency(pay))  << std::endl;
         }
 
         if (type == IPTAllPDF) {
@@ -1015,9 +1015,7 @@ void oEvent::setupClubInfoData() {
       bool skip = r.Class && r.Class->getClassStatus() == oClass::ClassStatus::InvalidRefund;
 
       if (!skip) {
-        int cardFee = di.getInt("CardFee");
-        if (cardFee < 0)
-          cardFee = 0;
+        int cardFee = r.getRentalCardFee(false);
         fee[id] += di.getInt("Fee") + cardFee;
       }
       paid[id] += di.getInt("Paid");

@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #include "tabbase.h"
 #include "oEventDraw.h"
 
+class QFEditor;
+
 class TabClass :
   public TabBase
 {
@@ -45,7 +47,6 @@ class TabClass :
   double pTimeScaling;
   int pInterval;
 
-
   class HandleCloseWindow : public GuiHandler {
     TabClass *tabClass;
     HandleCloseWindow(const HandleCloseWindow&);
@@ -56,7 +57,6 @@ class TabClass :
     friend class TabClass;
   };
   HandleCloseWindow handleCloseWindow;
-
 
   bool EditChanged;
   int ClassId;
@@ -71,7 +71,9 @@ class TabClass :
   void legSetup(gdioutput &gdi);
   vector<ClassInfo> cInfo;
   void saveDrawSettings() const;
-  
+
+  void dynamicStart(gdioutput& gdi);
+
   map<int, ClassInfo> cInfoCache;
 
   DrawInfo drawInfo;
@@ -120,9 +122,6 @@ class TabClass :
 
   void showClassSelection(gdioutput &gdi, int &bx, int &by, GUICALLBACK classesCB) const;
 
-  // Set simultaneous start in a class
-  void simultaneous(int classId, const wstring &time, int nVacant);
-
   void updateFairForking(gdioutput &gdi, pClass pc) const;
   void selectCourses(gdioutput &gdi, int legNo);
   bool showMulti(bool singleOnly) const;
@@ -168,10 +167,14 @@ class TabClass :
   void fillResultModules(gdioutput &gdi, pClass pc);
 
   shared_ptr<GuiHandler> startGroupHandler;
+  shared_ptr<QFEditor> qfEditor;
 
 public:
   void loadStartGroupSettings(gdioutput &gdi, bool reload);
   void drawStartGroups(gdioutput &gdi);
+
+  // Set simultaneous start in a class
+  static void simultaneous(oEvent &oe, int classId, const wstring& time, int nVacant);
 
   void clearCompetitionData();
 
@@ -182,14 +185,14 @@ public:
   bool loadPage(gdioutput &gdi);
   void selectClass(gdioutput &gdi, int cid);
 
-  int classCB(gdioutput &gdi, int type, void *data);
-  int multiCB(gdioutput &gdi, int type, void *data);
+  int classCB(gdioutput &gdi, GuiEventType type, BaseInfo* data);
+  int multiCB(gdioutput &gdi, GuiEventType type, BaseInfo* data);
 
   const char * getTypeStr() const {return "TClassTab";}
   TabType getType() const {return TClassTab;}
 
-  friend int DrawClassesCB(gdioutput *gdi, int type, void *data);
+  friend int DrawClassesCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 
   TabClass(oEvent *oe);
-  ~TabClass(void);
+  ~TabClass();
 };

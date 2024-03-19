@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1858,7 +1858,7 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
   }
 
   string2Wide(lastNameByte, lastName);
-  wcsncpy(card.lastName, lastName.c_str(), 20);
+  wcsncpy_s(card.lastName, lastName.c_str(), 20);
   card.lastName[20] = 0;
 
   memcpy(firstNameByte, data+32+20, 20);
@@ -1869,7 +1869,7 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
   }
 
   string2Wide(firstNameByte, firstName);
-  wcsncpy(card.firstName, firstName.c_str(), 20);
+  wcsncpy_s(card.firstName, firstName.c_str(), 20);
   card.firstName[20] = 0;
 
   data+=128-16;

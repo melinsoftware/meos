@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <unordered_map>
 #include "inthashmap.h"
 class oClass;
 typedef oClass* pClass;
@@ -260,9 +261,20 @@ protected:
   inthashmap *tLegTimeToPlace;
   inthashmap *tLegAccTimeToPlace;
 
+  struct PlaceTime {
+    int leader = -1;
+    map<int, int> timeToPlace;
+  };
+
+  vector<unordered_map<int, PlaceTime>> teamLegCourseControlToLeaderPlace;
+  
   void insertLegPlace(int from, int to, int time, int place);
   void insertAccLegPlace(int courseId, int controlNo, int time, int place);
 
+  /** Get relay/team accumulated leader time/place at control. */
+  int getAccLegControlLeader(int teamLeg, int courseControlId) const;
+  int getAccLegControlPlace(int teamLeg, int courseControlId, int time) const;
+     
   // For sub split times
   int tLegLeaderTime;
   mutable int tNoTiming;
@@ -280,8 +292,8 @@ protected:
   // Used to force show of full multi course dialog
   bool tShowMultiDialog;
 
-  static const int dataSize = 512;
-  int getDISize() const {return dataSize;}
+  static constexpr int dataSize = 512+64;
+  int getDISize() const final {return dataSize;}
 
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
@@ -357,7 +369,7 @@ protected:
   mutable pair<int, map<string, int>> tTypeKeyToRunnerCount;
 
   enum CountKeyType {
-    All,
+    AllCompeting,
     Finished,
     ExpectedStarting,
     DNS,
@@ -382,9 +394,9 @@ public:
   /** The master class in a qualification/final scheme. */
   const pClass getParentClass() const { return parentClass; }
 
-  const QualificationFinal *getQualificationFinal() const {
+  const shared_ptr<QualificationFinal> &getQualificationFinal() const {
     reinitialize(false);
-    return qualificatonFinal.get();
+    return qualificatonFinal;
   }
 
   void clearQualificationFinal() const;
@@ -404,7 +416,7 @@ public:
 
   /** Returns the number of possible final classes.*/
   int getNumQualificationFinalClasses() const;
-  void loadQualificationFinalScheme(const wstring &fileName);
+  void loadQualificationFinalScheme(const QualificationFinal &scheme);
 
   void updateFinalClasses(oRunner *causingResult, bool updateStartNumbers);
 
@@ -604,6 +616,9 @@ public:
 
   void setFreeStart(bool freeStart);
   bool hasFreeStart() const;
+  
+  void setRequestStart(bool freeStart);
+  bool hasRequestStart() const;
 
   void setDirectResult(bool directResult);
   bool hasDirectResult() const;
@@ -620,7 +635,7 @@ public:
   bool hasTrueMultiCourse() const;
 
   unsigned getNumStages() const {return MultiCourse.size();}
-  /** Get the set of true legs, identifying parallell legs etc. Returns indecs into
+  /** Get the set of true legs, identifying parallell legs etc. Returns indices into
    legInfo of the last leg of the true leg (first), and true leg (second).*/
   struct TrueLegInfo {
   protected:
@@ -634,7 +649,9 @@ public:
 
   void getTrueStages(vector<TrueLegInfo> &stages) const;
 
-  unsigned getLastStageIndex() const {return max<signed>(MultiCourse.size(), 1)-1;}
+  unsigned getLastStageIndex() const {
+    return std::max<int>(MultiCourse.size(), 1) - 1;
+  }
 
   void setNumStages(int no);
 

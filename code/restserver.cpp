@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2023 Melin Software HB
+Copyright (C) 2009-2024 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 
 extern Image image;
 using namespace restbed;
+using namespace std;
 
 vector< shared_ptr<RestServer> > RestServer::startedServers;
 
@@ -527,8 +528,9 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     set<int> cls;
     if (param.count("class") > 0)
       getSelection(param.find("class")->second, cls);
+    pair<string, string> preferredIdTypes;
 
-    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, -1, false, false, true, false, false);
+    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, preferredIdTypes, -1, false, false, true, false, false);
     ifstream fin(exportFile.c_str());
     string rbf;
     while (std::getline(fin, rbf)) {
@@ -543,8 +545,9 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     set<int> cls;
     if (param.count("class") > 0)
       getSelection(param.find("class")->second, cls);
+    pair<string, string> preferredIdTypes;
 
-    oe.exportIOFStartlist(oEvent::IOF30, exportFile.c_str(), useUTC, cls, false, true, false, false);
+    oe.exportIOFStartlist(oEvent::IOF30, exportFile.c_str(), useUTC, cls, preferredIdTypes, false, true, false, false);
     ifstream fin(exportFile.c_str());
     string rbf;
     while (std::getline(fin, rbf)) {
@@ -1150,7 +1153,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
         auto &sd = r->getSplitTimes(false);
         vector<int> after;
         r->getLegTimeAfter(after);
-        vector<int> afterAcc;
+        vector<oRunner::ResultData> afterAcc;
         r->getLegTimeAfterAcc(afterAcc);
         vector<int> delta;
         r->getSplitAnalysis(delta);
@@ -1177,8 +1180,8 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
                 else
                   analysis[0].second = L"";
 
-                if (afterAcc[ix] > 0)
-                  analysis[1].second = formatTime(afterAcc[ix]);
+                if (afterAcc[ix].get(0) > 0)
+                  analysis[1].second = formatTime(afterAcc[ix].get(false));
                 else
                   analysis[1].second = L"";
 
@@ -1190,7 +1193,7 @@ void RestServer::lookup(oEvent &oe, const string &what, const multimap<string, s
                 int place = r->getLegPlace(ix);
                 analysis[3].second = place > 0 ? itow(place) : L"";
                  
-                int placeAcc = r->getLegPlaceAcc(ix);
+                int placeAcc = r->getLegPlaceAcc(ix, false);
                 analysis[4].second = placeAcc > 0 ? itow(placeAcc) : L"";
 
                 xml.write("Analysis", analysis, L"");
@@ -1407,8 +1410,7 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
       if (r) {
         int cf = 0;
         if (cardNo > 0 && oe.isHiredCard(cardNo)) {
-          cf = oe.getBaseCardFee();
-          r->getDI().setInt("CardFee", cf);
+          r->setRentalCard(true);
         }
         r->setFlag(oRunner::FlagAddedViaAPI, true);
         r->addClassDefaultFee(true);

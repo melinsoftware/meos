@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -63,6 +63,7 @@ bool oFreePunch::Write(xmlparser &xml)
   xml.writeTime("Time", punchTime);
   xml.write("Type", type);
   xml.write("Unit", punchUnit);
+  xml.write("Origin", origin);
   xml.write("Id", Id);
   xml.write("Updated", getStamp());
   xml.endTag();
@@ -89,6 +90,9 @@ void oFreePunch::Set(const xmlobject *xo)
     }
     else if (it->is("Unit")) {
       punchUnit = it->getInt();
+    }
+    else if (it->is("Origin")) {
+      origin = it->getInt();
     }
     else if (it->is("Id")){
       Id=it->getInt();
@@ -450,12 +454,14 @@ bool oEvent::isInPunchHash(int card, int code, int time) {
   return readPunchHash.count(make_pair(p1, p2)) > 0;
 }
 
-pFreePunch oEvent::addFreePunch(int time, int type, int unit, int card, bool updateStartFinish) {
+pFreePunch oEvent::addFreePunch(int time, int type, int unit, int card, bool updateStartFinish, bool isOriginal) {
   if (time > 0 && isInPunchHash(card, type, time))
     return 0;
   oFreePunch ofp(this, card, time, type, unit);
+  if (isOriginal)
+    ofp.origin = ofp.computeOrigin(time, type);
 
-  punches.push_back(ofp);
+  punches.emplace_back(ofp);
   pFreePunch fp=&punches.back();
   fp->addToEvent(this, &ofp);
   oFreePunch::rehashPunches(*this, card, fp);
@@ -771,7 +777,7 @@ void oEvent::setHiredCard(int cardNo, bool flag) {
 
   if (isHiredCard(cardNo) != flag) {
     if (flag) {
-      addFreePunch(0, oPunch::HiredCard, 0, cardNo, false);
+      addFreePunch(0, oPunch::HiredCard, 0, cardNo, false, false);
       hiredCardHash.insert(cardNo);
       tHiredCardHashDataRevision = dataRevision;
     }

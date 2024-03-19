@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -470,6 +470,12 @@ void MeosSQL::upgradeDB(const string &db, oDataContainer const * dc) {
       sql = sql.substr(0, sql.length() - 2);
       query.execute(sql);
     }
+    if (!eCol.count("Origin")) {
+      string sql = "ALTER TABLE " + db + " ";
+      sql += "ADD COLUMN " + C_INT("Origin");
+      sql = sql.substr(0, sql.length() - 2);
+      query.execute(sql);
+    }
   }
   if (dc) {
     // Ugrade table
@@ -700,7 +706,8 @@ bool MeosSQL::openDB(oEvent *oe)
       << C_INT("CardNo")
       << C_INT("Time")
       << C_INT("Type")
-      << C_INT("Unit") << C_END();
+      << C_INT("Unit") 
+      << C_INT("Origin") << C_END();
     query.execute();
 
     upgradeDB("oPunch", nullptr);
@@ -1622,6 +1629,8 @@ void MeosSQL::storePunch(const RowWrapper &row, oFreePunch &p, bool rehash)
     p.type = row["Type"];
   }
   p.punchUnit = row["Unit"];
+  p.origin = row["Origin"];
+
   p.sqlUpdated = row["Modified"];
   p.counter = row["Counter"];
   p.Removed = row["Removed"];
@@ -2953,6 +2962,7 @@ OpFailStatus MeosSQL::syncUpdate(oFreePunch *c, bool forceWriteAll)
   queryset << " CardNo=" <<  c->CardNo << ", "
     << " Type=" << c->type << ","
     << " Time=" << c->punchTime << ","
+    << " Origin=" << c->origin << ","
     << " Unit=" << c->punchUnit;
 
   return syncUpdate(queryset, "oPunch", c);

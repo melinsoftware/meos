@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,28 +41,30 @@ extern Image image;
 #include <sstream>
 #include <iomanip>
 
+using namespace std;
+
 double getLocalScale(const wstring &fontName, wstring &faceName);
 wstring getMeosCompectVersion();
 
 map <string, shared_ptr<HTMLWriter>> HTMLWriter::tCache;
 extern wchar_t exePath[MAX_PATH];
 
-static void generateStyles(const gdioutput &gdi, ostream &fout, double scale, bool withTbl, const list<TextInfo> &TL,
+static void generateStyles(const gdioutput &gdi, std::ostream &fout, double scale, bool withTbl, const list<TextInfo> &TL,
                            map< pair<gdiFonts, string>, pair<string, string> > &styles) {
   fout << "<style type=\"text/css\">\n";
   fout << "body {background-color: rgb(250,250,255)}\n";
-  fout << "h1 {font-family:arial,sans-serif;font-size:" << fixed << std::setprecision(2) << 24 * scale << "px;font-weight:normal;white-space:nowrap}\n";
-  fout << "h2 {font-family:arial,sans-serif;font-size:" << fixed << std::setprecision(2) << 20 * scale << "px;font-weight:normal;white-space:nowrap}\n";
-  fout << "h3 {font-family:arial,sans-serif;font-size:" << fixed << std::setprecision(2) << 16 * scale << "px;font-weight:normal;white-space:nowrap}\n";
-  fout << "p {font-family:arial,sans-serif;font-size:" << fixed << std::setprecision(2) << 12 * scale << "px;font-weight:normal}\n";
-  fout << "div {font-family:arial,sans-serif;font-size:" << fixed << std::setprecision(2) << 12 * scale << "px;font-weight:normal;white-space:nowrap}\n";
+  fout << "h1 {font-family:arial,sans-serif;font-size:" << std::fixed << std::setprecision(2) << 24 * scale << "px;font-weight:normal;white-space:nowrap}\n";
+  fout << "h2 {font-family:arial,sans-serif;font-size:" << std::fixed << std::setprecision(2) << 20 * scale << "px;font-weight:normal;white-space:nowrap}\n";
+  fout << "h3 {font-family:arial,sans-serif;font-size:" << std::fixed << std::setprecision(2) << 16 * scale << "px;font-weight:normal;white-space:nowrap}\n";
+  fout << "p {font-family:arial,sans-serif;font-size:" << std::fixed << std::setprecision(2) << 12 * scale << "px;font-weight:normal}\n";
+  fout << "div {font-family:arial,sans-serif;font-size:" << std::fixed << std::setprecision(2) << 12 * scale << "px;font-weight:normal;white-space:nowrap}\n";
 
   if (withTbl) {
-    fout << "td {font-family:arial,sans-serif;font-size:" << fixed << std::setprecision(2) << 12 * scale << "px;font-weight:normal;white-space:nowrap}\n";
+    fout << "td {font-family:arial,sans-serif;font-size:" << std::fixed << std::setprecision(2) << 12 * scale << "px;font-weight:normal;white-space:nowrap}\n";
     fout << "td.e0 {background-color: rgb(238,238,255)}\n";
     fout << "td.e1 {background-color: rgb(245,245,255)}\n";
-    fout << "td.header {line-height:" << fixed << std::setprecision(2) << 1.8 * scale << ";height:" << fixed << std::setprecision(2) << 40 * scale << "px}\n";
-    fout << "td.freeheader {line-height:" << fixed << std::setprecision(2) << 1.2 * scale << "}\n";
+    fout << "td.header {line-height:" << std::fixed << std::setprecision(2) << 1.8 * scale << ";height:" << std::fixed << std::setprecision(2) << 40 * scale << "px}\n";
+    fout << "td.freeheader {line-height:" << std::fixed << std::setprecision(2) << 1.2 * scale << "}\n";
   }
   list<TextInfo>::const_iterator it=TL.begin();
   int styleList = 1;

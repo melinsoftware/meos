@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -510,9 +510,12 @@ private:
       else {
         vector<pRunner> cr;
         oe->getRunners(c_it->getId(), 0, cr, false);
-        for (pRunner r : cr)
+        for (pRunner r : cr) {
+          if (r->getStatus() == StatusNotCompetiting || r->getStatus() == StatusCANCEL)
+            continue;
           if (r->getStartGroup(true) == ci.startGroupId)
             nr++;
+        }
       }
 
       if (ci.nVacant == -1 || !ci.nVacantSpecified || di.changedVacancyInfo) {
@@ -982,7 +985,7 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
 
       cInfo[i].nRunners = pc->getNumRunners(true, true, true) + cInfo[i].nVacant;
 
-      if (cInfo[i].nRunners>0) {
+      if (cInfo[i].nRunners > 0) {
         runnerPerGroup[cInfo[i].unique] += cInfo[i].nRunners;
         runnerPerCourse[cInfo[i].courseId] += cInfo[i].nRunners;
       }
@@ -996,15 +999,20 @@ void oEvent::loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vecto
     cInfo[k].nRunnersCourse = runnerPerCourse[cInfo[k].courseId];
   }
 }
-void oEvent::drawRemaining(DrawMethod method, bool placeAfter)
+
+void oEvent::drawRemaining(const set<int>& classSel, DrawMethod method, bool placeAfter)
 {
+  bool all = classSel.size() == 1 && *classSel.begin() == -1;
   DrawType drawType = placeAfter ? DrawType::RemainingAfter : DrawType::RemainingBefore;
 
   for (oClassList::iterator it = Classes.begin(); it !=  Classes.end(); ++it) {
-    vector<ClassDrawSpecification> spec;
-    spec.emplace_back(it->getId(), 0, 0, 0, 0, VacantPosition::Mixed);
-
-    drawList(spec, method, 1, drawType);
+    if (it->isRemoved())
+      continue;
+    if (all || classSel.count(it->getId())) {
+      vector<ClassDrawSpecification> spec;
+      spec.emplace_back(it->getId(), 0, 0, 0, 0, VacantPosition::Mixed);
+      drawList(spec, method, 1, drawType);
+    }
   }
 }
 
@@ -1259,7 +1267,7 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
   }
 
   vector<pair<vector<pRunner>, bool>> uaGroups;
-  unsigned seed = (unsigned)chrono::system_clock::now().time_since_epoch().count();
+  unsigned seed = (unsigned)std::chrono::system_clock::now().time_since_epoch().count();
   auto rnd = std::default_random_engine(seed);
 
   int maxPerGroup = Runners.size();
@@ -1449,10 +1457,10 @@ void oEvent::drawListStartGroups(const vector<ClassDrawSpecification> &spec,
 
     map<int, map<pair<int, int>, int>> classClubCountByGroup;
     for (auto ms : moveFromGroupClassClub) {
-      int groupId = get<0>(ms);
-      int clsId = get<1>(ms);
-      int clubId = get<2>(ms);
-      int cnt = get<3>(ms);
+      int groupId = std::get<0>(ms);
+      int clsId = std::get<1>(ms);
+      int clubId = std::get<2>(ms);
+      int cnt = std::get<3>(ms);
       classClubCountByGroup[groupId][make_pair(clsId, clubId)] = cnt;
     }
 
@@ -1770,13 +1778,13 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     for (it=Runners.begin(); it != Runners.end(); ++it) {
       int cid = it->getClassId(true);
       if (!it->isRemoved() && clsId2Ix.count(cid)) {
-        if (it->getStatus() == StatusNotCompetiting)
+        if (it->getStatus() == StatusNotCompetiting || it->getStatus() == StatusCANCEL)
           continue;
         int ix = clsId2Ix[cid];
         if (spec[ix].startGroup != 0 && it->getStartGroup(true) != spec[ix].startGroup)
           continue;
         
-        if (it->legToRun() == spec[ix].leg || spec[ix].leg == -1) {
+        if (it->legToRun() == spec[ix].leg || spec[ix].leg == -1 || it->getClassId(false) != cid ) {
           runners.push_back(&*it);
           spec[ix].ntimes++;
         }
@@ -1792,7 +1800,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
 
     for (it=Runners.begin(); it != Runners.end(); ++it) {
       if (!it->isRemoved() && clsId2Ix.count(it->getClassId(true))) {
-        if (it->getStatus() == StatusNotCompetiting)
+        if (it->getStatus() == StatusNotCompetiting || it->getStatus() == StatusCANCEL)
           continue;
 
         int st = it->getStartTime();
@@ -1860,7 +1868,7 @@ void oEvent::drawList(const vector<ClassDrawSpecification> &spec,
     for (size_t k = 0; k < runners.size(); k++) {
       if (runners[k]->isVacant()) {
         vacant.push_back(runners[k]);
-        swap(runners[k], runners.back());
+        std::swap(runners[k], runners.back());
         runners.pop_back();
         k--;
       }
@@ -2193,7 +2201,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi,
     for (oClassList::iterator it = Classes.begin(); it!=Classes.end(); ++it) {
       if (it->getStart() != start)
         continue;
-      if (it->hasFreeStart())
+      if (it->hasFreeStart() || it->hasRequestStart())
         continue;
 
       maxRunners = max(maxRunners, runnersPerClass[&*it]);
@@ -2238,7 +2246,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi,
           continue;
         if (notDrawn.count(it->getId()) == 0)
           continue; // Only not drawn classes
-        if (it->hasFreeStart())
+        if (it->hasFreeStart() || it->hasRequestStart())
           continue;
 
         di.classes[it->getId()] = ClassInfo(&*it);
@@ -2296,7 +2304,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi,
           continue;
         if (notDrawn.count(it->getId()) == 0)
           continue; // Only not drawn classes
-        if (it->hasFreeStart())
+        if (it->hasFreeStart() || it->hasRequestStart())
           continue;
         //int classID, int leg, int firstStart, int interval, int vacances, oEvent::VacantPosition vp)
         spec.emplace_back(it->getId(), 0, 0, 120, 1, VacantPosition::Mixed);
@@ -2322,7 +2330,7 @@ void oEvent::automaticDrawAll(gdioutput &gdi,
   for (oClassList::iterator it = Classes.begin(); it!=Classes.end(); ++it) {
     if (needsCompletion.count(it->getId())==0)
       continue;
-    if (it->hasFreeStart())
+    if (it->hasFreeStart() || it->hasRequestStart())
       continue;
 
     gdi.addStringUT(0, lang.tl(L"Lottar efteranmälda: ") + it->getName());
@@ -2450,4 +2458,122 @@ void oEvent::drawPersuitList(int classId, int firstTime, int restartTime,
     r->synchronize(true);
   }
   reCalculateLeaderTimes(classId);
+}
+
+int oEvent::requestStartTime(int runnerId, int afterThisTime, int minTimeInterval,
+                             int lastAllowedTime, int maxParallel,
+                             bool allowSameCourse, bool allowSameCourseNeighbour, 
+                             bool allowSameFirstControl, bool allowClubNeighbour) {
+  synchronizeList({ oListId::oLRunnerId, oListId::oLClassId, oListId::oLCourseId });
+  pRunner runner = getRunner(runnerId, 0);
+  if (!runner || !runner->Class)
+    return -1;
+  
+  assert(minTimeInterval > 0);
+  pCourse crs = runner->getCourse(false);
+  pControl firstC = !allowSameFirstControl && crs ? crs->getControl(0) : nullptr;
+  wstring start = crs ? crs->getStart() : L"";
+
+  set<int> usedStart;
+  set<int> usedStartClass;
+  set<int> usedClassClub;
+  map<int, int> countStartSlots;
+  int timeDivider = std::min(minTimeInterval, timeConstMinute);
+  int slotDist = minTimeInterval / timeDivider;
+  int closestStartSlotClass = numeric_limits<int>::max();
+  int desiredSlot = afterThisTime / timeDivider;
+
+  for (const oRunner &r : Runners) {
+    if (r.isRemoved() || r.getStatus() == StatusNotCompetiting || r.getStatus() == StatusCANCEL)
+      continue;
+
+    if (r.getStartTime() <= 0)
+      continue;
+
+    // If needs to be inserted in map, otherwise just compute closest
+    bool neededInMap = r.getStartTime() >= afterThisTime - timeDivider * slotDist;
+     
+    pCourse otherCrs = r.getCourse(false);
+    int slot = r.getStartTime() / timeDivider;
+    if (maxParallel > 0 && (!otherCrs || otherCrs->getStart() == start))
+      if (neededInMap)
+        ++countStartSlots[slot];
+
+    if (r.Class == runner->Class) {
+      if (abs(slot - desiredSlot) < abs(closestStartSlotClass-desiredSlot))
+        closestStartSlotClass = slot;
+      if (neededInMap) {
+        usedStart.insert(slot);
+        usedStartClass.insert(slot);
+        if (!allowClubNeighbour && r.Club == runner->Club && r.Club && r.getClubId() != oe->getVacantClubIfExist(true)) {
+          usedClassClub.insert(slot);
+        }
+      }
+    }
+    else if (!allowSameCourse && otherCrs == crs) {
+      usedStart.insert(slot);
+      if (allowSameCourseNeighbour) {
+        if (abs(slot - slotDist) < abs(closestStartSlotClass - desiredSlot))
+          closestStartSlotClass = slot;
+
+        if (neededInMap)
+          usedStartClass.insert(slot);
+      }
+    }
+    else if (!allowSameFirstControl && otherCrs && otherCrs->getControl(0) == firstC) {
+      if (neededInMap)
+        usedStart.insert(slot);
+    }
+  }
+
+  if (closestStartSlotClass < 10000) {
+    if (closestStartSlotClass > desiredSlot) {
+      int off = (closestStartSlotClass - desiredSlot) % slotDist;
+      if (off > 0) {
+        afterThisTime += off * timeDivider;
+      }
+    }
+    else if (closestStartSlotClass < desiredSlot) {
+      int off = (desiredSlot - closestStartSlotClass) % slotDist;
+      if (off > 0) {
+        int slotAdjust = slotDist - off;
+        afterThisTime += slotAdjust * timeDivider;
+      }
+    }
+  }
+  for (int startTime = afterThisTime; startTime <= lastAllowedTime; startTime += timeDivider) {
+    int slot = startTime / timeDivider;
+    if (usedStart.count(slot))
+      continue;
+    if (maxParallel > 0) {
+      auto res = countStartSlots.find(slot);
+      if (res != countStartSlots.end() && res->second >= maxParallel)
+        continue;
+    }
+
+    if (usedClassClub.count(slot - slotDist)) {
+      startTime += (slotDist - 1) * timeDivider;
+      continue;
+    }
+    if (usedClassClub.count(slot + slotDist)) {
+      startTime += (2 * slotDist - 1) * timeDivider;
+      continue;
+    }
+
+    bool ok = true;
+    for (int j = 1; j < slotDist; j++) {
+      if (usedStartClass.count(slot + j)) {
+        ok = false;
+        startTime += (j + slotDist - 1) * timeDivider; // Jump forward (optimize)
+        break;
+      }
+      if (usedStartClass.count(slot - j)) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) 
+      return startTime;
+  }
+  return -1; // No time found
 }

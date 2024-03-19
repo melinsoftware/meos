@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,9 +43,9 @@
 #include "progress.h"
 #include "machinecontainer.h"
 
-int AutomaticCB(gdioutput *gdi, int type, void *data);
+int AutomaticCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 
-static int OnlineCB(gdioutput *gdi, int type, void *data) {
+static int OnlineCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   switch (type) {
     case GUI_BUTTON: {
       //Make a copy
@@ -123,7 +123,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.addListBox("Classes", 200,300,0, L"Klasser:", L"", true);
   gdi.pushX();
   vector< pair<wstring, size_t> > d;
-  gdi.addItem("Classes", oe.fillClasses(d, oEvent::extraNone, oEvent::filterNone));
+  gdi.setItems("Classes", oe.fillClasses(d, oEvent::extraNone, oEvent::filterNone));
   gdi.setSelection("Classes", classes);
 
   gdi.popX();
@@ -418,10 +418,10 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     t = getTempFile();
     if (dataType == DataType::IOF2)
       oe->exportIOFSplits(oEvent::IOF20, t.c_str(), false, false,
-                          classes, -1, false, true, true, false, false);
+                          classes, make_pair("",""), - 1, false, true, true, false, false);
     else if (dataType == DataType::IOF3)
       oe->exportIOFSplits(oEvent::IOF30, t.c_str(), false, false, 
-                          classes, -1, false, true, true, false, false);
+                          classes, make_pair("", ""), -1, false, true, true, false, false);
     else
       throw meosException("Internal error");
   }

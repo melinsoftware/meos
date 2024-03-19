@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,25 +24,14 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_GDIOUTPUT_H__396F60F8_679F_498A_B759_DF8F6F346A4A__INCLUDED_)
-#define AFX_GDIOUTPUT_H__396F60F8_679F_498A_B759_DF8F6F346A4A__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
-
 
 #include <set>
 #include <map>
 #include <vector>
 
-#ifdef OLD
-#include <hash_set>
-#include <hash_map>
-#else
 #include <unordered_map>
 #include <unordered_set>
-#endif
 
 #include <algorithm>
 #include "subcommand.h"
@@ -65,8 +54,6 @@ struct PageInfo;
 struct RenderedPage;
 class AnimationData;
 
-typedef int (*GUICALLBACK)(gdioutput *gdi, int type, void *data);
-
 enum GDICOLOR;
 enum KeyCommandCode;
 enum gdiFonts;
@@ -81,13 +68,7 @@ constexpr int baseButtonWidth = 150;
 constexpr int GDI_BUTTON_SPACING = 8;
 
 typedef list<ToolInfo> ToolList;
-/*
-enum FontEncoding {
-  ANSI, Russian, EastEurope, Hebrew
-};*/
-/*
-FontEncoding interpetEncoding(const string &enc);
-*/
+
 struct FontInfo {
   const wstring *name;
   HFONT normal;
@@ -171,8 +152,8 @@ protected:
 
   map<string, RestoreInfo> restorePoints;
 
-  GUICALLBACK onClear;
-  GUICALLBACK postClear;
+  shared_ptr<GuiEvent> onClear;
+  shared_ptr<GuiEvent> postClear;
 
   list<InfoBox> IBox;
 
@@ -365,8 +346,8 @@ public:
   static const string& toUTF8(const wstring& input);
   static const wstring& fromUTF8(const string& input);
 
-  //void setEncoding(FontEncoding encoding);
-  //FontEncoding getEncoding() const;
+  
+  void updateTabFont();
 
   void getFontInfo(const TextInfo& ti, FontInfo& fi) const;
 
@@ -487,14 +468,32 @@ public:
 
   int sendCtrlMessage(const string& id);
   bool canClear();
-  void setOnClearCb(GUICALLBACK cb);
-  void setPostClearCb(GUICALLBACK cb);
+  
+  template<typename H>
+  void setPostClearCb(H cb) {
+    postClear = make_shared<GuiEvent>(cb);
+  }
 
-  void restore(const string& id = "", bool DoRefresh = true);
+  template<typename H>
+  void setOnClearCb(H cb) {
+    onClear = make_shared<GuiEvent>(cb);
+  }
+
+  void clearPostClearCb() {
+    postClear.reset();
+  }
+
+  void clearOnClearCb() {
+    onClear.reset();
+  }
+
+  void restore(const string& restorePointId = "", bool doRefresh = true);
 
   /// Restore, but do not update client area size,
   /// position, zoom, scrollbars, and do not refresh
-  void restoreNoUpdate(const string& id);
+  void restoreNoUpdate(const string& restorePointId);
+
+  RECT getDimensionSince(const string& restorePointId) const;
 
   void setRestorePoint();
   void setRestorePoint(const string& id);
@@ -644,7 +643,8 @@ public:
   pair<int, bool> getSelectedItem(const char* id);
 
   bool addItem(const string& id, const wstring& text, size_t data = 0);
-  bool addItem(const string& id, const vector< pair<wstring, size_t> >& items);
+  bool setItems(const string& id, const vector< pair<wstring, size_t> >& items);
+  bool modifyItemDescription(const string& id, size_t itemData, const wstring &description);
 
   void filterOnData(const string& id, const unordered_set<int>& filter);
 
@@ -687,7 +687,7 @@ public:
   BaseInfo* setTextTranslate(const string& id, const wstring& text, bool update = false);
 
 
-  BaseInfo* setText(const char* id, const wstring& text, bool update = false, int requireExtraMatch = -1);
+  BaseInfo* setText(const char* id, const wstring& text, bool update = false, int requireExtraMatch = -1, bool updateOriginal = true);
   BaseInfo* setText(const wchar_t* id, const wstring& text, bool update = false) {
     return setText(narrow(id), text, update);
   }
@@ -728,7 +728,13 @@ public:
     GUICALLBACK cb = nullptr, const wstring& tooltop = L"");
 
   ButtonInfo& addButton(int x, int y, int w, const string& id, const wstring& text,
-    GUICALLBACK cb, const wstring& tooltop, bool absPos, bool hasState);
+    GUICALLBACK cb, const wstring& tooltip, bool absPos, bool hasState);
+
+  ButtonInfo& addButton(int x, int y, int width, int height, 
+                        const string& id, const wstring& text,
+                        gdiFonts font, GUICALLBACK cb, 
+                        const wstring& tooltip, 
+                        bool absPos, bool hasState);
 
   ButtonInfo& addCheckbox(const string& id, const wstring& text, GUICALLBACK cb = nullptr,
     bool Checked = true, const wstring& tooltip = L"");
@@ -838,4 +844,3 @@ public:
   virtual ~gdioutput();
 };
 
-#endif // !defined(AFX_GDIOUTPUT_H__396F60F8_679F_498A_B759_DF8F6F346A4A__INCLUDED_)

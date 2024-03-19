@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -132,13 +132,17 @@ const wstring &oCard::getCardNoString() const {
   return itow(cardNo);
 }
 
-void oCard::addPunch(int type, int time, int matchControlId, int unit) {
+void oCard::addPunch(int type, int time, int matchControlId, int unit, PunchOrigin origin) {
   oPunch p(oe);
   p.punchTime = time;
   p.type = type;
   p.tMatchControlId = matchControlId;
   p.isUsed =  matchControlId!=0;
   p.punchUnit = unit;
+  if (origin == PunchOrigin::Original)
+    p.origin = p.computeOrigin(oe->getZeroTimeNum() + time, type);
+  else if (origin == PunchOrigin::Manual)
+    p.origin = -1;
 
   if (punches.empty())
     punches.push_back(p);
@@ -288,9 +292,9 @@ bool oCard::fillPunches(gdioutput &gdi, const string &name, oCourse *crs) {
         }
 
         wstring tadj;
-        if (currentTimeAdjust != it->tTimeAdjust) {
-          int adj = it->tTimeAdjust - currentTimeAdjust;
-          currentTimeAdjust = it->tTimeAdjust;
+        if (currentTimeAdjust != it->tTimeAdjust.second) {
+          int adj = it->tTimeAdjust.second - currentTimeAdjust;
+          currentTimeAdjust = it->tTimeAdjust.second;
           if (adj > 0)
             tadj = L" +" + formatTime(adj);
           else
@@ -747,8 +751,8 @@ void oCard::setupFromRadioPunches(oRunner &r) {
   oe->getPunchesForRunner(r.getId(), true, p);
 
   for (size_t k = 0; k < p.size(); k++)
-    addPunch(p[k]->type, p[k]->punchTime, 0, p[k]->punchUnit);
-
+    addPunch(p[k]->type, p[k]->punchTime, 0, p[k]->punchUnit, p[k]->isOriginal() ? oCard::PunchOrigin::Original : oCard::PunchOrigin::Manual);
+  
   cardNo = r.getCardNo();
   readId = ConstructedFromPunches; //Indicates
 }
@@ -815,7 +819,7 @@ wstring oCard::getCardVoltage() const {
 }
 
 wstring oCard::getCardVoltage(int miliVolt) {
-  if (miliVolt == 0)
+  if (miliVolt <= 10)
     return L"";
   int vi = miliVolt / 1000;
   int vd = (miliVolt % 1000) / 10;
@@ -830,9 +834,9 @@ oCard::BatteryStatus oCard::isCriticalCardVoltage() const {
 }
 
 oCard::BatteryStatus oCard::isCriticalCardVoltage(int miliVolt)  {
-  if (miliVolt > 0 && miliVolt < 2445)
+  if (miliVolt > 10 && miliVolt < 2445)
     return BatteryStatus::Bad;
-  else if (miliVolt > 0 && miliVolt <= 2710)
+  else if (miliVolt > 10 && miliVolt <= 2710)
     return BatteryStatus::Warning;
 
   return BatteryStatus::OK;
@@ -842,4 +846,21 @@ wstring oCard::getBatteryDate() const {
   if (batteryDate > 0)
     return formatDate(batteryDate, false);
   return _EmptyWString;
+}
+
+oCard::PunchOrigin oCard::isOriginalCard() const {
+  bool isUnknown = false;
+  for (auto& p : punches) {
+    if (p.origin == 0) {
+      isUnknown = true;
+    }
+    else {
+      if (!p.isOriginal())
+        return PunchOrigin::Manual;
+    }
+  }
+  if (isUnknown)
+    return PunchOrigin::Unknown;
+  else
+    return PunchOrigin::Original;
 }

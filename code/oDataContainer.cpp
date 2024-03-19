@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -385,11 +385,15 @@ bool oDataContainer::setDate(void *data, const char *Name, const wstring &V)
   if (odi->Type!=oDTInt)
     throw std::exception("oDataContainer: Variable of wrong type.");
 
-  int year=0,month=0,day=0;
+  int C = convertDateYMD(V, true);
+  if (C <= 0) {
+    C = _wtoi(V.c_str());
+    if (V.length() >= 2 && (C > 0 && C < 100) || (C == 0 && V[0] == '0' && V[1] == '0'))
+      C = extendYear(C);
 
-  swscanf_s(V.c_str(), L"%d-%d-%d", &year, &month, &day);
-
-  int C=year*10000+month*100+day;
+    if (C < 1900 || C > 9999)
+      C = 0;
+  }
 
   LPBYTE vd=LPBYTE(data)+odi->Index;
   if (*((int *)vd)!=C){
@@ -468,7 +472,7 @@ bool oDataContainer::write(const oBase *ob, xmlparser &xml) const {
     const oDataInfo &di=ordered[kk];
     if (di.Type==oDTInt){
       LPBYTE vd=LPBYTE(data)+di.Index;
-      if (di.SubType == oISTime) {
+      if (di.SubType == oISTime || di.SubType == oISTimeAdjust) {
         int nr;
         memcpy(&nr, vd, sizeof(int));
         xml.writeTime(di.Name, nr);
@@ -528,10 +532,10 @@ void oDataContainer::set(oBase *ob, const xmlobject &xo) {
     if (odi) {
       if (odi->Type == oDTInt){
         LPBYTE vd=LPBYTE(data)+odi->Index;
-        if (odi->SubType == oISTime) 
+        if (odi->SubType == oISTime || odi->SubType == oISTimeAdjust)
           *((int *)vd) = it->getRelativeTime();
         else if (odi->SubType == oISDateOrYear) {
-          int val = convertDateYMS(it->getStr(), true);
+          int val = convertDateYMD(it->getStr(), true);
           if (val > 0)
             *((int*)vd) = val;
           else
@@ -582,7 +586,7 @@ vector<InputInfo *> oDataContainer::buildDataFields(gdioutput &gdi, const vector
     string Id=di.Name+string("_odc");
 
     if (di.Type==oDTInt){
-      if (di.SubType == oISDate || di.SubType == oISTime || di.SubType == oISDateOrYear)
+      if (di.SubType == oISDate || di.SubType == oISTime || di.SubType == oISTimeAdjust || di.SubType == oISDateOrYear)
         out.push_back(&gdi.addInput(Id, L"", 10, 0, gdi.widen(di.Description) + L":"));
       else
         out.push_back(&gdi.addInput(Id, L"", 6, 0, gdi.widen(di.Description) + L":"));
@@ -683,12 +687,12 @@ bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi, std::set<string> 
         no = ob->getEvent()->interpretCurrency(gdi.getText(Id.c_str()));
       }
       else if (di.SubType == oISDate) {
-        no = convertDateYMS(gdi.getText(Id.c_str()), true);
+        no = convertDateYMD(gdi.getText(Id.c_str()), true);
         if (no <= 0)
           no = 0;
       }
       else if (di.SubType == oISDateOrYear) {
-        no = convertDateYMS(gdi.getText(Id.c_str()), true);
+        no = convertDateYMD(gdi.getText(Id.c_str()), true);
         if (no <= 0) {
           no = gdi.getTextNo(Id.c_str());
           if (no < 1900 || no > 9999)
@@ -697,6 +701,9 @@ bool oDataContainer::saveDataFields(oBase *ob, gdioutput &gdi, std::set<string> 
       }
       else if (di.SubType == oISTime) {
         no = convertAbsoluteTimeHMS(gdi.getText(Id.c_str()), -1);
+      }
+      else if (di.SubType == oISTimeAdjust) {
+        no = convertAbsoluteTimeMS(gdi.getText(Id.c_str()));
       }
       else if (di.SubType == oISDecimal) {
         wstring str = gdi.getText(Id.c_str());
@@ -845,7 +852,7 @@ string oDataContainer::generateSQLDefinition(const std::set<string> &exclude) co
       string name = di.Name;
       if (di.Type==oDTInt){
         if (di.SubType==oIS32 || di.SubType==oISDate || di.SubType==oISCurrency ||
-           di.SubType==oISTime || di.SubType==oISDecimal || di.SubType == oISDateOrYear)
+           di.SubType==oISTime  || di.SubType == oISTimeAdjust || di.SubType==oISDecimal || di.SubType == oISDateOrYear)
           sql+=C_INT(name);
         else if (di.SubType==oIS16)
           sql+=C_SMALLINT(name);
@@ -1174,7 +1181,7 @@ void oDataContainer::buildTableCol(Table *table)
     }
     else if (di.Type == oDTInt) {
       bool right = di.SubType == oISCurrency;
-      bool numeric = di.SubType != oISDate && di.SubType != oISTime && di.SubType != oISDateOrYear;
+      bool numeric = di.SubType != oISDate && di.SubType != oISTime && di.SubType != oISTimeAdjust && di.SubType != oISDateOrYear;
       int w;
       if (di.SubType == oISDecimal)
         w = max( (di.decimalSize+4)*10, 70);
@@ -1206,9 +1213,10 @@ void oDataContainer::buildTableCol(Table *table)
 
 bool oDataContainer::formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) const {
   if (di.SubType == oISDate) {
-    if (nr>9999 && nr < 99999999) {
-      swprintf_s(bf, 64, L"%d-%02d-%02d", nr/(100*100), (nr/100)%100, nr%100);
-    }
+    if ((nr < 99999999 && nr % 10000 != 0) || nr == 0)
+      swprintf_s(bf, 64, L"%d-%02d-%02d", nr / (100 * 100), (nr / 100) % 100, nr % 100);
+    else if (nr > 0  && nr < 9999)
+      swprintf_s(bf, 64, L"%04d", nr / 10000);
     else {
       bf[0] = '-';
       bf[1] = 0;
@@ -1216,12 +1224,12 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) c
     return true;
   } 
   else if (di.SubType == oISDateOrYear) {
-    if (nr > 1900 && nr < 9999) {
-      swprintf_s(bf, 64, L"%d", nr);
-    }
-    else if (nr > 9999 && nr < 99999999) {
-      swprintf_s(bf, 64, L"%d-%02d-%02d", nr / (100 * 100), (nr / 100) % 100, nr % 100);
-    }
+    if (nr > 9999 && nr % 10000 != 0)
+      swprintf_s(bf, 64, L"%04d-%02d-%02d", nr / 10000, (nr / 100) % 100, nr % 100);
+    else if (nr > 9999)
+      swprintf_s(bf, 64, L"%04d", nr / 10000);
+    else if (nr > 1900)
+      swprintf_s(bf, 64, L"%04d", nr);
     else {
       bf[0] = '-';
       bf[1] = 0;
@@ -1241,6 +1249,34 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) c
       if (timeConstSecond > 1) {
         if (nr % 10 != 0) {
           swprintf_s(bf + cnt, 64-cnt, L".%01d", nr % 10);
+        }
+      }
+    }
+    else {
+      bf[0] = '-';
+      bf[1] = 0;
+    }
+    return true;
+  }
+  else if (di.SubType == oISTimeAdjust) {
+    if (nr != 0 && nr != NOTIME) {
+      bool neg = false;
+      int cnt = 0;
+      if (nr < 0) {
+        bf[0] = '-';
+        cnt = 1;
+        nr = -nr;
+      }
+      if (nr < 24 * timeConstHour)
+        cnt += swprintf_s(bf + cnt, 64 - cnt, L"%02d:%02d:%02d", nr / timeConstHour, (nr / timeConstMinute) % 60, (nr / timeConstSecond) % 60);
+      else {
+        int days = nr / (24 * timeConstHour);
+        nr = nr % (24 * timeConstHour);
+        cnt += swprintf_s(bf + cnt, 64 - cnt, L"%d+%02d:%02d:%02d", days, nr / timeConstHour, (nr / timeConstSecond) % 60, (nr / timeConstSecond) % 60);
+      }
+      if (timeConstSecond > 1) {
+        if (nr % 10 != 0) {
+          swprintf_s(bf + cnt, 64 - cnt, L".%01d", nr % 10);
         }
       }
     }
@@ -1364,12 +1400,12 @@ pair<int, bool>  oDataContainer::inputData(oBase *ob, int id,
           no = ob->getEvent()->interpretCurrency(input);
         }
         else if (di.SubType == oISDate) {
-          no = convertDateYMS(input, true);
+          no = convertDateYMD(input, true);
           if (no <= 0)
             no = 0;
         } 
         else if (di.SubType == oISDateOrYear) {
-          no = convertDateYMS(input, true);
+          no = convertDateYMD(input, true);
           if (no <= 0) {
             no = _wtoi(input.c_str());
             if (input.length() >= 2 && (no > 0 && no < 100) || (no == 0 && input[0] == '0' && input[1] == '0'))
@@ -1381,6 +1417,11 @@ pair<int, bool>  oDataContainer::inputData(oBase *ob, int id,
         }
         else if (di.SubType == oISTime) {
           no = convertAbsoluteTimeHMS(input, -1);
+        }
+        else if (di.SubType == oISTimeAdjust) {
+          no = convertAbsoluteTimeMS(input);
+          if (no == NOTIME)
+            no = 0;
         }
         else if (di.SubType == oISDecimal) {
           wstring str = input;

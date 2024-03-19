@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -612,10 +612,12 @@ pCourse oEvent::getCourse(const wstring &n) const {
   return 0;
 }
 
-void oEvent::fillCourses(gdioutput &gdi, const string &id, bool simple) {
-  vector< pair<wstring, size_t> > d;
+void oEvent::fillCourses(gdioutput &gdi, const string &id, const vector<pair<wstring, size_t>> &extraItems, bool simple) {
+  vector<pair<wstring, size_t>> d;
   oe->getCourses(d, L"", simple, true);
-  gdi.addItem(id, d);
+  for (auto& ex : extraItems)
+    d.push_back(ex);
+  gdi.setItems(id, d);
 }
 
 const vector< pair<wstring, size_t> > &oEvent::getCourses(vector<pair<wstring, size_t>>& out,
@@ -628,7 +630,7 @@ const vector< pair<wstring, size_t> > &oEvent::getCourses(vector<pair<wstring, s
   }
 
   vector<pair<pCourse, pair<pCourse, bool>> > ac;
-  ac.reserve(Courses.size());
+  ac.reserve(Courses.size()+2);
   map<int,int> id2ix;
   for (it=Courses.begin(); it != Courses.end(); ++it) {
     if (!it->Removed) {
@@ -653,7 +655,8 @@ const vector< pair<wstring, size_t> > &oEvent::getCourses(vector<pair<wstring, s
 
   vector<wchar_t> filt_lc(filter.length() + 1);
   wcscpy_s(filt_lc.data(), filt_lc.size(), filter.c_str());
-  CharLowerBuff(filt_lc.data(), filter.length());
+  prepareMatchString(filt_lc.data(), filter.length());
+
   int score;
   wstring b;
   for (size_t k = 0; k < ac.size(); k++) {

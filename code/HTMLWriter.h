@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,11 +49,11 @@ class HTMLWriter {
     ImageWriter(const wstring& dst, bool writeImages) : destination(dst), writeImages(writeImages) {}
 
 
-    void write(ostream &fout, const string &xp, const string &yp, const wstring &img, int width, int height);
+    void write(std::ostream &fout, const string &xp, const string &yp, const wstring &img, int width, int height);
   };
 
   template<typename T, typename TI>
-  static void formatTL(ostream& fout,
+  static void formatTL(std::ostream& fout,
     ImageWriter& imageWriter,
     const map< pair<gdiFonts, string>, pair<string, string> >& styles,
     const T& tl,
@@ -87,7 +87,7 @@ public:
   void read(const wstring &fileName);
 
   void generate(gdioutput &gdi,
-                ostream &fout,
+                std::ostream &fout,
                 const wstring &title,
                 const wstring &contentDescription,
                 bool respectPageBreak,
@@ -99,12 +99,12 @@ public:
 
   void getPage(const oEvent &oe, string &out) const;
 
-  static void writeHTML(gdioutput &gdi, ostream &dout, const wstring &title, 
+  static void writeHTML(gdioutput &gdi, std::ostream &dout, const wstring &title, 
                         bool includeImages,
                         const wstring& imageDirectoryDestination,
                         int refreshTimeOut, double scale);
 
-  static void writeTableHTML(gdioutput &gdi, ostream &fout,
+  static void writeTableHTML(gdioutput &gdi, std::ostream &fout,
                              const wstring &title,
                              bool includeImages,
                              const wstring &imageDirectoryDestination,
@@ -121,13 +121,13 @@ public:
                         const wstring &title, int refreshTimeOut, double scale);
 
   static void write(gdioutput& gdi, const wstring& file, const wstring& title, int refresh, oListParam& param, const oEvent& oe);
-  static void write(gdioutput& gdi, ostream& fout, const wstring& title, int refresh, oListParam& param, const oEvent& oe);
+  static void write(gdioutput& gdi, std::ostream& fout, const wstring& title, int refresh, oListParam& param, const oEvent& oe);
 
   static void write(gdioutput& gdi, const wstring& file, const wstring& title, const wstring& contentsDescription,
     bool respectPageBreak, const string& typeTag, int refresh,
     int rows, int cols, int time_ms, int margin, double scale);
 
-  static void write(gdioutput& gdi, ostream& fout, const wstring& title, 
+  static void write(gdioutput& gdi, std::ostream& fout, const wstring& title, 
     bool includeImages,
     const wstring& imageDirectoryDestination,
     const wstring& contentsDescription,

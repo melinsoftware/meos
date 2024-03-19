@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -464,7 +464,7 @@ void RunnerDB::compactifyClubs()
           ba=nba;
         }
       }
-      swap(ref, *best);
+      std::swap(ref, *best);
 
       //Update map
       for (size_t j=0;j<compacted.size();j++) {
@@ -789,7 +789,7 @@ string RunnerDB::getDataDate() const
 
 void RunnerDB::setDataDate(const string &date)
 {
-   int d = convertDateYMS(date.substr(0, 10), false);
+   int d = convertDateYMD(date.substr(0, 10), false);
    int t = date.length()>11 ? convertAbsoluteTimeHMS(date.substr(11), -1) : 0;
 
    if (d<=0)
@@ -1960,7 +1960,7 @@ const wstring& RunnerDBEntry::getBirthDate() const {
 
 void RunnerDBEntry::setBirthDate(const wstring& in) {
   SYSTEMTIME st;
-  if (convertDateYMS(in, st, true) > 0) {
+  if (convertDateYMD(in, st, true) > 0) {
     setBirthYear(st.wYear);
     setBirthMonth(st.wMonth);
     setBirthDay(st.wDay);

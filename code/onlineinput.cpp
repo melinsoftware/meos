@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,9 +48,9 @@
 #include "SportIdent.h"
 #include "TabSI.h"
 
-int AutomaticCB(gdioutput *gdi, int type, void *data);
+int AutomaticCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 
-static int OnlineCB(gdioutput *gdi, int type, void *data) {
+static int OnlineCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   switch (type) {
     case GUI_BUTTON: {
       //Make a copy
@@ -146,6 +146,26 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
     gdi.addInput("CmpID", itow(cmpId), 10, 0, L"Tävlingens ID-nummer:");
 
   gdi.dropLine(1);
+
+  int dateNow = convertDateYMD(getLocalDate(), false);
+  int cmpDate = convertDateYMD(oe.getDate(), false);
+  int zt = oe.getZeroTimeNum() / timeConstMinute;
+  int localTime = convertAbsoluteTimeHMS(getLocalTimeOnly(), 0) / timeConstMinute;
+
+  uint64_t tNow = uint64_t(dateNow) * 10000ul + localTime;
+  uint64_t tZero = uint64_t(cmpDate) * 10000ul + zt;
+  if (tNow < tZero) {
+    gdi.pushX();
+    gdi.fillRight();
+    gdi.addString("warningicon", textImage, "516");
+    gdi.dropLine(-0.2);
+    gdi.fillDown();
+    gdi.addString("cmpwarning", 0, "Observera att stämplingar före tävlingens nolltid inte kan hämtas.");
+    gdi.addString("", italicText, "För kommunikationstest kan man använda en separat testtävling");
+    gdi.dropLine(0.5);
+    gdi.popX();
+  }
+
   gdi.addString("", boldText, "Kontrollmappning");
   gdi.dropLine(0.5);
 
@@ -378,7 +398,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
       time = 0;
       addInfo(L"Ogiltig tid");
     }
-    oe.addFreePunch(time, code, originalCode, card, true);
+    oe.addFreePunch(time, code, originalCode, card, true, true);
 
     addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" +  oe.getAbsTime(time));
   }
@@ -413,7 +433,7 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
         time = 0;
         addInfo(L"Ogiltig tid");
       }
-      oe.addFreePunch(time, code, originalCode, card, true);
+      oe.addFreePunch(time, code, originalCode, card, true, true);
 
       lastImportedId = max(lastImportedId, punchId);
 
@@ -478,11 +498,14 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     bool paid = entry.getObjectBool("paid");
 
     xmlobject xname = entry.getObject("name");
-    wstring birthyear = 0;
+    wstring birthyear;
     if (xname) {
-      xname.getObjectString("birthyear", birthyear);
+      xname.getObjectString("birthdate", birthyear);
+      if (birthyear.empty()) {
+        xname.getObjectString("birthyear", birthyear);
+      }
     }
-
+    
     wstring name;
     entry.getObjectString("name", name);
     if (name.empty())

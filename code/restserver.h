@@ -2,7 +2,7 @@
 
 /************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2023 Melin Software HB
+Copyright (C) 2009-2024 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ private:
     multimap<string, string> parameters;
     string answer;
     vector<uint8_t> image;
-    atomic_bool state; //false - asked, true - answerd
+    std::atomic_bool state; //false - asked, true - answerd
 
     bool isCompleted() { 
       return state; 
@@ -76,11 +76,11 @@ private:
   EntryPermissionClass  epClass = EntryPermissionClass::None;
   EntryPermissionType epType = EntryPermissionType::None;
   
-  mutex lock;
-  atomic_bool hasAnyRequest;
-  shared_ptr<thread> service;
+  std::mutex lock;
+  std::atomic_bool hasAnyRequest;
+  shared_ptr<std::thread> service;
   shared_ptr<restbed::Service> restService;
-  condition_variable waitForCompletion;
+  std::condition_variable waitForCompletion;
 
   deque<shared_ptr<EventRequest>> requests;
   void getData(oEvent &ref, const string &what, const multimap<string, string> &param, string &answer);
@@ -131,7 +131,7 @@ private:
     InfoServerContainer(int s, int e) : nextInstanceId(s), instanceIncrementor(e) {}
   };
 
-  shared_ptr<default_random_engine> randGen;
+  shared_ptr<std::default_random_engine> randGen;
   list<InfoServerContainer> isContainers;
   int getNewInstanceId();
   xmlbuffer *getMOPXML(oEvent &oe, int id, int &nextId);
@@ -154,8 +154,8 @@ public:
   void setRootMap(const string &rootMap);
   const string &getRootMap() const { return root; }
 
-  tuple<EntryPermissionClass, EntryPermissionType> getEntryPermission() const {
-    return make_tuple(epClass, epType);
+  std::tuple<EntryPermissionClass, EntryPermissionType> getEntryPermission() const {
+    return std::make_tuple(epClass, epType);
   }
 
   struct Statistics {

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include "oFreeImport.h"
 #include "meosexception.h"
 #include <WinInet.h>
+
+using namespace std;
 
 StringCache globalStringCache;
 
@@ -252,12 +254,12 @@ wstring formatDate(int m, bool useIsoFormat) {
   return bf;
 }
 
-int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid) {
+int convertDateYMD(const wstring &m, SYSTEMTIME &st, bool checkValid) {
   string ms(m.begin(), m.end());
-  return convertDateYMS(ms, st, checkValid);
+  return convertDateYMD(ms, st, checkValid);
 }
 //Absolute time string to SYSTEM TIME
-int convertDateYMS(const string& m, SYSTEMTIME& st, bool checkValid) {
+int convertDateYMD(const string& m, SYSTEMTIME& st, bool checkValid) {
   memset(&st, 0, sizeof(st));
 
   if (m.length() == 0)
@@ -356,16 +358,16 @@ int convertDateYMS(const string& m, SYSTEMTIME& st, bool checkValid) {
 }
 
 //Absolute time string to absolute time int
-int convertDateYMS(const string &m, bool checkValid)
+int convertDateYMD(const string &m, bool checkValid)
 {
   SYSTEMTIME st;
-  return convertDateYMS(m, st, checkValid);
+  return convertDateYMD(m, st, checkValid);
 }
 
-int convertDateYMS(const wstring &m, bool checkValid)
+int convertDateYMD(const wstring &m, bool checkValid)
 {
   SYSTEMTIME st;
-  return convertDateYMS(m, st, checkValid);
+  return convertDateYMD(m, st, checkValid);
 }
 
 bool myIsSpace(wchar_t b) {
@@ -829,6 +831,47 @@ const wstring &unsplit(const vector<wstring> &split_vector, const wstring &separ
   return line;
 }
 
+const wstring &limitText(const wstring& tIn, size_t numChar) {
+  wstring& out = StringCache::getInstance().wget();
+  out.clear();
+  const auto L = tIn.length();
+  //if (L < numChar)
+  //  out = tIn;
+
+  int spacePos = -1;
+  int outP = 0;
+  int i = 0;
+  for (; i < L && outP < numChar-1; i++) {
+    wchar_t c = tIn[i];
+    if (c == '\n' || c == '\r' || c == '\t')
+      c = ' ';
+
+    if (c==' ' && spacePos == outP)
+      continue;  // Skip duplicate space
+
+    out.push_back(c);
+    outP++;
+    if (iswspace(c))
+      spacePos = outP;
+  }
+
+  if (i < L) {
+    if (spacePos <= 2 || spacePos < signed(numChar) - 10)
+      spacePos = numChar - 4;
+    out = out.substr(0, spacePos-1) + L"\u2026";
+  }
+
+  return out;
+}
+
+wstring ensureEndingColon(const wstring& text) {
+  if (text.empty() || text[text.length() - 1] == ':')
+    return text;
+  
+  return text + L":";
+}
+
+
 const wstring &makeDash(const wstring &t) {
   return makeDash(t.c_str());
 }
@@ -919,16 +962,10 @@ string itos(uint64_t i)
   return bf;
 }
 
-
-bool filterMatchString(const string &c, const char *filt_lc)
-{
-  if (filt_lc[0] == 0)
-    return true;
-  char key[2048];
-  strcpy_s(key, c.c_str());
-  CharLowerBuffA(key, c.length());
-
-  return strstr(key, filt_lc)!=0;
+void prepareMatchString(wchar_t* data_c, int size) {
+  CharLowerBuff(data_c, size);
+  for (int j = 0; j < size; j++)
+    data_c[j] = toLowerStripped(data_c[j]);
 }
 
 bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score) {
@@ -937,7 +974,11 @@ bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score) {
     return true;
   wchar_t key[2048];
   wcscpy_s(key, c.c_str());
-  CharLowerBuff(key, c.length());
+  int cl = c.length();
+  CharLowerBuff(key, cl);
+  for (int j = 0; j < cl; j++)
+    key[j] = toLowerStripped(key[j]);
+
   bool match = wcsstr(key, filt_lc) != 0;
   if (match) {
     while (filt_lc[score] && key[score] && filt_lc[score] == key[score])
@@ -1259,14 +1300,14 @@ int toLowerStripped(wchar_t c) {
     return c;
 
   static wchar_t *map = 0;
-  if (map == 0) {
+  if (map == nullptr) {
     map = new wchar_t[65536];
     for (int i = 0; i < 65536; i++)
       map[i] = i;
 
-    setChar(map, L'Å', L'å');
-    setChar(map, L'Ä', L'ä');
-    setChar(map, L'Ö', L'ö');
+    setChar(map, L'Å', L'a');
+    setChar(map, L'Ä', L'a');
+    setChar(map, L'Ö', L'o');
 
     setChar(map, L'É', L'e');
     setChar(map, L'é', L'e');
@@ -1289,6 +1330,8 @@ int toLowerStripped(wchar_t c) {
     setChar(map, L'ñ', L'n');
     setChar(map, L'Ñ', L'n');
 
+    setChar(map, L'ä', L'a');
+    setChar(map, L'å', L'a');
     setChar(map, L'á', L'a');
     setChar(map, L'Á', L'a');
     setChar(map, L'à', L'a');
@@ -1315,19 +1358,29 @@ int toLowerStripped(wchar_t c) {
     setChar(map, L'Õ', L'o');
     setChar(map, L'ô', L'o');
     setChar(map, L'Ô', L'o');
+    setChar(map, L'ö', L'o');
 
     setChar(map, L'ý', L'y');
     setChar(map, L'Ý', L'Y');
     setChar(map, L'ÿ', L'y');
+    
+    setChar(map, L'Æ', L'a');
+    setChar(map, L'æ', L'a');
 
-    setChar(map, L'Æ', L'ä');
-    setChar(map, L'æ', L'ä');
-
-    setChar(map, L'Ø', L'ö');
-    setChar(map, L'ø', L'ö');
+    setChar(map, L'Ø', L'o');
+    setChar(map, L'ø', L'o');
 
     setChar(map, L'Ç', L'c');
     setChar(map, L'ç', L'c');
+
+    wstring srcEx = L"ĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻĽľĿŀŁł"
+                    L"ŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž";
+    wstring dstEx = L"aaaaccccccccddddeeeeeeeeeegggggggghhhhiiiiiiiiiijjjjkkklllllllll"
+                    L"nnnnnnnnnooooooaarrrrrrssssssssttttttuuuuuuuuuuuuwwyyyzzzzzz";
+
+    assert(srcEx.size() == dstEx.size());
+    for (int j = 0; j < srcEx.size(); j++)
+      setChar(map, srcEx[j], dstEx[j]);
   }
   int a = map[c];
   return a;
@@ -2013,7 +2066,7 @@ void capitalize(wstring &str) {
 
 bool checkValidDate(const wstring &date) {
   SYSTEMTIME st;
-  if (convertDateYMS(date, st, false) <= 0)
+  if (convertDateYMD(date, st, false) <= 0)
     return false;
 
   st.wHour = 12;
@@ -2036,7 +2089,7 @@ int getTimeZoneInfo(const wstring &date) {
   wcscpy_s(lastDate, 16, date.c_str());
 //  TIME_ZONE_INFORMATION tzi;
   SYSTEMTIME st;
-  convertDateYMS(date, st, false);
+  convertDateYMD(date, st, false);
   st.wHour = 12;
   SYSTEMTIME utc;
   if (!TzSpecificLocalTimeToSystemTime(0, &st, &utc)) {
@@ -2211,7 +2264,7 @@ void capitalizeWords(wstring &str) {
     wchar_t c = str[i];
     if (init && c >= 'a' && c <= 'z' && !noCapitalize(str, i))
       str[i] = c + ('A' - 'a');
-    init = iswspace(c) != 0;
+    init = iswspace(c) != 0 || c == '/' || c == '-';
   }
 }
 

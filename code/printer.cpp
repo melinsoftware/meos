@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -768,10 +768,10 @@ void PageInfo::renderPages(const list<TextInfo> &tl,
 
     pages.back().calculateCS(text.ti);
 #ifdef _DEBUG
-    static wchar_t breakbuff[8] = L"1429586";
+    /*static wchar_t breakbuff[8] = L"1429586";
     if (text.ti.text == breakbuff) {
       text.ti.text.empty(); // Break when hitting symbol
-    }
+    }*/
 #endif
 
     if (k + 1 < indexedTL.size() && tlp->yp != indexedTL[k+1].yp) {

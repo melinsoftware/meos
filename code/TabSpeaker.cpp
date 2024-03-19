@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,8 +67,7 @@ TabSpeaker::~TabSpeaker()
 }
 
 
-int tabSpeakerCB(gdioutput *gdi, int type, void *data)
-{
+int tabSpeakerCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   TabSpeaker &ts = dynamic_cast<TabSpeaker &>(*gdi->getTabs().get(TSpeakerTab));
 
   switch(type){
@@ -165,7 +164,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.addButton("AllClass", "Alla", tabSpeakerCB);
     gdi.addButton("NoClass", "Inga", tabSpeakerCB);
 
-    oe->fillClasses(gdi, "Classes", oEvent::extraNone, oEvent::filterNone);
+    oe->fillClasses(gdi, "Classes", {}, oEvent::extraNone, oEvent::filterNone);
     gdi.setSelection("Classes", classesToWatch);
 
     gdi.fillRight();
@@ -177,7 +176,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
 
     vector< pair<wstring, size_t> > d;
     oe->fillControls(d, oEvent::ControlType::CourseControl);
-    gdi.addItem("Controls", d);
+    gdi.setItems("Controls", d);
 
     gdi.setSelection("Controls", controlsToWatch);
 
@@ -241,11 +240,11 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.dropLine(3);
     gdi.popX();
     gdi.registerEvent("DataUpdate", tabSpeakerCB);
-    vector<pair<int, bool>> runnersToReport;
+    deque<pair<int, bool>> runnersToReport;
     if (runnerId > 0) {
       runnersToReport.emplace_back(runnerId, false);
     }
-    TabRunner::generateRunnerReport(*oe, gdi, runnersToReport);
+    TabRunner::generateRunnerReport(*oe, gdi, 1, 1, false, runnersToReport);
     gdi.refresh();
   }
   else if (bu.id == "Priority") {
@@ -257,7 +256,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi.pushX();
     gdi.addString("", 0, "Klass:");
     gdi.addSelection("Class", 200, 200, tabSpeakerCB, L"", L"Välj klass");
-    oe->fillClasses(gdi, "Class", oEvent::extraNone, oEvent::filterNone);
+    oe->fillClasses(gdi, "Class", {}, oEvent::extraNone, oEvent::filterNone);
     gdi.addButton("ClosePri", "Stäng", tabSpeakerCB);
     gdi.dropLine(2);
     gdi.popX();
@@ -278,7 +277,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu)
     gdi_new->pushX();
 
     TabList::makeClassSelection(*gdi_new);
-    oe->fillClasses(*gdi_new, "ListSelection", oEvent::extraNone, oEvent::filterNone);
+    oe->fillClasses(*gdi_new, "ListSelection", {}, oEvent::extraNone, oEvent::filterNone);
     
     gdi_new->popY();
     gdi_new->setCX(gdi_new->getCX() + gdi_new->scaleLength(280));
@@ -1223,7 +1222,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
     throw std::exception(bf);
   }
 
-  oe->addFreePunch(itime, punch, 0, sino, true);
+  oe->addFreePunch(itime, punch, 0, sino, true, false);
 
   gdi.restore("manual", false);
   gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch) + L"#" +  oe->getAbsTime(itime));

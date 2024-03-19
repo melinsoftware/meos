@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ void oEvent::startReconnectDaemon()
   gdibase.setWindowTitle(oe->getTitleName());
   isConnectedToServer = false;
   if (!isReadOnly()) {
-    // Do not show in kiosk-mode
+    // Do not show in read only-mode
     gdibase.delayAlert(L"warning:dbproblem#" + gdibase.widen(err));
   }
 }

@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,6 +53,10 @@ enum EPostType {
   lClassAvailableMaps,
   lClassTotalMaps,
   lClassNumEntries,
+  lClassDataA,
+  lClassDataB,
+  lClassTextA,
+
   lCourseLength,
   lCourseName,
   lCourseNumber,
@@ -61,6 +65,7 @@ enum EPostType {
   lCourseUsage,
   lCourseUsageNoVacant,
   lCourseClasses,
+  lCourseNumControls,
   lRunnerName,
   lRunnerGivenName,
   lRunnerFamilyName,
@@ -96,6 +101,7 @@ enum EPostType {
   lRunnerStartZero,
   lRunnerClub,
   lRunnerCard,
+  lRunnerRentalCard,
   lRunnerBib,
   lRunnerStartNo,
   lRunnerRank,
@@ -134,6 +140,9 @@ enum EPostType {
   lRunnerEntryDate,
   lRunnerEntryTime,
   lRunnerId,
+  lRunnerDataA,
+  lRunnerDataB,
+  lRunnerTextA,
 
   lTeamName,
   lTeamStart,
@@ -171,20 +180,33 @@ enum EPostType {
   lTeamTotalTimeDiff,
   lTeamPlaceDiff,
 
+  lTeamDataA,
+  lTeamDataB,
+  lTeamTextA,
+
   lPunchNamedTime,
+  lPunchTeamTotalNamedTime,
   lPunchNamedSplit,
+  
   lPunchName,
 
   lPunchTime,
+  lPunchTeamTime,
+
   lPunchControlNumber,
   lPunchControlCode,
   lPunchLostTime,
   lPunchControlPlace,
   lPunchControlPlaceAcc,
+  lPunchControlPlaceTeamAcc,
 
   lPunchSplitTime,
   lPunchTotalTime,
   lPunchTotalTimeAfter,
+
+  lPunchTeamTotalTime,
+  lPunchTeamTotalTimeAfter,
+
   lPunchAbsTime,
   lPunchTimeSinceLast,
 
@@ -341,8 +363,8 @@ struct oPrintPost {
 };
 
 class gdioutput;
+class BaseInfo;
 enum gdiFonts;
-typedef int (*GUICALLBACK)(gdioutput *gdi, int type, void *data);
 class xmlparser;
 class xmlobject;
 class MetaListContainer;
@@ -452,7 +474,6 @@ struct oListParam {
 
   void updateDefaultName(const wstring &pname) const {defaultName = pname;}
   void setCustomTitle(const wstring &t) {title = t;}
-  void getCustomTitle(wchar_t *t) const; // 256 size buffer required. Get title if set
   const wstring &getCustomTitle(const wstring &t) const;
   const wstring &getDefaultName() const {return defaultName;}
   void setName(const wstring &n) {name = n;}

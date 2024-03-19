@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -123,8 +123,8 @@ void TestMeOS::run() const {
 
 void TestMeOS::runProtected(bool protect) const {
   cleanup();
-  gdi_main->setOnClearCb(0);
-  gdi_main->setPostClearCb(0);
+  gdi_main->clearOnClearCb();
+  gdi_main->clearPostClearCb();
   gdi_main->clearPage(false, false);
   gdi_main->dbRegisterSubCommand(0, "");
   subWindows.clear();
@@ -150,8 +150,8 @@ void TestMeOS::runProtected(bool protect) const {
     gdi_main->clearDialogAnswers(true);
     status = PASSED;
     if (protect) {
-      gdi_main->setOnClearCb(0);
-      gdi_main->setPostClearCb(0);
+      gdi_main->clearOnClearCb();
+      gdi_main->clearPostClearCb();
       gdi_main->clearPage(false, false);
       oe_main->clear();
       showTab(TCmpTab);

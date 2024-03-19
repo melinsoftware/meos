@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,8 +151,7 @@ void TabControl::selectControl(gdioutput &gdi,  pControl pc)
   }
 }
 
-int ControlsCB(gdioutput *gdi, int type, void *data)
-{
+int ControlsCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   TabControl &tc = dynamic_cast<TabControl &>(*gdi->getTabs().get(TControlTab));
   return tc.controlCB(*gdi, type, data);
 }
@@ -278,7 +277,7 @@ void TabControl::save(gdioutput &gdi) {
 
   vector<pair<wstring, size_t>> d;
   oe->fillControls(d, oEvent::ControlType::All);
-  gdi.addItem("Controls", d);
+  gdi.setItems("Controls", d);
 
   oe->reEvaluateAll(set<int>(), true);
 
@@ -402,8 +401,7 @@ void TabControl::visitorTable(Table &table) const {
   }
 }
 
-int TabControl::controlCB(gdioutput &gdi, int type, void *data)
-{
+int TabControl::controlCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   if (type==GUI_BUTTON) {
     ButtonInfo bi=*(ButtonInfo *)data;
 
@@ -431,7 +429,7 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
       pc->synchronize();
       vector< pair<wstring, size_t> > d;
       oe->fillControls(d, oEvent::ControlType::All);
-      gdi.addItem("Controls", d);
+      gdi.setItems("Controls", d);
       selectControl(gdi, pc);
     }
     else if (bi.id=="Remove") {
@@ -449,7 +447,7 @@ int TabControl::controlCB(gdioutput &gdi, int type, void *data)
 
       vector< pair<wstring, size_t> > d;
       oe->fillControls(d, oEvent::ControlType::All);
-      gdi.addItem("Controls", d);
+      gdi.setItems("Controls", d);
       selectControl(gdi, 0);
     }
     else if (bi.id=="SwitchMode") {
@@ -565,7 +563,7 @@ bool TabControl::loadPage(gdioutput &gdi)
 
   vector< pair<wstring, size_t> > d;
   oe->fillControls(d, oEvent::ControlType::All);
-  gdi.addItem("Controls", d);
+  gdi.setItems("Controls", d);
 
   gdi.newColumn();
   gdi.fillDown();

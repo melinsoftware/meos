@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,42 +74,23 @@ public:
 class TabObject
 {
 protected:
-  mutable TabBase *tab;
+  TabBase * const tab = nullptr;
 
 public:
-  string name;
-  int id;
+  const string name;
+  const int imageId = -1;
+  int id = -1;
 
-  TabObject(TabBase *t, string n):name(n),tab(t) {}
+  TabObject(TabBase *t, string n, int imageId) : name(n), tab(t), imageId(imageId) {}
 
   void setId(int i){id=i; if (tab) tab->tabId=id;}
-  void setPage(TabBase *tb){delete tab; tab=tb;}
-
+  
   const type_info &getType() const {return typeid(*tab);}
   const TabBase &getTab() const {return *tab;}
-  TabObject(const TabObject &t)
-  {
-    if (&t!=this) {
-      name=t.name;
-      id=t.id;
-      tab=t.tab;
-      //t.tab=0;
-    }
-  }
 
-  TabObject &operator=(TabObject &t)
-  {
-    if (&t!=this) {
-      delete tab;
-      name=t.name;
-      id=t.id;
-      tab=t.tab;
-      //t.tab=0;
-    }
-  }
-
-  TabObject(TabBase *t);
-  ~TabObject();
+  TabObject(const TabObject& t) = delete;
+  TabObject& operator=(TabObject& t) = delete;
+  ~TabObject() = default;
 
   bool loadPage(gdioutput &gdi);
 };

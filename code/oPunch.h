@@ -7,7 +7,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ protected:
   int type = 0;
   int punchTime = 0;
   int punchUnit = 0;
-
+  int origin = 0;
   bool isUsed = false; //Is used in the course...
 
   // Index into course (-1 if unused)
@@ -48,8 +48,9 @@ protected:
   // Number of rogaining points given
   int tRogainingPoints;
 
-  //Adjustment of this punch, loaded from control
-  int tTimeAdjust;
+  //Adjustment of this punch, loaded from control. First is a fixed time adjustment (from control, "wrong time set")
+  // second is dynamic adjustment (minimum time between controls etc)
+  pair<int, int> tTimeAdjust;
 
   int tCardIndex = -1; // Index into card
   int tIndex; // Control match index in course
@@ -58,7 +59,7 @@ protected:
 
   /** Get internal data buffers for DI */
   oDataContainer& getDataBuffers(pvoid& data, pvoid& olddata, pvectorstr& strData) const;
-  int getDISize() const { return -1; }
+  int getDISize() const final { return -1; }
 
   void changedObject();
   mutable int previousPunchTime; /// Note that this is not valid in general
@@ -73,6 +74,10 @@ public:
   bool isUsedInCourse() const { return isUsed; }
   void remove();
   bool canRemove() const;
+
+  static int computeOrigin(int time, int code);
+  bool isOriginal() const;
+  int getOriginalTime() const;
 
   wstring getInfo() const;
 
@@ -102,8 +107,9 @@ public:
   void setTime(const wstring& t);
   virtual void setTimeInt(int newTime, bool databaseUpdate);
 
-  void setTimeAdjust(int t) { tTimeAdjust = t; }
-  void adjustTimeAdjust(int t) { tTimeAdjust += t; }
+  void clearTimeAdjust() { tTimeAdjust = make_pair(0, 0); }
+  void setTimeAdjust(int t) { tTimeAdjust.first = t; }
+  void adjustTimeAdjust(int t) { tTimeAdjust.second += t; }
 
   wstring getRunningTime(int startTime) const;
 

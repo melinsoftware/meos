@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -77,6 +77,8 @@ private:
   /** Enable or disable edit for a team runner*/
   void enableRunner(gdioutput &gdi, int index, bool enable);
 
+  /// Show forking key in the window
+  void forkingKey(gdioutput& gdi, pTeam t);
 
 protected:
   void clearCompetitionData();
@@ -87,12 +89,12 @@ public:
   const char * getTypeStr() const {return "TTeamTab";}
   TabType getType() const {return TTeamTab;}
 
-  int teamCB(gdioutput &gdi, int type, void *data);
+  int teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data);
 
   bool loadPage(gdioutput &gdi, int id);
   bool loadPage(gdioutput &gdi);
   TabTeam(oEvent *oe);
   ~TabTeam(void);
-  friend int teamSearchCB(gdioutput *gdi, int type, void *data);
+  friend int teamSearchCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 
 };

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,15 +20,13 @@
 
 ************************************************************************/
 
-#ifndef GDI_STRUCTURES
-#define GDI_STRUCTURES
+#pragma once
 
 #include <cassert>
 #include "guihandler.h"
 #include "gdifonts.h"
 
-class BaseInfo
-{
+class BaseInfo {
 protected:
   void *extra;
   GuiHandler *handler;
@@ -88,8 +86,33 @@ public:
   }
 };
 
-class RestoreInfo : public BaseInfo
-{
+class GuiEvent final : public BaseInfo {
+  GUICALLBACK callback = nullptr;
+
+public: 
+  bool makeEvent(gdioutput &gdi, GuiEventType type) {
+    if (callback)
+      return callback(&gdi, type, this) != 0;
+    else
+      return handleEvent(gdi, type);
+
+    return true;
+  }
+
+  GuiEvent(GUICALLBACK callback) : callback(callback) {}
+  
+  GuiEvent(const shared_ptr<GuiHandler> &h)  {
+    setHandler(h);
+  }
+  
+  GuiEvent(const GuiHandler *h) {
+    setHandler(h);
+  }
+
+  HWND getControlWindow() const final { throw std::exception("Unsupported"); }
+};
+
+class RestoreInfo final : public BaseInfo {
 public:
   int nLBI;
   int nBI;
@@ -109,8 +132,8 @@ public:
   int nTooltip;
   int nTables;
 
-  GUICALLBACK onClear;
-  GUICALLBACK postClear;
+  shared_ptr<GuiEvent> onClear;
+  shared_ptr<GuiEvent> postClear;
 
   set<string> restorePoints;
 
@@ -118,11 +141,10 @@ public:
     return nLBI < r.nLBI || nBI < r.nBI || nII < r.nII || nTL < r.nTL || nRect < r.nRect || nData < r.nData;
   }
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final {throw std::exception("Unsupported");}
 };
 
-class RectangleInfo : public BaseInfo
-{
+class RectangleInfo final : public BaseInfo {
 private:
   DWORD color;
   DWORD color2;
@@ -143,23 +165,20 @@ public:
 
   RectangleInfo &changeDimension(gdioutput &gdi, int dx, int dy); 
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final {throw std::exception("Unsupported");}
 };
 
-
-class TableInfo : public BaseInfo
-{
+class TableInfo final: public BaseInfo {
 public:
   TableInfo():xp(0), yp(0), table(0) {}
   int xp;
   int yp;
   shared_ptr<Table> table;
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final {throw std::exception("Unsupported");}
 };
 
-
-class TextInfo : public BaseInfo
+class TextInfo final: public BaseInfo
 {
 public:
 
@@ -178,7 +197,11 @@ public:
 
   bool isFormatInfo() const { return format == pageNewPage || format == pagePageInfo || format == pageNewChapter; }
 
-  int getHeight() {return int(textRect.bottom-textRect.top);}
+  int getHeight() const { return int(textRect.bottom - textRect.top); }
+  int getWidth() const { return realWidth; }
+  int getX() const { return xp; }
+  int getY() const { return yp; }
+
   gdiFonts getGdiFont() const {return gdiFonts(format & 0xFF);}
   // Sets absolute print coordinates in [mm]
   TextInfo &setAbsPrintPos(int x, int y) {
@@ -209,26 +232,25 @@ public:
   bool active;
 
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final {throw std::exception("Unsupported");}
 
   friend class gdioutput;
 };
 
-class ButtonInfo : public BaseInfo
-{
+class ButtonInfo final : public BaseInfo {
 private:
   bool originalState;
   bool isEditControl;
   bool checked;
-  bool *updateLastData;
-  void synchData() const {if (updateLastData) *updateLastData = checked;}
-  
-public:
-  ButtonInfo(): callBack(0), hWnd(0), AbsPos(false), fixedRightTop(false),
-            flags(0), storedFlags(0), originalState(false), isEditControl(false),
-            isCheckbox(false), checked(false), updateLastData(0) {}
+  bool* updateLastData;
+  void synchData() const { if (updateLastData) *updateLastData = checked; }
 
-  ButtonInfo &isEdit(bool e) {isEditControl=e; return *this;}
+public:
+  ButtonInfo() : callBack(0), hWnd(0), AbsPos(false), fixedRightTop(false),
+    flags(0), storedFlags(0), originalState(false), isEditControl(false),
+    isCheckbox(false), checked(false), updateLastData(0) {}
+
+  ButtonInfo& isEdit(bool e) { isEditControl = e; return *this; }
 
   int xp;
   int yp;
@@ -240,27 +262,28 @@ public:
   int flags;
   int storedFlags;
   bool isCheckbox;
-  bool isDefaultButton() const {return (flags&1)==1;}
-  bool isCancelButton() const {return (flags&2)==2;}
+  bool isDefaultButton() const { return (flags & 1) == 1; }
+  bool isCancelButton() const { return (flags & 2) == 2; }
 
-  ButtonInfo &setSynchData(bool *variable) {updateLastData = variable; return *this;}
+  ButtonInfo& setSynchData(bool* variable) { updateLastData = variable; return *this; }
 
+  int getX() const { return xp; }
+  int getY() const { return yp; }
 
-  void moveButton(gdioutput &gdi, int xp, int yp);
-  void getDimension(gdioutput &gdi, int &w, int &h);
+  void moveButton(gdioutput& gdi, int xp, int yp);
+  void getDimension(const gdioutput& gdi, int& w, int& h) const;
 
-  ButtonInfo &setDefault();
-  ButtonInfo &setCancel() {flags|=2, storedFlags|=2; return *this;}
-  ButtonInfo &fixedCorner() {fixedRightTop = true; return *this;}
+  ButtonInfo& setDefault();
+  ButtonInfo& setCancel() { flags |= 2, storedFlags |= 2; return *this; }
+  ButtonInfo& fixedCorner() { fixedRightTop = true; return *this; }
   GUICALLBACK callBack;
   friend class gdioutput;
 
-  HWND getControlWindow() const {return hWnd;}
+  HWND getControlWindow() const final { return hWnd; }
 };
 
 enum gdiFonts;
-class InputInfo : public BaseInfo
-{
+class InputInfo  final: public BaseInfo {
 public:
   InputInfo();
   wstring text;
@@ -278,13 +301,15 @@ public:
   bool changedInput() const { return text != focusText; }
   InputInfo &setPassword(bool pwd);
   
-  HWND getControlWindow() const {return hWnd;}
+  HWND getControlWindow() const final {return hWnd;}
   
   InputInfo &setSynchData(wstring *variable) {updateLastData = variable; return *this;}
 
   int getX() const {return xp;}
   int getY() const {return yp;}
   int getWidth() const {return int(width);}
+  int getHeight() const { return int(height); }
+
 private:
   HWND hWnd;
   GUICALLBACK callBack;
@@ -305,37 +330,37 @@ private:
   friend class gdioutput;
 };
 
-class ListBoxInfo : public BaseInfo
-{
+class ListBoxInfo final : public BaseInfo {
 public:
   ListBoxInfo() : hWnd(0), callBack(0), IsCombo(false), index(-1),
-              writeLock(false), ignoreCheck(false), isEditControl(true),
-              originalProc(0), lbiSync(0), multipleSelection(false), 
-              xp(0), yp(0), width(0), height(0), data(0), lastTabStop(0),
-              updateLastData(0) {}
+    writeLock(false), ignoreCheck(false), isEditControl(true),
+    originalProc(0), lbiSync(0), multipleSelection(false),
+    xp(0), yp(0), width(0), height(0), data(0), lastTabStop(0),
+    updateLastData(0) {}
   wstring text;
   size_t data;
   int getDataInt() const { return (int)data; }
 
   int index;
-  bool changed() const {return text!=original;}
-  void ignore(bool ig) {ignoreCheck=ig;}
-  ListBoxInfo &isEdit(bool e) {isEditControl=e; return *this;}
-  HWND getControlWindow() const {return hWnd;}
+  bool changed() const { return text != original; }
+  void ignore(bool ig) { ignoreCheck = ig; }
+  ListBoxInfo& isEdit(bool e) { isEditControl = e; return *this; }
+  HWND getControlWindow() const final { return hWnd; }
 
-  void copyUserData(ListBoxInfo &userLBI) const;
-  ListBoxInfo &setSynchData(int *variable) {updateLastData = variable; return *this;}
-  int getWidth() const {return int(width);}
-  int getX() const {return xp;}
-  int getY() const {return yp;}
-  bool isCombo() const {return IsCombo;}
+  void copyUserData(ListBoxInfo& userLBI) const;
+  ListBoxInfo& setSynchData(int* variable) { updateLastData = variable; return *this; }
+  int getWidth() const { return int(width); }
+  int getHeight() const { return int(height); }
+  int getX() const { return xp; }
+  int getY() const { return yp; }
+  bool isCombo() const { return IsCombo; }
 private:
-  void syncData() const {if (updateLastData) *updateLastData = data;}
+  void syncData() const { if (updateLastData) *updateLastData = data; }
   bool IsCombo;
-  int *updateLastData;
-  
+  int* updateLastData;
+
   GUICALLBACK callBack;
-  
+
   int xp;
   int yp;
   double width;
@@ -350,18 +375,20 @@ private:
   size_t originalIdx;
   bool ignoreCheck; // True if changed-state should be ignored
 
-  map<size_t, int> data2Index;
+  unordered_map<size_t, int> data2Index;
+
+  uint64_t computed_hash = 0;
+  static uint64_t computeItemHash(const vector<pair<wstring, size_t>>& items);
 
   // Synchronize with other list box
   WNDPROC originalProc;
-  ListBoxInfo *lbiSync;
+  ListBoxInfo* lbiSync;
 
   friend LRESULT CALLBACK GetMsgProc(HWND hWnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
   friend class gdioutput;
 };
 
-class DataStore
-{
+class DataStore {
 public:
   DataStore() {
     data = 0;
@@ -371,8 +398,7 @@ public:
   string sdata;
 };
 
-class EventInfo : public BaseInfo
-{
+class EventInfo final: public BaseInfo {
 private:
   string origin;
   DWORD data;
@@ -386,17 +412,16 @@ public:
   EventInfo();
   GUICALLBACK callBack;
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final {throw std::exception("Unsupported");}
 };
 
-class TimerInfo : public BaseInfo
-{
+class TimerInfo  final : public BaseInfo {
 private:
   static int globalTimerId;
   int timerId;
   DWORD dataInt;
   wstring dataString;
-  gdioutput *parent;
+  gdioutput* parent;
   HWND setWnd;
 public:
   ~TimerInfo();
@@ -404,11 +429,11 @@ public:
   TimerInfo(const TimerInfo&) = delete;
   TimerInfo& operator=(const TimerInfo&) = delete;
   int getId() const { return timerId; }
-  BaseInfo &setExtra(const wchar_t *e) {return BaseInfo::setExtra(e);}
-  BaseInfo &setExtra(int e) {return BaseInfo::setExtra(e);}
+  BaseInfo& setExtra(const wchar_t* e) { return BaseInfo::setExtra(e); }
+  BaseInfo& setExtra(int e) { return BaseInfo::setExtra(e); }
 
-  void setData(DWORD d, const wstring &s) {dataInt = d; dataString = s;}
-  const wstring &getDataString() {
+  void setData(DWORD d, const wstring& s) { dataInt = d; dataString = s; }
+  const wstring& getDataString() {
     return dataString;
   }
   DWORD getData() {
@@ -419,12 +444,10 @@ public:
   friend class gdioutput;
   friend void CALLBACK gdiTimerProc(HWND hWnd, UINT a, UINT_PTR ptr, DWORD b);
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final { throw std::exception("Unsupported"); }
 };
 
-
-class InfoBox : public BaseInfo
-{
+class InfoBox final: public BaseInfo {
 public:
   InfoBox() : callBack(0), HasCapture(0), HasTCapture(0), TimeOut(0) {}
   wstring text;
@@ -439,7 +462,7 @@ public:
 
   DWORD TimeOut;
 
-  HWND getControlWindow() const {throw std::exception("Unsupported");}
+  HWND getControlWindow() const final {throw std::exception("Unsupported");}
 };
 
 typedef list<TextInfo> TIList;
@@ -450,6 +473,3 @@ struct ToolInfo {
   wstring tip;
   uintptr_t id;
 };
-
-
-#endif

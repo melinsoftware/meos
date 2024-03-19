@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ void PrefsEditor::showPrefs(gdioutput &gdi) {
 
   const int bw = gdi.scaleLength(80);
   int basePos = gdi.getCX();
-  int valuePos = basePos + gdi.scaleLength(160);
+  int valuePos = basePos + gdi.scaleLength(200);
   int editPos = valuePos + gdi.scaleLength(280);
   int descPos = editPos + bw + gdi.scaleLength(10);
 

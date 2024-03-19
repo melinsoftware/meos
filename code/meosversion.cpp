@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,23 +23,23 @@
 #include <vector>
 #include "meos_util.h"
 
-//ABCDEFGHIJKLMNOP
+//ABCDEFGHIJKLMNOPQ
 int getMeosBuild() {
-  string revision("$Rev: 1263 $");
+  string revision("$Rev: 1326 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2023-05-12 16:11:34 +0200 (fre, 12 maj 2023) $");
+  wstring date(L"$Date: 2024-03-02 21:15:41 +0100 (lör, 02 mar 2024) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"U1"; // No parantheses (...)
+  return L"Beta 1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
-  return L"3.9";
+  return L"4.0";
 }
 
 wstring getMeosFullVersion() {
@@ -66,8 +66,8 @@ wstring getMeosCompectVersion() {
     return getMajorVersion() + L"." + itow(getMeosBuild()) + L" (" + getBuildType() + L")";
 }
 
-void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
-{  
+void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp)
+{
   supp.emplace_back(L"OK Gorm, Denmark");//2020-
   supp.emplace_back(L"Nyköpings OK");
   supp.emplace_back(L"Thomas Engberg, VK Uvarna");
@@ -134,13 +134,25 @@ void getSupporters(vector<wstring> &supp, vector<wstring> &developSupp)
   developSupp.emplace_back(L"OK Måsen");
   supp.emplace_back(L"Ligue PACA");
   supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
-  supp.emplace_back(L"Foothills Wanderers Orienteering Club");  
-  supp.emplace_back(L"Per Eklöf / PE Design / PE Timing"); 
+  supp.emplace_back(L"Foothills Wanderers Orienteering Club");
+  supp.emplace_back(L"Per Eklöf / PE Design / PE Timing");
   supp.emplace_back(L"HEYRIES, ACA Aix en Provence");
   supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Kvarnsvedens GOIF OK");
   supp.emplace_back(L"Ingemar Lindström, OK Österåker");
   supp.emplace_back(L"OK Österåker");
-  
+  supp.emplace_back(L"Guntars Mankus, OK Saldus");
+  supp.emplace_back(L"Orienteering NSW");
+  developSupp.emplace_back(L"OK Enen");
+  supp.emplace_back(L"Hästveda OK");
+  supp.emplace_back(L"Ingemar Carlsson, Sävedalens AIK");
+  supp.emplace_back(L"Lunds OK");
+  supp.emplace_back(L"Ramblers Orienteering Club, Canada");
+  supp.emplace_back(L"CROCO");
+  supp.emplace_back(L"Nässjö OK");
+  supp.emplace_back(L"Silkeborg OK");
+  supp.emplace_back(L"IK Uven");
+  supp.emplace_back(L"Attunda OK");
+
   reverse(supp.begin(), supp.end());
 }

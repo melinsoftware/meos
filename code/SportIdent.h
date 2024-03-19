@@ -9,7 +9,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,6 +96,9 @@ struct SICard
   int relativeFinishTime;
   bool statusOK;
   bool statusDNF;
+
+  // 
+  bool isDebugCard = false;
   vector<string> codeLogData(gdioutput &converter, int row) const;
   static vector<string> logHeader();
 

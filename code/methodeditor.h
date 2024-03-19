@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ class ButtonInfo;
 class oEvent;
 
 #include <vector>
+#include "guihandler.h"
 
 class TabBase;
 
@@ -52,7 +53,7 @@ private:
   /// Check and ask if there are changes to save
   bool checkSave(gdioutput &gdi);
 
-  int methodCb(gdioutput &gdi, int type, BaseInfo &data);
+  int methodCb(gdioutput &gdi, GuiEventType type, BaseInfo &data);
 
   void makeDirty(gdioutput &gdi, DirtyFlag inside);
 
@@ -79,5 +80,5 @@ public:
 
   DynamicResult *load(gdioutput &gdi, const string &tag, bool forceLoadCopy);
 
-  friend int methodCB(gdioutput*, int, void *);
+  friend int methodCB(gdioutput*, GuiEventType type, BaseInfo* data);
 };

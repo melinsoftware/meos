@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -163,8 +163,7 @@ void tabForceSync(gdioutput &gdi, pEvent oe) {
     tabAuto->syncCallback(gdi);
 }
 
-int AutomaticCB(gdioutput *gdi, int type, void *data)
-{
+int AutomaticCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   if (!tabAuto)
     throw std::exception("tabAuto undefined.");
 
@@ -178,6 +177,10 @@ int AutomaticCB(gdioutput *gdi, int type, void *data)
       ListBoxInfo lbi=*static_cast<ListBoxInfo *>(data);
       return tabAuto->processListBox(*gdi, lbi);
              }
+
+    case GuiEventType::GUI_POSTCLEAR:
+    case GuiEventType::GUI_CLEAR:
+      return tabAuto->clearPage(*gdi, type == GUI_POSTCLEAR);
   }
   return 0;
 }
@@ -289,11 +292,47 @@ void TabAuto::setTimer(AutoMachine *am)
   }
 }
 
+
+bool TabAuto::clearPage(gdioutput &gdi, bool postClear) {
+  if (!postClear) {
+    if (wasSaved) {
+      AutoMachine* sm = getMachine(currentMachineEditId);
+      if (sm && wasCreated)
+        stopMachine(sm);
+    }
+    else {
+      auto ans = gdi.askCancel(wasCreated ? L"Vill du starta automaten?" : L"Vill du spara ändringar?");
+      if (ans == gdioutput::AskAnswer::AnswerCancel)
+        return false;
+      else {
+        AutoMachine* sm = getMachine(currentMachineEditId);
+        if (sm) {
+          if (ans == gdioutput::AskAnswer::AnswerYes) {
+            sm->save(*oe, gdi, true);
+            setTimer(sm);
+            updateSyncInfo();
+          }
+          else {
+            if (wasCreated)
+              stopMachine(sm);
+          }
+        }
+        return true;
+      }
+    }
+  }
+  else {
+    currentMachineEditId = -1;
+    wasSaved = false;
+    wasCreated = false;
+  }
+  return true;
+}
+
 int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
 {
 
   if (bu.id=="GenerateCMP") {
-#ifndef MEOSDB
     int nClass=gdi.getTextNo("nClass");
     int nRunner=gdi.getTextNo("nRunner");
 
@@ -303,7 +342,6 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
       gdi.getTabs().get(TCmpTab)->loadPage(gdi);
       return 0;
     }
-#endif
   }
   else if (bu.id == "BrowseFolder") {
     const wchar_t *edit = bu.getExtra();
@@ -399,6 +437,7 @@ int TabAuto::processButton(gdioutput &gdi, const ButtonInfo &bu)
     if (gdi.hasWidget("Interval"))
       iv = gdi.getText("Interval");
     sm->saveMachine(*oe, iv);
+    wasSaved = true;
     oe->updateChanged();
     oe->synchronize(false);
   }
@@ -500,42 +539,46 @@ bool TabAuto::stopMachine(AutoMachine *am)
   return false;
 }
 
-void TabAuto::settings(gdioutput &gdi, AutoMachine *sm, AutoMachine::State state, Machines ms) {
-    editMode=true;
-    if (sm) {
-      if (state == AutoMachine::State::Create)
-        state = AutoMachine::State::Edit;
+void TabAuto::settings(gdioutput& gdi, AutoMachine* sm, AutoMachine::State state, Machines ms) {
+  editMode = true;
+  if (sm) {
+    if (state == AutoMachine::State::Create)
+      state = AutoMachine::State::Edit;
 
-      ms = sm->getType();
-    }
-    else {
-      state = AutoMachine::State::Create;
-      sm = AutoMachine::construct(ms);
-      machines.push_back(sm);
-    }
+    ms = sm->getType();
+  }
+  else {
+    state = AutoMachine::State::Create;
+    sm = AutoMachine::construct(ms);
+    machines.push_back(sm);
+  }
 
-    gdi.restore("", false);
-    gdi.dropLine();
-    int cx = gdi.getCX();
-    int cy = gdi.getCY();
-    int d = gdi.scaleLength(6);
-    gdi.setCX(cx + d);
-    sm->setEditMode(true);
-    sm->settings(gdi, *oe, state);
-    int w = gdi.getWidth();
-    int h = gdi.getHeight();
+  gdi.restore("", false);
+  gdi.dropLine();
+  int cx = gdi.getCX();
+  int cy = gdi.getCY();
+  int d = gdi.scaleLength(6);
+  gdi.setCX(cx + d);
+  sm->setEditMode(true);
+  sm->settings(gdi, *oe, state);
+  int w = gdi.getWidth();
+  int h = gdi.getHeight();
 
-    RECT rc;
-    rc.top = cy - d;
-    rc.bottom = h + d;
-    rc.left = cx - d;
-    rc.right = w + d;
-    gdi.addRectangle(rc, colorLightBlue, true, true);
-    gdi.refresh();
+  RECT rc;
+  rc.top = cy - d;
+  rc.bottom = h + d;
+  rc.left = cx - d;
+  rc.right = w + d;
+  gdi.addRectangle(rc, colorLightBlue, true, true);
+  gdi.setOnClearCb(AutomaticCB);
+  gdi.setPostClearCb(AutomaticCB);
+  currentMachineEditId = sm->getId();
+  wasCreated = (state == AutoMachine::State::Create) || (state == AutoMachine::State::Load);
+  wasSaved = false;
+  gdi.refresh();
 }
 
-void TabAuto::killMachines()
-{
+void TabAuto::killMachines() {
   while(!machines.empty()) {
     machines.back()->stop();
     delete machines.back();
@@ -544,8 +587,7 @@ void TabAuto::killMachines()
   AutoMachine::resetGlobalId();
 }
 
-bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast)
-{
+bool TabAuto::loadPage(gdioutput &gdi, bool showSettingsLast) {
   oe->checkDB();
   oe->synchronize();
   tabAuto=this;
@@ -773,7 +815,7 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
     gdi.pushX();
     gdi.fillDown();
     vector< pair<wstring, size_t> > d;
-    gdi.addItem("Classes", oe.fillClasses(d, oEvent::extraNone, oEvent::filterNone));
+    gdi.setItems("Classes", oe.fillClasses(d, oEvent::extraNone, oEvent::filterNone));
     gdi.setSelection("Classes", classesToPrint);
 
     gdi.addSelection("ListType", 200, 100, 0, L"Lista");
@@ -797,7 +839,7 @@ void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
     set<int> clsUnused;
     vector< pair<wstring, size_t> > out;
     oe.fillLegNumbers(clsUnused, listInfo.isTeamList(), true, out);
-    gdi.addItem("LegNumber", out);
+    gdi.setItems("LegNumber", out);
     gdi.selectItemByData("LegNumber", listInfo.getLegNumberCoded());
 
     gdi.addCheckbox("PageBreak", "Sidbrytning mellan klasser", 0, pageBreak);
@@ -981,7 +1023,7 @@ void PrewarningMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.fillDown();
   vector< pair<wstring, size_t> > d;
   oe.fillControls(d, oEvent::ControlType::CourseControl);
-  gdi.addItem("Controls", d);
+  gdi.setItems("Controls", d);
   gdi.setSelection("Controls", controls);
   gdi.popX();
   gdi.addButton("SelectAll", "Välj alla", AutomaticCB, "").setExtra(L"Controls");
@@ -1205,7 +1247,7 @@ void SplitsMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
   if (doProcess) {
     //Try exporting.
     oe.exportIOFSplits(oEvent::IOF20, file.c_str(), true, false,
-                       set<int>(), -1, false, true, true, false, false);
+                       set<int>(), make_pair("",""), -1, false, true, true, false, false);
     interval = iv;
     synchronize = true;
   }
@@ -1244,7 +1286,8 @@ void SplitsMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
 {
   if ((interval>0 && ast==SyncTimer) || (interval==0 && ast==SyncDataUp)) {
     if (!file.empty())
-      oe->exportIOFSplits(oEvent::IOF20, file.c_str(), true, false, classes,
+      oe->exportIOFSplits(oEvent::IOF20, file.c_str(),
+                          true, false, classes, make_pair("", ""),
                           leg, false, true, true, false, false);
   }
 }

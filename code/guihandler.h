@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
 
 ************************************************************************/
 
-#ifndef MEOS_GUI_HANDLER
-#define MEOS_GUI_HANDLER
+#pragma once
 
 enum GuiEventType {GUI_BUTTON=1, GUI_INPUT=2, GUI_LISTBOX=3,
   GUI_INFOBOX=4, GUI_CLEAR=5, GUI_INPUTCHANGE=6,
@@ -34,6 +33,7 @@ enum GuiEventType {GUI_BUTTON=1, GUI_INPUT=2, GUI_LISTBOX=3,
 
 class gdioutput;
 class BaseInfo;
+typedef int (*GUICALLBACK)(gdioutput* gdi, GuiEventType type, BaseInfo* data);
 
 class GuiHandler {
 public:
@@ -41,5 +41,3 @@ public:
   virtual ~GuiHandler() = 0 {}
   virtual void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) = 0;
 };
-
-#endif

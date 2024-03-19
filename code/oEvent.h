@@ -6,7 +6,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -120,10 +120,10 @@ public:
   Priority getPriority() const {return priority;}
   int getClassId() const {return classId;}
   pair<bool, int> getSource() const {return typeId;}
-  oAbstractRunner *getSource(const oEvent &oe) const;
+  oRunner *getSource(const oEvent &oe) const;
 
   __int64 getTag() const;
-  oTimeLine(int time, TimeLineType type, Priority priority, int classId, int id, oAbstractRunner *source);
+  oTimeLine(int time, TimeLineType type, Priority priority, int classId, int id, oRunner *source);
   virtual ~oTimeLine();
 };
 
@@ -139,8 +139,6 @@ typedef list<oCard> oCardList;
 typedef list<oTeam> oTeamList;
 
 typedef list<oFreePunch> oFreePunchList;
-
-typedef int (*GUICALLBACK)(gdioutput *gdi, int type, void *data);
 
 struct ClassInfo;
 struct DrawInfo;
@@ -236,6 +234,7 @@ protected:
 
   // Set to true if a global modification is made that should case all lists etc to regenerate.
   bool globalModification;
+  bool isMainEvent = false;
 
   gdioutput &gdibase;
   
@@ -290,7 +289,7 @@ protected:
   oCardList Cards;
 
   oFreePunchList punches;
-  typedef unordered_multimap<int, pFreePunch> PunchIndexType;
+  typedef std::unordered_multimap<int, pFreePunch> PunchIndexType;
   typedef PunchIndexType::iterator PunchIterator;
   typedef PunchIndexType::const_iterator PunchConstIterator;
   /** First level maps a constant based on control number
@@ -396,7 +395,7 @@ protected:
   set<int> modifiedClasses;
 
   static const int dataSize = 1024;
-  int getDISize() const {return dataSize;}
+  int getDISize() const final {return dataSize;}
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
   vector<vector<wstring>> dynamicData;
@@ -485,6 +484,8 @@ protected:
   // Temporarily disable recaluclate leader times
   bool disableRecalculate;
 public:
+  /** Mark as main event.*/
+  void setMainEvent() { isMainEvent = true; }
 
   /** Get adjustment for a specific unit*/
   int getUnitAdjustment(oPunch::SpecialPunch type, int unit) const;
@@ -726,16 +727,25 @@ public:
   inline bool useStartSeconds() const {return tUseStartSeconds;}
   void calcUseStartSeconds();
 
-  void assignCardInteractive(gdioutput &gdi, GUICALLBACK cb);
+  void assignCardInteractive(gdioutput &gdi, GUICALLBACK cb, SortOrder& orderRunners);
 
   int getPropertyInt(const char *name, int def);
+  bool getPropertyBool(const char* name, bool def) {
+    return getPropertyInt(name, def ? 1 : 0) != 0;
+  }
   const string &getPropertyString(const char *name, const string &def);
   const wstring &getPropertyString(const char *name, const wstring &def);
   
   string getPropertyStringDecrypt(const char *name, const string &def);
 
   void setProperty(const char *name, int prop);
-  //void setProperty(const char *name, const string &prop);
+  void setProperty(const char* name, bool prop) {
+    setProperty(name, prop ? 1 : 0);
+  }
+  void setProperty(const char* name, size_t prop) {
+    setProperty(name, int(prop));
+  }
+
   void setProperty(const char *name, const wstring &prop);
   
   void setPropertyEncrypt(const char *name, const string &prop);
@@ -820,7 +830,7 @@ public:
 
   void checkOrderIdMultipleCourses(int ClassId);
 
-  void addBib(int ClassId, int leg, const wstring &firstNumber);
+  void addBib(int ClassId, int leg, const wstring &firstNumber, bool assignVacant);
   void addAutoBib();
 
   //Speaker functions.
@@ -834,7 +844,7 @@ public:
   // Get set of controls with registered punches
   void getFreeControls(set<int> &controlId) const;
   // Returns the added punch, of null of already added.
-  pFreePunch addFreePunch(int time, int type, int unit, int card, bool updateRunner);
+  pFreePunch addFreePunch(int time, int type, int unit, int card, bool updateRunner, bool isOriginal);
   pFreePunch addFreePunch(oFreePunch &fp);
 
   bool useLongTimes() const;
@@ -898,7 +908,7 @@ protected:
   bool enumerateBackups(const wstring &file, const wstring &filetype, int type);
   mutable multimap<int, oAbstractRunner*> bibStartNoToRunnerTeam;
 
-  mutable shared_ptr<unordered_multimap<int, pRunner>> cardToRunnerHash;
+  mutable shared_ptr<std::unordered_multimap<int, pRunner>> cardToRunnerHash;
   vector<pRunner> getCardToRunner(int cardNo) const;
 
   mutable shared_ptr<map<int, vector<pRunner>>> classIdToRunnerHash;
@@ -909,7 +919,8 @@ protected:
   int tClubDataRevision;
   int tCalcNumMapsDataRevision = -1;
 
-  bool readOnly;
+  bool readOnly = false;
+  bool kiosk = false;
   mutable int tLongTimesCached;
   mutable map<int, pair<int, int> > cachedFirstStart; //First start per classid.
   map<pair<int, int>, oFreePunch> advanceInformationPunches;
@@ -919,7 +930,7 @@ protected:
 
   unsigned int lastTimeConsistencyCheck = 0;
   mutable bool lastResultCalcPrelState = false;
-
+  mutable bool lastResultCalcSplitResult = false;
 public:
   void updateStartTimes(int delta);
 
@@ -927,6 +938,9 @@ public:
 
   bool isReadOnly() const {return readOnly;}
   void setReadOnly() {readOnly = true;}
+  void setKiosk() { kiosk = true; }
+
+  bool isKiosk() const { return readOnly || kiosk; };
 
   enum IOFVersion {IOF20, IOF30};
 
@@ -970,7 +984,7 @@ public:
   //Returns true if data is changed.
   bool autoSynchronizeLists(bool syncPunches);
    
-  bool synchronizeList(initializer_list<oListId> types);
+  bool synchronizeList(std::initializer_list<oListId> types);
   bool synchronizeList(oListId id, bool preSyncEvent = true, bool postSyncEvent = true);
 
   bool checkDatabaseConsistency(bool force);
@@ -1009,6 +1023,7 @@ public:
   void exportIOFSplits(IOFVersion version, const wchar_t *file, bool oldStylePatrolExport,
                        bool useUTC,
                        const set<int> &classes,
+                       const pair<string, string> &preferredIdTypes,
                        int leg,
                        bool teamsAsIndividual,
                        bool unrollLoops,
@@ -1018,6 +1033,7 @@ public:
 
   void exportIOFStartlist(IOFVersion version, const wchar_t *file,
                           bool useUTC, const set<int> &classes,
+                          const pair<string, string>& preferredIdTypes,
                           bool teamsAsIndividual,
                           bool includeStageInfo,
                           bool forceSplitFee,
@@ -1125,7 +1141,6 @@ public:
   bool sortTeams(SortOrder so, int leg, bool linearLeg, vector<const oTeam *> &teams) const;
   bool sortTeams(SortOrder so, int leg, bool linearLeg, vector<oTeam *> &teams) const;
 
-
   pCard allocateCard(pRunner owner);
 
   /** Optimize the start order based on drawInfo. Result in cInfo */
@@ -1133,7 +1148,7 @@ public:
 
   void loadDrawSettings(const set<int> &classes, DrawInfo &drawInfo, vector<ClassInfo> &cInfo) const;
 
-  void drawRemaining(DrawMethod method, bool placeAfter);
+  void drawRemaining(const set<int> &classSel, DrawMethod method, bool placeAfter);
   void drawListStartGroups(const vector<ClassDrawSpecification> &spec,
                            DrawMethod method, int pairSize, DrawType drawType,
                            bool limitGroupSize = true,
@@ -1144,6 +1159,15 @@ public:
   void drawPersuitList(int classId, int firstTime, int restartTime,
                        int ropeTime, int interval, int pairSize,
                        bool reverse, double scale);
+
+  /** Request a start time for a runner after a specified time. Returns
+      start time (but does not "lock" it)*/
+  int requestStartTime(int runnerId, int afterThisTime, int minTimeInterval,
+                       int lastAllowedTime, int maxParallel, 
+                       bool allowSameCourse, 
+                       bool allowSameCourseNeighbour,
+                       bool allowSameFirstControl,
+                       bool allowClubNeighbour);
 
   wstring getAutoTeamName() const;
   pTeam addTeam(const oTeam &t, bool autoAssignStartNo);
@@ -1215,6 +1239,35 @@ public:
                                                    const unordered_set<int> &personFilter);
   void fillRunners(gdioutput &gdi, const string &id, bool longName = false, int filter = 0);
 
+
+  enum class ExtraFields {
+    DataA = 0,
+    DataB = 1,
+    TextA = 2,
+    Nationality = 3,
+    Sex = 4,
+    BirthDate = 5,
+    Rank = 6,
+    Phone = 7,
+    StartTime = 8,
+    Bib = 9,
+    MaxField
+  };
+
+  enum class ExtraFieldContext {
+    Runner = 0,
+    Team = 1,
+    Class = 2,
+    DirectEntry = 3,
+    MaxContext
+  };
+
+  /** Get extra fields to show in UI*/
+  map<ExtraFields, wstring> getExtraFields(ExtraFieldContext context) const;
+  map<ExtraFields, wstring> getExtraFieldNames() const;
+
+  void updateExtraFields(ExtraFieldContext context, const map<ExtraFields, wstring> &fields);
+
   const shared_ptr<Table> &getTable(const string &key) const;
   void setTable(const string &key, const shared_ptr<Table> &table);
   bool hasTable(const string &key) const { return tables.count(key) > 0; }
@@ -1285,7 +1338,7 @@ public:
 
   const vector<pair<wstring, size_t>> &fillClasses(vector<pair<wstring, size_t>> &out,
                     ClassExtra extended, ClassFilter filter);
-  void fillClasses(gdioutput &gdi, const string &id, ClassExtra extended, ClassFilter filter);
+  void fillClasses(gdioutput &gdi, const string &id, const vector<pair<wstring, size_t>>& extraItems, ClassExtra extended, ClassFilter filter);
 
   bool fillClassesTB(gdioutput &gdi);
   const vector<pair<wstring, size_t>> &fillStarts(vector<pair<wstring, size_t>> &out);
@@ -1308,7 +1361,7 @@ public:
   /** Get controls. If calculateCourseControls, duplicate numbers are calculated for each control and course. */
   void getControls(vector<pControl> &controls, bool calculateCourseControls) const;
 
-  void fillCourses(gdioutput &gdi, const string &id, bool simple = false);
+  void fillCourses(gdioutput &gdi, const string &id, const vector<pair<wstring, size_t>>& extraItems, bool simple);
   const vector<pair<wstring, size_t>> &getCourses(vector<pair<wstring, size_t>> &out,
                                                   const wstring &filter,
                                                   bool simple = false, 
@@ -1341,7 +1394,10 @@ public:
   void importXML_EntryData(gdioutput &gdi, const wstring &file, 
                            bool updateClass, bool removeNonexisting,
                            const set<int> &filter, int classIdOffset, 
-                           int courseIdOffset, const string &preferredIdType);
+                           int courseIdOffset, const pair<string, string> &preferredIdType);
+
+  void setRunnerIdTypes(const pair<string, string> &preferredIdType);
+  pair<wstring, wstring> getRunnerIdTypes() const;
 
 protected:
   pClass getXMLClass(const xmlobject &xentry);

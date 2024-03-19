@@ -2,7 +2,7 @@
 
 /************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2023 Melin Software HB
+Copyright (C) 2009-2024 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,8 +29,47 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include <set>
 
 class oRunner;
-typedef oRunner * pRunner;
+typedef oRunner *pRunner;
 class oClass;
+
+struct QFClass {
+  QFClass() = default;
+  QFClass(const wstring& name) : name(name) {}
+
+  wstring name;
+  vector<pair<int, int>> qualificationMap;
+  int numTimeQualifications = 0;
+
+  enum class ExtraQualType {
+    None,
+    All,
+    NBest,
+    TimeLimit,
+  };
+
+  ExtraQualType extraQualification = ExtraQualType::None;
+  int extraQualData = 0;
+
+  static ExtraQualType deserialType(wchar_t dc) {
+    switch (dc) {
+    case 'A':
+      return ExtraQualType::All;
+    case 'B':
+      return ExtraQualType::NBest;
+    case 'L':
+      return ExtraQualType::TimeLimit;
+
+    }
+    return ExtraQualType::None;
+  }
+
+  wstring serialExtra() const;
+  // Get the minimum qualification instance
+  int getMinQualInst() const;
+  bool rankLevel = false;
+  mutable int level = -1;
+  wstring getQualInfo() const;
+};
 
 class QualificationFinal {
 private:
@@ -38,15 +77,7 @@ private:
   int maxClassId;
   int baseId;
 
-  struct Class {
-    wstring name;
-    vector< pair<int, int> > qualificationMap;
-    vector< vector<int> > timeQualifications;
-    bool rankLevel = false;
-    mutable int level = -1;
-  };
-
-  enum LevelInfo {
+  enum class LevelInfo {
     Normal,
     RankSort,
   };
@@ -58,29 +89,43 @@ private:
     int instance;
     int order;
   };
-
  
   vector<vector<ResultInfo>> storedInfo;
   map<int, ResultInfo *> storedInfoLookup;
+  map<int, int> numExtraAssigned; // Number of extra assigned competitors (per race/instance)
 
-  vector<Class> classDefinition;
-
+  vector<QFClass> classDefinition;
   map<pair<int, int>, pair<int, int>> sourcePlaceToFinalOrder;
+  mutable map<int, int> level2DefningInstance;
 
   void initgmap(bool check);
 
-  // Recursive implementation
-  int getNumStages(int stage) const;
+  /** Retuns the final class and the order within that class. */
+  pair<int, int> getPrelFinalFromPlace(int instance, int orderPlace, int numSharedPlaceNext);
+
+  static wstring validName(const wstring& name);
+
 public:
+
+  void setClasses(const vector<QFClass>& def);
+  const vector<QFClass>& getClasses() const {
+    return classDefinition;
+  }
 
   QualificationFinal(int maxClassId, int baseId) : maxClassId(maxClassId), baseId(baseId) {}
   
+  static bool isValidNameChar(wchar_t c);
+
   bool matchSerialization(const wstring &ser) const {
     return serializedFrom == ser;
   }
 
   int getNumClasses() const {
     return classDefinition.size();
+  }
+
+  const QFClass& getInstance(int instance) const {
+    return classDefinition[instance];
   }
 
   const wstring getInstanceName(int inst) {
@@ -92,15 +137,20 @@ public:
 
   // Count number of stages
   int getNumStages() const {
-    return getNumStages(classDefinition.size());
+    return getNumLevels();
+    //return getNumStages(classDefinition.size());
   }
 
   int getHeatFromClass(int finalClassId, int baseClassId) const;
   
-  void import(const wstring &file);
+  void importXML(const wstring &file);
+  void exportXML(const wstring& file) const;
 
   void init(const wstring &def);
   void encode(wstring &output) const;
+
+  /** Return true of any class is of type remaining */
+  bool hasRemainingClass() const;
 
   /** Calculate the level of a particular instance. */
   int getLevel(int instance) const;
@@ -108,17 +158,18 @@ public:
   /** Calculate the number of levels. */
   int getNumLevels() const;
 
-  /** Get the minimum number instance of a specified level. */
-  int getMinInstance(int level) const;
-
-  /** Retuns the final class and the order within that class. */
-  pair<int,int> getNextFinal(int instance, int orderPlace, int numSharedPlaceNext) const;
+  /** Get the minimum number instance of a specified level
+      affecting later level qualifications. */
+  int getMinInstance(const int level) const;
 
   /** Clear previous staus data*/
   void prepareCalculations();
 
-  /** Return the final class and the order within that class. */
-  void setupNextFinal(pRunner r, int instance, int orderPlace, int numSharedPlaceNext);
+  /** Prove result to compute final classes. */
+  void provideQualificationResult(pRunner r, int instance, int orderPlace, int numSharedPlace);
+
+  /** Provide data for non-qualified competitors */
+  void provideUnqualified(int level, pRunner r);
 
   /** Do internal calculations. */
   void computeFinals();
@@ -132,5 +183,5 @@ public:
   /** Fills in the set of no-qualification classes*/
   void getBaseClassInstances(set<int> &base) const;
 
-  void printScheme(oClass * cls, gdioutput &gdi) const;
+  void printScheme(const oClass &cls, gdioutput &gdi) const;
 };

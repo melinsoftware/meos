@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -86,6 +86,25 @@ enum SortOrder {
   Custom,
   SortEnumLastItem
 };
+
+static bool orderByClass(SortOrder so) {
+  switch (so) {
+  case ClassStartTime:
+  case ClassTeamLeg:
+  case ClassResult:
+  case ClassDefaultResult:
+  case ClassCourseResult:
+  case ClassTotalResult:
+  case ClassTeamLegResult:
+  case ClassFinishTime:
+  case ClassStartTimeClub:
+  case ClassPoints:
+  case ClassLiveResult:
+  case ClassKnockoutTotalResult:
+    return true;
+  }
+  return false;
+}
 
 class oRunner;
 typedef oRunner* pRunner;
@@ -177,6 +196,9 @@ public:
 
 protected:
   TempResult tmpResult;
+
+  /** Return 1 if a<b, 0 if b<a, otherwise 2.*/
+  static int compareClubs(const oClub* a, const oClub* b);
 
   mutable int tTimeAdjustment;
   mutable int tPointAdjustment;
@@ -474,6 +496,8 @@ public:
   void setTimeAdjustment(int adjust);
   void setPointAdjustment(int adjust);
 
+  virtual bool isTeam() const { return false; }
+
   oAbstractRunner(oEvent *poe, bool loading);
   virtual ~oAbstractRunner() {};
 
@@ -551,6 +575,23 @@ public:
 };
 
 class oRunner final: public oAbstractRunner {
+public:
+  struct ResultData {
+  private:
+    int data = 0;
+    int teamTotalData = 0;
+
+  public:
+    ResultData(int data, int teamTotalData) : data(data), teamTotalData(teamTotalData) { }
+    ResultData() = default;
+
+    int get(bool total) const {
+      return total ? teamTotalData : data;
+    }
+
+    friend class oRunner;
+  };
+
 protected:
   pCourse Course;
 
@@ -588,8 +629,8 @@ protected:
   map<int, int> priority;
   int cPriority;
 
-  static const int dataSize = 256;
-  int getDISize() const {return dataSize;}
+  static constexpr int dataSize = 256+64;
+  int getDISize() const final {return dataSize;}
 
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
@@ -633,24 +674,32 @@ protected:
 
   void clearOnChangedRunningTime();
 
+  
   // Cached runner statistics
   mutable vector<int> tMissedTime;
   mutable vector<int> tPlaceLeg;
   mutable vector<int> tAfterLeg;
-  mutable vector<int> tPlaceLegAcc;
-  mutable vector<int> tAfterLegAcc;
+  mutable vector<ResultData> tPlaceLegAcc;
+  mutable vector<ResultData> tAfterLegAcc;
     
   // Used to calculate temporary split time results
   struct OnCourseResult {
     OnCourseResult(int courseControlId,
                    int controlIx,
-                   int time) : courseControlId(courseControlId), 
-                               controlIx(controlIx), time(time) {}
+                   int time,
+                   int teamTotalTime) : courseControlId(courseControlId), 
+                                        controlIx(controlIx), time(time),
+                                        teamTotalTime(teamTotalTime) {}
     int courseControlId;
     int controlIx;
     int time;
-    int place;
-    int after;
+    int teamTotalTime;
+
+    int place = -1;
+    int after = -1;
+
+    int teamTotalPlace = -1;
+    int teamTotalAfter = -1;
   };
   mutable pair<int, int> currentControlTime;
 
@@ -660,8 +709,9 @@ protected:
     void clear() { hasAnyRes = false; res.clear(); }
     void emplace_back(int courseControlId,
                       int controlIx,
-                      int time) {
-      res.emplace_back(courseControlId, controlIx, time);
+                      int time,
+                      int teamTotalTime) {
+      res.emplace_back(courseControlId, controlIx, time, teamTotalTime);
       hasAnyRes = true;
     }
     bool empty() const { return hasAnyRes == false; }
@@ -708,13 +758,24 @@ protected:
   /** Internal propagate club.*/
   void propagateClub();
 
-  bool isHiredCard(int card) const;
+  bool isRentalCard(int card) const;
 
   int tmpStartGroup = 0;
 
   int getBuiltinAdjustment() const override;
 
 public:
+  /// Second external ID (local and WRE etc)
+  
+  /// Set a second external identifier (0 if none)
+  void setExtIdentifier2(int64_t id);
+
+  /// Get the second external identifier (or 0) if none
+  int64_t getExtIdentifier2() const;
+
+  wstring getExtIdentifierString2() const;
+  void setExtIdentifier2(const wstring& str);
+
   bool matchAbstractRunner(const oAbstractRunner* target) const override;
 
   static const shared_ptr<Table> &getTable(oEvent *oe);
@@ -867,8 +928,8 @@ public:
   int getMissedTime(int ctrlNo) const;
   int getLegPlace(int ctrlNo) const;
   int getLegTimeAfter(int ctrlNo) const;
-  int getLegPlaceAcc(int ctrlNo) const;
-  int getLegTimeAfterAcc(int ctrlNo) const;
+  int getLegPlaceAcc(int ctrlNo, bool teamTotal) const;
+  int getLegTimeAfterAcc(int ctrlNo, bool teamTotal) const;
 
   /** Calculate the time when the runners place is fixed, i.e,
       when no other runner can threaten the place.
@@ -897,7 +958,7 @@ public:
   void printSplits(gdioutput& gdi) const;
   void printSplits(gdioutput &gdi, const oListInfo *li) const;
 
-  void printStartInfo(gdioutput &gdi) const;
+  void printStartInfo(gdioutput &gdi, bool includeEconomy) const;
 
   /** Take the start time from runner r*/
   void cloneStartTime(const pRunner r);
@@ -957,22 +1018,25 @@ public:
   void getLegPlaces(vector<int> &places) const;
   void getLegTimeAfter(vector<int> &deltaTimes) const;
 
-  void getLegPlacesAcc(vector<int> &places) const;
-  void getLegTimeAfterAcc(vector<int> &deltaTimes) const;
+  void getLegPlacesAcc(vector<ResultData> &places) const;
+  void getLegTimeAfterAcc(vector<ResultData> &deltaTimes) const;
 
   // Normalized = true means permuted to the unlooped version of the course
   int getSplitTime(int controlNumber, bool normalized) const;
   int getTimeAdjust(int controlNumber) const;
 
   int getNamedSplit(int controlNumber) const;
-  wstring getNamedSplitS(int controlNumber) const;
+  const wstring &getNamedSplitS(int controlNumber, SubSecond mode) const;
+
+  /** Get running time from start to a control (specified by its index on the course)
+    normalized: true means permuted to the unlooped version of the course
+    teamTotalTime: true means time is measured from the team's starting time
+  */
+  int getPunchTime(int controlIndex, bool normalized, bool adjusted, bool teamTotalTime) const;
+  const wstring &getPunchTimeS(int controlIndex, bool normalized, bool adjusted, bool teamTotalTime, SubSecond mode) const;
 
   // Normalized = true means permuted to the unlooped version of the course
-  int getPunchTime(int controlNumber, bool normalized, bool adjusted) const;
-  wstring getPunchTimeS(int controlNumber, bool normalized, bool adjusted, SubSecond mode) const;
-
-  // Normalized = true means permuted to the unlooped version of the course
-  wstring getSplitTimeS(int controlNumber, bool normalized) const;
+  const wstring &getSplitTimeS(int controlNumber, bool normalized, SubSecond mode) const;
 
   void addTableRow(Table &table) const;
   pair<int, bool> inputData(int id, const wstring &input,
@@ -1010,7 +1074,19 @@ public:
   int getCourseId() const {if (Course) return Course->Id; else return 0;}
   void setCourseId(int id);
 
-  bool isHiredCard() const;
+  /** Return true if rental card*/
+  bool isRentalCard() const;
+
+  /** Get the rental card fee.
+     If forAllRunners is true, the total
+     fee is computed (for all multirunners)
+     otherwise only the fee for this runner's
+     card is included. */
+  int getRentalCardFee(bool forAllRunners) const;
+
+  /** Set rental card status (does not update fee)*/
+  void setRentalCard(bool rental);
+
 
   int getCardNo() const { return tParentRunner && cardNumber == 0 ? tParentRunner->cardNumber : cardNumber; }
   void setCardNo(int card, bool matchCard, bool updateFromDatabase = false);

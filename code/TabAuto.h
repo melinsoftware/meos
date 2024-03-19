@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -311,12 +311,12 @@ class TabAuto :
   public TabBase
 {
 private:
-  //DWORD printResultIntervalSec;
-  //DWORD printResultTimeOut;
-  bool editMode;
-
-  bool synchronize;
-  bool synchronizePunches;
+  bool editMode = false;
+  int currentMachineEditId = -1;
+  bool wasCreated = false;
+  bool wasSaved = false;
+  bool synchronize = false;
+  bool synchronizePunches = false;
   void updateSyncInfo();
 
   list<AutoMachine *> machines;
@@ -336,6 +336,7 @@ public:
   AutoMachine *getMachine(int id);
   bool stopMachine(AutoMachine *am);
   void killMachines();
+  bool clearPage(gdioutput &gdi, bool postClear);
 
   AutoMachine &addMachine(const AutoMachine &am) {
     machines.push_back(am.clone());

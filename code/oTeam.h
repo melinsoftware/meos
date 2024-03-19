@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,8 +57,8 @@ protected:
   vector<pRunner> Runners;
   void setRunnerInternal(int k, pRunner r);
 
-  static const int dataSize = 160;
-  int getDISize() const {return dataSize;}
+  static const int dataSize = 256;
+  int getDISize() const final {return dataSize;}
   BYTE oData[dataSize];
   BYTE oDataOld[dataSize];
 
@@ -268,7 +268,10 @@ public:
   wstring getLegRunningTimeS(int leg, bool computed, bool multidayTotal, SubSecond mode) const;
 
   int getLegRunningTime(int leg, bool computed, bool multidayTotal) const;
- 
+  
+  // Get the team's total running time when starting specified leg
+  int getTotalRunningTimeAtLegStart(int leg, bool multidayTotal) const;
+
   RunnerStatus getLegStatus(int leg, bool computed, bool multidayTotal) const;
   const wstring &getLegStatusS(int leg, bool computed, bool multidayTotal) const;
 
@@ -291,6 +294,9 @@ public:
   bool write(xmlparser &xml);
 
   void merge(const oBase &input, const oBase *base) final;
+
+  bool isTeam() const final { return true; }
+
 
   oTeam(oEvent *poe, int id);
   oTeam(oEvent *poe);

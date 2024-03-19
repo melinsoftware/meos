@@ -5,7 +5,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,18 +57,16 @@ public:
     Quiet,
     Update
   };
-
-private:
-
 protected:
   int Id;
   TimeStamp Modified;
   string sqlUpdated; //SQL TIMESTAMP
 
-private:
   const static unsigned long long BaseGenStringFlag = 1ull << 63;
   const static unsigned long long Base36StringFlag = 1ull << 62;
   const static unsigned long long ExtStringMask = ~(BaseGenStringFlag | Base36StringFlag);
+
+private: 
   shared_ptr<oBaseReference> myReference;
 
 protected:
@@ -174,10 +172,10 @@ public:
   virtual bool canRemove() const = 0;
 
   /// Set an external identifier (0 if none)
-  void setExtIdentifier(__int64 id);
+  void setExtIdentifier(int64_t id);
 
   /// Get an external identifier (or 0) if none
-  __int64 getExtIdentifier() const;
+  int64_t getExtIdentifier() const;
 
   wstring getExtIdentifierString() const;
   void setExtIdentifier(const wstring &str);
@@ -185,9 +183,9 @@ public:
 
   // Convert an external to a int id. The result
   // need not be unique, of course.
-  static int idFromExtId(__int64 extId);
-  static void converExtIdentifierString(__int64 raw, wchar_t bf[16]);
-  static __int64 converExtIdentifierString(const wstring &str);
+  static int idFromExtId(int64_t extId);
+  static void converExtIdentifierString(int64_t raw, wchar_t bf[16]);
+  static int64_t converExtIdentifierString(const wstring &str);
 
   oBase(oEvent *poe);
   oBase(const oBase &in);

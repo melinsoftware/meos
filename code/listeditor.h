@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ private:
   const wchar_t *getIndexDescription(EPostType type);
   wstring lastShownExampleText;
   void showLine(gdioutput &gdi, const vector<MetaListPost> &line, int ix) const;
-  int editList(gdioutput &gdi, int type, BaseInfo &data);
+  int editList(gdioutput &gdi, GuiEventType type, BaseInfo &data);
   void updateType(int iType, gdioutput &gdi);
 
   bool saveListPost(gdioutput &gdi, MetaListPost &mlp);
@@ -118,5 +118,5 @@ public:
   MetaList *getCurrentList() const {return currentList;};
   void handleAutoComplete(gdioutput &gdi, AutoCompleteInfo &info) final;
 
-  friend int editListCB(gdioutput*, int, void *);
+  friend int editListCB(gdioutput*, GuiEventType type, BaseInfo* data);
 };

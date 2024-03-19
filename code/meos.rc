@@ -47,12 +47,48 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 
 IDB_ECO                 BITMAP                  "bmp00001.bmp"
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// PNG
+//
+
+IDI_SPLASHIMAGE         PNG                     "meos.png"
+
+IDI_MEOSIMAGE           PNG                     "title.png"
+
+IDI_MEOSINFO            PNG                     "info24.png"
+
+IDI_MEOSWARN            PNG                     "warn24.png"
+
+IDI_MEOSEDIT            PNG                     "edit.png"
+
+IDI_MEOSCLASS24         PNG                     "class24.png"
+
+IDI_MEOSCOURSE24        PNG                     "course24.png"
+
+IDI_MEOSCONTROL24       PNG                     "ctrl24.png"
+
+IDI_MEOSANNOUNCER24     PNG                     "announcer24.png"
+
+IDI_MEOSSERVICES24      PNG                     "services24.png"
+
+IDI_MEOSLIST24          PNG                     "lists24.png"
+
+IDI_MEOSRUNNER24        PNG                     "runner24.png"
+
+IDI_MEOSTEAM24          PNG                     "team24.png"
+
+IDI_MEOSCLUBS24         PNG                     "clubs24.png"
+
+IDI_MEOSCARD24          PNG                     "readout24.png"
+
+IDI_MEOSCOMPETITION24   PNG                     "competition24.png"
+
 #endif    // Neutral (Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
-IDI_SPLASHIMAGE PNG "meos.png"
-IDI_MEOSIMAGE PNG "title.png"
-IDI_MEOSINFO PNG "info24.png"
+
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources
 
@@ -150,8 +186,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,8,0,1
- PRODUCTVERSION 3,8,0,1
+ FILEVERSION 4,0,0,1
+ PRODUCTVERSION 4,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -168,12 +204,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Melin Software HB"
             VALUE "FileDescription", "meos"
-            VALUE "FileVersion", "3.8.0.1"
+            VALUE "FileVersion", "4.0.0.1"
             VALUE "InternalName", "meos"
-            VALUE "LegalCopyright", "Copyright © 2007-2022"
-            VALUE "OriginalFilename", "meos.exe"
+            VALUE "LegalCopyright", "Copyright © 2007-2024"
+            VALUE "OriginalFilename", "MeOS.exe"
             VALUE "ProductName", "  meos"
-            VALUE "ProductVersion", "3.8.0.1"
+            VALUE "ProductVersion", "4.0.0.1"
         END
     END
     BLOCK "VarFileInfo"

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,15 +43,14 @@
 #include <io.h>
 #include "csvparser.h"
 
-int CompetitionCB(gdioutput *gdi, int type, void *data);
+int CompetitionCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 
-int NewGuideCB(gdioutput *gdi, int type, void *data) {
+int NewGuideCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   TabCompetition &tc = dynamic_cast<TabCompetition &>(*gdi->getTabs().get(TCmpTab));
   return tc.newGuideCB(*gdi, type, data);
 }
 
-int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
-{
+int TabCompetition::newGuideCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   if (type == GUI_LINK) {
     TextInfo ti = *(TextInfo *)data;
     if (ti.id == "link") {
@@ -209,12 +208,12 @@ int TabCompetition::newGuideCB(gdioutput &gdi, int type, void *data)
       SYSTEMTIME st;
       if (ii.id == "FirstStart") {
         t = convertAbsoluteTimeHMS(ii.text, -1);
-        d = convertDateYMS(gdi.getText("Date"), st, true);
+        d = convertDateYMD(gdi.getText("Date"), st, true);
         ii.setBgColor(t == -1 ? colorLightRed: colorDefault);
       }
       else {
         t = convertAbsoluteTimeHMS(gdi.getText("FirstStart"), -1);
-        d = convertDateYMS(ii.text, st, true);
+        d = convertDateYMD(ii.text, st, true);
         ii.setBgColor(d <= 0 ? colorLightRed: colorDefault);
       }
 

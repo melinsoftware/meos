@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ void ListEditor::show(TabBase *dst, gdioutput &gdi) {
   show(gdi);
 }
 
-int editListCB(gdioutput* gdi, int type, void* data);
+int editListCB(gdioutput* gdi, GuiEventType type, BaseInfo* data);
 
 void ListEditor::show(gdioutput &gdi) {
 
@@ -319,8 +319,7 @@ void ListEditor::renderListPreview(gdioutput &gdi) {
   }
 }
 
-int editListCB(gdioutput *gdi, int type, void *data)
-{
+int editListCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   void *clz = gdi->getData("ListEditorClz");
   ListEditor *le = (ListEditor *)clz;
   BaseInfo *bi = (BaseInfo *)data;
@@ -393,7 +392,7 @@ static void getPosFromId(int id, int &groupIx, int &lineIx, int &ix) {
   lineIx = lineIx % 100;
 }
 
-int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
+int ListEditor::editList(gdioutput &gdi, GuiEventType type, BaseInfo &data) {
   int lineIx, groupIx, ix;
   
   if (type == GUI_EVENT) {
@@ -778,7 +777,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
       
       gdi.fillRight();
       gdi.addSelection("OpenList", 250, 400, editListCB, L"Välj lista:");
-      gdi.addItem("OpenList", lists);
+      gdi.setItems("OpenList", lists);
       gdi.selectFirstItem("OpenList");
 
 
@@ -907,7 +906,7 @@ int ListEditor::editList(gdioutput &gdi, int type, BaseInfo &data) {
         gdi.getSelectedItem("SortOrder", mlbi);
         currentType = mlbi.data;
       }
-      gdi.addItem("SortOrder", types);
+      gdi.setItems("SortOrder", types);
       gdi.selectItemByData("SortOrder", currentType);
     }
     else if (lbi.id == "OpenList") {
@@ -1170,7 +1169,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.fillRight();
   gdi.addSelection("Type", 290, 500, editListCB);
   gdi.dropLine(-1);
-  gdi.addItem("Type", types);
+  gdi.setItems("Type", types);
   gdi.selectItemByData("Type", currentType);
   gdi.addInput("Text", mlp.getText(), 16, editListCB,
                L"Egen text:", L"Använd symbolen X där MeOS ska fylla i typens data.");
@@ -1205,7 +1204,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   currentList->getAlignTypes(mlp, types, currentType);
   sort(types.begin(), types.end());
   gdi.addSelection("AlignType", 290, 500, editListCB, L"Justera mot:");
-  gdi.addItem("AlignType", types);
+  gdi.setItems("AlignType", types);
   gdi.selectItemByData("AlignType", currentType);
 
   gdi.addInput("AlignText", mlp.getAlignText(), 16, 0, L"Text:");
@@ -1259,7 +1258,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   mlp.getFonts(fonts, currentFont);
 
   gdi.addSelection("Fonts", 200, 500, 0, L"Format:");
-  gdi.addItem("Fonts", fonts);
+  gdi.setItems("Fonts", fonts);
   gdi.selectItemByData("Fonts", currentFont);
   maxX = max(maxX, gdi.getCX());
 
@@ -1473,7 +1472,7 @@ int ListEditor::selectImage(gdioutput &gdi, uint64_t imgId) {
   vector<pair<wstring, size_t>> img;
   image.enumerateImages(img);
   img.emplace(img.begin(), lang.tl("Ingen[bild]"), -2);
-  gdi.addItem("Image", img);
+  gdi.setItems("Image", img);
 
   int ix = image.getEnumerationIxFromId(imgId);
   if (ix >= 0)
@@ -1665,7 +1664,7 @@ bool ListEditor::legStageTypeIndex(gdioutput &gdi, EPostType type, int leg) {
       for (int j = 1; j <= 50; j++) {
         items.emplace_back(lang.tl("Sträcka X#" + itos(j)), j);
       }
-      gdi.addItem("LegSel", items);
+      gdi.setItems("LegSel", items);
       if (leg >= -1)
         gdi.selectItemByData("LegSel", leg + 1);
       else if (leg == -2)
@@ -1676,7 +1675,7 @@ bool ListEditor::legStageTypeIndex(gdioutput &gdi, EPostType type, int leg) {
       for (int j = 1; j < 20; j++) {
         items.emplace_back(lang.tl("Etapp X#" + itos(j)), j);
       }
-      gdi.addItem("LegSel", items);
+      gdi.setItems("LegSel", items);
       gdi.selectItemByData("LegSel", leg >= 0 ? leg + 1 : -2);
     }
   } 
@@ -1754,26 +1753,26 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
 
   list.getBaseType(types, currentType);
   gdi.addSelection("BaseType", 150, 400, 0, L"Listtyp:");
-  gdi.addItem("BaseType", types);
+  gdi.setItems("BaseType", types);
   gdi.selectItemByData("BaseType", currentType);
   gdi.autoGrow("BaseType");
   
   list.getResultModule(*oe, types, currentType);
   gdi.addSelection("ResultType", 150, 400, editListCB, L"Resultatuträkning:");
-  gdi.addItem("ResultType", types);
+  gdi.setItems("ResultType", types);
   gdi.autoGrow("ResultType");
   gdi.selectItemByData("ResultType", currentType);
 
   list.getSortOrder(false, types, currentType);
   gdi.addSelection("SortOrder", 170, 400, 0, L"Global sorteringsordning:");
-  gdi.addItem("SortOrder", types);
+  gdi.setItems("SortOrder", types);
   gdi.autoGrow("SortOrder");
   
   gdi.selectItemByData("SortOrder", currentType);
 
   list.getSubType(types, currentType);
   gdi.addSelection("SubType", 150, 400, editListCB, L"Sekundär typ:");
-  gdi.addItem("SubType", types);
+  gdi.setItems("SubType", types);
   gdi.selectItemByData("SubType", currentType);
   oListInfo::EBaseType subType = oListInfo::EBaseType(currentType);
 
@@ -1849,7 +1848,7 @@ void ListEditor::editListProp(gdioutput &gdi, bool newList) {
   for (int k = 0; k < 4; k++) {
     string id("Font" + itos(k));
     gdi.addCombo(id, 200, 300, 0, expl[k]);
-    gdi.addItem(id, fonts);
+    gdi.setItems(id, fonts);
 
     gdi.setText(id, list.getFontFace(k));
     gdi.setCX(gdi.getCX()+20);
@@ -1961,7 +1960,7 @@ void ListEditor::splitPrintList(gdioutput& gdi) {
   for (int i = 60; i <= 100; i += 10)
     items.emplace_back(itow(i), i);
   items.emplace_back(lang.tl("Alla"), 1000);
-  gdi.addItem("NumResult", items);
+  gdi.setItems("NumResult", items);
   gdi.selectItemByData("NumResult", isSP ? sp->numClassResults : 3);
 
   statusSplitPrint(gdi, isSP);

@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -434,6 +434,10 @@ public:
 
   static void fillSymbols(vector < pair<wstring, size_t>> &symb);
 
+  static const map<SortOrder, string>& getOrderToSymbol() {
+    return orderToSymbol;
+  }
+
   friend class MetaListPost;
 };
 
@@ -526,6 +530,6 @@ public:
   void synchronizeTo(MetaListContainer &dst) const;
 
   bool interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const;
-
+  
   void enumerateLists(vector< pair<wstring, pair<string, wstring> > > &out) const;
 };

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,17 +44,17 @@ void Recorder::record(const string &cmd) {
 }
 
 void Recorder::saveRecordings(const string &file) {
-  ofstream fout(file.c_str(), ios::trunc|ios::out);
-  fout << "void run() {" << endl;
+  std::ofstream fout(file.c_str(), std::ios::trunc|std::ios::out);
+  fout << "void run() {" << std::endl;
   for (list<string>::iterator it = records.begin(); it != records.end(); ++it) {
     if (it->find_first_of("\n") == string::npos)
-      fout << "  " << *it << endl;
+      fout << "  " << *it << std::endl;
     else {
       vector<string> splt;
       split(*it, "\n", splt);
       int ls = splt[0].find_last_of('\"');
       if (splt.size() > 1 && ls != string::npos) {
-        fout << "  " << splt[0] << "\"" << endl;      
+        fout << "  " << splt[0] << "\"" << std::endl;      
         int ind = splt[0].length() + 2 - ls;
         for (size_t j = 1; j < splt.size(); j++) {
           for (int k = 0; k < ind; k++)
@@ -62,13 +62,13 @@ void Recorder::saveRecordings(const string &file) {
           fout << "\"";
           fout << splt[j];
           if (j + 1 == splt.size())
-            fout << endl;
+            fout << std::endl;
           else
-            fout << "\"" << endl;
+            fout << "\"" << std::endl;
         }
       }
     }
   }
-  fout << "}" << endl;
+  fout << "}" << std::endl;
 }
 

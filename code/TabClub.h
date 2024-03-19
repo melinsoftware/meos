@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 class TabClub :
   public TabBase
 {
-  int clubCB(gdioutput &gdi, int type, void *data);
+  int clubCB(gdioutput &gdi, GuiEventType type, BaseInfo* data);
 
   wstring firstDate;
   wstring lastDate;
@@ -59,5 +59,5 @@ public:
   TabClub(oEvent *oe);
   ~TabClub(void);
 
-  friend int ClubsCB(gdioutput *gdi, int type, void *data);
+  friend int ClubsCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 };

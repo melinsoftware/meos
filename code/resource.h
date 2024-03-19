@@ -17,6 +17,19 @@
 #define IDI_SPLASHIMAGE                 512
 #define IDI_MEOSIMAGE                   513
 #define IDI_MEOSINFO                    514
+#define IDI_MEOSEDIT                    515
+#define IDI_MEOSWARN                    516
+#define IDI_MEOSCLASS24                 517
+#define IDI_MEOSCOURSE24                518
+#define IDI_MEOSCONTROL24               519
+#define IDI_MEOSANNOUNCER24             520
+#define IDI_MEOSSERVICES24              521
+#define IDI_MEOSLIST24                  522
+#define IDI_MEOSRUNNER24                523
+#define IDI_MEOSTEAM24                  524
+#define IDI_MEOSCLUBS24                 525
+#define IDI_MEOSCARD24                  526
+#define IDI_MEOSCOMPETITION24           527
 
 // Next default values for new objects
 // 

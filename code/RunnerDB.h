@@ -11,7 +11,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -385,7 +385,7 @@ private:
 protected:
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
-  int getDISize() const {return 0;}
+  int getDISize() const final {return 0;}
   void changedObject() {}
 public:
   void merge(const oBase &input, const oBase * base) final {}

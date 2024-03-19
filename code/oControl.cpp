@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -253,7 +253,6 @@ bool oControl::hasNumberUnchecked(int i)
   else return true;
 }
 
-
 int oControl::getNumMulti()
 {
   if (Status== ControlStatus::StatusMultiple)
@@ -261,7 +260,6 @@ int oControl::getNumMulti()
   else
     return 1;
 }
-
 
 wstring oControl::codeNumbers(char sep) const
 {
@@ -553,6 +551,8 @@ wstring oControl::getRogainingPointsS() const
 }
 
 bool oControl::setTimeAdjust(int v) {
+  if (v == NOTIME)
+    v = 0;
   return getDI().setInt("TimeAdjust", v);
 }
 
@@ -716,7 +716,7 @@ void oEvent::setupControlStatistics() const {
 
   map<int, pair<int, vector<int> > > lostPerControl; // First is "actual" misses,
   vector<int> delta;
-  for (oRunnerList::const_iterator it = Runners.begin(); it != Runners.end(); ++it) {
+  for (auto it = Runners.begin(); it != Runners.end(); ++it) {
     if (it->isRemoved())
       continue;
     pCourse pc = it->getCourse(true);
@@ -725,14 +725,14 @@ void oEvent::setupControlStatistics() const {
     it->getSplitAnalysis(delta);
 
     int nc = pc->getNumControls();
-    if (delta.size()>unsigned(nc)) {
+    if (unsigned(nc) < delta.size()) {
       for (int i = 0; i<nc; i++) {
         pControl ctrl = pc->getControl(i);
         if (ctrl && delta[i]>0) {
-          if (delta[i] < 10 * 60)
+          if (delta[i] < 10 * timeConstMinute)
             ctrl->tMissedTimeTotal += delta[i];
           else
-            ctrl->tMissedTimeTotal += 10*60; // Use max 10 minutes
+            ctrl->tMissedTimeTotal += 10 * timeConstMinute; // Use max 10 minutes
 
           ctrl->tMissedTimeMax = max(ctrl->tMissedTimeMax, delta[i]);
         }
@@ -764,14 +764,26 @@ void oEvent::setupControlStatistics() const {
     if (!it->isRemoved()) {
       int id = it->getId();
 
-      map<int, pair<int, vector<int> > >::iterator res = lostPerControl.find(id);
+      auto res = lostPerControl.find(id);
       if (res != lostPerControl.end()) {
         if (!res->second.second.empty()) {
           sort(res->second.second.begin(), res->second.second.end());
-          int avg = res->second.second[res->second.second.size() / 2];
+          int nMistakes = res->second.second.size();
+          int avg;
+          if (nMistakes % 2 == 1)
+            avg = res->second.second[nMistakes / 2];
+          else
+            avg = (res->second.second[nMistakes / 2] + res->second.second[nMistakes / 2 -1]) / 2;
           it->tMissedTimeMedian = avg;
         }
-        it->tMistakeQuotient = (100 * res->second.first + 50) / it->tNumVisitorsActual; 
+        if (it->tNumVisitorsActual > 0)
+          it->tMistakeQuotient = (int)round((100.00 * res->second.first) / double(it->tNumVisitorsActual));
+        else
+          it->tMistakeQuotient = 0;
+      }
+      else {
+        it->tMistakeQuotient = 0;
+        it->tMissedTimeMedian = 0;
       }
     }
   }
@@ -823,7 +835,7 @@ void oEvent::fillControlStatus(gdioutput &gdi, const string& id) const
 {
   vector< pair<wstring, size_t> > d;
   oe->fillControlStatus(d);
-  gdi.addItem(id, d);
+  gdi.setItems(id, d);
 }
 
 
@@ -902,9 +914,9 @@ void oControl::addTableRow(Table &table) const {
 
   int nv = getNumVisitors(true);
   table.set(row++, it, 50, itow(nv), false);
-  table.set(row++, it, 51, nv > 0 ? formatTime(getMissedTimeMax()) : L"-", false);
-  table.set(row++, it, 52, nv > 0 ? formatTime(getMissedTimeTotal()/nv) : L"-", false);
-  table.set(row++, it, 53, nv > 0 ? formatTime(getMissedTimeMedian()) : L"-", false);
+  table.set(row++, it, 51, nv > 0 ? formatTime(getMissedTimeMax(), SubSecond::Off) : L"-", false);
+  table.set(row++, it, 52, nv > 0 ? formatTime(getMissedTimeTotal()/nv, SubSecond::Off) : L"-", false);
+  table.set(row++, it, 53, nv > 0 ? formatTime(getMissedTimeMedian(),  SubSecond::Off) : L"-", false);
 
   oe->oControlData->fillTableCol(it, table, true);
 }
@@ -1097,7 +1109,7 @@ int oEvent::getUnitAdjustment(oPunch::SpecialPunch type, int unit) const {
     for (auto& c : Controls) {
       if (!c.isRemoved() && c.isUnit()) {
         int adjust = c.getTimeAdjust();
-        if (adjust != 0)
+        if (adjust != 0 && adjust != NOTIME)
           typeUnitPunchTimeAdjustment.second.emplace(make_pair(c.getUnitType(), c.getUnitCode()), adjust);
       }
     }

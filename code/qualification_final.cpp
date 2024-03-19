@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 #include "oRunner.h"
 #include "localizer.h"
 
-pair<int, int> QualificationFinal::getNextFinal(int instance, int orderPlace, int numSharedPlaceNext) const {
+pair<int, int> QualificationFinal::getPrelFinalFromPlace(int instance, int orderPlace, int numSharedPlaceNext) {
   pair<int, int> key(instance, orderPlace);
   int iter = 0;
   while (numSharedPlaceNext >= 0) {
@@ -46,13 +46,16 @@ pair<int, int> QualificationFinal::getNextFinal(int instance, int orderPlace, in
         if (res2 != sourcePlaceToFinalOrder.end()) {
           auto ans = res2->second;
           ans.second += iter + extraSub;
+          ++numExtraAssigned[ans.first]; // More than specified
           return ans;
         }
       }
 
-
       auto ans = res->second;
       ans.second += iter;
+      if (iter > 0)
+        ++numExtraAssigned[ans.first]; // More than specified
+
       return ans;
     }
     --key.second;
@@ -68,9 +71,9 @@ bool QualificationFinal::noQualification(int instance) const {
     return false;
 
   return classDefinition[instance].qualificationMap.empty() &&
-         classDefinition[instance].timeQualifications.empty();
+         classDefinition[instance].numTimeQualifications == 0 &&
+    classDefinition[instance].extraQualification == QFClass::ExtraQualType::None;
 }
-
 
 void QualificationFinal::getBaseClassInstances(set<int> &base) const {
   for (size_t k = 0; k < classDefinition.size(); k++) {
@@ -81,7 +84,77 @@ void QualificationFinal::getBaseClassInstances(set<int> &base) const {
 
 }
 
-void QualificationFinal::import(const wstring &file) {
+void QualificationFinal::exportXML(const wstring& file) const {
+  xmlparser xml;
+  xml.openOutputT(file.c_str(), false, "QualificationRules");
+  int cLevel = -1;
+
+  for (int j = 0; j < classDefinition.size(); j++) {
+    int level = getLevel(j+1);
+    if (level != cLevel) {
+      if (cLevel >= 0)
+        xml.endTag();
+
+      cLevel = level;
+      if (classDefinition[j].rankLevel)
+        xml.startTag("Level", "distribution", "Ranking");
+      else
+        xml.startTag("Level");
+    }
+
+    vector<wstring> pv;
+    pv.emplace_back(L"name");
+    pv.emplace_back(classDefinition[j].name.empty() ? lang.tl("Kval") + itow(j + 1) : classDefinition[j].name);
+    pv.emplace_back(L"id");
+    pv.emplace_back(itow(j + 1));
+    xml.startTag("Class", pv);
+
+    vector<pair<string, wstring>> psv(2);;
+    psv[0].first = "id";
+    psv[1].first = "place";
+ 
+    for (auto& qmap : classDefinition[j].qualificationMap) {
+      psv[0].second = itow(qmap.first);
+      psv[1].second = itow(qmap.second);
+      xml.write("Qualification", psv, L"");
+    }
+
+    if (classDefinition[j].numTimeQualifications > 0) {
+      psv[0].first = "time";
+      psv[0].second = itow(classDefinition[j].numTimeQualifications);
+      psv.resize(1);
+      xml.write("Qualification", psv, L"");
+    }
+
+    if (classDefinition[j].extraQualification != QFClass::ExtraQualType::None) {
+      psv[0].first = "type";
+      switch (classDefinition[j].extraQualification) {
+      case QFClass::ExtraQualType::All:
+        psv.resize(1);
+        psv[0].second = L"All";
+        break;
+      case QFClass::ExtraQualType::NBest:
+        psv.resize(2);
+        psv[0].second = L"Best";
+        psv[1].first = "number";
+        psv[1].second = itow(classDefinition[j].extraQualData);
+        break;
+      case QFClass::ExtraQualType::TimeLimit:
+        psv.resize(2);
+        psv[0].second = L"Time";
+        psv[1].first = "limit";
+        psv[1].second = formatTimeMS(classDefinition[j].extraQualData, false);
+        break;
+      }
+      xml.write("Remaining", psv, L"");
+    }
+
+    xml.endTag();
+  }
+  xml.closeOut();
+}
+
+void QualificationFinal::importXML(const wstring &file) {
   xmlparser xml;
   xml.read(file);
 
@@ -91,7 +164,6 @@ void QualificationFinal::import(const wstring &file) {
   map<int, int> idToIndex;
   map<int, set<int> > qualificationRelations;
   int numBaseLevels = 0;
-  int iLevel = 0;
   for (size_t iLevel = 0; iLevel < levels.size(); iLevel++) {
     auto &level = levels[iLevel];
     wstring rankS;
@@ -106,7 +178,11 @@ void QualificationFinal::import(const wstring &file) {
     level.getObjects("Class", classes);
     for (auto &cls : classes) {
       wstring name;
-      cls.getObjectString("Name", name);
+
+      cls.getObjectString("name", name);
+      if (name.empty())
+        cls.getObjectString("Name", name);
+
       if (name.empty())
         throw meosException("Klassen måste ha ett namn.");
       int classId = cls.getObjectInt("id");
@@ -117,11 +193,39 @@ void QualificationFinal::import(const wstring &file) {
 
       xmlList rules;
       cls.getObjects("Qualification", rules);
-      if (rules.empty())
+
+      
+      xmlobject remaining = cls.getObject("Remaining");
+
+      if (rules.empty() && !remaining)
         numBaseLevels = 1; // Instance zero is not used as qualification,
 
       idToIndex[classId] = classDefinition.size() + numBaseLevels;
-      classDefinition.push_back(Class());
+      classDefinition.emplace_back();
+      classDefinition.back().level = iLevel;
+      if (remaining) {
+        wstring rtype;
+        remaining.getObjectString("type", rtype);
+        if (rtype == L"All") {
+          classDefinition.back().extraQualification = QFClass::ExtraQualType::All;
+        }
+        else if (rtype == L"Best") {
+          classDefinition.back().extraQualification = QFClass::ExtraQualType::NBest;
+          classDefinition.back().extraQualData = remaining.getObjectInt("number");
+          if (classDefinition.back().extraQualData > 10000 || classDefinition.back().extraQualData < 0)
+            classDefinition.back().extraQualData = 0;
+        }
+        else if (rtype == L"Time") {
+          classDefinition.back().extraQualification = QFClass::ExtraQualType::TimeLimit;
+          wstring wt;
+          remaining.getObjectString("limit", wt);
+          classDefinition.back().extraQualData = convertAbsoluteTimeMS(wt);
+          if (classDefinition.back().extraQualData == NOTIME || classDefinition.back().extraQualData < 0)
+            classDefinition.back().extraQualData = 0;
+
+        }
+      }
+
       classDefinition.back().name = name;
       classDefinition.back().rankLevel = rankSort;
       for (auto &qf : rules) {
@@ -138,110 +242,115 @@ void QualificationFinal::import(const wstring &file) {
             throw meosException("Unknown class with id " + itos(id));
         }
         else {
-          string time;
-          qf.getObjectString("place", time);
-          if (time == "time") {
-            string ids;
-            qf.getObjectString("id", ids);
-            vector<string> vid;
-            split(ids, ",;", vid);
-            vector<int> ivid;
-            for (auto &s : vid) {
-              int i = atoi(s.c_str());
-              if (!idToIndex.count(i))
-                throw meosException("Unknown class with id " + itos(i));
-              ivid.push_back(idToIndex[i]);
-            }
-
-            if (ivid.empty())
-              throw meosException(L"Empty time qualification for " + name);
-            classDefinition.back().timeQualifications.push_back(ivid);
+          int numTime = qf.getObjectInt("time");
+          if (numTime > 0) 
+            classDefinition.back().numTimeQualifications += numTime;
+          else if (qf.got("time")) {
+            throw meosException(L"Empty time qualification for " + name);
           }
-          else throw meosException("Unknown classification rule " + time);
+          else throw meosException(L"Unknown classification rule for " + name);
         }
       }
     }
   }
-  /*classDefinition.resize(3);
-  classDefinition[0].name = L"Semi A";
-  classDefinition[1].name = L"Semi B";
-  classDefinition[2].name = L"Final";
-
-  for (int i = 0; i < 4; i++) {
-    classDefinition[0].qualificationMap.push_back(make_pair(0, i * 2 + 1));
-    classDefinition[1].qualificationMap.push_back(make_pair(0, i * 2 + 2));
-    classDefinition[2].qualificationMap.push_back(make_pair(i%2+1, i/2 + 1));
-  }
-  */
   initgmap(true);
 }
 
 void QualificationFinal::init(const wstring &def) {
   serializedFrom = def;
-  vector <wstring> races, rtdef, rdef; 
+  vector<wstring> races, rtdef, rdef; 
   split(def, L"|", races);
   classDefinition.resize(races.size());
   bool valid = true;
   bool first = true;
   for (size_t k = 0; k < races.size(); k++) {
+    if (races[k].size() > 0 && races[k][0] == '@') {
+      // Explicit level, since 4.0
+      classDefinition[k].level = _wtoi(races[k].c_str() + 1);
+      int mx = 1;
+      while (mx < races[k].size() && races[k][mx] != '@')
+        mx++;
+      int mx2 = mx + 1;
+      while (mx2 < races[k].size() && races[k][mx2] != '@')
+        mx2++; 
+
+      if (mx2 >= races[k].size() || classDefinition[k].level > k) {
+        valid = false;
+        break;
+      }
+      races[k][mx2] = 0;
+      classDefinition[k].name = races[k].c_str() + mx + 1;
+      races[k] = races[k].substr(mx2 + 1);
+    }
     bool rankLevel = false;
     if (races[k].size() > 0 && races[k][0] == 'R') {
       rankLevel = true;
       races[k] = races[k].substr(1);
     }
+    
+    if (races[k].size() > 0 && QFClass::deserialType(races[k][0]) != QFClass::ExtraQualType::None) {
+      first = false;
+      classDefinition[k].extraQualification = QFClass::deserialType(races[k][0]);
+      if (classDefinition[k].extraQualification == QFClass::ExtraQualType::NBest ||
+        classDefinition[k].extraQualification == QFClass::ExtraQualType::TimeLimit) {
+        classDefinition[k].extraQualData = _wtoi(races[k].c_str() + 1);
+      }
+      int end = 1;
+      while (end < races[k].size() && races[k][end-1] != ';')
+        end++;
+      races[k] = races[k].substr(end);
+    }
     split(races[k], L"T", rtdef);
     classDefinition[k].qualificationMap.clear();
-    classDefinition[k].timeQualifications.clear();
+    classDefinition[k].numTimeQualifications = 0;
     classDefinition[k].rankLevel = rankLevel;
 
-    if (first && rtdef.empty())
+    if (rtdef.empty())
+      continue; // Remaining qualified
+
+    first = false;
+
+    split(rtdef[0], L";", rdef);
+    bool thisValid = rdef.size()%2 == 0 &&
+         (rdef.size() > 0 || (rtdef.size() == 2 && !rtdef[1].empty()));
+    
+    if (!thisValid)
       continue;
 
-    valid = rtdef.size() > 0;
-    if (!valid)
-      break;
-    first = false;
-    
-    split(rtdef[0], L";", rdef);
-    valid = rdef.size() > 0 && rdef.size()%2 == 0;
-    if (!valid)
-      break;
-
     for (size_t j = 0; j < rdef.size(); j+=2) {
-      size_t src = _wtoi(rdef[j].c_str());
-      if (src > k) {
-        valid = false;
+      int src = _wtoi(rdef[j].c_str());
+      if (src > k || src <= 0) {
+        thisValid = false;
         break;
       }
       const wstring &rd = rdef[j + 1];
-      size_t d1 = _wtoi(rd.c_str());
-      size_t d2 = d1;
+      int d1 = _wtoi(rd.c_str());
+      if (d1 < 1 || d1>1000) {
+        thisValid = false;
+        break;
+      }
+      int d2 = d1;
       size_t range = rd.find_first_of('-', 0);
       if (range < rd.size())
         d2 = _wtoi(rd.c_str()+range+1);
 
       if (d1 > d2) {
-        valid = false;
+        thisValid = false;
         break;
       }
 
       while (d1 <= d2) {
-        classDefinition[k].qualificationMap.push_back(make_pair(int(src), int(d1)));
+        classDefinition[k].qualificationMap.emplace_back(src, d1);
         d1++;
       }
     }
 
-    for (size_t i = 1; valid && i < rtdef.size(); i++) {
-      split(rtdef[i], L";", rdef);
-      classDefinition[k].timeQualifications.push_back(vector<int>());
-      for (size_t j = 0; valid && j < rdef.size(); j += 2) {
-        size_t src = _wtoi(rdef[j].c_str());
-        if (src > k) {
-          valid = false;
-          break;
-        }
-        classDefinition[k].timeQualifications.back().push_back(src);
-      }
+    if (!thisValid)
+      classDefinition[k].qualificationMap.clear();
+
+    if (rtdef.size() > 1) {
+      int numTime = _wtoi(rtdef[1].c_str());
+      classDefinition[k].numTimeQualifications = numTime;
     }
   }
 
@@ -251,6 +360,31 @@ void QualificationFinal::init(const wstring &def) {
   initgmap(false);
 }
 
+
+void QualificationFinal::setClasses(const vector<QFClass>& def) {
+  classDefinition = def;
+  initgmap(true);
+  wstring tmp;
+  encode(tmp);
+}
+
+wstring QualificationFinal::validName(const wstring& name) {
+  wstring out;
+  out.reserve(name.size());
+  for (int j = 0; j < name.length(); j++)
+    if (isValidNameChar(name[j]))
+      out.push_back(name[j]);
+
+  return out;
+}
+
+bool QualificationFinal::isValidNameChar(wchar_t c) {
+  if (c == 0 || c == '|' || c == '@')
+    return false;
+
+  return true;
+}
+
 void QualificationFinal::encode(wstring &output) const {
   output.clear();
 
@@ -258,8 +392,12 @@ void QualificationFinal::encode(wstring &output) const {
     if (k > 0)
       output.append(L"|");
 
+    output.append(L"@"+ itow(getLevel(k+1)) + L"@" + validName(classDefinition[k].name) + L"@");
+    
     if (classDefinition[k].rankLevel)
       output.append(L"R");
+
+    output.append(classDefinition[k].serialExtra());
 
     auto &qm = classDefinition[k].qualificationMap;
 
@@ -282,40 +420,38 @@ void QualificationFinal::encode(wstring &output) const {
       } 
     }
 
-    auto &tqm = classDefinition[k].timeQualifications;
-    for (auto &source :  tqm) {
+    if (classDefinition[k].numTimeQualifications > 0) {
       output.append(L"T");
-      for (size_t i = 0; i < source.size(); i++) {
-        if (i > 0)
-          output.append(L";");
-        output.append(itow(source[i]));
-      }
+      output.append(itow(classDefinition[k].numTimeQualifications));
     }
   }
 
   serializedFrom = output;
 }
 
-int QualificationFinal::getNumStages(int stage) const {
-  if (stage == 0 || classDefinition[stage-1].qualificationMap.empty())
-    return 1;
+wstring QFClass::serialExtra() const {
+  if (extraQualification == ExtraQualType::All)
+    return L"A;";
+  else if (extraQualification == ExtraQualType::TimeLimit)
+    return L"L" + itow(extraQualData) + L";";
+  else if (extraQualification == ExtraQualType::NBest)
+    return L"B" + itow(extraQualData) + L";";
+  return L"";
+}
 
-  set<int> races;
-  for (auto &qm : classDefinition[stage - 1].qualificationMap) {
-    if (qm.first == stage)
-      throw meosException("Invalid qualification scheme");
-    races.insert(qm.first);
-  }
-
-  int def = 0;
-  for (int r : races)
-    def = max(def, 1 + getNumStages(r));
-
-  return def;
+int QFClass::getMinQualInst() const {
+  if (qualificationMap.empty())
+    return -1;
+  int ret = 1024;
+  for (auto& cp : qualificationMap)
+    ret = min(ret, cp.first);
+  return ret;
 }
 
 void QualificationFinal::initgmap(bool check) {
+  level2DefningInstance.clear();
   sourcePlaceToFinalOrder.clear();
+  levels.clear();
   levels.resize(getNumLevels(), LevelInfo::Normal);
 
   for (int ix = 0; ix < (int)classDefinition.size(); ix++) {
@@ -354,21 +490,41 @@ int QualificationFinal::getLevel(int instance) const {
 }
 
 bool QualificationFinal::isFinalClass(int instance) const {
-  return instance > 0 && sourcePlaceToFinalOrder.count(make_pair(instance, 1)) == 0;
+  return instance > 0 && getLevel(instance) + 1 == getNumLevels();
 }
 
 int QualificationFinal::getNumLevels() const {
-  return getLevel(classDefinition.size() - 1) + 1;
+  return getLevel(classDefinition.size()) + 1;
 }
 
-int QualificationFinal::getMinInstance(int level) const {
+int QualificationFinal::getMinInstance(const int levelIn) const {
+  int level = levelIn;
+  auto res = level2DefningInstance.find(levelIn);
+  if (res != level2DefningInstance.end())
+    return res->second;
+
   int minInst = classDefinition.size() - 1;
   for (int i = classDefinition.size() - 1; i >= 0; i--) {
     if (i == 0 && minInst == 1)
       break; // No need to include base instance.
-    if (getLevel(i) == level)
+    int thisLevel = getLevel(i+1);
+    if (thisLevel > level) {
+      int minQualInst = classDefinition[i].getMinQualInst();
+      if (minQualInst >= 0) {
+        // If there are direct qualification to this level from an 
+        // earlier level, we must start from that level.
+        int qualLevel = getLevel(minQualInst+1);
+        if (qualLevel < level) {
+          level = qualLevel;
+          i = classDefinition.size(); // Restart
+        }
+      }
+    }
+    else if (thisLevel == level)
       minInst = i;
   }
+
+  level2DefningInstance[levelIn] = minInst;
   return minInst;
 }
 
@@ -390,15 +546,21 @@ int QualificationFinal::getHeatFromClass(int finalClassId, int baseClassId) cons
 void QualificationFinal::prepareCalculations() {
   storedInfoLookup.clear();
   storedInfo.clear();
+  numExtraAssigned.clear();
 }
 
 /** Retuns the final class and the order within that class. */
-void QualificationFinal::setupNextFinal(pRunner r, int instance, int orderPlace, int numSharedPlaceNext) {
+void QualificationFinal::provideQualificationResult(pRunner r, int instance, int orderPlace, int numSharedPlace) {
   storedInfo.resize(getNumClasses());
 
-  pair<int, int> res = getNextFinal(instance, orderPlace, numSharedPlaceNext);
+  pair<int, int> res = getPrelFinalFromPlace(instance, orderPlace, numSharedPlace);
   int level = getLevel(instance);
   storedInfo[level].emplace_back(r, res.first, res.second);
+}
+
+void QualificationFinal::provideUnqualified(int level, pRunner r) {
+  storedInfo.resize(getNumClasses());
+  storedInfo[level].emplace_back(r, -1, storedInfo[level].size());
 }
 
 /** Do internal calculations. */
@@ -406,11 +568,114 @@ void QualificationFinal::computeFinals() {
   if (storedInfo.empty())
     return;
   int nl = getNumLevels();
+
+  // Handle time qualifications
+  vector<pair<int, ResultInfo*>> timeToIx;
+  set<pair<int, ResultInfo*>> remainingTimeQualified;
+  int lastLevel = -1;
+  vector<int> levelClasses;
+
+  auto distributeRemaning = [&]() {
+    if (levelClasses.empty())
+      return;
+    int cIx = 0;
+    for (auto& tq : remainingTimeQualified) {
+      tq.second->instance = levelClasses[cIx];
+      tq.second->order = 100 + cIx;
+      cIx++;
+      if (cIx >= levelClasses.size())
+        cIx = 0;
+    }
+  };
+
+  for (int j = 1; j < classDefinition.size(); j++) {
+    int level = getLevel(j + 1) - 1;
+    if (level != lastLevel) {
+      distributeRemaning();
+      levelClasses.clear();
+      remainingTimeQualified.clear();
+      lastLevel = level;
+    }
+    levelClasses.push_back(j + 1);
+    int NT = classDefinition[j].numTimeQualifications;
+    auto res = numExtraAssigned.find(j + 1);
+    if (res != numExtraAssigned.end()) {
+      NT -= res->second; // Already assigned from (duplicate) places
+    }
+    for (int i = 0; i < NT; i++) {
+      timeToIx.clear();
+      int order = 0;
+      // Select the best time from unqualified competitors
+      if (level < storedInfo.size()) {
+        for (auto& res : storedInfo[level]) {
+          if (res.instance == 0) {
+            int t = res.r->getRunningTime(false);
+            if (timeToIx.empty() || t <= timeToIx.front().first) {
+              // Select the current best time
+
+              if (!timeToIx.empty() && t < timeToIx.front().first)
+                timeToIx.clear(); // Found better time
+
+              timeToIx.emplace_back(t, &res);
+            }
+          }
+          else {
+            order = std::max(res.order, order);
+          }
+        }
+      }
+      if (!timeToIx.empty()) {
+        timeToIx[0].second->instance = j + 1;
+        timeToIx[0].second->order = ++order;
+        for (int j = 1; j < timeToIx.size(); j++) {
+          // Qualified by time, but not yet in a race (tie position)
+          remainingTimeQualified.insert(timeToIx[j]);
+        }
+      }
+    }
+  }
+  // Allow both to advance on tie
+  distributeRemaning();
+
+  for (int j = 1; j < classDefinition.size(); j++) {
+    int level = getLevel(j + 1) - 1;
+
+    if (classDefinition[j].extraQualification == QFClass::ExtraQualType::All) {
+      // All remaining
+      for (auto& si : storedInfo[level]) {
+        if (si.instance <= 0)
+          si.instance = j + 1;
+      }
+    }
+    else if (classDefinition[j].extraQualification == QFClass::ExtraQualType::NBest) {
+      // N best competitors
+      int count = 0;
+      for (auto& si : storedInfo[level]) {
+        if (si.instance <= 0) {
+          si.instance = j + 1;
+          if (++count >= classDefinition[j].extraQualData)
+            break;
+        }
+      }
+    }
+    else if (classDefinition[j].extraQualification == QFClass::ExtraQualType::TimeLimit) {
+      // Fixed time limit
+      for (auto& si : storedInfo[level]) {
+        if (si.instance == 0 && 
+          si.r->getStatus() == StatusOK &&
+          si.r->getRunningTime(false) < classDefinition[j].extraQualData){
+          si.instance = j + 1;
+        }
+      }
+    }
+  }
+
+
   for (int level = 1; level < nl; level++) {
     vector<int> placeCount(classDefinition.size(), 0);
     if (levels[level] == LevelInfo::RankSort) {
-      vector< pair<int, int> > rankIx;
-      vector< pair<int, int> > placeQueue;
+      vector<pair<int, int>> rankIx;
+      vector<pair<int, int>> placeQueue;
       
       set<int> numClassCount;
       auto &si = storedInfo[level-1];
@@ -460,32 +725,6 @@ void QualificationFinal::computeFinals() {
         reverse(placementOrder.begin() + i, placementOrder.begin() + i + numClass);
       }
       reverse(placementOrder.begin(), placementOrder.end());
-      /*
-      vector<int> work;
-
-      int ix = placeQueue.size() - 1;
-      int iteration = 0;
-      bool versionA = false;
-      while (ix>=0) {
-        work.clear();
-        for (int i = 0; i < numClass && ix >= 0; i++) {
-          work.push_back(ix--);
-        }
-        if (versionA) {
-          if (work.size() == numClass)
-            rotate(work.begin(), work.begin() + iteration, work.end());
-          iteration = rotmap[iteration];
-        }
-        else {
-          if (iteration % 2 == 1)
-            reverse(work.begin(), work.end());
-          iteration++;
-        }
-
-        for (size_t i = 1; i <= work.size(); i++) {
-          placementOrder[ix + i] = work[work.size() - i];
-        }
-      }*/
 
       for (auto &rankRes : rankIx) {
         si[rankRes.second].instance = placeQueue[placementOrder.back()].second;
@@ -494,7 +733,7 @@ void QualificationFinal::computeFinals() {
       }
     }
   }
-
+  
   for (auto & si : storedInfo) {
     for (auto &res : si) {
       storedInfoLookup[res.r->getId()] = &res;
@@ -509,57 +748,85 @@ pair<int, int> QualificationFinal::getNextFinal(int runnerId) const {
     return make_pair(0, -1); 
   }
   
-  return make_pair(res->second->instance, res->second->order);
+  return make_pair(max(res->second->instance, 0), res->second->order);
 }
 
-void QualificationFinal::printScheme(oClass * cls, gdioutput &gdi) const {
+void QualificationFinal::printScheme(const oClass& cls, gdioutput &gdi) const {
   vector<wstring> cname;
-//  vector<map<int, int> > targetCls(classDefinition.size());
 
   for (size_t i = 0; i < classDefinition.size(); i++) {
-    pClass inst = cls->getVirtualClass(i + 1);
+    pClass inst = cls.getVirtualClass(i + 1);
     cname.push_back(inst ? inst->getName() : lang.tl("Saknad klass"));
- //   for (auto d : classDefinition[i].qualificationMap) {
- //     targetCls[i].push_back(d.first);
- //   }
   }
 
   int ylimit = gdi.getHeight();
   gdi.pushY();
   for (size_t i = 0; i < classDefinition.size(); i++) {
     gdi.dropLine();
-
     gdi.addStringUT(1, itow(i+1) + L" " + cname[i]);
-    bool rankingBased = false;
+    
+    if (getLevel(i + 1) == 0) {
+      //gdi.addStringUT(italicText, "Kval").setColor(GDICOLOR::colorDarkGrey);
+    }
+    else {
+      gdi.addString("", italicText, classDefinition[i].getQualInfo()).setColor(GDICOLOR::colorDarkGreen);
+    }
+    gdi.dropLine(0.2);
+    int rankingBased = 0;
     vector<wstring> dst;
 
-    for (int place = 1; place < 20; place++) {
+    for (int place = 1; place < 100; place++) {
       auto res = sourcePlaceToFinalOrder.find(make_pair(i + 1, place));
       
       if (res != sourcePlaceToFinalOrder.end()) {
-        if (classDefinition[res->second.first - 1].rankLevel)
-          rankingBased = true;
-        dst.push_back(itow(place) + L". ➞ " + cname[res->second.first - 1]);
+        int level = getLevel(res->second.first);
+        if (levels[level] == LevelInfo::RankSort)
+          ++rankingBased;
+        else
+          dst.push_back(itow(place) + L". ➞ " + cname[res->second.first - 1]);
       }
       else break;
     }
 
     if (rankingBased) {
-      gdi.addString("", 0, L"X går vidare, klass enligt ranking#" +  itow(dst.size()));
+      gdi.addString("", 0, L"  X går vidare, klass enligt ranking#" +  itow(rankingBased));
     }
-    else {
-      for (auto &c : dst) {
-        gdi.addStringUT(0, c);
-      }
+    for (auto &c : dst) {
+      gdi.addStringUT(0, L"  " + c);
     }
-
+    
     if (gdi.getCY() > ylimit) {
       gdi.newColumn();
       gdi.popY();
       gdi.pushX();
-
     }
   }
 
   gdi.refresh();
+}
+
+wstring QFClass::getQualInfo() const {
+  if (extraQualification == ExtraQualType::All)
+    return L"Alla övriga";
+  else if (extraQualification == ExtraQualType::NBest)
+    return L"X bästa#" + itow(extraQualData);
+  else if (extraQualification == ExtraQualType::TimeLimit)
+    return L"Tidsgräns X#" + formatTimeMS(extraQualData, false);
+
+  int nq = qualificationMap.size() + numTimeQualifications;
+  if (nq > 0 && numTimeQualifications == 0)
+    return L"X kvalificerade#" + itow(nq);
+  else if (nq > 0)
+    return L"X kvalificerade#" + itow(qualificationMap.size()) + L" + " + itow(numTimeQualifications);
+  
+  return L"Ingen";
+}
+
+
+bool QualificationFinal::hasRemainingClass() const {
+  for (auto& c : classDefinition) {
+    if (c.extraQualification != QFClass::ExtraQualType::None)
+      return true;
+  }
+  return false;
 }

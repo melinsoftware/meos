@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -391,12 +391,6 @@ void oListParam::deserialize(const xmlobject &xml, const MetaListContainer &cont
   saved = true;
 }
 
-void oListParam::getCustomTitle(wchar_t *t) const
-{
-  if (!title.empty())
-    wcscpy_s(t, 256, makeDash(title).c_str());
-}
-
 bool oListParam::filterInclude(int count, const oAbstractRunner *r) const {
   return filterMaxPer == 0 || count <= filterMaxPer || (r != nullptr && r->matchAbstractRunner(alwaysInclude));
 }
@@ -750,7 +744,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
             firstStage = -1;
           }
         }
-        if (isAllLegType(lines[j][k])) {
+        else if (isAllLegType(lines[j][k])) {
           if (firstLeg == -1)
             firstLeg = k;
 
@@ -2198,6 +2192,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lCourseUsage] = L"CourseUsage";
     typeToSymbol[lCourseUsageNoVacant] = L"CourseUsageNoVacant";
     typeToSymbol[lCourseClasses] = L"CourseClasses";
+    typeToSymbol[lCourseNumControls] = L"CourseNumControls";
     typeToSymbol[lCourseShortening] = L"CourseShortening";
     typeToSymbol[lRunnerName] = L"RunnerName";
     typeToSymbol[lRunnerGivenName] = L"RunnerGivenName";
@@ -2224,6 +2219,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerStartZero] = L"RunnerStartZero";
     typeToSymbol[lRunnerClub] = L"RunnerClub";
     typeToSymbol[lRunnerCard] = L"RunnerCard";
+    typeToSymbol[lRunnerRentalCard] = L"RunnerRentalCard";
     typeToSymbol[lRunnerBib] = L"RunnerBib";
     typeToSymbol[lRunnerStartNo] = L"RunnerStartNo";
     typeToSymbol[lRunnerRank] = L"RunnerRank";
@@ -2301,18 +2297,26 @@ void MetaList::initSymbols() {
     typeToSymbol[lPunchNamedTime] = L"PunchNamedTime";
     typeToSymbol[lPunchName] = L"PunchName";
     typeToSymbol[lPunchNamedSplit] = L"PunchNamedSplit";
+    typeToSymbol[lPunchTeamTotalNamedTime] = L"PunchTeamTotalNamedTime";
 
     typeToSymbol[lPunchTime] = L"PunchTime";
+    typeToSymbol[lPunchTeamTime] = L"PunchTeamTime";
+
     typeToSymbol[lPunchControlNumber] = L"PunchControlNumber";
     typeToSymbol[lPunchControlCode] = L"PunchControlCode";
     typeToSymbol[lPunchLostTime] = L"PunchLostTime";
     typeToSymbol[lPunchControlPlace] = L"PunchControlPlace";
     typeToSymbol[lPunchControlPlaceAcc] = L"PunchControlPlaceAcc";
+    typeToSymbol[lPunchControlPlaceTeamAcc] = L"PunchControlPlaceTeamAcc";
 
     typeToSymbol[lPunchSplitTime] = L"PunchSplitTime";
     typeToSymbol[lPunchTotalTime] = L"PunchTotalTime";
+    typeToSymbol[lPunchTeamTotalTime] = L"PunchTeamTotalTime";
+
     typeToSymbol[lPunchAbsTime] = L"PunchAbsTime";
     typeToSymbol[lPunchTotalTimeAfter] = L"PunchTotalTimeAfter";
+    typeToSymbol[lPunchTeamTotalTimeAfter] = L"PunchTeamTotalTimeAfter";
+
     typeToSymbol[lPunchTimeSinceLast] = L"PunchTimeSinceLast";
 
     typeToSymbol[lRogainingPunch] = L"RogainingPunch";
@@ -2332,6 +2336,18 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerGeneralTimeStatus] = L"RunnerGeneralTimeStatus";
     typeToSymbol[lRunnerGeneralPlace] = L"RunnerGeneralPlace";
     typeToSymbol[lRunnerGeneralTimeAfter] = L"RunnerGeneralTimeAfter";
+
+    typeToSymbol[lRunnerDataA] = L"RunnerDataA";
+    typeToSymbol[lRunnerDataB] = L"RunnerDataB";
+    typeToSymbol[lRunnerTextA] = L"RunnerTextA";
+
+    typeToSymbol[lTeamDataA] = L"TeamDataA";
+    typeToSymbol[lTeamDataB] = L"TeamDataB";
+    typeToSymbol[lTeamTextA] = L"TeamTextA";
+
+    typeToSymbol[lClassDataA] = L"ClassDataA";
+    typeToSymbol[lClassDataB] = L"ClassDataB";
+    typeToSymbol[lClassTextA] = L"ClassTextA";
 
     typeToSymbol[lTeamTotalTime] = L"TeamTotalTime";
     typeToSymbol[lTeamTotalTimeStatus] = L"TeamTotalTimeStatus";
@@ -3461,7 +3477,7 @@ void MetaList::getAutoComplete(const wstring& w, vector<AutoCompleteRecord>& rec
     s_lc[j].resize(ws[j].size() + 1);
     ws[j] = trim(ws[j]);
     wcscpy_s(s_lc[j].data(), s_lc[j].size(), ws[j].c_str());
-    CharLowerBuff(s_lc[j].data(), ws[j].length());
+    prepareMatchString(s_lc[j].data(), ws[j].length());
   }
 
   wstring tl;

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -205,7 +205,7 @@ class InfoCompetitor : public InfoBaseCompetitor {
 class InfoTeam : public InfoBaseCompetitor {
   protected:
     // The outer level holds legs, the inner level holds (parallel/patrol) runners on each leg.
-    vector< vector<int> > competitors;
+    vector<vector<int>> competitors;
     public:
     bool synchronize(oTeam &t);
     void serialize(xmlbuffer &xml, bool diffOnly) const;

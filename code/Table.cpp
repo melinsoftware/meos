@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -274,7 +274,7 @@ void Table::filter(int col, const wstring &filt, bool forceFilter)
 
   wchar_t filt_lc[1024];
   wcscpy_s(filt_lc, filt.c_str());
-  CharLowerBuff(filt_lc, filt.length());
+  prepareMatchString(filt_lc, filt.length());
 
   sortIndex.resize(2);
   for (size_t k=2;k<baseIndex.size();k++) {
@@ -707,7 +707,7 @@ bool Table::mouseLeftUp(gdioutput &gdi, int x, int y)
   return false;
 }
 
-int tblSelectionCB(gdioutput *gdi, int type, void *data) {
+int tblSelectionCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   if (type == GUI_LISTBOX) {
     ListBoxInfo lbi = *static_cast<ListBoxInfo *>(data);
     Table &t = gdi->getTable();
@@ -1104,7 +1104,7 @@ bool Table::editCell(gdioutput &gdi, int row, int col) {
               max<int>(int((rc.right-rc.left+1)/gdi.scale), width), (rc.bottom-rc.top)*10,
               tblSelectionCB).setExtra(id);
     }
-    gdi.addItem(tId, out);
+    gdi.setItems(tId, out);
     gdi.selectItemByData(tId, selected);
     return true;
   }

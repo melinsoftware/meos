@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ FlowOperation importFilterGUI(oEvent *oe,
                               const set<int>& stages,
                               const vector<string> &idProviders,
                               set<int> & filter,
-                              string &preferredIdProvider);
+                              pair<string, string> &preferredIdProvider);
 
 string conv_is(int i) {
   char bf[256];
@@ -311,7 +311,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
                                  const set<int> &filter,
                                  int classIdOffset,
                                  int courseIdOffset,
-                                 const string &preferredIdType) {
+                                 const pair<string, string> &preferredIdType) {
   vector<pair<int, int>> runnersInTeam;
   for (oRunnerList::iterator it = Runners.begin(); it != Runners.end(); ++it) {
     if (!it->isRemoved() && it->tInTeam) {
@@ -1325,7 +1325,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
       reader.getIdTypes(idProviders);
 
       if (idProviders.size() > 1) {
-        string preferredIdProvider;
+        pair<string, string> preferredIdProvider;
         set<int> dmy;
         FlowOperation op = importFilterGUI(oe, gdibase, 
                                            {}, idProviders,
@@ -2677,12 +2677,12 @@ void oEvent::exportTeamSplits(xmlparser &xml, const set<int> &classes, bool oldS
     xml.endTag();
     ClassStarted = false;
   }
-
 }
 
 void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
                              bool oldStylePatrolExport, bool useUTC,
-                             const set<int> &classes, int leg,
+                             const set<int> &classes,
+                             const pair<string, string>& preferredIdTypes, int leg,
                              bool teamsAsIndividual, bool unrollLoops,
                              bool includeStageInfo, bool forceSplitFee,
                              bool useEventorQuirks) {
@@ -2705,6 +2705,7 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
     exportIOFResults(xml, true, classes, leg, oldStylePatrolExport);
   else {
     IOF30Interface writer(this, forceSplitFee, useEventorQuirks);
+    writer.setPreferredIdType(preferredIdTypes);
     writer.writeResultList(xml, classes, leg, useUTC, 
                            teamsAsIndividual, unrollLoops, includeStageInfo);
   }
@@ -2713,7 +2714,9 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
 }
 
 void oEvent::exportIOFStartlist(IOFVersion version, const wchar_t *file, bool useUTC,
-                                const set<int> &classes, bool teamsAsIndividual,
+                                const set<int> &classes, 
+                                const pair<string, string>& preferredIdTypes,
+                                bool teamsAsIndividual,
                                 bool includeStageInfo, 
                                 bool forceSplitFee,
                                 bool useEventorQuirks) {
@@ -2726,6 +2729,7 @@ void oEvent::exportIOFStartlist(IOFVersion version, const wchar_t *file, bool us
     exportIOFStartlist(xml);
   else {
     IOF30Interface writer(this, forceSplitFee, useEventorQuirks);
+    writer.setPreferredIdType(preferredIdTypes);
     writer.writeStartList(xml, classes, useUTC, teamsAsIndividual, includeStageInfo);
   }
   xml.closeOut();

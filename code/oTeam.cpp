@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -436,6 +436,17 @@ int oTeam::getLegFinishTime(int leg) const
   else return 0;
 }
 
+int oTeam::getTotalRunningTimeAtLegStart(int leg, bool multidayTotal) const {
+  int off = multidayTotal ? max(0, getInputTime()) : 0;
+  if (!Class || leg == 0)
+    return off;
+  int pleg = Class->getPreceedingLeg(leg);
+  if (pleg < 0)
+    return off;
+
+  return getLegRunningTime(pleg, false, multidayTotal);
+}
+
 int oTeam::getRunningTime(bool computedTime) const {
   return getLegRunningTime(-1, computedTime, false);
 }
@@ -451,13 +462,13 @@ int oTeam::getLegRunningTime(int leg, bool computedTime, bool multidayTotal) con
 
     if (cr.version == oe->dataRevision) {
       if (cr.time > 0)
-        return cr.time + addon + getTimeAdjustment(false);
+        return cr.time + addon; // Time adjustment already included in time ??
       else
         return 0;
     }
   }
-
-  return getLegRunningTimeUnadjusted(leg, multidayTotal, false) + getTimeAdjustment(false);
+  bool isLastLeg = (leg == -1 || leg + 1 == Runners.size());
+  return getLegRunningTimeUnadjusted(leg, multidayTotal, false) + (isLastLeg ? getTimeAdjustment(false) : 0);
 }
 
 int oTeam::getLegRestingTime(int leg, bool useComputedRunnerTime) const {
@@ -812,9 +823,7 @@ wstring oTeam::getLegPrintPlaceS(int leg, bool multidayTotal, bool withDot) cons
   return _EmptyWString;
 }
 
-bool oTeam::compareResultClub(const oTeam& a, const oTeam& b) {
-  pClub ca = a.getClubRef();
-  pClub cb = b.getClubRef();
+int oAbstractRunner::compareClubs(const oClub* ca, const oClub* cb) {
   if (ca != cb) {
     if (ca == nullptr && cb)
       return true;
@@ -829,6 +838,17 @@ bool oTeam::compareResultClub(const oTeam& a, const oTeam& b) {
 
     if (res != CSTR_EQUAL)
       return res == CSTR_LESS_THAN;
+  }
+  return 2;
+}
+
+bool oTeam::compareResultClub(const oTeam& a, const oTeam& b) {
+  pClub ca = a.getClubRef();
+  pClub cb = b.getClubRef();
+  if (ca != cb) {
+    int cres = compareClubs(ca, cb);
+    if (cres != 2)
+      return cres != 0;
   }
   return compareResult(a, b);
 }
@@ -855,8 +875,13 @@ bool oTeam::compareResult(const oTeam &a, const oTeam &b)
 
   int aix = a.getDCI().getInt("SortIndex");
   int bix = b.getDCI().getInt("SortIndex");
-  if (aix != bix)
+  if (aix != bix) {
+    if (aix == 0)
+      aix = numeric_limits<int>::max();
+    if (bix == 0)
+      bix = numeric_limits<int>::max();
     return aix < bix;
+  }
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
                        a.sName.c_str(), a.sName.length(),
@@ -876,6 +901,24 @@ bool oTeam::compareResultNoSno(const oTeam &a, const oTeam &b)
     return a.tmpSortStatus<b.tmpSortStatus;
   else if (a.tmpSortTime != b.tmpSortTime)
     return a.tmpSortTime<b.tmpSortTime;
+
+  int aix = a.getDCI().getInt("SortIndex");
+  int bix = b.getDCI().getInt("SortIndex");
+  if (aix != bix) {
+    if (aix == 0)
+      aix = numeric_limits<int>::max();
+    if (bix == 0)
+      bix = numeric_limits<int>::max();
+    return aix < bix;
+  }
+
+  pClub ca = a.getClubRef();
+  pClub cb = b.getClubRef();
+  if (ca != cb) {
+    int cres = compareClubs(ca, cb);
+    if (cres != 2)
+      return cres != 0;
+  }
 
   return CompareString(LOCALE_USER_DEFAULT, 0,
                        a.sName.c_str(), a.sName.length(),
@@ -1751,7 +1794,7 @@ pRunner oTeam::getRunner(unsigned leg) const {
   if (leg==-1)
     leg=Runners.size()-1;
 
-  return leg<Runners.size() ? Runners[leg] : 0;
+  return leg<Runners.size() ? Runners[leg] : nullptr;
 }
 
 int oTeam::getRogainingPoints(bool computed, bool multidayTotal) const {
@@ -2179,6 +2222,8 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
           inputId = c->getId();
       }
       setClassId(inputId, true);
+      adjustMultiRunners();
+
       synchronize(true);
       output = getClass(true);
       break;

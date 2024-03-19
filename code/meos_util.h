@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -91,11 +91,11 @@ const wstring &formatTimeHMS(int rt, SubSecond mode = SubSecond::Auto);
 
 wstring formatTimeIOF(int rt, int zeroTime);
 
-int convertDateYMS(const string &m, bool checkValid);
-int convertDateYMS(const string &m, SYSTEMTIME &st, bool checkValid);
+int convertDateYMD(const string &m, bool checkValid);
+int convertDateYMD(const string &m, SYSTEMTIME &st, bool checkValid);
 
-int convertDateYMS(const wstring &m, bool checkValid);
-int convertDateYMS(const wstring &m, SYSTEMTIME &st, bool checkValid);
+int convertDateYMD(const wstring &m, bool checkValid);
+int convertDateYMD(const wstring &m, SYSTEMTIME &st, bool checkValid);
 
 // Convert a "general" time string to a MeOS compatible time string
 void processGeneralTime(const wstring &generalTime, wstring &meosTime, wstring &meosDate);
@@ -109,31 +109,34 @@ SYSTEMTIME Int64TenthSecondToSystemTime(__int64 time);
 
 #define NOTIME 0x7FFFFFFF
 
-//Returns a time converted from +/-MM:SS or NOTIME, in seconds
+//Returns a time converted from +/-MM:SS or NOTIME, in MeOS time unit
 int convertAbsoluteTimeMS(const wstring &m);
+int convertAbsoluteTimeMS(const string& m);
+
 // Parses a time on format HH:MM:SS+01:00Z or HHMMSS+0100Z (but ignores time zone)
 int convertAbsoluteTimeISO(const wstring &m);
 
-/** Returns a time converted from HH:MM:SS or -1, in seconds
+/** Returns a time converted from HH:MM:SS or -1, in MeOS time unit 
    @param m time to convert
    @param daysZeroTime -1 do not support days syntax, positive interpret days w.r.t the specified zero time.
 */
 int convertAbsoluteTimeHMS(const string &m, int daysZeroTime);
 
-/** Returns a time converted from HH:MM:SS or -1, in seconds
+/** Returns a time converted from HH:MM:SS or -1, in MeOS time unit
    @param m time to convert
    @param daysZeroTime -1 do not support days syntax, positive interpret days w.r.t the specified zero time.
 */
 int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime);
 
 const vector<string> &split(const string &line, const string &separators, vector<string> &split_vector);
-//const string &unsplit(const vector<string> &split_vector, const string &separators, string &line);
 
 const vector<wstring> &split(const wstring &line, const wstring &separators, vector<wstring> &split_vector);
 const wstring &unsplit(const vector<wstring> &split_vector, const wstring &separators, wstring &line);
 
 // Compare two strings, ignore case. 0 = equal, != zero compares as the integers.
 int compareStringIgnoreCase(const wstring &a, const wstring &b);
+const wstring &limitText(const wstring& tIn, size_t numChar);
+wstring ensureEndingColon(const wstring &text);
 
 const wstring &makeDash(const wstring &t);
 const wstring &makeDash(const wchar_t *t);
@@ -152,9 +155,12 @@ wstring itow(int64_t i);
 wstring itow(uint64_t i);
 
 
-///Lower case match (filt_lc must be lc)
-bool filterMatchString(const string &c, const char *filt_lc);
+///Lower case match (filt_lc must be lc and stripped of accents)
 bool filterMatchString(const wstring &c, const wchar_t *filt_lc, int &score);
+
+/** To lower case and strip accants */
+void prepareMatchString(wchar_t* data_c, int size);
+
 
 bool matchNumber(int number, const wchar_t *key);
 

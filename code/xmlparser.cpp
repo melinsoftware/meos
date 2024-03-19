@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,6 +37,8 @@
 
 extern gdioutput *gdi_main;
 
+using namespace std;
+
 xmlparser::xmlparser() : utfConverter(gdi_main)
 {
   progress = 0;
@@ -45,6 +47,8 @@ xmlparser::xmlparser() : utfConverter(gdi_main)
   isUTF = false;
   cutMode = false;
   toString = false;
+  strbuff.resize(buff_pre_alloc);
+  strbuffw.resize(buff_pre_alloc);
 }
 
 xmlparser::~xmlparser()
@@ -930,7 +934,7 @@ const char *xmlobject::getPtr() const {
   if (parser->isUTF) {
     int len = strlen(ptr);
     len = min(len+1, buff_pre_alloc-10);
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, ptr, len, parser->strbuffw, buff_pre_alloc);
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, ptr, len, parser->strbuffw.data(), buff_pre_alloc);
     parser->strbuffw[wlen-1] = 0;
     for (int k = 0; k< wlen; k++) {
       buff[k] = parser->strbuffw[k] & 0xFF; 
@@ -1020,16 +1024,16 @@ string &xmlobject::getObjectString(const char *pname, string &out) const
   if (x) {
     const char *bf = x.getRawPtr();
     if (bf) {
-      parser->convertString(bf, parser->strbuff, buff_pre_alloc);
-      out = parser->strbuff;
+      parser->convertString(bf, parser->strbuff.data(), buff_pre_alloc);
+      out = parser->strbuff.data();
       return out;
     }
   }
 
   xmlattrib xa(getAttrib(pname));
   if (xa && xa.data) {
-    parser->convertString(xa.getPtr(), parser->strbuff, buff_pre_alloc);
-    out = parser->strbuff;
+    parser->convertString(xa.getPtr(), parser->strbuff.data(), buff_pre_alloc);
+    out = parser->strbuff.data();
   }
   else
     out = "";
@@ -1050,8 +1054,8 @@ wstring &xmlobject::getObjectString(const char *pname, wstring &out) const
 
   xmlattrib xa(getAttrib(pname));
   if (xa && xa.data) {
-    parser->convertString(xa.getPtr(), parser->strbuffw, buff_pre_alloc);
-    out = parser->strbuffw;
+    parser->convertString(xa.getPtr(), parser->strbuffw.data(), buff_pre_alloc);
+    out = parser->strbuffw.data();
   }
   else
     out = L"";

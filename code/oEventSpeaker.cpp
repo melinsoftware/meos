@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,15 +42,16 @@
 //////////////////////////////////////////////////////////////////////
 
 extern gdioutput *gdi_main;
+extern oEvent* gEvent;
 constexpr int constNoLeaderTime = 10000000;
 constexpr int highlightNewResultTime = 20;
 
-oTimeLine::oTimeLine(int time_, TimeLineType type_, Priority priority_, int classId_, int ID_, oAbstractRunner *source) :
+oTimeLine::oTimeLine(int time_, TimeLineType type_, Priority priority_, int classId_, int ID_, oRunner *source) :
   time(time_), type(type_), priority(priority_), classId(classId_), ID(ID_)
 {
   if (source) {
     typeId.second = source->getId();
-    typeId.first = typeid(*source)==typeid(oTeam);
+    typeId.first = false; // typeid(*source) == typeid(oTeam);
   }
   else {
     typeId.first = false;
@@ -72,12 +73,12 @@ pCourse deduceSampleCourse(pClass pc, vector<oClass::TrueLegInfo > &stages, int 
     return pc->getCourse(true);
 }
 
-oAbstractRunner *oTimeLine::getSource(const oEvent &oe) const {
+oRunner *oTimeLine::getSource(const oEvent &oe) const {
   //assert(typeId.second != 0);
   if (typeId.second > 0) {
-    if (typeId.first)
-      return oe.getTeam(typeId.second);
-    else
+    //if (typeId.first)
+    //  return oe.getTeam(typeId.second);
+    //else
       return oe.getRunner(typeId.second, 0);
   }
   return 0;
@@ -183,10 +184,8 @@ bool CompareSOResult(const oSpeakerObject &a, const oSpeakerObject &b)
   return a.names<b.names;
 }
 
-int SpeakerCB (gdioutput *gdi, int type, void *data) {
-  oEvent *oe=0;
-  gdi->getData("oEvent", *LPDWORD(&oe));
-
+int SpeakerCB (gdioutput *gdi, GuiEventType type, BaseInfo* data) {
+  oEvent *oe=gEvent;
   if (!oe)
     return false;
 
@@ -238,12 +237,11 @@ int SpeakerCB (gdioutput *gdi, int type, void *data) {
   return true;
 }
 
-int MovePriorityCB(gdioutput *gdi, int type, void *data) {
+int MovePriorityCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   if (type==GUI_LINK){
-
-    oEvent *oe=0;
-    gdi->getData("oEvent", *LPDWORD(&oe));
-    if (!oe) return false;
+    oEvent *oe = gEvent;
+    if (!oe)
+      return 0;
 
     TextInfo *ti=(TextInfo *)data;
     //gdi->alert(ti->id);
@@ -551,8 +549,6 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   gdi.setData("LegNo", leg);
   gdi.setData("TotalResult", totalResults ? 1 : 0);
   gdi.setData("ShortNames", shortNames ? 1 : 0);
-
-  gdi.setData("oEvent", this);
 
   gdi.registerEvent("DataUpdate", SpeakerCB);
   gdi.setData("DataSync", 1);
@@ -1581,9 +1577,16 @@ void oEvent::renderTimeLineEvents(gdioutput &gdi) const
   for (TimeLineMap::const_iterator it = timeLineEvents.begin(); it != timeLineEvents.end(); ++it) {
     int t = it->second.getTime();
     wstring msg = t>0 ? getAbsTime(t) : makeDash(L"--:--:--");
-    oAbstractRunner *r = it->second.getSource(*this);
+    oRunner *r = it->second.getSource(*this);
     if (r) {
-      msg += L" (" + r->getClass(true) + L") ";
+      pClass cls = r->getClassRef(true);
+      if (cls) {
+        auto type = cls->getClassType();
+        if (type == ClassType::oClassRelay || type == ClassType::oClassIndividRelay)
+          msg += L" (" + cls->getName() + L"/" + cls->getLegNumber(r->getLegNumber()) + L") ";
+        else
+          msg += L" (" + cls->getName() + L") ";
+      }
       msg += r->getName() + L", " + r->getClub();
     }
     msg += L", " + lang.tl(it->second.getMessage());

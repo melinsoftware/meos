@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -189,19 +189,6 @@ void FixedTabs::clearCompetitionData() {
   for (size_t k = 0; k < tabs.size(); k++)
     tabs[k]->clearCompetitionData();
 }
-
-
-TabObject::TabObject(TabBase *t)
-{
-  tab = t;
-  tab->tabId = id;
-}
-
-TabObject::~TabObject()
-{
-  //delete tab;
-}
-
 
 bool TabObject::loadPage(gdioutput &gdi)
 {

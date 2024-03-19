@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1007,6 +1007,12 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
   parser.declareSymbol("InputNumber", "User input number", false);
   parser.declareSymbol("Shorten", "Number of shortenings", false);
 
+  parser.declareSymbol("DataA", "Extra assigned data (A)", false);
+  parser.declareSymbol("DataB", "Extra assigned data (B)", false);
+
+  parser.declareSymbol("ClassDataA", "Extra assigned class data (A)", false);
+  parser.declareSymbol("ClassDataB", "Extra assigned class data (B)", false);
+
   if (isRunner) {
     parser.declareSymbol("CardPunches", "Runner's card, punch codes", true);
     parser.declareSymbol("CardTimes", "Runner's card, punch times", true);
@@ -1039,6 +1045,9 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
     parser.declareSymbol("RunnerCardPunches", "Punch codes for each team member", true, true);
     parser.declareSymbol("RunnerCardTimes", "Punch times for each team member", true, true);
     parser.declareSymbol("RunnerCardControls", "Matched control ids (-1 for unmatched) for each team member", true, true);
+
+    parser.declareSymbol("RunnerDataA", "Extra assigned data (A) for each team member", true);
+    parser.declareSymbol("RunnerDataB", "Extra assigned data (B) for each team member", true);
 
     parser.declareSymbol("RunnerCourse", "Runner's course", true, true);
     parser.declareSymbol("RunnerSplitTimes", "Runner's split times", true, true);
@@ -1182,6 +1191,19 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner, bool classResult) con
   parser.addSymbol("InputPoints", runner.getInputPoints());
   parser.addSymbol("Shorten", runner.getNumShortening());
 
+  parser.addSymbol("DataA", runner.getDCI().getInt("DataA"));
+  parser.addSymbol("DataB", runner.getDCI().getInt("DataB"));
+
+  pClass cls = runner.getClassRef(true);
+  if (cls) {
+    parser.addSymbol("ClassDataA", cls->getDCI().getInt("DataA"));
+    parser.addSymbol("ClassDataB", cls->getDCI().getInt("DataB"));
+  }
+  else {
+    parser.addSymbol("ClassDataA", 0);
+    parser.addSymbol("ClassDataB", 0);
+  }
+
   vector<RunnerStatus> inst;
   vector<int> times;
   vector<int> points;
@@ -1222,7 +1244,7 @@ void DynamicResult::prepareCalculations(oTeam &team, bool classResult) const {
   GeneralResult::prepareCalculations(team, classResult);
   prepareCommon(team, classResult);
   int nr = team.getNumRunners();
-  vector<int> status(nr), time(nr), start(nr), finish(nr), points(nr);
+  vector<int> status(nr), time(nr), start(nr), finish(nr), points(nr), dataA(nr), dataB(nr);
   vector< vector<int> > runnerOutputTimes(nr);
   vector< vector<int> > runnerOutputNumbers(nr);
 
@@ -1243,6 +1265,8 @@ void DynamicResult::prepareCalculations(oTeam &team, bool classResult) const {
 
       runnerOutputTimes[k] = res.outputTimes;
       runnerOutputNumbers[k] = res.outputNumbers;
+      dataA[k] = r->getDCI().getInt("DataA");
+      dataB[k] = r->getDCI().getInt("DataB");
     }
   }
   parser.removeSymbol("CardControls");
@@ -1269,6 +1293,9 @@ void DynamicResult::prepareCalculations(oTeam &team, bool classResult) const {
   parser.addSymbol("RunnerStart", start);
   parser.addSymbol("RunnerFinish", finish);
   parser.addSymbol("RunnerPoints", points);
+
+  parser.addSymbol("RunnerDataA", dataA);
+  parser.addSymbol("RunnerDataB", dataB);
 
   parser.addSymbol("PatrolRogainingScore", team.getRogainingPatrolPoints(false));
   parser.addSymbol("PatrolRogainingReduction", team.getRogainingPatrolReduction());
@@ -1416,7 +1443,7 @@ void DynamicResult::prepareCalculations(oRunner &runner, bool classResult) const
   parser.addSymbol("AgeLowLimit", lowAgeLimit);
   parser.addSymbol("AgeHighLimit", highAgeLimit);
 
-  parser.addSymbol("CheckTime", runner.getCheckTime());
+  parser.addSymbol("CheckTime", runner.getCheckTime() / timeConstSecond);
 }
 
 void DynamicResult::storeOutput(vector<int> &times, vector<int> &numbers) const {

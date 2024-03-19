@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2023 Melin Software HB
+    Copyright (C) 2009-2024 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -114,7 +114,8 @@ extern const wchar_t *szToolClass;
 
 HHOOK g_hhk; //- handle to the hook procedure.
 
-HWND hMainTab=NULL;
+HWND hMainTab = nullptr;
+HIMAGELIST imageList = nullptr;
 
 list<TabObject> *tabList = nullptr;
 void scrollVertical(gdioutput *gdi, int yInc, HWND hWnd);
@@ -198,7 +199,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   int       nCmdShow)
 {
   hInst = hInstance; // Store instance handle in our global variable
-    
+  
   atexit(dumpLeaks);	//
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
@@ -284,6 +285,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
   try {
     gEvent = new oEvent(*gdi_main);
+    gEvent->setMainEvent();
   }
   catch (meosException &ex) {
     gdi_main->alert(wstring(L"Failed to create base event: ") + ex.wwhat());
@@ -314,6 +316,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   lang.get().addLangResource(L"Español", L"111");
   lang.get().addLangResource(L"Russian", L"107");
   lang.get().addLangResource(L"Ukrainian", L"112");
+  lang.get().addLangResource(L"Portuguese", L"113");
 
   if (fileExists(L"extra.lng")) {
     lang.get().addLangResource(L"Extraspråk", L"extra.lng");
@@ -416,17 +419,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   MyRegisterClass(hInstance);
   registerToolbar(hInstance);
 
-  string encoding = gdi_main->narrow(lang.tl("encoding"));
-/*FontEncoding interpetEncoding(const string &enc) {
-  if (enc == "RUSSIAN")
-    return Russian;
-  else if (enc == "EASTEUROPE")
-    return EastEurope;
-  else if (enc == "HEBREW")
-    return Hebrew;
-  else
-    return ANSI;
-}*/
   int defSize = 0;
   {
     RECT desktop;
@@ -462,6 +454,8 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
   gdi_main->init(hWndWorkspace, hWndMain, hMainTab);
   gdi_main->getTabs().get(TCmpTab)->loadPage(*gdi_main);
+
+  image.loadImage(IDI_MEOSEDIT, Image::ImageMethod::Default);
 
   autoTask = new AutoTask(hWndMain, *gEvent, *gdi_main);
 
@@ -946,48 +940,9 @@ const string &getLastExtraWindow() {
   else
     return gdi_extra.back()->getTag();
 }
-//
-//  FUNCTION: WndProc(HWND, unsigned, WORD, LONG)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_COMMAND	- process the application menu
-//  WM_PAINT	- Paint the main window
-//  WM_DESTROY	- post a quit message and return
-//
-//
-/*
-void CallBack(gdioutput *gdi, int type, void *data)
-{
-  ButtonInfo bi=*(ButtonInfo* )data;
-
-  string t=gdi->getText("input");
-  gdi->ClearPage();
-
-  gdi->addButton(bi.text+" *"+t, bi.xp+5, bi.yp+30, "", CallBack);
-}
-
-void CallBackLB(gdioutput *gdi, int type, void *data)
-{
-  ListBoxInfo lbi=*(ListBoxInfo* )data;
-
-  gdi->setText("input", lbi.text);
-}
-
-void CallBackINPUT(gdioutput *gdi, int type, void *data)
-{
-  InputInfo lbi=*(InputInfo* )data;
-
-  MessageBox(NULL, "MB_OK", 0, MB_OK);
-  //gdi->setText("input", lbi.text);
-}*/
 
 void InsertSICard(gdioutput &gdi, SICard &sic);
 
-#define TabCtrl_InsertItemW(hwnd, iItem, pitem)   \
-    (int)SNDMSG((hwnd), TCM_INSERTITEMW, (WPARAM)(int)(iItem), (LPARAM)(const TC_ITEM *)(pitem))
-
-//static int xPos=0, yPos=0;
 void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
                 bool skipEconomy, bool skipLists,
                 bool skipRunners, bool skipCourses, bool skipControls)
@@ -1025,9 +980,9 @@ void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
       to = &*it;
     }
   }
-
-  SendMessage(hMainTab, WM_SETFONT, (WPARAM) GetStockObject(DEFAULT_GUI_FONT), 0);
-  int id=0;
+  if (gdi_main)
+    gdi_main->updateTabFont();
+  int id = 0;
   TabCtrl_DeleteAllItems(hMainTab);
   for (list<TabObject>::iterator it=tabList->begin();it!=tabList->end();++it) {
     it->setId(-1);
@@ -1056,25 +1011,26 @@ void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
     if (skipLists && (it->getType() == typeid(TabList) || it->getType() == typeid(TabAuto)))
       continue;
 
-    TCITEMW ti;
-    //char bf[256];
-    //strcpy_s(bf, lang.tl(it->name).c_str());
+    TCITEM ti;
     ti.pszText=(LPWSTR)lang.tl(it->name).c_str();
-    ti.mask=TCIF_TEXT;
+    ti.mask = TCIF_TEXT;
+    if (it->imageId >= 0)
+      ti.mask |= TCIF_IMAGE;
+
+    ti.iImage = it->imageId;
+
     it->setId(id++);
 
-    TabCtrl_InsertItemW(hMainTab, it->id, &ti);
+    TabCtrl_InsertItem(hMainTab, it->id, &ti);
   }
 
   if (to && (to->id)>=0)
     TabCtrl_SetCurSel(hMainTab, to->id);
 }
 
-void hideTabs()
-{
+void hideTabs() {
   TabCtrl_DeleteAllItems(hMainTab);
 }
-
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -1087,31 +1043,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_CREATE:
 
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TCmpTab), "Tävling"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TRunnerTab), "Deltagare"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TTeamTab), "Lag(flera)"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TListTab), "Listor"));
+      tabList->emplace_back(gdi_main->getTabs().get(TCmpTab), "Tävling", 10);
+      tabList->emplace_back(gdi_main->getTabs().get(TRunnerTab), "Deltagare", 6);
+      tabList->emplace_back(gdi_main->getTabs().get(TTeamTab), "Lag(flera)", 7);
+      tabList->emplace_back(gdi_main->getTabs().get(TListTab), "Listor", 5);
       {
         TabAuto *ta = (TabAuto *)gdi_main->getTabs().get(TAutoTab);
-        tabList->push_back(TabObject(ta, "Automater"));
+        tabList->emplace_back(ta, "Automater", 4);
         TabAuto::tabAutoRegister(ta);
       }
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TSpeakerTab), "Speaker"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TClassTab), "Klasser"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TCourseTab), "Banor"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TControlTab), "Kontroller"));
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TClubTab), "Klubbar"));
+      tabList->emplace_back(gdi_main->getTabs().get(TSpeakerTab), "Speaker", 3);
+      tabList->emplace_back(gdi_main->getTabs().get(TClassTab), "Klasser", 0);
+      tabList->emplace_back(gdi_main->getTabs().get(TCourseTab), "Banor", 1);
+      tabList->emplace_back(gdi_main->getTabs().get(TControlTab), "Kontroller", 2);
+      tabList->emplace_back(gdi_main->getTabs().get(TClubTab), "Klubbar", 8);
 
-      tabList->push_back(TabObject(gdi_main->getTabs().get(TSITab), "SportIdent"));
+      tabList->emplace_back(gdi_main->getTabs().get(TSITab), "SportIdent", 9);
 
       INITCOMMONCONTROLSEX ic;
 
       ic.dwSize=sizeof(ic);
       ic.dwICC=ICC_TAB_CLASSES ;
       InitCommonControlsEx(&ic);
-      hMainTab=CreateWindowEx(0, WC_TABCONTROL, L"tabs", WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS, 0, 0, 300, 20, hWnd, 0, hInst, 0);
-      createTabs(true, true, false, false, false, false, false, false, false);
+      hMainTab = CreateWindowEx(0, WC_TABCONTROL, L"tabs", WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS, 0, 0, 300, 20, hWnd, 0, hInst, 0);
+      imageList = ImageList_Create(24, 24, ILC_COLOR32, 1, 1);
+      {
+        
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSCLASS24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSCOURSE24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSCONTROL24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSANNOUNCER24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSSERVICES24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSLIST24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSRUNNER24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSTEAM24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSCLUBS24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSCARD24, Image::ImageMethod::Default), nullptr);
+        ImageList_Add(imageList, image.loadImage(IDI_MEOSCOMPETITION24, Image::ImageMethod::Default), nullptr);
 
+        TabCtrl_SetImageList(hMainTab, imageList);
+      }
+      createTabs(true, true, false, false, false, false, false, false, false);
       SetTimer(hWnd, 4, 10000, 0); //Connection check
       break;
 
@@ -1121,13 +1093,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       }
       break;
 
-    case WM_SIZE:
-      MoveWindow(hMainTab, 0,0, LOWORD(lParam), 30, 1);
-      MoveWindow(hWndWorkspace, 0, 30, LOWORD(lParam), HIWORD(lParam)-30, 1);
+    case WM_SIZE: {
+      int h = 30;
+      if (gdi_main) {
+        h = max(h, gdi_main->getFontHeight(0, L"") + gdi_main->scaleLength(6));
+      }
+
+      MoveWindow(hMainTab, 0, 0, LOWORD(lParam), h, 1);
+      MoveWindow(hWndWorkspace, 0, h, LOWORD(lParam), HIWORD(lParam) - h, 1);
 
       RECT rc;
       GetClientRect(hWndWorkspace, &rc);
       PostMessage(hWndWorkspace, WM_SIZE, wParam, MAKELONG(rc.right, rc.bottom));
+    }
       break;
 
     case WM_WINDOWPOSCHANGED:
