@@ -1,0 +1,3023 @@
+%s m
+%s meters
+%s, block: %d
+(has punched)
+(copy)
+(leader)
+(local, no server)
+(unknown) punched at
+(on server)
+(seconds)
+(leg winner)
+All(
+API key
+Accepted electronic invoices
+Address
+Address and Contact
+Age (on last day of current year)
+Age above or equal implies senior/pensioner
+Age below or equal implies youth
+Activate
+Activate kiosk mode
+Activate support for running times longer than 24 hours.
+Activate support for subsecond timing.
+Current time
+All punches
+All
+All course files
+All competitors must have a name
+All Invoices
+All Features
+All events
+All teams must have a name
+All Lists
+All races
+Every race as individual
+Any unqualified
+All legs
+All legs/races in separate files
+All previous stages
+All types
+All rented cards are ticked off
+All remaining
+General results
+Vacancy fraction
+Supply one group size (to be repeated) or several comma separated sizes
+Provide the first bib number, or blank for no bibs
+Specify consecutive numbering between classes or specify first number in class
+Specify if the controls is operational and how it is to be used
+Specify the relation between team's bib and team member's bibs
+Enter start interval for restart
+Enter time relative the first start of the class.
+Animation
+Entry fee
+Entry fee
+Entry date
+Entry time
+Enter
+Enter X for the competition
+New entry
+No Entries
+Enter for subsequent stages
+Accepted entry
+Your entry requires manual processing.
+Entries
+Entries per district
+Entries
+Entries (IOF (xml) or OE-CSV)
+Entry fee
+Entry date
+Quick entry mode
+Entry time
+Anonymous name
+Connect
+Connect and activate a SI unit
+Connect to a server
+Connected to
+Connecting to the Internet
+Connected clients
+Connections
+Connection settings
+Number
+Number of courses
+Number of visitors X, average lost time Y, max lost time Z
+Competitors
+Number of competitors: X
+Number of requests: X
+Number of received updates X (Y kb)
+Number of ignored entries: X
+Number of imported
+Number of maps
+Number of classes
+Number of runners
+Number of runners on most used course X
+Number of failed entries: X
+Number of levels
+Number of reserved bib numbers between classes
+Number of updates X (Y kb)
+Number of skipped entities: X
+Number of starts per block
+Numbers of starts per interval (including already drawn)
+Number of legs
+Number of vacancies
+Number: %d
+Number: X
+The number of columns in the clipboard does not fit the selection
+The number of columns in the clipboard is greater than the number of columns in the table
+The number of rows on the clipboard does not fit the selection
+Use
+Use Eventor
+Use ROC protocol
+Use course pool
+Use competitors already in competition
+Use only one course in the class
+Use Unit ID instead of competition ID
+Use functions for multi stage class
+Use first control as start
+Use list for split time printing
+Use runner database
+If possible, use the same computer that was used to import the last time
+Use ranking instead of placement to distribute qualified runners into classes
+Use last control as finish
+Use Announcer's Module
+Use large type face
+Use the symbol X where MeOS should fill in the data
+User name
+Anyone
+Apply for specific stage
+Apply for a specific leg
+Applying rules to the current competition
+Organizer
+Assign Courses and Apply Forking to X
+Assign Selected Courses to Selected Legs
+To pay
+To pay: X
+Services
+Automatic rogaining point reduction
+Automatize
+Automatic
+Automatic handling of rental cards using pre-registered card numbers
+Draw Automatically
+Automatic update
+Automatic Scroll
+Automatic printout
+Automatic printing / export
+Service name
+By MeOS: www.melin.nu/meos
+Available symbols
+Advanced
+Ticked off cards
+Cancel
+Cancel readout
+Reduction
+Fee
+Fees
+Fees and currency settings are changed from
+Fee extension (percent)
+Second fee increase (percent)
+Settled classes (Prize Ceremony List)
+Settled Results - %s
+Decisive events
+Ready at X
+Time ready
+Shortened course
+Shortens: X
+Shortening
+Readout
+Readout/radio
+Uncheck 'X' to handle all card assignments on one page
+Deselect all
+Competition fee, rounded
+Exit
+Count returned rental cards
+Distance
+Distance between suggestions (minutes)
+Bad file format
+Background
+Background color
+Back
+Course
+Course %d
+Course with loops
+The course is in use
+The course must have a name
+The course has no defined rogaining controls
+Missing course
+The rogaining controls awards too few points to cover the requirement
+Course Usage
+Course
+Courses
+Courses (number of controls)
+Courses for %s, leg %d
+Courses, IOF (xml)
+Courses, OCAD format
+Course pool
+Course pool, simultaneous start
+Course pool, drawn start list
+Course Assignment
+Course assignment specifies a competitor (X) that is missing in the team (Y)
+Course assignment, individual
+Course assignment, relay
+Assigned Courses - %s
+Base on existing competition
+Based on X
+Base interval (min)
+Battery date
+Battery status
+Limit number per class
+Limit rows per page
+Limit width (crop text)
+Limit class-wise
+Limit, number of entries per class
+Processing runner database
+Processing competition data
+Processing: X
+Please confirm that %s changes class to %s
+Please confirm drop out of this runner
+Visitors
+Paid
+Payment Details
+Modes of Payment
+Payment Mode
+Monitoring events in X
+Select runner to watch
+Preserve aspect ratio
+Bibs
+Image
+Image behind text
+Images
+Block
+Block width
+Browse
+Request start time
+Bold
+Bold, gigantic
+Bold, large
+Bold, small
+Mistake Quotient
+Control mistakes
+Time lost
+Lost time (max)
+Lost time (average)
+Lost time (median)
+Lost time: X
+Removed: X
+Width
+Card
+Card %d is in use by %s and cannot be assigned
+Card X
+Card X is also used by
+The card is used by X
+Card has already been read out
+Card Readout
+Handle Cards
+Card fee
+Card number
+Card number
+The card is in use (X)
+Cards
+Cards used as both hired and owned: X
+Build Databases
+Switch to the right class (keep start time)
+Switch to a vacant position in the right class (if possible)
+Best time
+COM-Port
+Calculate and Apply Forking
+Cancel
+Cannot represent ID 'X'
+Center
+Check
+Check: X
+Check unit
+Choose result module
+Available maps for class
+Class, course, result
+Class data A
+Class data B
+Class, default result
+Class, finish time
+Class, knock-out total result
+Course length for class
+Live results (radio times), class-wise
+Class
+Number of entries in class
+Class, points
+Class, result
+Fraction of class complete
+Start name
+Class, start time, name
+Class, start time, club
+Class, team, leg
+Class and leg result
+Class text
+Total number of maps for class
+Class, total result
+Classes together
+Clear Memory
+Clear Selections
+Climb (m)
+Club
+Club and runner database
+Club id number
+Club, class, start time
+Club
+Club (Competitors)
+Club (Teams)
+Clubs
+Competition date
+Competition name
+Control
+Control Overview
+Control Statistics
+Control Statistics - X
+Control's classes
+Control's punch codes
+Control's courses
+Control, lost time, maximum
+Control, lost time, median
+Control, quotient of runners with lost time
+Control's name
+Control's actual number of visitors
+Control's remaining number of visitors
+Control's expected number of visitors
+Could not load list 'X'
+Country
+Course
+Course's classes
+Course climb
+Course length, specific course
+Course name
+Number of controls
+Course number
+Punches (on course)
+Course, result
+Course shortening
+Course, start time
+Course's number of required maps 
+Course's number of entries excluding vacant positions
+Create Competition
+Created X distinct forks using Y courses
+Current time
+Custom order
+DATABASE ERROR
+Data from result module (X)
+Database Connection
+Database is used and cannot be deleted
+Database source
+Database warning: X
+Computer voice announcing runners
+Computer time
+Date
+Date (of first start)
+Date filter
+Debug
+Debug Output
+Debug X for Y
+Decimal separator
+Standard formatting
+Define Forking
+Defined mappings
+Split
+Split by result
+Split by ranking
+Split by time
+Split Class: X
+Split Class
+Split by club
+Random split
+Split
+Competitors
+Competitor %d
+The competitor 'X' is in the patrol class 'Y', but has no patrol. The results in this class might be inconsistent
+The competitor 'X' is in the relay class 'Y', but has no team. The results in this class might be inconsistent
+The competitor 'X' has no class
+The class is defined by the team
+NTP
+This data source has never been merged
+Ordinal of this stage
+Description
+Destination: X
+Destination folder
+There is entry data for several stages
+There are multiple ID:s for persons
+You can only add vacancies to the first leg
+There is no warranty for this program; it is provided "as is". The program is
+The estimated number of teams in the class is a suitable value
+Deviation +/- from expected time on course leg
+Timekeeping Live
+Quick entry
+DISQ
+District id number
+District code
+Do you want to clear the card memory?
+Don't know how to align with 'X'
+You can use an SI unit to read card the number
+You can import courses and classes from the export format of OCAD
+You can adjust the time for a single unit
+You must specify at least 2 variants
+You have to select a class
+Duplicate
+Duplicated bib: X, Y
+Hide
+Rename
+Rename X
+Email
+Entries via API
+Include not participating
+Unexpected fee
+Economy and fees
+Edit Clubs
+Edit Result Modules
+Edit rule for
+Behind
+After X
+Late fee
+Late entry
+Late Entries (After)
+Late Entries (Before)
+Late entries in front
+Late Entries
+Custom list heading
+Custom text
+Properties
+New Window
+Custom Lists
+Custom text lines
+Refused electronic invoices
+Not electronic
+Not Drawn
+Draw Remaining After
+Draw Remaining Before
+No restart
+DNS
+Disregard start punch
+Without timing
+Economy
+Economy status, X
+Economical summary
+Electronic
+Electronic accepted
+Elite
+Elite fee
+Elite classes
+Empty Results Split Print
+A course with loops allows the competitor to take the loops in any order
+One forked stage
+You cannot merge a class with itself
+A club cannot be merged with itself
+Single Course
+Basic Features
+Basic functionality only
+Only process non-optional legs.
+Only timing
+Only timekeeping (no courses)
+Only timekeeping (no courses), relay
+Unit
+Unit ID (MAC)
+Unit code
+Unit type
+Entry Time
+Error in result module 'X', method 'Y'
+
+Z
+Stage
+Stage X
+Stage results
+A long competition name may cause unwanted downscale of printed lists
+An unknown error occurred
+A start block spans more than one start: X/Y
+A start interval must be a multiple of the base interval
+A value with a list dependent interpretation
+Eventor server
+Eventor Connection
+Eventor times in UTC (Universal Coordinated Time)
+Example
+Export Results / Splits
+Export language
+Export split times
+Export
+Export / Backup
+Export all to HTML
+Export all to PDF
+Export Data
+Export electronic invoices
+Export a spreadsheet with draw settings that you can edit and then import again 
+Export as individual races instead of teams
+Export Settings and Databases
+Export Clubs (IOF-XML)
+Export Runner Database
+Export now
+Export Persons (IOF-XML)
+Export to file
+Export results to file
+Export start list
+Export start list to file
+Export Splits
+Export times in UTC
+Export to file
+Export data
+Exporting in
+Export format
+Export type
+Export settings, IOF-XML
+External links
+External ID
+Extra
+Extra distance above
+Extra data X
+Extra data fields
+Extra punches
+Co-runner relay
+Extra places
+INVOICE
+Error, no response
+Error: Port could not be opened
+Failed to generate card
+Failed to open 'X' for reading
+Failed to read file.
+Actual start depth: X minutes
+Invoice
+Invoice no
+Invoice date
+Invoice Settings
+Invoice number
+To be invoiced
+Invoices
+Family
+Error: Use X in the text where the value (Y) should be used
+Error: This version has already been merged
+Error:  Cannot merge a competition with itself
+Error: X
+Error. File not found 'X'
+Bad control
+Incorrect key
+Incorrect leg number
+Incorrect date 'X' (Use YYYY-MM-DD)
+Incorrect date format 'X' (Use YYYY-MM-DD)
+Bad file format
+Incorrect ranking format in X.
+Expected: Y
+Incorrect time format 'X' (Use HH:MM:SS)
+MP
+File to export to
+Filename: X
+The file (X) contains IOF-XML competition data. You can import it into an existing competition.
+The file (X) is a list definition
+The file (X) is a result module
+The file (X) is not a MeOS competition
+Destination already exists: X
+Filename
+Filename (OCAD courses)
+Filename IOF (xml) or OE (csv) with runners
+Filename IOF (xml) with clubs
+Filename IOF (xml) with runners
+The file name must not be empty
+Filename prefix
+Filtering
+With radio time/result
+With card
+Named controls
+Not canceled
+Without card
+Exclude finish
+Not vacant
+Only vacant
+Prel. result
+Hired card
+With result
+Collect parallel legs
+Collect parallel legs, skip first
+Has started
+Filter
+Filtering
+Final
+Finish order
+Finish time for each team member
+Finish time, name
+Reversed finish time (last first)
+First to finish
+Multiple courses
+Multiple Courses / Relay / Patrol / Course Pool
+Several Courses / Relay
+Several races in any order
+Multiple races per competitor
+Move competitors from full groups
+Move Right
+Move down
+Move up
+Move Left
+Forked individual courses
+Forking Setup
+Forkings
+Forkings for X
+Format
+Free web document (html)
+Formatting
+Formatting rules
+Form Mode
+Continue
+Free Entry Import
+Free start time
+Free start times
+Free
+From this list, you can create labels to stick on the maps
+From first
+From class
+From the Club
+From control
+From team
+From the Team
+From runner database
+From runner database in existing clubs
+Full Screen
+Full screen (rolling)
+Full screen (page by page)
+Function
+Functions
+MeOS Features
+Fill vacant legs in all teams with anonymous temporary team members (X)
+Color
+Fewer loops
+Birth date
+Birth year
+The following competitors will not take part
+The following competitors have changed class
+The following competitors have changed class (no total result)
+The following competitors have taken a vacant position
+The following competitors are registered for the next stage, but not this one
+The following competitors generated new entries
+The following competitors were ignored
+Window
+Window (rolling)
+To participate in a team class, you need to assign a team to the competitor
+To change the finish time, the finish punch time must be changed
+To test communication, you can use a separate test competition
+Hoover the mouse pointer over a marking to get more information
+Too many controls
+Prepare Drawing Times
+Predefined competitions
+Distribute Times
+Before X
+Previous
+Preceding stage
+Preceding control
+Occurrence
+Import Preview
+Prevent that the team takes part in a restart
+Prevent restart
+Extended fee
+Displacement
+Offset Class ID
+First
+First to finish, common
+First to finish, class-wise
+First (ordinary) start
+First invoice number
+First control
+First time for restart
+First regular start time
+First start
+First start time
+First leg cannot be parallel
+First possible start time
+Missing
+Operation failed
+Forewarning (SI code): all punches
+Forewarning Voice
+Expected
+Expected fraction of late entries
+Expected number of visitors: X
+Courses with Forks
+Forkings in table format
+Forkings, teamwise
+Forking key
+Forking Key X
+Old cards without support for long running times
+Street
+Simultaneous start
+General
+Generate
+Generate Test Competition
+Generated at
+Average response time: X ms
+Geographical distribution
+Global sort order
+OK
+API key accepted
+Preview
+Base fee
+Base fee
+Basic Settings
+Group
+Limit for maximum time (OMT)
+HTML Export
+HTML Export of 'X'
+HTML formatted by list settings
+HTML with AutoRefresh
+Manage Cards
+Treatment of competitors that have changed class
+Manage Custom Lists
+Manage Several Stages
+Handle Pursuit
+Manage Clubs
+Manage clubs and economy
+Manage Remaining Runners
+Manage team
+Manage Runner Cards
+Heat
+Entire course
+Homepage
+Prevent competitors from the same club to start at adjacent start times.
+Cannot find documentation, X
+Cannot X not found
+Help
+Skipping relay class: X
+Horizontal
+Main list
+Card hire
+Hired card
+Report with Rental Cards
+Rental Cards - %s
+Hired
+Fetch (late) entries from Eventor
+Fetch Data from Eventor
+Fetch Late Entries
+Fetch settings from previous session
+Fetch Runner Database
+Fetch punches etc. from the Internet.
+Get data on accepted invoices
+Fetch competition data
+Fetch competition data for X
+Fetching entries
+Collecting information about
+Fetching classes
+Fetching clubs
+Fetching runner database
+Fetching competition
+Events
+Events - Time line
+Keep columns close
+Late fee
+Right
+Height
+IOF (xml)
+IOF Organization List, version 3.0 (xml)
+IOF Competitor List, version 3.0 (xml)
+IOF Results (xml)
+IOF Results, version 2.0.3 (xml)
+IOF Results, version 3.0 (xml)
+IOF Start list (xml)
+IOF Start list, version 2.0.3 (xml)
+IOF Start list, version 3.0 (xml)
+IP address or the name of a MySQL server
+Id
+Identified X unique openings of courses
+Ignore start punch
+Ignored X duplicates
+Image
+Import
+Import IOF (xml)
+Import Entries
+Import Entries
+Import Courses
+Import Courses and Classes
+Import competition from file
+Import File
+Import from OCAD
+Import from File
+Import Team Line-Ups
+Import Runner Database
+Import Runners
+Import Runners and Clubs
+Import Punches
+Import Competition
+Import Data
+Importing
+Importing OCAD CSV
+Importing OE2003 CSV
+Importing OS2003 CSV
+Importing RAID patrol data
+Importing entries (IOF, xml)
+Importing courses (IOF, xml)
+Importing classes (IOF, xml)
+Importing clubs (IOF, xml)
+Importing draw settings
+Importing ranking
+Importing competition data (IOF, xml)
+Importable
+Import settings
+Inconsistent qualification rule, X
+Index
+Index in X[index]
+Individual Example
+Individual Results Split Print
+Individual Rogaining Split Print
+Individual result by finish time
+Individual results within a club
+Individual
+Individual result list, all races
+Individual results, summary
+Individual results, race
+Individual results, race (LARGE)
+Individual start list, race
+Individual Competition
+Individual competitors
+Individual results
+Individual Final Results
+Individual Total Results
+Individual
+Forked Individual
+Information
+Merge version: X
+Information server
+None
+No control mistakes detected
+No competitors
+No class is marked to allow quick entry.
+
+On the page Classes you can change this property.
+No vacancies available. Vacancies are usually created when drawing the class
+None
+None / unknown
+No course
+No competitor match the search criteria
+No competitor selected
+No class
+No class selected
+No free start time was found
+All runners have a card
+No match for 'X'
+No bib
+Individual start
+No reduced fee
+No rogaining
+None
+None
+No filter
+No number
+Include course
+Include analysis of lost time
+Include individual result
+Include information about multiple races for a single runner.
+Include results from all stages
+Include splits
+Include tempo
+Incoming
+Card was put in queue
+Read cards
+Read punches
+Input Testing
+Enter Radio Times
+Remote Input
+Input Results
+Input Results - X
+Inspecting classes
+Install
+Installable Lists
+Settings
+MeOS, Settings
+Print Start Certificate Settings
+Print Split Times Settings
+Interactive readout
+Interval
+Interval (seconds). Leave blank to update when competition data is changed.
+The interval must be specified as MM:SS
+Invalid filter X
+Invalid font X
+Invalid operator X
+Italic
+Italic, somewhat larger
+Yes
+I manage start list drawing myself
+Pursuit
+Block-wise adjustment
+Align with
+Adjust view settings
+Horizontal adjustment
+Make equal classes (result)
+Make equal classes (ranking)
+Make equal classes (time)
+Spreadsheet/csv
+Maps
+Finished
+Finished. Number of entries imported: X
+Finished. X competitors imported
+Finished. X teams imported
+Finished. X patrols imported
+Complete. Assigned X values.
+Done: all classes drawn
+Done: no classes needed to be drawn
+Class
+Class %d
+Class / Type
+Class / place
+Class X
+Class X (name suffix)
+Class to merge with
+Select class by ranking
+Missing class
+Change Class
+The class 'X' has pursuit/changeover on the first leg
+The class X is individual
+The class X is listed several times
+The class has a course pool
+The class is in use and cannot be removed
+Start list not drawn, request start time on the page SportIdent
+Start list not drawn, use start punch
+The class must have a name
+Missing class
+The class does not allow request of start time
+The class is full
+Class's course
+Classes
+Classes (IOF, xml)
+Classes where new entries will be transferred
+The classes X and Y have the same external id. Use the table mode to correct the id
+Class Settings
+Class name
+Class type
+Class selection
+Class selection for 'X'
+Client name
+Paste
+Paste from clipboard (X)
+Clock: X
+Club
+Club to remove
+Club: X
+Club Id
+Clubs
+Clubs (IOF, xml)
+Clubs that did not answer
+Club Database
+No club
+Club Results
+Club Results
+Club Results - %s
+Club Start List
+Club Start List - %s
+Club start list, team
+Grouped start
+Knock-out summary
+Knock-out summary
+Auto assign on readout
+Assign Card to Competitor
+Tie a runner to the leg
+Tie runners to courses at readout
+Group already existing competitors to the team (identified by name and/or card number)
+Code
+Columns
+Remember the List
+Comment
+Comment / Version
+Comments
+Communication
+Lost connection to a SportIdent unit
+Cash
+Cash
+Account
+Control
+Control %s
+Control X
+Check competition
+The control is in use and cannot be removed
+ID of Control
+Controls
+Control Mapping
+Control name
+Control Report - X
+Coordinates (mm) for address field
+Copy (X)
+Copy X
+Copy
+Copy link to clip board
+Copy selection to clipboard (X)
+Copy to the clipboard
+Disconnect
+Disconnect Database
+Disconnecting SportIdent on
+Shortest theoretical start depth without clashes is X minutes
+Short name
+Could not connect to Eventor
+Could not load X
+
+(Y)
+Could not upload runner database (X)
+Failed to upload competition (X)
+Could not connect to database (X)
+Could not open the competition
+Qualification
+Qualification/final scheme
+Qualification Rules for X
+Qualification class
+Qualification scheme
+Competitors in Forest
+Woman
+Women
+Source
+Source folder
+Sex
+Run Competition Check
+Load
+Upload Competition to Server
+Team
+Team %d
+Team + leg
+Team and relay
+Team with no bib: X
+Teams
+The team 'X' has no class
+Team not found
+Team member
+Team name
+Store settings
+Stored backups
+Team Line-up
+The team line-up had errors, which have been corrected
+Team Change Form
+Country
+Lap count
+Lap count with extra punch
+Large text
+Latest Results
+Latitude
+Leg X
+Leg X: Do not modify
+Leg X: Use Y
+Leg number in team, zero indexed
+Legs
+Length of course
+Line break
+List Error: X
+List definition
+List
+List of type 'X'
+List with split times
+List with split times
+Cannot show list
+List was removed from the competition
+List Properties
+List name
+Lists
+Lists in the Competition
+Lists and Summaries
+List parameter
+List Entry
+List Editor
+List Editor – X
+List heading
+List type
+List choice
+Live results, radio
+Live Results
+Live Results, individual
+Live results with radio times
+Sound
+Sound files, base folder
+Sound selection
+Locally
+Long
+Longitude
+Race %d
+Race %s
+Race X
+Race Id
+Draw
+Draw / Manage Start Times
+Draw Start Times for Several Classes
+Draw Class
+Draw the class 'X'
+Draw classes with the course 'X'
+Draw classes with the same course together
+Draw runners without start time
+Draw with Starting Groups
+Redraw class
+Draw Start Times
+Drawn
+Drawn start list
+Drawing late entries
+Drawing start order: X
+Drawn
+Draw random
+Low
+Listen
+Listening to X
+Add
+Add All
+Add image
+Add or edit a comment about the team
+Add row to table (X)
+Add / update classes
+Add New
+Add New Stage
+Add Row
+Add rules
+Add Punch
+Adding clubs
+Adding runners
+Length
+Length (m)
+Longest response time: X ms
+Longest time in seconds to wait for the printout
+Link to the result list
+Link to the start list
+Read cards
+Reading clubs
+Reading runners
+Long name
+Lock function
+Lock forkings
+Lock start list
+Unlock
+Locked forking
+Let the highest ranked start first
+Let the class have more than one leg or course.
+Consecutive
+Get notifications for events in the competition
+Card %d
+Runner Database
+Runner
+Runners per class
+Runner without class or course
+No competitor
+Runners existing in more than one team
+Runner without card: %d
+Runners without course: %d
+Runners without class: %d
+Runners without club: %d
+Runners without start time: %d
+Runners, Status DNS, with Registration (In Forest!?)
+Runners, Status unknown, with registration (in forest)
+Runners, Status Unknown, missing registration
+Competitors:
+Competitor: X, control: Y, time: Z
+Runner not found
+Running time
+Password
+Man
+Manual point reductions and adjustments
+Manual time penalties and adjustments
+Manual
+Manual input
+Draw Manually
+Manual fees
+Manually made adjustments
+Manual start request
+Manually modified card data
+Manually changed data
+Folder
+Map root address (http:///localhost:port/) to function
+Folder name cannot be empty
+Margin
+Check 'X' to handle competitors one by one
+Select all (X)
+Check to prevent unintentional altering of forking keys
+Select none (X)
+Select column
+Input first bib number, or leave blank to remove bibs
+Enter radio times by hand
+Matched control ids (-1 for unmatched) for each team member
+Maximum number of cards per page
+Maximum number of forking keys to create
+Max number common controls
+Max. number parallel start
+Max. vacancy (per class)
+Max Mistake
+Maximal time behind leader to participate in pursuit.
+Maximum allowed running time
+OMT
+Maximum time behind
+MeOS
+MeOS Features
+MeOS Features
+MeOS Information Server REST-API
+MeOS Three Days Race X
+MeOS Timing
+MeOS local data folder is
+MeOS Development Support
+MeOS – Features
+MeOS – Result Kiosk
+MeOS-data
+With entry fee (for the team club)
+With shortening
+With direct entry
+Include tempo (min/km)
+With results
+With relay
+With split analysis
+Median Mistake
+Medium
+Medium text
+Somewhat larger text
+Co-runner
+Between X and Y
+Intermediate times are shown for named controls
+Method
+Min. vacancies (per class)
+Min. time
+MeOS need MySQL X or later. You are using version Y
+Least width
+Least indentation
+Smallest interval in class
+Smallest start interval
+Shortest leg time
+Least time to start (minutes)
+Minute start list
+Failed to upload online results
+Exercise
+Multiple
+MySQL Server / IP-address
+Men
+Finish
+Finish unit
+Destination file
+Missing finish punch
+Finish punch disallowed (X)
+Finish time
+Finish time missing
+Finish time: X
+N best
+X
+Name of result module
+Name
+Name and Time
+The name cannot be empty
+Narrow Result List
+Nationality
+Nationality
+No
+New Result Module
+New Set of Result Rules
+Level X
+Clear
+Reset Fees
+Clear databases
+Clear memory; forget all ticked off cards
+Cleared fee for X competitor(s)
+Zero time
+None
+Normal
+Normal text
+Normal fee
+Not implemented
+Not yet implemented
+Number
+Number of entries
+Number of starts
+Number of shortenings
+Bib
+Bib, card number, or name
+Bib, race id, or name
+Bibs
+Bibs for X
+Bib management
+Current owner: X
+New Course
+New image
+New Competitor
+New Class
+New Club
+New Control
+New class leader
+New List
+New starting group
+New Competition
+Eventor Key
+New Window
+New Team
+Next
+Next stage
+Next try
+OE Semicolon separated (csv)
+OK
+Orienteering/Shooting with Time Punishment
+Orienteering/Shooting Relay
+Orienteering/Shooting without Time Punishment
+Independent
+Note MeOS cannot fetch punches preceding the competition zero time
+Original card data
+Invalid course file. Expected a control number at position X, but found 'Y'
+Invalid destination X
+Invalid function
+Invalid previous/next stage
+Invalid first start time. Must be after zero time
+Invalid control code
+Invalid restart time
+Invalid rope time
+Invalid start time X
+Invalid start time for 'X' on leg Y
+Invalid start time: X
+Invalid size of seeding groups: X
+Invalid time
+Invalid number of seconds: X
+Invalid base interval
+Invalid card number
+Invalid card number X
+Invalid file format.
+Invalid team on row X
+Invalid maximum interval
+Invalid shortest interval
+Invalid start interval X
+Unknown
+Unknown card
+Unknown mode
+Unknown class
+Unknown class on row X
+Unknown club with id X
+Unknown data origin status
+About MeOS
+About MeOS – a Much Easier Orienteering System
+You may give the service a name
+Restart
+Relay Restart
+Restart: X
+Restart time
+Reversed pursuit
+Remote Input Error X
+Online Results Error X
+Remote input
+Online Results
+Remote server gave unexpected reply (Incorrect configuration?)
+Response from remote server: Wrong password
+Response from remote server: Wrong competition id
+Response from remote server: Server error
+Response from remote server: ZIP not supported.
+Unordered parallel
+Out of order parallel legs
+Unpaired
+Open
+Open X
+Open as Copy
+Operation unsuccessful
+Unsupported operation
+Optimizing start time distribution 
+Last entry date
+Normal fee
+Ordered
+Organization
+Organizer
+Unexpected control 'X' in course Y
+PDF
+Compress large files (zip)
+Expanding runner database
+Pages with columns
+Pages with columns, no header
+Patrol or single class
+Pair
+Pair card X with a competitor
+Parallel
+Pairwise (two by two)
+Patrol Team Rogaining
+Patrol results
+Patrol, start list
+Competitor's (or patrol's) club(s) 
+Competitor's (or patrol's) name(s)
+Patrols
+Patrol
+Patrol, One card
+Patrol, Two cards
+Patrol results (LARGE)
+Persons
+Place
+Pl. S
+Place on course leg
+Place
+Place X qualifies for Y
+Place in
+Placements
+Place
+Point calculation for runner
+Point calculation for team
+Points as computed by your point method
+Port
+Port for TCP
+Portable Document Format (PDF)
+Postal address
+ZIP
+Points
+Points S
+Points in
+Point reduction
+Point reduction (per minute)
+Point reduction for each started minute
+Point limit
+Point adjustment
+Reduction
+Prel. time lost
+Prel. place
+Prepare start lists
+Press <Enter> to continue
+Primary
+Print card data
+Printing failed (X: Y) Z
+Prioritization
+Prize Ceremony List
+Program Settings
+Program the unit with AUTO SEND off
+Prologue + pursuit
+Prologue + Pursuit
+Publish Results
+Publish results directly on the web
+Publish results and split times on Eventor and WinSplits online
+Publish Start List
+Publish start list on Eventor
+Publishing results
+Publishing the start list
+Punch codes for each team member
+Punch times for each team member
+Punch, real time
+Control code
+Punch code
+Place, leg to control
+Place, total at control
+Total team place at control
+Time lost at control
+Punch, control name
+Time since last named control
+Named split time
+Time since last control (split time)
+Team total time and split at control
+Total team named split time
+Total team running time to control
+Team's time after at control
+Punch time
+Time between controls
+Time to control
+Time behind at control
+Punches
+On course
+Row X is invalid
+Rows
+Rows with a (*) originates from a list in the competition
+Delete
+Delete All Clubs
+Remove all clubs and clear club memberships
+Delete list from this competition
+Delete Permanently
+Erase Start Times
+Remove Competition
+Delete Vacancies
+Radio
+Radio controls disallowed (X)
+Radio times, control
+Ranking
+Ranking (IOF, xml, csv)
+Report
+Report for
+Reports
+Report Mode
+Red. late fee
+Reduced fee
+Edit
+Edit competitor
+Edit List
+Edit list entry
+Edit Leg Lengths
+Edit Leg Lengths for 'X'
+Reduced
+Reduced fee
+Reduced fee
+Reduced fee for
+Reduction method
+Reference
+Region
+Register rental cards
+Rules
+Relation to previous
+Relative scale factor for the font face (percent)
+Relay Example
+Relay Results Split Print
+Relay/Team Results Split Print
+Relays
+Rope
+Repair Selected Competition
+Repairing competition database
+Rope time
+The rope time must be before the restart time 
+Replace
+Rope time: X
+Reserved
+Result Calculation
+Result Module – X
+Result Modules
+Result at a control
+Result module
+Result module identifier
+Result score calculation for runner
+Result score calculation for team
+Name of result type
+Result Module: Number
+Result Module: Number (for Team)
+Result Module: Time
+Result Module: Time (for Team)
+Result
+Results && Splits
+Results (LARGE)
+Results - %s
+Results - X
+Result course-wise per class
+Result by class and course - X
+Results After Leg X
+Results after leg
+Results from Earlier Stages
+Results for a given race
+Result race X - Y
+Results Online
+Result by course
+Result by course - X
+Result on finish punch
+Results, general
+Results, individual
+Results, patrol
+Result Kiosk
+Results - %s
+Results – settings
+Results, Rogaining, team
+Results
+The Result Module is used in X
+Result calculation
+Print Results
+Print / Export Results
+Rogaining
+Rogaining points before automatic reduction
+Rogaining points for each team member
+Rogaining results for a patrol of two or more competitors.
+Rogaining results for a team, where each team member collects points individually
+Rogaining, individual
+Rogaining points
+Punch, rogaining
+Rogaining results - %s
+Heading
+Scroll up and down automatically
+Competitor
+Runner check time
+Runner's card, matched control ids (-1 for unmatched punches)
+Runner's card, punch codes
+Runner's card, punch times
+Runner's course
+Runner's method output numbers
+Runner's method output times
+Runner's split times
+Runner's total running time to control
+Runner/team earlier stage places
+Runner/team earlier stage points
+Runner/team earlier stage running times
+Runner/team earlier stage statuses
+Runner/team fee
+Runner/team finish time
+Runner/team input place
+Runner/team input points
+Runner/team input running time
+Runner/team input status
+Runner/team place
+Runner/team rogaining overtime
+Runner/team rogaining points
+Runner/team rogaining points adjustment
+Runner/team running time
+Runner/team start time
+Runner/team status
+Runner/team time adjustment
+Runner/team total place
+Runner/team total running time
+Runner/team total status
+Competitor's age
+Competitor's bib
+Birth date
+Competitor's year of birth
+Card number
+Card voltage
+Time for check punch
+Position on course within class
+Time behind on course within class
+Competitor's club
+Complete name
+Competitor's course
+Competitor's place on course
+Competitor data A
+Competitor data B
+Competitor's entry date
+Competitor's entry time
+Competitors expected fee
+Last name
+Competitor's fee
+Competitor's finish time
+Competitor's team's or individual place
+Competitor's team's or individual time behind
+Competitor's team's or individual time / status
+First name
+Competitor (classes together)
+Competitor's time before adjustment
+Competitor's external ID
+Competitor (specific leg)
+Competitor's grouped leg number
+Competitor's exact leg number
+First competitor in team to finish leg
+Competitor's name
+Competitor's nationality
+Paid amount
+Payment method
+Competitor's phone number
+Competitor's place
+Competitor's place difference
+Competitor's point adjustment
+Ranking
+Rental card
+Competitor's overtime (rogaining)
+Rogaining points
+Rogaining points before reduction
+Competitor's total points
+Competitor's point reduction
+Competitor's sex
+Stage number (for result of previous stage)
+Competitor's place (on stage)
+Competitor's points (on stage)
+Competitor's status (on stage)
+Competitor's time (on stage)
+Competitor's time or status (on stage)
+Competitor's start time
+Competitor's start time (if individual)
+Competitor's start number
+Competitor's relative start time (zero time)
+Competitor's time behind at selected control
+Competitor's time / status at selected control
+Competitor text
+Competitor's time
+Competitor's time adjustment
+Competitor's time behind
+Competitor's time behind difference
+Competitor's lost time
+Speed min/km (tempo)
+Time when Competitor's place is set
+Competitor's time / status
+Competitor's total place
+Competitor's total time
+Competitor's total time behind
+Competitor's total time / status
+Uppsala möte, master points
+Running time for each team member
+SI X was read out. The card belongs to Y, who has no class
+SI X was read out. The card is not bound to any runner (in forest)
+SI X is already read out. Use interactive readout to read it again.
+SI X is already read out. Read it again?
+SI on
+SI duplicates: %d
+SOFT fee
+Swedish legacy draw method
+SRR Dongle
+Missing Start Time
+Missing team between X and Y
+Collected points
+Same
+Same base competition
+Summary, updated data entities
+The merge will work if the same set of courses and controls are used
+Merge complete
+Summary
+Summary, economy
+Summary, classes
+All competitors were assigned a result
+Save
+Save changes
+Save changes in rule code?
+Seeded start groups
+Seeding groups
+Seeding source
+Secondary type
+Secondary
+The size of the selection and of the clipboard does not match. Paste anyway?
+Semicolon separated (csv)
+Late fee
+Late red. fee
+Last seen: X at Y
+Server
+Server running on port X
+Server version: X
+Server: [X] Y
+Several MeOS Clients in a network
+Several races for a runner
+Several stages
+Short
+Shortest time in class
+Show Forking
+Page
+Page break
+Page break between classes / clubs
+Pages per screen
+Simulate readout
+Simulating start time assignments for X competitors
+Simulation
+Last
+Payment due
+Last normal entry date
+Latest start (assigned now)
+Last start (now assigned): X
+Last start time
+Last leg
+Do you want to remove X from the competition?
+Scale factor
+Create
+Appoint Anonymous Team Members
+Create a class for each course
+Create a new competition with data from Eventor
+Create a new, empty, competition
+Create Invoices
+Create General List
+Create List
+Create new class
+Create Competition
+Created by
+Created a course for the class %s with %d controls in card %d.
+Created a local copy of the competition
+Created local backup (X) before merge
+Create new stage
+Creating new competition
+Created missing class
+Creating Competition
+Taxable fee
+Send and receive fast advance information on control punches and results
+Send to the web
+Skip drawing start order
+Script
+Script to run after export
+Only print modified pages
+Type the first letters of the club's name and press down arrow to find the club.
+Write the first start time as HH:MM:SS
+Print
+Print all
+Print all missing e-mail
+Print all not yet accepted 
+Print or export the list automatically
+Print the invoice
+Print the list
+Print now
+Print the report
+Print Start Certificate
+Print start certificate for competitor
+Print Splits
+Print the table
+Print the table (X)
+Overwrite existing card number?
+Printer
+Printer Settings
+Printer settings
+Printer settings for split times and start certificates
+Writing file when competition data is changed
+Printing in
+End
+Final Results
+Final time
+Merge
+Merge with X
+Merge class: X
+Merge class with X (keep this class)
+Merge Classes
+Merge Club
+Merge with
+Merge with existing list
+Append text (share column)
+Merge with previous
+Merge competitions
+Small text
+Small, italic text
+Quick Settings
+Family name
+Name
+Sort decreasing
+Sort increasing
+Sorting
+Sorting: %s, number of rows: %d
+Source code
+Save
+Save Entries
+Save this list as a favorite list
+Save file
+Save windows and settings on this computer
+Save web document
+Save in This Competition
+Save times and settings for each class so that you can continue working later
+Save settings
+Save Team Line-Ups
+Save unpaired card
+Save to disk
+Save as
+Save as PDF
+Save as File
+Save start times
+Save splits to file for automatic synchronization with WinSplits
+Save time
+Saved services
+Stored Lists
+Announcer
+Announcer's Module
+Play a sound to indicate the result of the card readout.
+SportIdent
+Language
+Voltage
+City
+Relay
+Relay (Summary)
+Relay - Summary
+Relay - Leg
+Relay - Total
+Relay classes
+Relay Results
+Relay results, legs
+Relay results, team
+Relay results, leg
+Relay results, leg (LARGE)
+Standard
+Start
+Start no.
+Start on signal
+Start time for each team member
+Start: X
+Start time, name
+Start time, class
+Common start time, class
+Class start time range 
+Start
+Start the Service
+Start a guide that helps you setup classes
+Start now
+Started services
+Starting
+Starting SI on
+Start Certificate
+Start Certificate X
+Start block
+Start block: %d
+Start unit
+Starting group
+Starting group with ID X defined for Y does not exist
+Starting groups
+Start groups X and Y are overlapping
+Start Interval
+Start interval (min)
+Start interval (minutes)
+A start interval may not be shorter than the base interval
+Start list
+Start list %%s - Leg %d
+Start list - %s
+Start list - X
+Start list for the race
+Start List Race X - Y
+Start list, by course
+Start list, individual
+Start list, team
+Start list, patrol
+Start list, relay (team)
+Start list, relay (leg)
+Start lists
+Start method
+Start name
+Start number
+Start punch disallowed (X)
+Start time
+Start time (HH:MM:SS)
+Start time: X
+The start time is locked
+The start time is defined through the class or through a start punch
+The start time is already assigned
+Start time is not available
+Start type
+Status
+Status S
+Status OK
+Status as computed by your status method
+Status calculation for runner
+Status calculation for team
+Status code for a missing punch
+Status code for a time over the maximum
+Status code for a valid result
+Status code for an unknown result
+Status code for canceled entry
+Status code for disqualification
+Status code for no timing
+Status code for not competing
+Status code for not finishing
+Status code for not starting
+Status code for running out-of-competition (OOC)
+Status for each team member
+Status input
+Status not OK (red exit)
+The status does not match data in punching card.
+The status does not match runner status.
+Climb
+Stop the service
+Second stop date
+Large
+Leg
+Leg %d
+Leg X
+Text
+Canceled
+Canceled, fee refunded
+Canceled, no refund
+Structured export format
+Structured web document (html)
+Leg
+Leg %d
+Leg X
+Leg to draw
+Courses of the leg
+Split Times
+Split Times (WinSplits)
+Split Times / WinSplits
+Times in columns (for standard paper)
+Splits/WinSplits
+File name
+Split time list
+Print Splits
+Print splits automatically
+Leg assignment, relay
+Leg type
+Control code
+Punch code(s)
+Punching codes
+Punch to choose a start time
+Punching in
+Punch
+Punches
+Missing punches: X
+Control punch service
+Punch interval (MM:SS)
+Punch interval within rogaining patrol
+Punching Test
+Punch Test [!]
+Punching time
+Close
+Close Competition
+Larger
+Largest
+Largest group with same course opening has X starters
+Greatest interval in class
+Secondary counter
+Tertiary counter
+Sum
+Support specified relay leg
+Support time from control
+Support time to control
+Symbols
+Synchronize with Eventor
+Backup / Save as
+Backing up in
+Interval Backup
+Set Status <DNS> for Runners without Registration
+Unpair
+Set time
+Applying rope time (X) and restart time (Y) for
+Search
+Search (X)
+Find Competitor
+Automatic Search and Start
+Search for a name, card or start number
+Search for symbol
+Searching for SportIdent units 
+TCP: Port %d, Zero time: %s
+Bad(
+Remove
+Remove / Merge
+Remove canceled entries, if any
+Remove list entry
+Remove Selected
+Remove Punch
+Remove selected rows from the table (X)
+Table
+Table tools
+Table Mode
+Removing X
+Team
+Team Rogaining
+Team Rogaining Split Print
+Team's bib
+Team's club
+Course name for team/leg
+Course number for team/leg
+Team data A
+Team data B
+Team's fee
+Team (classes together)
+Team's time before adjustment
+Name of leg
+Team's time behind on leg
+Team's time / status on leg
+Team name
+Team's place after leg
+Team's place difference (this stages)
+Team's point adjustment
+Team's overtime (rogaining)
+Team's rogaining points
+Team's total points
+Team's point reduction
+Name of team member
+Card number of team member
+Team's start time
+Team's start time (if individual)
+Team's start number
+Team's relative start time (zero time)
+Team status
+Team text
+Team's time
+Team's time adjustment
+Team's time behind
+Team's time / status
+Team's summed place (all stages)
+Team's summed time (all stages)
+Team's summed time behind (all stages)
+Team's summed time behind difference (this stage)
+Team's summed time or status (all stages)
+Teams and forking
+Phone
+Test
+Test Result Module
+Test punching
+Test
+Test the voice
+Test the server
+Testing
+Text
+Text: X
+The text must include the symbol X, which is replaced by competition specific data
+Text files
+Text color
+Text adjustment
+Text size
+The forking is fair
+The forking is not fair
+There is no result module with X as identifier
+Time
+Time S
+Time behind: X
+Time behind: X; gained Y
+Time behind: X; lost Y
+Time in
+Time: X, current place Y/Z
+Time has passed last allowed start time
+Time
+Reduction
+Point reduction: X points
+Time loss (control/time)
+Time limit
+Time limit X
+Manual Times
+Time interval (MM:SS)
+Time interval (seconds)
+Time adjustment
+Time qualification
+Time line – X
+Time scaling
+Time punishment
+Time Zone
+For example X
+To Main Page
+To control
+To last
+To what classes
+Added: X
+Assign
+Assign Fees
+Assign fee only to competitors without fee
+Assign rental cards
+Assign bibs to vacancies
+Assign bibs
+Assign new invoice numbers to all clubs?
+Assign start times
+Assigned
+Assign Rental Cards
+Available services
+Settings was installed. Please restart MeOS.
+Available lists
+Filled vacancy
+Appoint 
+Appoint Anonymous Team Members
+Fill Vacancy
+Fill Another Vacancy
+Start pairwise
+Allow
+Allow Entry
+Allow removal of competitors (etc) that were deleted in the imported version.
+Allow decimals
+Allow competitors from the same club and class on next start time
+Allow quick entry
+Allow forking modification
+Allow class with same course on same start time
+Allow class with same course before and after
+Allow class with same first control at the same time
+Allow competitors within a parallel group to run the courses of the group in any order
+Allow new class and keep results from other class
+Allow new class but without total result
+Allow same course within base interval (interlace classes)
+Allow currency expressions with decimals
+Time behind leg winner
+Time as computed by your time method
+Time calculation for runner
+Time calculation for team
+Time: X
+Timekeeping
+Name of start point
+Name of finish point 
+Hint: Enter the correct times before adding more groups.
+Service Requests (IOF XML)
+Services (IOF XML)
+White as transparent
+Interpretation of punches of unknown type
+Leaderboard, N best
+Total
+Total competition fee
+Total/team result at a control
+Primary counter
+Total running distance
+Total running time
+Total result
+Total Results - X
+Total
+Total number of stages
+Number of unique ticked off cards: X
+To invoice
+Total cash
+Total time
+Track runners in forest
+Bad
+Training
+Two-runner relay
+Type
+Split type
+Type of export
+Type of list
+Typeface  
+Competition
+Competition from Eventor
+Competition with Teams
+There are no results yet
+The competition must take place between X and Y
+The competition must be named
+Competition ID number
+Competition name
+The competition's name: X
+Competition data was saved
+Competition Settings
+Competition settings (IOF, xml)
+Competition name
+Competition Report
+Competition Rules
+Competition Statistics
+Clear
+Clear Database
+URL
+URL missing
+Ultra Long
+Sub Filter
+Data for competition fee
+No data for control mistakes
+Sub list
+Subheading
+Lower date limit
+Lower limit (years)
+Lower Age
+Unexpected entry fees
+Unfair control legs
+Young people, up to X years
+Youth
+Elder and younger people can have a reduced fee
+Youth fee
+Youth classes
+Unknown symbol X
+Unroll split times for loop courses
+Update
+Update All Clubs
+Update table
+Refresh all values of the table (X)
+Update from Eventor
+Update Distribution
+Update the distribution of start times taking manual changes into account
+Do not update start time with start punch time
+Update Clubs && Runners
+Update clubs and runners using the runner database.
+Update clubs using the runner database.
+Update the club using the runner database.
+Update Runner Database
+Modified: X
+Original time: X
+Filter
+Filter %c%s
+Use in X
+Use initials in names
+User defined input parameter
+No settings
+No timing
+Exchange competition data with Eventor
+Perform the Drawing
+Done
+DNF
+DNF
+Hired cards that are not ticked off
+Hired Cards: X, Owned Cards: Y, Hired and Ticked Off: Z
+OOC
+Size: X
+Appearance
+Print
+Print / export
+Printing interval (MM:SS)
+Extended protocol
+OneOf(
+Vacancies and entry cancelations
+Vacancy ranking
+Vacancies
+Vacancies - X
+Late Changes
+Vacancies and Late Entries
+Vacancies not supported in relays
+Vacancy placement
+Vacant
+Choose export
+Optional
+Chosen card
+Optional
+Currency
+Currency code
+Currency symbol
+Currency symbol in front
+Variables
+Warning: The course 'X' does not exist
+Warning: The course 'X' is specified more than once
+Warning: The card X is already used by Y
+Warning: The competitor 'X' does not exist
+Warning: The assignments for the following competitors is unclear
+Warning: No organizer given (See Competition Settings)
+Warning: No account given (See Competition Settings)
+Warning: payment due not given (See Competition Settings)
+Warning: Out of maps
+Warning: Could not find the previous version of the competition (X)
+Warning: The team 'X' does not exist
+Warning: Different base competitions
+Warning: cannot generate invoice for this fee
+Warning: A competitor without name was found. MeOS requires a name, and has assigned the name 'N.N.'
+Warning: A team without name was found. MeOS requires a name and has assigned the name 'N.N.'
+Warning: Changes in X was overwritten
+Warnings for X
+Common control
+Count laps
+Count laps with extra time
+Who may enter
+Apply
+Tools
+Version X
+Vertical
+We Support MeOS
+Important events
+Do you want to use the new card for all stages?
+Do you want to put X in the team?
+Do you want X and Y to swap legs?
+Do you want X to run the leg instead of Y?
+Do you want to dump the current competition and create a test competition?
+Do you want to move runners from X to Y and remove Z?
+Do you want to reset and start all over again?
+Do you want to paste X new rows into the table?
+Would you like to disconnect X from the read-out card Y?
+Do you wish to add the course 'X' (Y)?
+Do you wish to add the competitor 'X'?
+Do you wish to add the class 'X'?
+Do you wish to add the team 'X'?
+Do you wish to clear all manually assigned courses?
+Do you want to delete X rows from the table?
+Do you want to remove all vacancies from the competition?
+Do you want to create a new class?
+Do you want to save changes?
+Do you want to start the service?
+Do you want to apply rental card data on existing runners?
+Do you want to change the result for earlier stages to <NPT> (Not taking part)?
+Do you want to remove 'X'?
+Do you wish to remove all clubs from the competition? No competitor will have a club.
+Do you want to remove the card from the rental card list?
+Do you want to remove the scheme?
+Do you want to clear the rental card list?
+Do you want to update all bibs?
+Do you really want to clear start times in X?
+Do you really want to erase start times from X classes?
+Do you wish to remove the competition?
+Do you wish to close MeOS?
+Do you with to remove the team?
+Do you wish to remove the runner?
+Show
+Show All
+Show advanced settings
+Show a detailed report for a specific competitor
+Show a table with punches
+Show club database
+Show the list in full screen
+Show runner database
+Show split times
+Show and manage runner database
+Show title
+Show heading between lists
+Show rolling times between controls in full screen mode
+Show last read out competitor
+Show start list
+Show available backups 
+Show Selected Competitors
+Showing top X
+Display mode
+View settings for 'X'
+Show time
+Some settings require a restart of MeOS to have effect
+Visualize Start Field
+Adult
+Adult classes
+Adults
+Click <Save> to store the cards. Interactive readout is not activated
+Click <Save> to store the cards. Interactive readout is activated
+Select X
+Select All
+Select all classes
+Select All
+Automatic Selection
+Select image
+Select existing image
+Select competitor for preview
+Select the stage preceding this stage
+Select the stage following this stage
+Choose a vacant position below
+Select stage to import
+Choose start time
+Detailed Selection
+Select None
+Select None
+Select class
+Choose class and start time below
+Choose classes
+Select classes where no runner has a start time
+Select classes where some runner misses start time
+Specify classes where new entries are allowed
+Choose Columns
+Choose columns to show
+Choose columns for the table X
+Select list
+Select race
+Choose runner
+Select runners to prioritize
+Set runner for leg X
+Choose printer
+Choose start time for X
+Select ID types to export
+Choose competition
+Select which MeOS features you need for this competition 
+Select Classes and Controls you want to watch
+Select which classes and controls to watch
+Choose columns to show
+Select which time to set
+Select type of ID to import
+Choose view
+Welcome to MeOS
+Please pay at latest
+Please return your hired card
+Left
+Changeover
+Changeover
+Web Document
+Web document
+Web document (html)
+The web (html)
+Without courses
+X (Has no e-mail)
+X (Y competitors, group Z, W)
+X (press <Ctrl>+<Space> to confirm)
+X entries
+X best
+X best unqualified
+X qualifies, class by ranking
+X has a time (Y) that is incompatible with this change
+X already has card number Y. Do you want to change it?
+X already has a result. Do you wish to continue?
+X started
+X controls
+X qualified
+X m
+X meters
+X by Y
+X p
+X places. Starts Y
+X points missing
+X row(s) could not be deleted
+X latest
+X punches
+X is not a valid index
+X is not a valid leg number
+X: Start time for Y at Z
+X: Y. Press <Enter> to save
+X:th
+Year of birth
+Youth Cup X 
+Zoom in (Ctrl + '+')
+Zoom out (Ctrl + '-')
+[Watch]
+[Remove]
+[Move down]
+[From class]
+[Delete]
+[Updated entry]
+[VARNING] none/unknown
+[Reset]
+second
+No card has been read out for this runner. Would you like to add punches manually?
+The entry fee was modified in some classes. Do you want to apply the new fees to existing runners in these classes?
+
+Warning: Manually assigned fees will be overwritten.
+The entry fees are modified. Do you want to apply the new fees on existing runners and classes?
+
+Warning: Manually assigned fees will be overwritten.
+Do you want to clear the runner and club databases?
+Some classes contain requests for a common start time for some competitors. Do you wish to convert these classes to patrol classes?
+There exist runners with result for this course. If you use the first control as start, the start times will be overwritten.
+
+Do you wish to continue?
+There are still vacancies.
+
+Do you wish to remove all vacancies before exporting results?
+A competition (X) with the same origin already exist. You can import the competition as a version of that competition or as a new independent copy. If it is the same event with modifications, it is best to import it as a version.
+
+Would you like to import it as a version?
+When you start a result kiosk, you put MeOS in a mode where it is only possible to show result reports. No other operations are permitted until the program is restarted. If there is an active SI device connected to the computer, MeOS will automatically show results for the last read card.
+
+You should consider protecting the database with a password, if you publicly expose a result kiosk.
+
+Do you wish to start a result kiosk?
+Do you wish to restore previously saved windows on this computer?
+Some classes (X) have no course.
+
+MeOS use the courses when drawing to avoid that runners with the same first controls start at the same time.
+
+Do you wish to proceed anyway?
+Out of maps. Do you want to add this competitor anyway?
+The competition is already on server. Do you want to overwrite the competition on the server?
+You have chosen to overwrite the competition. Make sure no one else is connected.
+
+Do you wish to proceed?
+X already has a result. Do you want to overwrite it?
+Results are lost if you remove the scheme. Do you wish to continue?
+Repair the database only if you experience problems.
+
+Important:
+- Make sure no one else is connected to the database.
+- If the server crashes or goes down while repairing, you must restart it and retry the repair before doing anything else. If you make any other operation with the database all data will be lost.
+
+Do you wish to try a repair operation now?
+Do you wish to save current class and window settings on this computer?
+Carry out a simulation with the settings you have made (classes, starting depth, distance, rules) and with the registered participants who are in the classes. The competition is not affected. The result shows whether it is reasonable that everyone has time to start within the set start depth and how long extra waiting time to start may be required in different classes.
+
+Afterwards, you can also save a copy of the competition with simulated start times to study e.g. minute start list.
+
+Do you want to run the simulation?
+If you start a start time reservation kiosk, MeOS enters a state where no other operations are supported or settings can be changed. You need a connected and activated SI unit.
+
+You should consider password protecting the database if you are exposing a kiosk.
+
+Do you want to start the kiosk mode?
+Lengths of individual course legs may require an update after this change.
+
+Do you wish fix that now?
+Do you wish to keep all currently assigned start times, if possible? Answer no to move the competition in time.
+The course is not used by any other competitor in this class.
+
+Would you like to use it anyway?
+backup
+blue channel
+c/o
+a check (X)
+Results class and course-wise
+shares place with X
+meos_doc_eng.html
+Manage
+Remaining Runners
+not active
+eleventh
+eleventh
+The selected method gave no distribution. Source data is insufficient.
+a Much Easier Orienteering System
+If you use MeOS for orienteering in Sweden, we recommend that you use MeOS's Eventor connection.
+X
+
+Do you wish to use the Eventor connection?
+false
+fifth
+fifth
+fourth
+free to use and you are welcome to redistribute it under certain conditions
+fourth
+finishes as X with time Y
+finishes as X, behind Y, with time Z
+finishes in a shared X place, with time Y
+takes a shared lead with the time X
+shares the lead at X, time Y
+hand shaking
+has started
+A service in MeOS is a small program that automatically does something every now and then or when the competition data is changed.
+Select a class to merge with this class. If start times are drawn you might want to draw again, since the runners keep their start times.
+The competition is created by another version of MeOS and cannot be opened from a server. You can however import the competition from file.
+This operation removes the club you have chosen (%s, id=%d) and moves all runners of that club to the new club you choose below. The operation cannot be undone.
+Add controls by adding a sequence of control numbers (control id numbers). You need not specify the finish. Example: 31, 50, 36, 50, 37, 100.
+The TCP port is used for receiving punches over TCP from other systems. Specify the port used. The zero time of the protocol is 00:00:00.
+A list with read card is shown. To tie a runner to another card, double click the card or runner you wish to move.
+You can extend MeOS knowledge of runners, clubs and classes by searching databases in MeOS format or the IOF (xml) format.
+
+Do you wish to proceed?
+Input control number, runner (start number or card number) and clock time (HH:MM:SS). You may leave the time field blank; then the computer clock is used. Press <Enter> to save.
+You can export settings, club and runner databases to a specified folder. These settings and databases can be imported to another computer.
+If you make a mistake, click the runners name to change the entry. Use the page runners to remove entries. To see a class in the list below, it must be marked for quick entry on the page classes.
+Here you define your courses. A course is then tied to one or more classes (or runners). It is also possible to import courses from OCAD, Condes, or other course software. If you specify the number of maps, MeOS will keep track of available maps in the quick entry form.
+A course pool is used for defining a pool of courses for a leg. The course is tied to the runner on finish by control matching. Define courses in the pool by adding them under Several Courses / Relay. An [S] after the class means that all its competitors have a start time.
+You can install settings, clubs and runner database from a specified source folder. Your local settings are overwritten. MeOS might be restarted after the installation.
+
+The button <Export> takes you to a page where instead you can export your current settings.
+Here you manage clubs and print invoices. You can assign competition fees based on class type and entry date. Duplicated (misspelled) clubs can be merged with the corresponding correct club. You can also update club addresses from the registry.
+You can create many different sorts of lists and reports. These can be shown on screen, printed, or saved in web format. The list is automatically updated when competition data is changed. Automatic result printing is done on the page Services. To export competition data, for example split times, go to the page Competition.
+A restart is defined by a rope time and a restart time. At the rope time, the changeover is closed and no competitors are let out into the forest. The remaining runners start at the rope time. It is possible to specify different times for individual legs, but by using this function you can quickly handle whole classes.
+Import entries in free text format. Specify name, club, class, and card number (possibly also start time), preferably separated by comma, one person (team) per row. It is also possible to specify many competitors in the same club / class by partly leaving out these fields. It is also possible to import data formatted in other ways.
+Select a punch from the list to change or remove it. You can add missing punches from the course template. If the finish time is missing, the runner gets status <Did Not Finish>. If a punch is missing, the status is <Missing Punch>. It is not possible to assign a status incompatible with the punches. If there is a finish punch, you must modify it to set a manual finish time. The same principle applies for the start punch.
+Enter a first start time and start interval. Draw random gives an unconditionally random start order. Swedish draw method uses special rules to distribute runners from the same club. Clumped start means the whole class starts in small groups during the specified interval (extended mass start).  In the field leg, you can specify which leg is to be drawn, if the class has several.
+You can handle runners that didn't start automatically by reading out SI stations (clear/check/start/controls) in SportIdent Config+. Save the readout as a semi colon separated text file and import this file into MeOS. Runners in this import get a registration. Then you can give DNS status to all runners without registration. If you later import more runners, you can reset the status (from DNS to Unknown) on the runners now imported.
+You are now connected to a server. To open a competition on the server, select it in the list and click open. Do add a competition to the server, open the competition locally and select upload. When you have opened a competition on the server, you will see all other connected MeOS clients.
+Connect to a server below.
+
+Installation
+Download and install MySQL (Community Edition) from www.mysql.com. You can use default settings. It is only necessary to install MySQL on the computer acting server. When MySQL is installed, start MySQL Command Line Client and create a user account for MeOS. You write like this:
+
+> CREATE USER meos;
+GRANT ALL ON *.* TO meos;
+
+You have now created a user meos with no password. Enter the name of the server below (you may have to configure firewalls to let through the traffic).
+
+As an alternative you can use the built-in root account of MySQL. User name is 'root' and password is the one you provided when installing MySQL.
+Found no SI unit. Are they connected and started?
+In this form, you can quickly make basic settings for many classes in one step.
+
+Start is the name of the start as it is printed in the start list.
+
+Block is a number between 0 and 100 which can provide an even finer distribution of runners. Classes in the same block will be printed on the same minute start list. 
+
+Index is a sorting key. The classes are sorted by this key in all lists.
+
+The course can be specified for classes which have exactly one course; if there are several possible courses you need to use the standard class form.
+
+Quick entry determines if the class supports quick entry mode, i.e., is a possible choice in the quick entry class list.
+The class fees, which shows if you have activated Economy features, are used for new entries. If you change a fee, MeOS will ask if you wish to apply the change to existing competitors.
+
+For bibs you have the options None, Consecutive and Manual. You can also type the first bib in the class, for example A100, or 50. Consecutive means that the last number of the preceding class is used to define the first number in this class. Reserved bib numbers give a gap (of the specified width) in the numbering between classes.
+
+MeOS updates bibs when you draw start times or change the settings. Manual means that MeOS will never automatically update bibs.
+
+For classes with teams the setting Team member controls the relation between the team number and the bibs. It can be the same, increasing (100, 101, 102), leg dependent (100-1, 100-2, etc.) or completely independent.
+The number of runners in a team is specified on the page Classes.
+Interval (seconds). Leave the field blank to update when the competition is changed.
+For every control, you specify one or more code number (SI codes). In a course, you refer to the control by its ID number. Usually, you do not need to add controls manually, since MeOS automatically adds all controls needed.
+
+More than one SI code is useful for replacing malfunctioning controls or to create simple forks. For an ordinary control, it is required that the runner visit on of the specified controls. If the control status is <Multiple>, all specified controls must be visited (in any order). If the status is <Bad>, the control is ignored.
+
+The status <Lost> works like <Bad>, but in addition the running time to the next control is ignored; it does not matter for the final time how much time was spent looking for the lost control.
+
+If you specify a control name, it is possible to print result lists with intermediate times at named controls.
+
+Time adjustment can be used if it turns out that a control has wrong time. Time format is +/-MM:SS or +/-HH:MM:SS.
+
+Shortest leg time defines the shortest possible time on that leg. No runner will get a shorter time to this control, no matter how fast he/she is. This can be used, for example, if a dangerous road must be crossed.
+
+Status <No timing> means that the time to the control is ignored; the total time will be the same no matter what the actual time to this control is.
+Provide one or more control numbers (SI codes) used by this control.
+Example: 31, 250.
+Received no answer. Do you want to open the port in passive mode; should MeOS listen to incoming punches?
+- If there is no course, the status is set to OK on finish punch.
+
+- If there is a course, radio punches are used as controls. No card readout is necessary.
+MeOS will not update assignment to a locked class even if qualification results are altered.
+This function allows you to print out card data without using any competition, much like a standalone printing unit. Select Print Splits to select and configure the printer.
+
+The cards are also saved in memory (but not in the competition). You can edit name and club for a card by clicking the name (Or 'Unknown'). You can also save the cards to file (Save) or create a new competition from card data. Note that if a competition is currently open, you must close it to make this option available.
+Create and appoint (temporary) team members for all teams, to whom you can assign SI Card, Course etc.
+MeOS will take care of entry fees for you automatically in many cases. The competitors are assigned fees based on age and entry date (you define the limits under Competition Settings). Every class defines its fees. You provide default values for different class types under Competition Settings, but you can also manually change class settings using Quick Settings for the class.
+
+This page lets you manually use different ages and time limits for different fees. On the page competitor, you can manually adjust the fee for individual competitors, if needed.
+This function computes an optimal forking pattern from selected courses. Assign one or more courses to the legs by selecting courses and legs from the lists above. All courses can have the same set of courses (equal forking) or it i possible to use different set of courses for different legs. Also in this case, MeOS will fork these courses against each other, if the courses allow it.
+Transmission speed/Baud rate: use 4800 or 38400.
+You can handle bibs automatically or manually. Here you can assign bibs manually for a certain class by specifying the method Manual and provide the first number in the class.
+
+The method automatic works in the same way, with the difference that MeOS will update the bibs of all classes at once. Although it is possible to make this setting here, it is better to use the Quick settings for classes to get an overview over all classes.
+
+Use the method Automatic together with the methods None or Consecutive, which means that the last number in the preceding class is used as first number. The number of reserved bibs specifies the jump made in the numbering between classes.
+
+For team classes you can specify how the competitors´ bibs relate to the team´s bib. It can be the Same, Independent, Increasing (Team 1: 101, 102, 103, 104, Team 2: 111, 112, 113, 114 etc) or Leg (100-1, 100-2, 100-3 etc).
+Use this function to count and tick off hired cards to check that they all have been returned. Attach a SI unit (preferably programmed as a control or finish, since that is faster than card read out), and punch all returned cards. Push the Report button to see if any card is missing.
+
+ The check is done locally at this computer, and does not modify the competition.
+An incoming punch is matched against a start number and plays the file <N.wav>, where N is the start number. The files are located in the folder below. If the runner/team belongs has nationality NAT, MeOS first tries to play the file <NAT/N.wav>, which should contain the number in an appropriate language version.
+You can insert custom specific data by typing [Symbol Name]. Available symbols can be seen in the list to the right.
+
+ Example: Well done [RunnerName]!
+The runner database is older than two months. Do you wish to download a new database from Eventor?
+Make a local copy of this competition.
+Type your club's Eventor (Sweden) API key. You get the key from your club's Eventor administrator.
+You can export a spreadsheet in csv format, containing classes, number of competitors, and draw settings for each class. It is then possible to edit the start data and then import it back into MeOS to draw the classes accordingly.
+You can adjust the scroll speed using Ctrl+M (increase) and Ctrl+N (decrease) on your keyboard. To escape full screen mode, press Esc.
+You can import runners, classes, clubs and entries from a number of different text and XML formats. It is not necessary to provide all files below. For example, an OE-CSV file with entries contains clubs and classes, so in that case these fields should be left empty.
+
+If the same runner is imported several times, you will not get several copies of the runner. Instead, the entry is updated. This means that it is harmless to re-import or import an extended file with entries.
+You can import courses and classes from (for example) an OCAD or Condes export.
+This method starts a timer in full screen mode (large-screen) when a competitor in a selected class punches the <From> control, and measures the time until the <To> control is reached. Otherwise, a top list with the best results is shown. Both controls need of course be online controls and if you use a network, make sure to activate <fast advance information on control punches> to get a responsive timer.
+Competition date is the date when all classes start. Zero time is at midnight.
+It is possible to merge competitions and results, provided that they are based on the same set of courses and controls. Different groups of participants can complete the competition on different occasions and then the different competitions can be merged into one competition with a common list of results. Another possibility is to have different locations for different classes. If it is not possible to set up a common network, you can periodically exchange competition files to incorporate changes.
+
+1. Prepare the whole competition.
+2. Save a copy and import it to the outsourced computers (or local area networks).
+3. To transfer changes, export the contest from the outsourced computer (or computers) and merge it with this feature. Then export a copy from the main computer and make the corresponding import on the outsourced computers. 
+4. The procedure can be repeated several times to continuously transfer the results.
+
+Note: If you make changes to (for example) the same participant in several places, some of the changes will be overwritten without warning. Make sure that each outsourced place only changes in its part of the competition.
+
+Tip: Make a transfer as soon as the outsourced competitions have started before any change has been made, to test that everything has been set up correctly.
+If you have access to the courses (for example, from OCAD or Condes) you can provide the name of the course file here. Otherwise, you may add courses later.
+The service is used to receive radio punches from the Internet, for example a radio control connected via a mobile phone. It is also possible to construct a simple web form, where you can manually enter the bib number of runners as the pass by.
+
+The service protocol also supports other types of data entry, such as team line-up, direct entries, card changes etc. If you want to develop you own services, you can find documentation and examples on MeOS web site: www.melin.nu/meos.
+The service is used to automatically send results and start lists to the Internet for immediate publication in some form. You need to make settings adapted to the remote service you want to user: the provider of the remote service can give you necessary details.
+
+If you want to develop you own services, you can find documentation and examples on MeOS web site: www.melin.nu/meos.
+You can define custom modes of payment, in addition to invoicing, to distinguish these in the bookkeeping.
+Preregister punching cards as rental cards to get automatic hired card status when the card is assigned.
+Use the guide below to choose between a number of predefined competition forms. After you apply the settings, it is possible to manually adapt the settings for each leg and setup courses.
+
+Some explanations:
+- Relay is used for different kinds of relays.
+- Two-runner relay means that two runners make a team and take turns running.
+- Co-runner relay is sometimes used in youth classes and allow for more than one runner on some legs. (The first runner changes over).
+- A patrol race can be run with one or two punching cards.
+- Prologue + pursuit is individual, but with two races.
+- Course pool means there are several course variants, but that it is not decided in advance who runs which course; it is decided automatically when the runner finishes.
+Requesting start time is something in between free and drawn start time. By requesting a start time, MeOS ensures that there is a certain distance between participants in the same class or on the same course. If you have a requested start time, it is not necessary to use a start punch.
+
+Set parameters for start depth and how many/who are allowed to start at the same time. How far it is from the place where the booking is made to the start determines what is an appropriate minimum time to start value.
+
+You can let the participants automatically get the first possible available start time after the minimum time to start, or let them choose from a number possible start times. It is possible and appropriate to print out a start certificate to take with you to the start.
+
+If you are using a live results service, the start time will probably be displayed there when booked.
+MeOS REST API lets you access competition data via a web connection. You can show result lists directly in a web browser, but you can also request competition data and results in an XML format, suitable for further processing in third party programs and apps.
+Choose a backup to restore by clicking the time when the backup was created.
+By importing a runner and club database, MeOS will automatically recognize unknown runners (by card number), and you will get addresses and phone numbers to clubs. 
+MeOS automatically saves all settings when needed.
+Seeded start time allocation means that an earlier result or ranking controls the process in part. In the field seeding groups you may either enter a single group size, meaning that the entire class is partitioned into groups of this size. The group size "1" means that the seeding order is strictly used. You can also specify several group sizes. "15, 1000" would mean a seeded group with the 15 highest ranked runners and the remaining (at most 1000) runners are placed in a non-seeded group.
+Select sounds to play. By default, MeOS built-in sounds are played.
+This service lets you simulate readout of SI cards. Times and punches are generated for all runners. Also radio control punches can be simulated.
+
+WARNING: Use for testing only. If you use this on a real event, it will be corrupted.
+Choose which classes and courses you want to watch.
+Check those runners/teams you wish to watch from start, and as long as the runner/team is doing well. Put two checks to watch even if the result is not so good. No check means monitoring only if the runner/team is doing well (not from start).
+Decide if you want to export total results, or individual results for each race. If you choose to export all races, numbered files will be created.
+Starting groups are used to control start list drawing. Competitors in a group will begin starting at the start time of the group.
+MeOS will automatically apply the chosen start method. No matter what you choose here, you can always change start method or redraw lists later.
+Here you can import team line-ups from a structured text-based format, which is easy to produce manually from a spreadsheet program. The file must have the following format:
+
+Class;Team name;[Club]
+Competitor 1;[Card No];[Club];[Course];[Competitor's class]
+Competitor 2;[Card No];[Club];[Course];[Competitor's class]
+...
+Class;Team name;[Club]
+...
+
+Fields marked with [] may be excluded. Note that referred classes and courses must exist, and that the number of legs in the class must match the number of competitor rows following the class. Empty rows can be used if there is no competitor. The option <Use competitors already in competition> means that only competitors already in the competition are moved to the team; other competitors specified are ignored.
+The runners swap position. You can make a sequence of swaps to reach the new team line-up.
+This service saves split times to an IOF (xml) file at regular intervals. If you open this file in WinSplits, the splits there will be updated live.
+Set zero time to one hour before first planned start.
+Provide a first (ordinary) start time, a least start interval (within a class) and the fraction of vacancies. You can also choose the method use when drawing and if late entries are to start in front of or after the ordinary entries. The first start time must be after the zero time of the competition.
+
+If you click <Automatic Draw>, MeOS will inspect all classes. If the class is not drawn, it will be, if there are late entries without start time in a class, these will be drawn.
+
+MeOS ensures that runners with similar courses do not start simultaneously, and space will be reserved to allow for late entries under the same conditions.
+
+If you instead click <Draw Manually> you will be able to control exactly which classes are drawn and with which parameters.
+You draw the start list in a two-step process. First you choose which classes to draw and you make some basic settings. When you press <Distribute Times> MeOS will use your settings to distribute start time slots between classes. MeOS ensures that classes with similar courses do not start at the same time, taking already drawn classes into account. A goal is an even distribution of starters.
+
+The calculated distribution is presented in a table, where you can make your own changes, or let MeOS update its distribution, taking your changes into account. When you are happy with the distribution, you let MeOS draw the selected classes.
+
+The basic settings you have to make is to provide a first allowed time to start and a smallest allowed interval. The maximal number of parallel starts determines how many runners can start at the same time. An increased value gives a shorter start depth.
+
+The fraction of vacant positions controls the number of vacant positions. If you need no vacancies, type 0%. The expected number of late entries reserves space for these in the start list with a guarantee that no runner starting on the same time will have the same course.
+Use a second raised fee for direct entry at the competition day (for example). The higher fee is applied starting from and including the specified day. The specified percentage is relative the original fee.
+HTML can be exported as a structured table or as a freely formatted document (more similar to the MeOS lists). You can also use export templates for custom formatting: columns, JavaScript base page flips, automatic scrolling, etc. It is possible to add custom templates by adding '.template' files in MeOS data folder. If you use a template there is a number of parameters to set below. The exact interpretation depends on the template.
+
+If you select <Store Settings> the list and its settings is stored permanently in the competition. You can then access the list by using MeOS as a web server (The service 'Information Server') or export the list automatically at regular intervals.
+Starting the service for instant result transfer failed. Results will be received with a few seconds delay. This is expected behavior if more than one MeOS process is started on this computer.
+You can use a custom list for the split printout. Design the list and use the function 'For Split Times' in the list editor to make changes for split printout.
+
+You can control the list to use per class by using the table mode.
+MeOS is unable to determine what function a unit has unless it is directly attached to the computer. Therefore the programmed punch code is used to determine the type. You can control the interpretation below. Numbers higher than 30 are always interpreted as controls.
+
+Be careful when using start punches; they may permanently overwrite the drawn starting time.
+To handle more than one stage you must work locally. Save a copy of the competition, open it locally and transfer results to the next stage. Then upload the next stage to the server.
+A competitor may do multiple starts with the same card. Automatic new entry for each readout.
+Cannot load the specified list.
+
+Using defaults instead.
+If you import entries and classes from different sources to the same competition, it might happen that there are clashes in the Id numbers of the classes. To separate the classes, you may enter an offset for the Class Id when working with files from a particular source; this will be added to the Id numbers.
+
+You must specify the same offset each time you import from that source.
+
+ A suitable number could be 1000 (which will work as long as every Id is less that 1000).
+Show the list one page at the time, with the specified number of columns. Automatically reload data for each round.
+X: Card no. Y was read out.
+Manual actions needed.
+X: Card no. Y was read out.
+The card has been queued.
+Activate the SI unit by selecting its COM-port, or by searching for installed SI units. Press Information to get status for the selected port.
+
+Interactive readout lets you directly handle problems, such as wrong card number. Do not use this option when runners with problems are handled separately.
+
+The runner database is used if you want to automatically add new runners. The punches are used to find (guess) the right class.
+Lock the function to prevent accidental changes.
+
+Sound selection lets you enable sound signals to be played back on reading out a card.
+
+Open Readout Window shows a new window designed to be shown on a screen turned towards the competitor, showing information about the last readout.
+
+Multiple races per competitor can be used if you are allowed do several attempts on the course. A new entry is created for each readout.
+The readout window shows information on the latest card readout.
+Since you are connected to a server, it is not possible to edit the club and runner databases manually. Make changes before uploading the competition to a server. It is also possible to replace the existing database on the server by importing a new database (from IOF XML).
+The imported file contains forking data for teams. To import this data, you must prepare the competition to match the imported file: 
+
+1. Ensure all classes are setup with the correct number of legs.
+2. Provide bib numbers in each class. Use Quick Settings on the page Classes and enter the first bib number in each class (meaning automatic bib setting). You can also import the teams first and assign bibs as usual.
+3. Import the courses. You can import this file several times if needed to update the forking.
+Select an existing course that shortens the current course. Several levels of shortening are possible.
+No competitors seem to be in the forest. Since the data behind this conclusion might be incorrect, you should verify that no runner is left in the forest by other means.
+maps
+settled
+control
+control X (Y)
+leads with X
+leads with X; has lost Y
+leads with X; ran Y faster than the others
+Show input results from previous stages.
+Create a result list for a single club.
+Use the input parameter to specify the club id.
+localhost
+race
+min/km
+finish
+the finish
+the finish (X)
+Select which MeOS feature you need for this competition. You may add or remove features at any time by selecting <MeOS Features> on the page Competition.
+ninth
+ninth
+Result list Orienteering/Shooting without Time Punishment.
+
+Activate support for Rogaining and manual point adjustments. The use the field Point reduction on the page Competitors to specify misses on the form LLSS, where LL means misses lying and SS means misses standing. Example: 0201 means 2 lying and 1 standing miss.
+Result list Orienteering/Shooting with Time Punishment.
+
+Activate support for Rogaining and manual point adjustments. The use the field Point reduction on the page Competitors to specify misses on the form PPPLLSS, where PPP is the point orienteering error in millimeters, LL misses lying and SS is misses standing. Example 30201 means 3 mm error, 2 lying and 1 standing miss.
+Failed to open X.
+
+Y.
+This competition is already open in MeOS.
+
+You have to use a database to open more than one instance of the competition.
+Default account number
+Default address
+Show advanced class settings
+Automatic backup interval (ms)
+Tie runner/card automatically
+Automatic handling of hired cards
+Default card fee
+Name of client in a network
+Code table for 8 bit text on import/export.
+Last from control
+Last to control
+Currency scale factor
+Place currency symbol in front
+Currency decimal separator
+Currency symbol
+Use runner database
+Type of database table for new competitions (MySQL)
+Last runner database update
+Default draw method
+Network port for advance punch data
+Interlace class/course when drawing start lists
+EMail
+Default elite fee
+Default entry fee
+URL to Eventor
+Default export filename
+Export start list
+Default export type
+Include race number when exporting
+Include splits in csv export
+Preferred export format
+First invoice number
+First startup
+Homepage
+Preferred import option
+Interactive card handling
+Last export target
+Factor for late entry fee
+Font used for live results
+URL to MIP server
+Local MOP folder
+URL to MOP server
+Use manual result input
+Maximum delay in announcer's view update
+Name format: 0 = 'Given Family', 1 = 'Family, Given'
+Number of cards per page
+Organizer
+Modes of payment
+Play sounds
+MySQL network port
+Rent cards by default
+Request start: Allow same club neighbour
+Request start: Last start
+Request start: Max parallel starts
+Request start: Time to start
+Request start: Make suggestions
+Request start: Same course
+Request start: Same course for neighbour
+Request start: Samma first control
+Request start: Interval
+Request start: Time between suggestions
+Upper (pensioner) age limit
+Default network server
+Default service port
+Standard function for web server root
+Sound file, action needed
+Sound file, class leader
+Sound file, status not OK
+Sound file, status OK.
+Use initials in names
+Split late fees into normal and late part for IOF XML export
+Maximum split print wait time
+Organizer street address
+Network update timeout (ms)
+MeOS text font
+Use advance punch data
+Use Eventor
+Use universal coordinated time with Eventor
+Use format HH:MM:SS instead of MMM:SS
+MySQL user name
+Percent vacant default
+Placement of vacancies
+Print splits in wide format
+Low age limit
+Reduced fee
+Address x-coordinate
+Address y-coordinate
+Limit shown results per class
+Show intermediate times
+Add page breaks
+Show page headers
+Perform split time analysis
+Export results
+radio X
+red channel
+reused card
+missing
+see license.txt which is delivered with the software
+second
+seconds
+server backup
+sixth
+seventh
+seventh
+sixth
+send punches
+sends out X
+sort order: X, number of rows: Y
+the start (X)
+leg X
+punched at
+punches at X as Y, with time Z
+takes the lead with time X
+takes the lead at X, time Y
+tenth
+to
+tenth
+twelfth
+twelfth
+Analyze data and preview import.
+Extend MeOS knowledge of runners, clubs, and classes by analyzing competition data.
+Import entries from file.
+List of runners in forest and runners that did not start.
+Paste entries from clip board.
+Print results to put on display
+Computer voice reading forewarnings.
+- = Unknown Status (No result yet)
+OK = Valid result
+DNS = Did Not Start
+Canceled = Canceled entry (shown in start list)
+MP = Missing Punch
+DNF = Did Not Finish
+DISQ = Disqualified
+OMT = Over Maximum Time
+OOC = Out-of-competition
+NTP = Not Taking Part
+third
+third
+true
+second
+was first to the finish with time X
+was first at X with time Y
+was first to the changeover with time X
+at Control X
+is soon expected to X
+is expected to X in a minute, and can take a Y place
+is expected to X in a minute, and can take the lead
+the changeover
+changes over as X with time Y
+changes over at a X place, behind Y, with time Z
+changes over as X with time Y
+Changing the zero time for a competition with results is not recommended.
+
+Do you wish to proceed anyway?
+The field External Id is usually used to match entities with other databases (such as entry, result, or economy systems). If you make incompatible changes, various and hard-to-understand problems might arise.
+Using start times more than X hours after the zero time is not recommended, since older SI cards only has a 12-hour clock.
+
+Do you wish to proceed anyway?
+X competitors are still missing results and are therefore excluded.
+
+You should manage competitors in forest to assign status <DNS> to remaining runners.
+Performance warning: Could not disable binary logging. Uploading can be slow.
+
+X
+INFO: Program the unit with extended protocol in SportIdent Config+ to speed up card reading.
+The database is in use by a later version of MeOS. Upgrading is recommended.
+The competition is created in MeOS X. Data may be lost if you proceed.
+
+Do you wish to continue?
+Note that you will only generate a printout of the card contents.
+
+To save a result to the competition you need to select function readout/radio.
+Lengths of individual course legs may require an update after this change.
+WARNING. Problems with database connection: 'X'. The connection will automatically be restored. Continue to work normally.
+Note that using <Result on finish punch> requires that all control punches on the course have been sent as radio controls, or that MeOS is used only for timing without a course.
+
+Use result on finish punch?
+The class already has results, start times will be overwritten. Do you want to proceed?
+The class already has runners. Changing the leg distribution at this stage, may cause data loss.
+
+Do you wish to proceed?
+The class already has results. Changing the leg distribution at this stage is unusual.
+
+Do you wish to proceed?
+xml data
+Old protocol
+Elders, X years and above
+Change
+Change MeOS local system properties
+Change X
+Modify basic settings and make a new distribution
+Modify Settings
+Change Class Settings
+Change team
+Change Team Forking
+Change local settings
+Modify Leg Setup
+Modified
+Modified fee for X competitor(s)
+Age filter
+Age filter
+Age limit, low (youth)
+Age limit, high (pensioner)
+Age Limits, Fee Reduction
+Undo
+Reconnected to database, competition synchronized
+Drop Out
+Canceled
+Return
+Restore Windows
+Recreate previously saved windows and settings
+Revert
+Reset / update competitor's class
+Reset <DNS> to <Unknown>
+Reset Status <DNS> to <Unknown> for Runners with Registration
+Restore Backup
+Restore table design
+Action needed
+YYYY-MM-DD
+Increasing
+Desired start time
+Open
+Open class
+Open
+Open readout window
+Open File
+Open from This Competition
+Open Preceding
+Open preceding stage
+Open in a new window
+Open classes, youth
+Open classes, adults
+Open Next
+Open next stage
+Open Competition
+Open selected competition
+Opened competition
+Transfer entries
+Transfer new competitors in remaining classes with status <Not taking part>
+Transfer results
+Transferring results to X
+Transfer Results to the Next Stage
+Transfer
+Over time
+Upper date limit
+Upper limit (years)
+Upper age
+Other
+Remaining unqualified
+Miscellaneous 
+is X behind
+is X behind Y
+is X behind; has gained Y
+is X behind; has lost Y
+is X before Y
+is first to the finish with time X
+is first at X with time Y
+is first to the changeover with time X
+is disqualified
+is now in a X place with time Y
+is now in a shared X place with time Y
+restored
+eight
+eighth
+other
