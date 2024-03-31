@@ -788,6 +788,17 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
   int xs = gEvent->getPropertyInt("xsize", max(850, min<int>(int(rc.right)-yp, (rc.right*9)/10)));
   int ys = gEvent->getPropertyInt("ysize", max(650, min<int>(int(rc.bottom)-yp-40, (rc.bottom*8)/10)));
 
+  if ((xp + xs > rc.right)
+      || xp < rc.left
+      || yp + ys > rc.bottom
+      || yp < rc.top)
+  {
+      // out of bounds, just use default position and size
+      xp = 50;
+      yp = 20;
+      xs = max(850, min<int>(int(rc.right) - yp, (rc.right * 9) / 10));
+      ys = max(650, min<int>(int(rc.bottom) - yp - 40, (rc.bottom * 8) / 10));
+  }
   gEvent->setProperty("ypos", yp + 16);
   gEvent->setProperty("xpos", xp + 32);
   gEvent->saveProperties(settings); // For other instance starting while running
