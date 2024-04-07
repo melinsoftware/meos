@@ -78,7 +78,9 @@ private:
   void enableRunner(gdioutput &gdi, int index, bool enable);
 
   /// Show forking key in the window
-  void forkingKey(gdioutput& gdi, pTeam t);
+  static void forkingKey(gdioutput& gdi, pTeam t);
+
+  static void renderComments(const pTeam& t, gdioutput& gdi);
 
 protected:
   void clearCompetitionData();

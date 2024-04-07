@@ -54,9 +54,6 @@ TabCourse::~TabCourse(void)
 {
 }
 
-void LoadCoursePage(gdioutput &gdi);
-void LoadClassPage(gdioutput &gdi);
-
 void TabCourse::selectCourse(gdioutput &gdi, pCourse pc)
 {
   if (gdi.hasWidget("Rogaining")) {
@@ -473,6 +470,29 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         xml.closeOut();
       }
     }
+    else if (bi.id == "DeleteAll") {
+      if (!gdi.ask(L"Vill du ta bort alla banor från tävlingen?"))
+        return 0;
+      // Clear all course references
+      vector<pRunner> rr;
+      oe->getRunners(0, 0, rr);
+      for (pRunner r : rr) {
+        r->setCourseId(0);
+      }
+      vector<pClass> cc;
+      oe->getClasses(cc, true);
+      for (pClass c : cc) {
+        c->setCourse(nullptr);
+        for (int i = 0; i < c->getNumStages(); i++)
+          c->clearStageCourses(i);
+      }
+      vector<pCourse> crs;
+      oe->getCourses(crs);
+      for (pCourse c : crs) {
+        oe->removeCourse(c->getId());
+      }
+      loadPage(gdi);
+    }
     else if (bi.id=="ImportCourses") {
       setupCourseImport(gdi, CourseCB);
     }
@@ -651,7 +671,7 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       refreshCourse(gdi.getText("Controls"), gdi);
     }
     else if (bi.id=="Cancel"){
-      LoadPage("Banor");
+      loadPage(gdi);
     }
   }
   else if (type==GUI_LISTBOX){
@@ -780,6 +800,8 @@ bool TabCourse::loadPage(gdioutput &gdi) {
     gdi.addButton("DrawCourse", "Lotta starttider..", CourseCB);
     gdi.disableInput("DrawCourse");
   }
+  gdi.addButton("DeleteAll", "Radera alla...", CourseCB);
+
   gdi.newColumn();
   gdi.fillDown();
 

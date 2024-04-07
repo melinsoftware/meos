@@ -27,6 +27,7 @@
 
 class Table;
 struct AutoCompleteRecord;
+class RankScoreFormatter;
 
 class TabRunner :
   public TabBase, AutoCompleteHandler
@@ -87,9 +88,11 @@ private:
   bool savePunchTime(pRunner r, gdioutput &gdi);
 
   PrinterObject splitPrinter;
+  static shared_ptr<RankScoreFormatter> rankFormatter;
 
   void showRunnerReport(gdioutput &gdi);
 
+  
   static void runnerReport(oEvent &oe, gdioutput &gdi, 
                            int id, bool compactReport, 
                            int maxWidth, 
@@ -131,28 +134,30 @@ private:
     void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
     void save(gdioutput &gdi);
   };
-
-  class CommentHandler : public GuiHandler {
-    int runnerId;
-    bool isTeam = false;
-    oEvent* oe;
-    oAbstractRunner& getRunner() const;
-  public:
-    CommentHandler(oAbstractRunner& r) : oe(r.getEvent()) { 
-      runnerId = r.getId(); isTeam = r.isTeam(); 
-    }
-    void handle(gdioutput& gdi, BaseInfo& info, GuiEventType type);
-    void save(gdioutput& gdi);
-  };
-
+  
   void getAutoCompleteUnpairedCards(gdioutput &gdi, const wstring& w, vector<AutoCompleteRecord>& records);
 
 protected:
   void clearCompetitionData();
 public:
 
-  static void renderComments(gdioutput& gdi, oAbstractRunner& r);
-  static void loadComments(gdioutput& gdi, oAbstractRunner& r);
+  class CommentHandler : public GuiHandler {
+    int runnerId;
+    bool isTeam = false;
+  protected:
+    oAbstractRunner& getRunner() const;
+    oEvent* oe;
+    void doSave(gdioutput& gdi);
+  public:
+    CommentHandler(oAbstractRunner& r) : oe(r.getEvent()) {
+      runnerId = r.getId(); isTeam = r.isTeam();
+    }
+    void handle(gdioutput& gdi, BaseInfo& info, GuiEventType type);
+    virtual void save(gdioutput& gdi);
+  };
+
+  static void renderComments(gdioutput& gdi, oAbstractRunner& r, bool newColumn, bool refresh);
+  static void loadComments(gdioutput& gdi, oAbstractRunner& r, const shared_ptr<CommentHandler> &handler);
 
   static pClub extractClub(oEvent *oe, gdioutput &gdi);
 

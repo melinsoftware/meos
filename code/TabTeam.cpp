@@ -167,9 +167,11 @@ int TabTeam::searchCB(gdioutput &gdi, int type, void *data) {
   return 0;
 }
 
-
 void TabTeam::selectTeam(gdioutput &gdi, pTeam t)
 {
+  if (gdioutput* gdi_comments = getExtraWindow("comments", false); gdi_comments)
+    gdi_comments->closeWindow();
+
   if (t){
     t->synchronize();
     t->evaluate(oBase::ChangeType::Quiet);
@@ -588,7 +590,20 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       pTeam t = oe->getTeam(teamId);
       if (t && getExtraWindow("comments", true) == nullptr) {
         gdioutput* settings = createExtraWindow("comments", L"Kommentarer", gdi.scaleLength(550), gdi.scaleLength(350), true);
-        TabRunner::loadComments(*settings, *t);
+        
+        class TeamComments : public TabRunner::CommentHandler {
+        public:
+          TeamComments(oTeam& t) : CommentHandler(t) {}
+          void save(gdioutput& gdi) override {
+            doSave(gdi);
+            auto t = &getRunner();
+            oe->gdiBase().restore("SelectR");
+            TabTeam::forkingKey(oe->gdiBase(), pTeam(t));
+            oe->gdiBase().refresh();
+          }
+        };
+        
+        TabRunner::loadComments(*settings, *t, make_shared<TeamComments>(*t));
       }
     }
     else if (bi.id=="Search") {
@@ -758,8 +773,12 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.selectItemByData("ForkKey", currentKey);
 
       gdi.dropLine(0.9);
-      gdi.addButton("SaveKey", "Ändra", TeamCB);
-      gdi.refreshFast();
+      gdi.addButton("SaveKey", "Ändra", TeamCB).setDefault();
+      gdi.addButton("Cancel", "Avbryt", TeamCB).setCancel();
+      gdi.popX();
+      gdi.dropLine(1);
+      renderComments(t, gdi);
+      gdi.refresh();
     }
     else if (bi.id == "SaveKey") {
       pTeam t = oe->getTeam(teamId);
@@ -918,13 +937,15 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         gdi.addSelection("SelectR", 250, 400, TeamCB);
         gdi.addButton("SelectRunner", "OK", TeamCB).setExtra(leg);
         gdi.fillDown();
-        gdi.addButton("Cancel", "Avbryt", TeamCB);
+        gdi.addButton("Cancel", "Avbryt", TeamCB).setCancel();
         
         gdi.setItems("SelectR", otherR);
       }
       else { 
-        gdi.addButton("Cancel", "Avbryt", TeamCB);
+        gdi.addButton("Cancel", "Avbryt", TeamCB).setCancel();
       }
+      gdi.popX();
+      renderComments(t, gdi);
       gdi.refresh();
     }
     else if (bi.id=="SelectRunner") {
@@ -1238,6 +1259,9 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     if (teamId>0)
       save(gdi, true);
 
+    if (gdioutput* gdi_settings = getExtraWindow("comments", false); gdi_settings)
+      gdi_settings->closeWindow();
+
     return true;
   }
   else if (type==GUI_POSTCLEAR) {
@@ -1352,12 +1376,7 @@ void TabTeam::loadTeamMembers(gdioutput &gdi, int ClassId, int ClubId, pTeam t)
 
 void TabTeam::forkingKey(gdioutput& gdi, pTeam t) {
   pClass pc = t->getClassRef(false);
-  int cx = gdi.getCX();
-  int cy = gdi.getCY();
-  TabRunner::renderComments(gdi, *t);
-  gdi.setCX(cx);
-  gdi.setCY(cy);
-
+  
   gdi.pushX();
   gdi.setRestorePoint("SelectR");
   gdi.addString("", 0, "help:7618");
@@ -1374,6 +1393,17 @@ void TabTeam::forkingKey(gdioutput& gdi, pTeam t) {
       gdi.setRestorePoint("ChangeKey");
       gdi.addButton("ChangeKey", "Ändra lagets gaffling", TeamCB);
     }
+  }
+
+  renderComments(t, gdi);
+}
+
+void TabTeam::renderComments(const pTeam& t, gdioutput& gdi) {
+  if (t->getNumRunners() > 5)
+    TabRunner::renderComments(gdi, *t, true, false);
+  else {
+    gdi.dropLine(1); // Leave room for the below
+    TabRunner::renderComments(gdi, *t, false, false);
   }
 }
 

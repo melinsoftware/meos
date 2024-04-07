@@ -130,12 +130,12 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
     homepage = oe.getDCI().getString("Homepage");
     changed = true;
   }
-  
-  if (oe.getZeroTimeNum() != zerotime) {
-      zerotime = oe.getZeroTimeNum();
-      changed = true;
+
+  if (oe.getZeroTime() != zeroTime) {
+    zeroTime = oe.getZeroTime();
+    changed = true;
   }
-  
+
   if (changed)
     needCommit(*this);
   
@@ -457,7 +457,7 @@ void InfoCompetition::serialize(xmlbuffer &xml, bool diffOnly) const {
   prop.push_back(make_pair("date", date));
   prop.push_back(make_pair("organizer", organizer));
   prop.push_back(make_pair("homepage", homepage));
-  prop.emplace_back("zerotime", itow(zerotime));
+  prop.push_back(make_pair("zerotime", zeroTime));
   xml.write("competition", prop, name);
 }
 

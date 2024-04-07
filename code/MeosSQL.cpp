@@ -534,6 +534,16 @@ bool MeosSQL::openDB(oEvent *oe)
           upgradeTimeFormat(dbname);
         }
 
+        if (version <= 94) {
+          auto query = con->query();
+          string v = "ALTER TABLE oRunner MODIFY COLUMN Rank INT NOT NULL DEFAULT 0";
+          try {
+            query.execute(v);
+          }
+          catch (const Exception&) {
+          }
+        }
+
         if (tookLock) {
           con->query().exec("UNLOCK TABLES");
         }

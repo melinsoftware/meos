@@ -57,6 +57,8 @@
 #include "TabSI.h"
 #include "binencoder.h"
 #include "image.h"
+#include "datadefiners.h"
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -70,7 +72,7 @@
 extern Image image;
 
 //Version of database
-int oEvent::dbVersion = 94;
+int oEvent::dbVersion = 95;
 
 bool oEvent::useSubSecond() const {
   if (useSubsecondsVersion == dataRevision)
@@ -94,356 +96,6 @@ bool oEvent::useSubSecond() const {
   useSubsecondsVersion = dataRevision;
   return false;
 }
-
-class RelativeTimeFormatter : public oDataDefiner {
-  string name;
-public:
-  RelativeTimeFormatter(const char *n) : name(n) {}
-
-  const wstring &formatData(const oBase *obj) const override {
-    int t = obj->getDCI().getInt(name);
-    if (t <= 0)
-      return makeDash(L"-");
-    return obj->getEvent()->getAbsTime(t);
-  }
-  pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override {
-    int t = obj->getEvent()->getRelativeTime(input);
-    obj->getDI().setInt(name.c_str(), t);
-    output = formatData(obj);
-    return make_pair(0, false);
-  }
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return table->addColumn(description, max(minWidth, 90), false, true);
-  }
-};
-
-class AbsoluteTimeFormatter : public oDataDefiner {
-  string name;
-public:
-  AbsoluteTimeFormatter(const char *n) : name(n) {}
-
-  const wstring &formatData(const oBase *obj) const override {
-    int t = obj->getDCI().getInt(name);
-    return formatTime(t);
-  }
-  pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override {
-    int t = convertAbsoluteTimeMS(input);
-    if (t == NOTIME)
-      t = 0;
-    obj->getDI().setInt(name.c_str(), t);
-    output = formatData(obj);
-    return make_pair(0, false);
-  }
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return table->addColumn(description, max(minWidth, 90), false, true);
-  }
-};
-
-class PayMethodFormatter : public oDataDefiner {
-  mutable vector< pair<wstring, size_t> > modes;
-  mutable map<wstring, int> setCodes;
-  mutable long rev;
-public:
-  PayMethodFormatter() : rev(-1) {}
-
-  void prepare(oEvent *oe) const override {
-    oe->getPayModes(modes);
-    for (size_t i = 0; i < modes.size(); i++) {
-      setCodes[canonizeName(modes[i].first.c_str())] = modes[i].second;
-    }
-  }
-
-  const wstring &formatData(const oBase *ob) const override {
-    if (ob->getEvent()->getRevision() != rev)
-      prepare(ob->getEvent());
-    int p = ob->getDCI().getInt("Paid");
-    if (p == 0)
-      return lang.tl("Faktura");
-    else {
-      int pm = ob->getDCI().getInt("PayMode");
-      for (size_t i = 0; i < modes.size(); i++) {
-        if (modes[i].second == pm)
-          return modes[i].first;
-      }
-      return _EmptyWString;
-    }
-  }
-
-  pair<int, bool> setData(oBase *ob, const wstring &input, wstring &output, int inputId) const override {
-    auto res = setCodes.find(canonizeName(input.c_str()));
-    if (res != setCodes.end()) {
-      ob->getDI().setInt("PayMode", res->second);
-    }
-    output = formatData(ob);
-    return make_pair(0, false);
-  }
-
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return table->addColumn(description, max(minWidth, 90), true, true);
-  }
-};
-
-class StartGroupFormatter : public oDataDefiner {
-  mutable long rev = -1;
-  mutable map<int, wstring> sgmap;
-  mutable wstring out;
-
-  int static getGroup(const oBase *ob) {
-    const oRunner *r = dynamic_cast<const oRunner *>(ob);
-    int sg = 0;
-    if (r)
-      sg = r->getStartGroup(false);
-    else {
-      const oClub *c = dynamic_cast<const oClub *>(ob);
-      if (c)
-        sg = c->getStartGroup();
-    }
-    return sg;
-  }
-
-public:
-  StartGroupFormatter() {}
-
-  void prepare(oEvent *oe) const override {
-    auto &sg = oe->getStartGroups(true);
-    for (auto &g : sg) {
-      int t = g.second.firstStart;
-      sgmap[g.first] = oe->getAbsTimeHM(t);
-    }
-  }
-  
-  const wstring &formatData(const oBase *ob) const override {
-    if (ob->getEvent()->getRevision() != rev)
-      prepare(ob->getEvent());
-    int sg = getGroup(ob);
-    if (sg > 0) {
-      auto res = sgmap.find(sg);
-      if (res != sgmap.end())
-        out = itow(sg) + L" (" + res->second + L")";
-      else
-        out = itow(sg) + L" (??)";
-
-      return out;
-    }
-    else
-      return _EmptyWString;
-  }
-
-  pair<int, bool> setData(oBase *ob, const wstring &input, wstring &output, int inputId) const override {
-    int g = inputId;
-    if (inputId <= 0 && !input.empty()) {
-      vector<wstring> sIn;
-      split(input, L" ", sIn);
-      for (wstring &in : sIn) {
-        int num = _wtoi(in.c_str());
-        if (in.find_first_of(':') != input.npos) {
-          int t = ob->getEvent()->convertAbsoluteTime(input);
-          if (t > 0) {
-            for (auto &sg : ob->getEvent()->getStartGroups(false)) {
-              if (sg.second.firstStart == t) {
-                g = sg.first;
-                break;
-              }
-            }
-          }
-        }
-        else if (sgmap.count(num)) {
-          g = num;
-          break;
-        }
-      }
-    }
-    oRunner *r = dynamic_cast<oRunner *>(ob);
-    if (r) {
-      r->setStartGroup(g);
-    }
-    else {
-      oClub *c = dynamic_cast<oClub *>(ob);
-      if (c)
-        c->setStartGroup(g);
-    }
-    output = formatData(ob);
-    return make_pair(0, false);
-  }
-
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return table->addColumn(description, max(minWidth, 90), true, false);
-  }
-
-  // Return the desired cell type
-  CellType getCellType() const {
-    return CellType::cellSelection;
-  }
-
-  void fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const final {
-    if (obj->getEvent()->getRevision() != rev)
-      prepare(obj->getEvent());
-
-    int sg = getGroup(obj);
-
-    out.emplace_back(_EmptyWString, 0);
-    selected = 0;
-    for (auto &v : sgmap) {
-      out.emplace_back(v.second, v.first);
-
-      if (sg == v.first)
-        selected = sg;
-    }
-  }
-};
-
-
-class DataHider : public oDataDefiner {
-public:
-
-  const wstring &formatData(const oBase *obj) const override {
-    return _EmptyWString;
-  }
-  pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override {
-    return make_pair(0, false);
-  }
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return -1;
-  }
-};
-
-class DataBoolean : public oDataDefiner {
-  string attrib;
-public:
-  DataBoolean(const string &attrib) : attrib(attrib) {}
-
-  const wstring &formatData(const oBase *obj) const override {
-    int v = obj->getDCI().getInt(attrib);
-    return lang.tl(v ? "true[boolean]" : "false[boolean]");
-  }
-  pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override {
-    bool v = compareStringIgnoreCase(L"true", input) == 0 || _wtoi64(input.c_str())>0;
-    if (!v) {
-      const wstring &T = lang.tl("true[boolean]");
-      v = compareStringIgnoreCase(T, input) == 0;
-    }
-    obj->getDI().setInt(attrib.c_str(), v);
-    output =  formatData(obj);
-    return make_pair(0, false);
-  }
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return table->addColumn(description, max(minWidth, 90), true, true);
-  }
-};
-
-class ResultModuleFormatter : public oDataDefiner {
-public:
-  
-  const wstring &formatData(const oBase *obj) const override {
-    return obj->getDCI().getString("Result");
-  }
-  pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override {
-    string tag(input.begin(), input.end());
-    dynamic_cast<oClass &>(*obj).setResultModule(tag);
-    output = formatData(obj);
-    return make_pair(0, false);
-  }
-  int addTableColumn(Table *table, const string &description, int minWidth) const override {
-    return table->addColumn(description, max(minWidth, 90), false, true);
-  }
-};
-
-class SplitPrintListFormatter : public oDataDefiner {
-public:
-
-  const wstring& formatData(const oBase* obj) const override {
-    wstring listId = obj->getDCI().getString("SplitPrint");
-    if (listId.empty()) {
-      return lang.tl("Standard");
-    }
-    try {
-      const MetaListContainer& lc = obj->getEvent()->getListContainer();
-      EStdListType type = lc.getCodeFromUnqiueId(gdioutput::narrow(listId));
-      const MetaList& ml = lc.getList(type);
-      return ml.getListName();
-    }
-    catch (meosException&) {
-      return _EmptyWString;
-    }
-  }
-
-  void fillInput(const oBase* obj, vector<pair<wstring, size_t>>& out, size_t& selected) const {
-    oEvent* oe = obj->getEvent();
-    oe->getListContainer().getLists(out, false, false, false, true);
-    out.insert(out.begin(), make_pair(lang.tl("Standard"), -10));
-    wstring listId = obj->getDCI().getString("SplitPrint");
-    EStdListType type = oe->getListContainer().getCodeFromUnqiueId(gdioutput::narrow(listId));
-    if (type == EStdListType::EStdNone)
-      selected = -10;
-    else {
-      for (auto& t : out) {
-        if (type == oe->getListContainer().getType(t.second)) {
-          selected = t.second;
-          break;
-        }
-      }
-    }
-  }
-
-  CellType getCellType() const final {
-    return CellType::cellSelection;
-  }
-
-  pair<int, bool> setData(oBase* obj, const wstring& input, wstring& output, int inputId) const override {
-    if (inputId == -10) 
-      obj->getDI().setString("SplitPrint", L"");
-    else {
-      EStdListType type = obj->getEvent()->getListContainer().getType(inputId);
-      string id = obj->getEvent()->getListContainer().getUniqueId(type);
-      obj->getDI().setString("SplitPrint", gdioutput::widen(id));
-    }
-  
-    output = formatData(obj);
-    return make_pair(0, false);
-  }
-
-  int addTableColumn(Table* table, const string& description, int minWidth) const override {
-    oEvent* oe = table->getEvent();
-    vector<pair<wstring, size_t>> out;
-    oe->getListContainer().getLists(out, false, false, false, true);
-   
-    for (auto& t : out) {
-      minWidth = max<int>(minWidth, t.first.size() * 6);
-    }
-
-    return table->addColumn(description, max(minWidth, 90), false, true);
-  }
-};
-
-class AnnotationFormatter : public oDataDefiner {
-  mutable int numChar = 12;
-public:
-  
-  const wstring& formatData(const oBase* obj) const override {
-    const wstring &ws = obj->getDCI().getString("Annotation");
-    if (ws.empty())
-      return ws;
-    int pos = ws.find_first_of('@');
-    if (pos != wstring::npos)
-      return limitText(ws.substr(pos+1), numChar);
-    return limitText(ws, numChar);
-  }
-
-  bool canEdit() const override {
-    return false;
-  }
-
-  pair<int, bool> setData(oBase* obj, const wstring& input, wstring& output, int inputId) const override {
-    return make_pair(0, false);
-  }
-
-  int addTableColumn(Table* table, const string& description, int minWidth) const override {
-    numChar = minWidth / 5;
-    return table->addColumn(description, max(minWidth, 90), false, true);
-  }
-};
-
-
 
 oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
 {
@@ -611,7 +263,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
   oRunnerData->addVariableCurrency("Taxable", "Skattad avgift");
   oRunnerData->addVariableInt("BirthYear", oDataContainer::oISDateOrYear, "RunnerBirthDate");
   oRunnerData->addVariableString("Bib", 8, "Nummerlapp").zeroSortPadding = 5;
-  oRunnerData->addVariableInt("Rank", oDataContainer::oIS16U, "Ranking");
+  oRunnerData->addVariableInt("Rank", oDataContainer::oIS32, "Ranking", make_shared<RankScoreFormatter>());
   
   oRunnerData->addVariableDate("EntryDate", "Anm. datum");
   oRunnerData->addVariableInt("EntryTime", oDataContainer::oISTime, "Anm. tid",  make_shared<AbsoluteTimeFormatter>("EntryTime"));
@@ -3589,82 +3241,138 @@ void oEvent::generateMinuteStartlist(gdioutput &gdi) {
       gdi.addStringUT(fontMedium, bf);
     }
 
-    vector< vector< vector<pRunner> > > sb;
-    sb.reserve(Runners.size());
-    int LastStartTime=-1;
-    for (oRunnerList::iterator it=Runners.begin(); it != Runners.end(); ++it) {
-      if (it->Class && it->Class->getBlock() != blocks[k])
+    vector<vector<vector<const oRunner *>>> sb;
+    sb.reserve(Runners.size() / 5+10);
+    int lastStartTime = -1;
+    
+    for (const auto &r : Runners) {
+      if (r.isRemoved())
         continue;
-      if (it->Class && it->Class->getStart() != starts[k])
+      if (r.Class && r.Class->getBlock() != blocks[k])
         continue;
-      if (!it->Class && blocks[k]!=0)
+      if (r.Class && r.Class->getStart() != starts[k])
         continue;
-      if (it->getStatus() == StatusNotCompetiting || it->getStatus() == StatusCANCEL)
+      if (!r.Class && blocks[k] != 0)
+        continue;
+      if (r.getStatus() == StatusNotCompetiting || r.getStatus() == StatusCANCEL)
         continue;
 
-      if (LastStartTime!=it->tStartTime) {
-        sb.resize(sb.size() + 1);
-        LastStartTime = it->tStartTime;
+      if (lastStartTime != r.tStartTime) {
+        sb.emplace_back();
+        lastStartTime = r.tStartTime;
       }
 
       if (sb.empty())
         sb.resize(1);
 
-      if (it->tInTeam == 0)
-        sb.back().push_back(vector<pRunner>(1, &*it));
+      if (r.tInTeam == 0)
+        sb.back().push_back(vector<const oRunner *>(1, &r));
       else {
-        if (it->legToRun() > 0 && it->getStartTime() == 0)
+        if (r.legToRun() > 0 && r.getStartTime() == 0)
           continue;
         int minIx = 10000;
-        for (int j = 0; j < it->tInTeam->getNumRunners(); j++) {
-          if (j != it->tLeg &&
-              it->tInTeam->Runners[j] &&
-              it->tInTeam->Runners[j]->tStartTime == it->tStartTime)
+        for (int j = 0; j < r.tInTeam->getNumRunners(); j++) {
+          if (j != r.tLeg && r.tInTeam->Runners[j] && r.tInTeam->Runners[j]->tStartTime == r.tStartTime)
             minIx = min(minIx, j);
         }
         if (minIx == 10000)
-          sb.back().push_back(vector<pRunner>(1, &*it)); // Single runner on this start time
-        else if (minIx > it->tLeg) {
-          sb.back().push_back(vector<pRunner>());
-          for (int j = 0; j < it->tInTeam->getNumRunners(); j++) {
-          if (it->tInTeam->Runners[j] &&
-              it->tInTeam->Runners[j]->tStartTime == it->tStartTime)
-            sb.back().back().push_back(it->tInTeam->Runners[j]);
+          sb.back().push_back(vector<const oRunner *>(1, &r)); // Single runner on this start time
+        else if (minIx > r.tLeg) {
+          sb.back().emplace_back();
+          for (int j = 0; j < r.tInTeam->getNumRunners(); j++) {
+          if (r.tInTeam->Runners[j] && r.tInTeam->Runners[j]->tStartTime == r.tStartTime)
+            sb.back().back().push_back(r.tInTeam->Runners[j]);
           }
         }
       }
     }
 
+    lastStartTime = -1;
+    map<int, int> startIntervalCount;
+    int totalStartTimes = 0;
+
+    for (size_t k = 0; k < sb.size(); k++) {
+      if (!sb[k].empty()) {
+        int st = sb[k][0][0]->getStartTime();
+        if (lastStartTime != -1 && lastStartTime != st) {
+          int startInterval = st - lastStartTime;
+          ++startIntervalCount[startInterval];
+          totalStartTimes++;
+          lastStartTime = st;
+        }
+        lastStartTime = st;
+      }
+    }
+
+    int typicalStartInterval = 0;
+    int maxStartIntervalCount = 0;
+    for (auto& sic : startIntervalCount) {
+      if (sic.second > maxStartIntervalCount) {
+        maxStartIntervalCount = sic.second;
+        typicalStartInterval = sic.first;
+      }
+    }
+
+    int startInterval = -1;
+    if (maxStartIntervalCount > totalStartTimes / 4) {
+      startInterval = typicalStartInterval;
+    }
+
     y = gdi.getCY();
+    lastStartTime = -1;
+
     for (size_t k = 0; k < sb.size(); k++) {
       if (sb[k].empty())
         continue;
+    
+      const int st = sb[k][0][0]->getStartTime();
+      if (startInterval > 0 && lastStartTime > 0 && st - lastStartTime > startInterval) {
+        int missingStartCount = (st - lastStartTime) / startInterval;
+        if (st == lastStartTime + missingStartCount * startInterval) {
+          lastStartTime += startInterval;
+          int count = 0;
+          while (lastStartTime < st) {
+            if (++count < 2) {
+              y += lh / 2;
+              gdi.addStringUT(y, x + dx[0], boldText, getAbsTime(lastStartTime));
+              y += lh;
+              gdi.addStringUT(y, x + dx[1], fontMedium, L"\u2014");
+              y += lh;
+            }
+            lastStartTime += startInterval;
+          }
+        }
+      }
+      lastStartTime = st;
+
       y+=lh/2;
-      gdi.addStringUT(y, x+dx[0], boldText, sb[k][0][0]->getStartTimeS());
-      y+=lh;
+      if (st > 0) {
+        gdi.addStringUT(y, x + dx[0], boldText, sb[k][0][0]->getStartTimeS());
+        y += lh;
+      }
 
       for (size_t j = 0; j < sb[k].size(); j++) {
         const int src_y = y;
         int indent = 0;
-        const vector<pRunner> &r = sb[k][j];
-        if (r.size() == 1) {
-          if (r[0]->getCardNo()>0)
-            gdi.addStringUT(y, x+dx[0], fontMedium, itos(r[0]->getCardNo()));
+        const auto &rList = sb[k][j];
+        if (rList.size() == 1) {
+          if (rList[0]->getCardNo()>0)
+            gdi.addStringUT(y, x+dx[0], fontMedium, itos(rList[0]->getCardNo()));
 
           wstring name;
-          if (r[0]->getBib().empty())
-            name = r[0]->getName();
+          if (rList[0]->getBib().empty())
+            name = rList[0]->getName();
           else
-            name = r[0]->getName() + L" (" + r[0]->getBib() + L")";
+            name = rList[0]->getName() + L" (" + rList[0]->getBib() + L")";
           gdi.addStringUT(y, x+dx[1], fontMedium, name, dx[2]-dx[1]-4);
         }
         else {
           wstring name;
-          if (!r[0]->tInTeam->getBib().empty())
-            name = r[0]->tInTeam->getBib() + L": ";
+          if (!rList[0]->tInTeam->getBib().empty())
+            name = rList[0]->tInTeam->getBib() + L": ";
 
           int nnames = 0;
-          for (size_t i = 0; i < r.size(); i++) {
+          for (size_t i = 0; i < rList.size(); i++) {
             if (nnames>0)
               name += L", ";
             nnames++;
@@ -3677,21 +3385,20 @@ void oEvent::generateMinuteStartlist(gdioutput &gdi) {
               indent = gdi.scaleLength(20);
             }
 
-            name += r[i]->getName();
-            if (r[i]->getCardNo()>0) {
-              name += L" (" + itow(r[i]->getCardNo()) + L")";
-            }
-
+            name += rList[i]->getName();
+            if (rList[i]->getCardNo()>0) 
+              name += L" (" + itow(rList[i]->getCardNo()) + L")";
           }
           gdi.addStringUT(y, x+dx[0]+indent, fontMedium, name, dx[2]-dx[0]-4-indent);
         }
 
-        gdi.addStringUT(src_y, x+dx[2], fontMedium, r[0]->getClub(), dx[3]-dx[2]-4);
-        gdi.addStringUT(src_y, x+dx[3], fontMedium, r[0]->getClass(true));
+        gdi.addStringUT(src_y, x+dx[2], fontMedium, rList[0]->getClub(), dx[3]-dx[2]-4);
+        gdi.addStringUT(src_y, x+dx[3], fontMedium, rList[0]->getClass(true));
         y+=lh;
       }
     }
   }
+
   gdi.refresh();
 }
 
@@ -4784,13 +4491,13 @@ int oEvent::getFirstStart(int classId) const {
   return minTime;
 }
 
-bool oEvent::hasRank() const
-{
-  oRunnerList::const_iterator it;
-
-  for (it=Runners.begin(); it != Runners.end(); ++it){
-    if (it->getDCI().getInt("Rank")>0)
-      return true;
+bool oEvent::hasRank() const {
+  for (auto &r : Runners){
+    if (!r.isRemoved()) {
+      int rank = r.getDCI().getInt("Rank");
+      if (rank > 0 && rank < MaxOrderRank)
+        return true;
+    }
   }
   return false;
 }

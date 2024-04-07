@@ -77,11 +77,11 @@ protected:
   TabBase * const tab = nullptr;
 
 public:
-  const string name;
+  const wstring name;
   const int imageId = -1;
   int id = -1;
 
-  TabObject(TabBase *t, string n, int imageId) : name(n), tab(t), imageId(imageId) {}
+  TabObject(TabBase *t, wstring n, int imageId) : name(n), tab(t), imageId(imageId) {}
 
   void setId(int i){id=i; if (tab) tab->tabId=id;}
   

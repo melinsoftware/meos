@@ -1213,7 +1213,9 @@ void oDataContainer::buildTableCol(Table *table)
 
 bool oDataContainer::formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) const {
   if (di.SubType == oISDate) {
-    if ((nr < 99999999 && nr % 10000 != 0) || nr == 0)
+    if (nr == 0)
+      bf[0] = 0;
+    else if ((nr < 99999999 && nr % 10000 != 0) || nr == 0)
       swprintf_s(bf, 64, L"%d-%02d-%02d", nr / (100 * 100), (nr / 100) % 100, nr % 100);
     else if (nr > 0  && nr < 9999)
       swprintf_s(bf, 64, L"%04d", nr / 10000);
@@ -1224,7 +1226,9 @@ bool oDataContainer::formatNumber(int nr, const oDataInfo &di, wchar_t bf[64]) c
     return true;
   } 
   else if (di.SubType == oISDateOrYear) {
-    if (nr > 9999 && nr % 10000 != 0)
+    if (nr == 0)
+      bf[0] = 0;
+    else if (nr > 9999 && nr % 10000 != 0)
       swprintf_s(bf, 64, L"%04d-%02d-%02d", nr / 10000, (nr / 100) % 100, nr % 100);
     else if (nr > 9999)
       swprintf_s(bf, 64, L"%04d", nr / 10000);

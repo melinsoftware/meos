@@ -116,7 +116,6 @@ typedef const oTeam* cTeam;
 
 struct SICard;
 
-const int MaxRankingConstant = 99999999;
 
 class oAbstractRunner : public oBase {
 protected:
@@ -850,7 +849,9 @@ public:
 
   void markClassChanged(int controlId);
 
-  int getRanking() const;
+  int getRanking() const final;
+  wstring getRankingScore() const;
+  void setRankingScore(double score);
 
   bool isResultUpdated(bool totalResult) const override;
 

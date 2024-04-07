@@ -111,9 +111,8 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, State state) {
   else {
     gdi.addString("", 0, "Server startad på X#" + itos(port));
     auto per = server->getEntryPermission();
-    if (get<RestServer::EntryPermissionType>(per) != RestServer::EntryPermissionType::None)
+    if (get<RestServer::EntryPermissionType>(per) != RestServer::EntryPermissionType::None) {
       disablePermisson = false;
-    else {
       gdi.selectItemByData("PermissionPerson", size_t(get<RestServer::EntryPermissionType>(per)));
       gdi.selectItemByData("PermissionClass", size_t(get<RestServer::EntryPermissionClass>(per)));
     }

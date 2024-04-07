@@ -4488,6 +4488,13 @@ void TabSI::clearCompetitionData() {
   requestStartTimeHandler.reset();
 
   sortAssignCards = SortOrder::Custom;
+
+#ifdef _DEBUG
+  showTestingPanel = !oe->gdiBase().isTest();
+#else
+  showTestingPanel = false;
+#endif // _DEBUG
+
 }
 
 SICard& TabSI::getCard(int id) const {

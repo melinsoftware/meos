@@ -128,6 +128,7 @@ public:
 
   void setAnswer(const char *ans) const;
   void setFile(const string &file) const;
+  void setFile(const wstring& file) const;
 
   void checkString(const char *str, int count = 1) const;
   void checkStringRes(const char *str, int count = 1) const;

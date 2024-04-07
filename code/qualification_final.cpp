@@ -69,7 +69,8 @@ pair<int, int> QualificationFinal::getPrelFinalFromPlace(int instance, int order
 bool QualificationFinal::noQualification(int instance) const {
   if (size_t(instance) >= classDefinition.size())
     return false;
-
+  if (instance > 0 && classDefinition[instance].level > classDefinition[instance - 1].level)
+    return false; // Second level
   return classDefinition[instance].qualificationMap.empty() &&
          classDefinition[instance].numTimeQualifications == 0 &&
     classDefinition[instance].extraQualification == QFClass::ExtraQualType::None;
@@ -774,7 +775,7 @@ void QualificationFinal::printScheme(const oClass& cls, gdioutput &gdi) const {
     gdi.dropLine(0.2);
     int rankingBased = 0;
     vector<wstring> dst;
-
+    int misCntLimit = 0;
     for (int place = 1; place < 100; place++) {
       auto res = sourcePlaceToFinalOrder.find(make_pair(i + 1, place));
       
@@ -785,7 +786,10 @@ void QualificationFinal::printScheme(const oClass& cls, gdioutput &gdi) const {
         else
           dst.push_back(itow(place) + L". ➞ " + cname[res->second.first - 1]);
       }
-      else break;
+      else {
+        if (++misCntLimit > 10)
+          break;
+      }
     }
 
     if (rankingBased) {

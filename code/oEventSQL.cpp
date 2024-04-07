@@ -45,8 +45,6 @@
 
 #include "meos.h"
 #include <cassert>
-typedef bool (__cdecl* OPENDB_FCN)(void);
-typedef int (__cdecl* SYNCHRONIZE_FCN)(oBase *obj);
 
 extern Image image;
 
