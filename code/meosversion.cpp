@@ -25,17 +25,17 @@
 
 //ABCDEFGHIJKLMNOPQ
 int getMeosBuild() {
-  string revision("$Rev: 1326 $");
+  string revision("$Rev: 1341 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2024-03-02 21:15:41 +0100 (lör, 02 mar 2024) $");
+  wstring date(L"$Date: 2024-04-06 22:32:45 +0200 (lör, 06 apr 2024) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Beta 1"; // No parantheses (...)
+  return L"RC 1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -153,6 +153,13 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp)
   supp.emplace_back(L"Silkeborg OK");
   supp.emplace_back(L"IK Uven");
   supp.emplace_back(L"Attunda OK");
+  supp.emplace_back(L"Gunnar Svanberg");
+  supp.emplace_back(L"Forsa OK");
+  supp.emplace_back(L"Långhundra IF");
+  supp.emplace_back(L"Mariestads friluftsklubb");
+  supp.emplace_back(L"Ligue PACA");
+  supp.emplace_back(L"SV Robotron Dresden");
+  supp.emplace_back(L"Mats Holmberg, OK Gränsen");
 
   reverse(supp.begin(), supp.end());
 }

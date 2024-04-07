@@ -1883,14 +1883,14 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       break;
     case lRunnerRank:
       if (r) {
-        int rank=r->getDCI().getInt("Rank");
-        if (rank == 0) {
-          if (r->tParentRunner)
-            rank = r->tParentRunner->getDCI().getInt("Rank");
-        }
-        
-        if (rank>0)
+        int rank = r->getRanking(); 
+        if (rank>0 && rank < MaxOrderRank)
           wcscpy_s(wbf, formatRank(rank).c_str());
+      }
+      break;
+    case lRunnerRankScore:
+      if (r) {
+        wcscpy_s(wbf, r->getRankingScore().c_str());
       }
       break;
     case lRunnerBib:
@@ -3029,6 +3029,11 @@ bool oListInfo::filterRunner(const oRunner &r) const {
       return true;
   }
 
+  if (filter(EFilterModifiedCard)) {
+    if (!r.getCard() || r.getCard()->isOriginalCard() != oCard::PunchOrigin::Manual)
+      return true;
+  }
+
   if (filter(EFilterRentCard) && !r.isRentalCard())
     return true;
 
@@ -3287,6 +3292,16 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
     if (li.filter(EFilterOnlyVacant)) {
       if (!it->isVacant())
+        return false;
+    }
+
+    if (li.filter(EFilterModifiedCard)) {
+      bool modified = false;
+      for (pRunner r : it->Runners) {
+        if (r && r->getCard() && r->getCard()->isOriginalCard() == oCard::PunchOrigin::Manual)
+          modified = true;
+      }
+      if (modified)
         return false;
     }
 

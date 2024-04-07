@@ -2634,7 +2634,29 @@ bool TabList::loadPage(gdioutput &gdi)
   gdi.fillRight();
   gdi.pushX();
 
+  bool hasVac = false;
+  bool hasAPIEntry = false;
+  bool hasModifiedCard = false;
+  {
+    vector<pRunner> rr;
+    oe->getRunners(0, 0, rr, false);
+    for (pRunner r : rr) {
+      if (r->isVacant())
+        hasVac = true;
+      if (r->hasFlag(oRunner::FlagAddedViaAPI))
+        hasAPIEntry = true;
+      if (r->getCard() && r->getCard()->isOriginalCard() == oCard::PunchOrigin::Manual)
+        hasModifiedCard = true;
+    }
+  }
+
+  if (hasModifiedCard) {
+    gdi.addButton("GenLst:modifiedcard", "Modifierade resultat", ListsCB);
+    checkWidth(gdi);
+  }
+
   gdi.addButton("InForestList", "Kvar-i-skogen", ListsCB, "tooltip:inforest").setExtra(IgnoreLimitPer);
+
   if (cnf.hasIndividual()) {
     gdi.addButton("PriceList", "Prisutdelningslista", ListsCB);
   }
@@ -2661,26 +2683,7 @@ bool TabList::loadPage(gdioutput &gdi)
     gdi.addButton("GenLst:teamchanges", "Lagändringblankett", ListsCB).setExtra(AddTeamClasses | ForcePageBreak);
     checkWidth(gdi);
   }
-  bool hasVac = false;
-  bool hasAPIEntry = false;
-  {
-    vector<pRunner> rr;
-    oe->getRunners(0, 0, rr, false);
-    for (pRunner r : rr) {
-      if (r->isVacant()) {
-        hasVac = true;
-        break;
-      }
-    }
-
-    for (pRunner r : rr) {
-      if (r->hasFlag(oRunner::FlagAddedViaAPI)) {
-        hasAPIEntry = true;
-        break;
-      }
-    }
-  }
-
+  
   if (hasVac) {
     gdi.addButton("GenLst:vacnacy", "Vakanser", ListsCB);
     checkWidth(gdi);

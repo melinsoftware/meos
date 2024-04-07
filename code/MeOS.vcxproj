@@ -261,6 +261,7 @@
     <ClInclude Include="binencoder.h" />
     <ClInclude Include="classconfiginfo.h" />
     <ClInclude Include="csvparser.h" />
+    <ClInclude Include="datadefiners.h" />
     <ClInclude Include="download.h" />
     <ClInclude Include="gdiconstants.h" />
     <ClInclude Include="gdifonts.h" />

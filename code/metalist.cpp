@@ -2223,6 +2223,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerBib] = L"RunnerBib";
     typeToSymbol[lRunnerStartNo] = L"RunnerStartNo";
     typeToSymbol[lRunnerRank] = L"RunnerRank";
+    typeToSymbol[lRunnerRankScore] = L"RunnerRankScore";
     typeToSymbol[lRunnerCourse] = L"RunnerCourse";
     typeToSymbol[lRunnerRogainingPoint] = L"RunnerRogainingPoint";
     typeToSymbol[lRunnerRogainingPointTotal] = L"RunnerRogainingPointTotal";
@@ -2462,6 +2463,7 @@ void MetaList::initSymbols() {
     filterToSymbol[EFilterAPIEntry] = "EFilterAPIEntry";
     filterToSymbol[EFilterWrongFee] = "EFilterWrongFee";
     filterToSymbol[EFilterIncludeNotParticipating] = "EFilterIncludeNotParticipating";
+    filterToSymbol[EFilterModifiedCard] = "EFilterModifiedCard";
 
     for (map<EFilterList, string>::iterator it = filterToSymbol.begin();
       it != filterToSymbol.end(); ++it) {

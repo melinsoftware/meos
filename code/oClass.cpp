@@ -5060,10 +5060,14 @@ void oClass::loadQualificationFinalScheme(const QualificationFinal& scheme) {
     inst->synchronize();
   }
   synchronize();
+  set<int> base;
+  qf->getBaseClassInstances(base);
   for (oRunner &r : oe->Runners) {
     if (r.getClassRef(false) == this) {
+      if (r.getLegNumber() == 0 && !base.count(r.getDCI().getInt("Heat")))
+        r.getDI().setInt("Heat", 0);
       pTeam t = r.getTeam();
-      if (t == 0) {
+      if (t == nullptr) {
         t = oe->addTeam(r.getName(), r.getClubId(), getId());
         t->setStartNo(r.getStartNo(), oBase::ChangeType::Update);
         t->setRunner(0, &r, true);
@@ -5083,6 +5087,8 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
   if (!qualificatonFinal)
     return;
   assert(!causingResult || causingResult->Class == this);
+
+  int causingLevel = causingResult ? causingResult->tLeg : 0;
 
   //oe->gdibase.addStringUT(0, L"UF:" + getName() + L" for " + (causingResult ? causingResult->getName() : L"-"));
   auto computeInstance = [this](const pRunner causingResult) {
@@ -5158,6 +5164,28 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
     bool hasRemaining = qualificatonFinal->hasRemainingClass();
     GeneralResult gr;
     qualificatonFinal->prepareCalculations();
+    
+    struct TotalLevelRes {
+      pRunner r;
+      int place;
+      int instance;
+      int orderPlace;
+      int numEqual;
+
+      TotalLevelRes(int instance, pRunner r, int place,  int orderPlace, int numEqual) : r(r), instance(instance),
+        orderPlace(orderPlace), numEqual(numEqual), place(place) {}
+
+      TotalLevelRes(int instance, pRunner r) : r(r), instance(instance),
+        orderPlace(numeric_limits<int>::max()), numEqual(0), 
+        place(numeric_limits<int>::max()) {}
+
+      bool operator<(const TotalLevelRes& other) const {
+        return orderPlace < other.orderPlace;
+      }
+    };
+
+    vector<vector<TotalLevelRes>> levelRes(maxDepth+1);
+
     int maxLevel = 0;
     for (int i = instance; i < limit; i++) {
       if (classSplit[i].empty())
@@ -5206,6 +5234,7 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
 
       int lastPlace = 0, orderPlace = 1;
       int numEqual = 0;
+      
       for (size_t k = 0; k < classSplit[i].size(); k++) {
         const auto &res = classSplit[i][k]->getTempResult();
         if (res.getStatus() == StatusOK) {
@@ -5215,14 +5244,28 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
           else
             numEqual = 0;
 
-          qualificatonFinal->provideQualificationResult(classSplit[i][k], i, orderPlace, numEqual);
+          levelRes[thisLevel].emplace_back(i, classSplit[i][k], place, orderPlace, numEqual);
+      //    qualificatonFinal->provideQualificationResult(classSplit[i][k], i, orderPlace, numEqual);
           lastPlace = place;
         }
         else if (hasRemaining && res.getStatus() != StatusUnknown) {
-          qualificatonFinal->provideUnqualified(thisLevel, classSplit[i][k]);
+          levelRes[thisLevel].emplace_back(i, classSplit[i][k]);
+          //qualificatonFinal->provideUnqualified(thisLevel, classSplit[i][k]);
         }
-
         orderPlace++;
+      }
+    }
+
+    for (int level = 0; level < levelRes.size(); level++) {
+      if (levelRes[level].empty())
+        continue;
+      stable_sort(levelRes[level].begin(), levelRes[level].end());
+
+      for (auto& res : levelRes[level]) {
+        if (res.orderPlace < numeric_limits<int>::max())
+          qualificatonFinal->provideQualificationResult(res.r, res.instance, res.orderPlace, res.numEqual);
+        else
+          qualificatonFinal->provideUnqualified(level, res.r);
       }
     }
 
@@ -5339,7 +5382,7 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
     if (inst < nextLevelInstance)
       continue;
        
-    if (!cc.second && cc.first->tLeg > 0 && !qualifiedRunners.count(cc.first->getId())) {
+    if (!cc.second && cc.first->tLeg > causingLevel && !qualifiedRunners.count(cc.first->getId())) {
       auto di = cc.first->getDI();
       int oldHeat = di.getInt("Heat");
       if (oldHeat != 0 && !getVirtualClass(oldHeat)->lockedClassAssignment()) {

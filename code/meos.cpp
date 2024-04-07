@@ -126,21 +126,6 @@ void resetSaveTimer() {
     autoTask->resetSaveTimer();
 }
 
-void LoadPage(const string &name)
-{
-  list<TabObject>::iterator it;
-
-  for (it=tabList->begin(); it!=tabList->end(); ++it) {
-    if (it->name==name)
-      it->loadPage(*gdi_main);
-  }
-}
-
-void LoadClassPage(gdioutput &gdi)
-{
-  LoadPage("Klasser");
-}
-
 void dumpLeaks() {
   _CrtDumpMemoryLeaks();
 }
@@ -788,17 +773,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
   int xs = gEvent->getPropertyInt("xsize", max(850, min<int>(int(rc.right)-yp, (rc.right*9)/10)));
   int ys = gEvent->getPropertyInt("ysize", max(650, min<int>(int(rc.bottom)-yp-40, (rc.bottom*8)/10)));
 
-  if ((xp + xs > rc.right)
-      || xp < rc.left
-      || yp + ys > rc.bottom
-      || yp < rc.top)
-  {
-      // out of bounds, just use default position and size
-      xp = 50;
-      yp = 20;
-      xs = max(850, min<int>(int(rc.right) - yp, (rc.right * 9) / 10));
-      ys = max(650, min<int>(int(rc.bottom) - yp - 40, (rc.bottom * 8) / 10));
+  if ((xp + xs > rc.right) || xp < rc.left || yp + ys > rc.bottom || yp < rc.top) {
+    // out of bounds, just use default position and size
+    xp = 50;
+    yp = 20;
+    xs = max(850, min<int>(int(rc.right) - yp, (rc.right * 9) / 10));
+    ys = max(650, min<int>(int(rc.bottom) - yp - 40, (rc.bottom * 8) / 10));
   }
+
   gEvent->setProperty("ypos", yp + 16);
   gEvent->setProperty("xpos", xp + 32);
   gEvent->saveProperties(settings); // For other instance starting while running
@@ -1054,22 +1036,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_CREATE:
 
-      tabList->emplace_back(gdi_main->getTabs().get(TCmpTab), "Tävling", 10);
-      tabList->emplace_back(gdi_main->getTabs().get(TRunnerTab), "Deltagare", 6);
-      tabList->emplace_back(gdi_main->getTabs().get(TTeamTab), "Lag(flera)", 7);
-      tabList->emplace_back(gdi_main->getTabs().get(TListTab), "Listor", 5);
+      tabList->emplace_back(gdi_main->getTabs().get(TCmpTab), L"Tävling", 10);
+      tabList->emplace_back(gdi_main->getTabs().get(TRunnerTab), L"Deltagare", 6);
+      tabList->emplace_back(gdi_main->getTabs().get(TTeamTab), L"Lag(flera)", 7);
+      tabList->emplace_back(gdi_main->getTabs().get(TListTab), L"Listor", 5);
       {
         TabAuto *ta = (TabAuto *)gdi_main->getTabs().get(TAutoTab);
-        tabList->emplace_back(ta, "Automater", 4);
+        tabList->emplace_back(ta, L"Automater", 4);
         TabAuto::tabAutoRegister(ta);
       }
-      tabList->emplace_back(gdi_main->getTabs().get(TSpeakerTab), "Speaker", 3);
-      tabList->emplace_back(gdi_main->getTabs().get(TClassTab), "Klasser", 0);
-      tabList->emplace_back(gdi_main->getTabs().get(TCourseTab), "Banor", 1);
-      tabList->emplace_back(gdi_main->getTabs().get(TControlTab), "Kontroller", 2);
-      tabList->emplace_back(gdi_main->getTabs().get(TClubTab), "Klubbar", 8);
+      tabList->emplace_back(gdi_main->getTabs().get(TSpeakerTab), L"Speaker", 3);
+      tabList->emplace_back(gdi_main->getTabs().get(TClassTab), L"Klasser", 0);
+      tabList->emplace_back(gdi_main->getTabs().get(TCourseTab), L"Banor", 1);
+      tabList->emplace_back(gdi_main->getTabs().get(TControlTab), L"Kontroller", 2);
+      tabList->emplace_back(gdi_main->getTabs().get(TClubTab), L"Klubbar", 8);
 
-      tabList->emplace_back(gdi_main->getTabs().get(TSITab), "SportIdent", 9);
+      tabList->emplace_back(gdi_main->getTabs().get(TSITab), L"SportIdent", 9);
 
       INITCOMMONCONTROLSEX ic;
 
@@ -1190,7 +1172,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (it->id==id) {
               try {
                 gdi_main->setWaitCursor(true);
-                string cmd = "showTab("+ string(it->getTab().getTypeStr()) + "); //" + it->name;
+                string cmd = "showTab("+ string(it->getTab().getTypeStr()) + "); //" + gdi_main->toUTF8(it->name);
                 it->loadPage(*gdi_main);
                 gdi_main->getRecorder().record(cmd);
               }

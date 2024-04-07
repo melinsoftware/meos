@@ -221,7 +221,7 @@ private:
     wstring date;
     wstring organizer;
     wstring homepage;
-    int zerotime;
+    wstring zeroTime;
 protected:
     bool forceComplete;
 

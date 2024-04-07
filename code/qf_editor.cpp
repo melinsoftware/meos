@@ -777,7 +777,7 @@ void QFEditor::updateActions(gdioutput& gdi) {
 void QFEditor::use() {
   makeQF();
   cls->loadQualificationFinalScheme(*currentQF);
-  cls->updateFinalClasses(0, true);
+  cls->updateFinalClasses(0, true);  
   makeDirty(QFEditor::DirtyFlag::ClearDirty, QFEditor::DirtyFlag::NoTouch);
 }
 

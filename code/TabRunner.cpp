@@ -49,9 +49,11 @@
 #include "meosexception.h"
 #include "MeOSFeatures.h"
 #include "autocomplete.h"
+#include "datadefiners.h"
 #include "RunnerDB.h"
 
 int SportIdentCB(gdioutput *gdi, GuiEventType type, BaseInfo *data);
+shared_ptr<RankScoreFormatter> TabRunner::rankFormatter;
 
 TabRunner::TabRunner(oEvent *poe):TabBase(poe) {
   clearCompetitionData();
@@ -359,7 +361,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
 
   loadExtraFields(gdi, r);
 
-  renderComments(gdi, *r);
+  renderComments(gdi, *r, true, true);
 
   gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
   if (gdi_settings) {
@@ -1073,7 +1075,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       pRunner r = oe->getRunner(runnerId, 0);
       if (r && getExtraWindow("comments", true) == nullptr) {
         gdioutput* settings = createExtraWindow("comments", L"Kommentarer", gdi.scaleLength(550), gdi.scaleLength(350), true);
-        TabRunner::loadComments(*settings, *r);
+        TabRunner::loadComments(*settings, *r, make_shared<CommentHandler>(*r));
       }
     }
     else if (bi.id=="NoStart") {
@@ -1424,10 +1426,12 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     }
   }
   else if (type==GUI_CLEAR) {
-    gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
-    if (gdi_settings) 
+    if (gdioutput* gdi_settings = getExtraWindow("ecosettings", false); gdi_settings)
       gdi_settings->closeWindow();
     
+    if (gdioutput* gdi_settings = getExtraWindow("comments", false); gdi_settings)
+      gdi_settings->closeWindow();
+
     if (runnerId>0 && currentMode == 0)
       save(gdi, runnerId, true);
     
@@ -3325,8 +3329,12 @@ void TabRunner::loadExtraFields(gdioutput& gdi, const oBase* r) {
   if (gdi.hasWidget("Phone"))
     gdi.setText("Phone", r ? r->getDCI().getString("Phone") : L"");
 
-  if (gdi.hasWidget("Rank"))
-    gdi.setTextZeroBlank("Rank", r ? r->getDCI().getInt("Rank") : 0);
+  if (gdi.hasWidget("Rank")) {
+    wstring out;
+    if (r)
+      out = rankFormatter->formatData(r);
+    gdi.setText("Rank", out);
+  }
 }
 
 void TabRunner::saveExtraFields(gdioutput& gdi, oBase &r) {
@@ -3353,8 +3361,11 @@ void TabRunner::saveExtraFields(gdioutput& gdi, oBase &r) {
   if (gdi.hasWidget("Phone"))
     di.setString("Phone", gdi.getText("Phone"));
 
-  if (gdi.hasWidget("Rank"))
-    di.setInt("Rank", gdi.getTextNo("Rank"));
+  if (gdi.hasWidget("Rank")) {
+    wstring out;
+    rankFormatter->setData(&r, gdi.getText("Rank"), out, 0);
+  }
+  //  di.setInt("Rank", gdi.getTextNo("Rank"));
 }
 
 void TabRunner::addToolbar(gdioutput &gdi) {
@@ -3541,6 +3552,7 @@ void TabRunner::clearCompetitionData() {
   timeToFill = 0;
   ownWindow = false;
   listenToPunches = false;
+  rankFormatter = make_shared<RankScoreFormatter>();
 }
 
 void TabRunner::autoGrowCourse(gdioutput &gdi) {
@@ -3739,7 +3751,6 @@ void TabRunner::CommentHandler::handle(gdioutput& gdi, BaseInfo& info, GuiEventT
     ButtonInfo& bi = dynamic_cast<ButtonInfo&>(info);
     if (bi.id == "Cancel") {
       gdi.closeWindow();
-      gdi.closeWindow();
     }
     else if (bi.id == "Save") {
       save(gdi);
@@ -3748,15 +3759,18 @@ void TabRunner::CommentHandler::handle(gdioutput& gdi, BaseInfo& info, GuiEventT
   }
 }
 
-void TabRunner::CommentHandler::save(gdioutput& gdi) {
+void TabRunner::CommentHandler::doSave(gdioutput& gdi) {
   oAbstractRunner& r = getRunner();
   wstring comment = gdi.getText("Comments");
   r.getDI().setString("Annotation", getLocalTime() + L"@" + comment);
-
-  TabRunner::renderComments(oe->gdiBase(), r);
 }
 
-void TabRunner::renderComments(gdioutput& gdi, oAbstractRunner& r) {
+void TabRunner::CommentHandler::save(gdioutput& gdi) {
+  doSave(gdi);
+  TabRunner::renderComments(oe->gdiBase(), getRunner(), true, true);
+}
+
+void TabRunner::renderComments(gdioutput& gdi, oAbstractRunner& r, bool newColumn, bool refresh) {
   gdi.restore("Annotation", false);
   gdi.setRestorePoint("Annotation");
 
@@ -3774,33 +3788,37 @@ void TabRunner::renderComments(gdioutput& gdi, oAbstractRunner& r) {
   }
 
   gdi.fillDown();
-  gdi.newColumn();
+  if (newColumn)
+    gdi.newColumn();
+  
+  int cx = gdi.getCX();
   gdi.dropLine();
   RECT rc;
   rc.left = gdi.getCX();
   rc.top = gdi.getCY();
   gdi.dropLine(0.5);
-  gdi.setCX(gdi.getCX() + gdi.scaleLength(5));
+  gdi.setCX(cx + gdi.scaleLength(5));
 
   gdi.addString("", fontMediumPlus, "Kommentarer");
   gdi.addString("", 0, date);
   gdi.dropLine();
-  gdi.addStringUT(gdi.getCY(), gdi.getCX(), breakLines, an, 200);
+  TextInfo &ti = gdi.addStringUT(gdi.getCY(), gdi.getCX(), breakLines, an, gdi.scaleLength(newColumn ? 200 : 300));
   gdi.dropLine();
   rc.bottom = gdi.getCY();
-  rc.right = gdi.getWidth() + gdi.scaleLength(3);
+  rc.right = max<int>(ti.textRect.right, cx+gdi.scaleLength(150)) + gdi.scaleLength(6);
   gdi.addRectangle(rc, GDICOLOR::colorLightYellow);
 
-  gdi.refresh();
+  gdi.setCX(cx);
+  if (refresh)
+    gdi.refresh();
 }
 
-void TabRunner::loadComments(gdioutput& gdi, oAbstractRunner& r) {
+void TabRunner::loadComments(gdioutput& gdi, oAbstractRunner& r, const shared_ptr<CommentHandler>& handler) {
   gdi.clearPage(false);
   gdi.fillDown();
   gdi.pushX();
   gdi.addString("", fontMediumPlus, L"Kommentarer för X#" + r.getName());
 
-  auto h = make_shared<CommentHandler>(r);
   wstring an = r.getDCI().getString("Annotation");
   for (int j = 0; j + 1 < an.length(); j++) {
     if (an[j] == '@') {
@@ -3810,8 +3828,8 @@ void TabRunner::loadComments(gdioutput& gdi, oAbstractRunner& r) {
   gdi.addInputBox("Comments", 250, 100, an, nullptr, L"");
 
   gdi.fillRight();
-  gdi.addButton("Cancel", "Avbryt").setCancel().setHandler(h);
-  gdi.addButton("Save", "Spara").setHandler(h);
+  gdi.addButton("Cancel", "Avbryt").setCancel().setHandler(handler);
+  gdi.addButton("Save", "Spara").setHandler(handler);
   gdi.refresh();
 }
 

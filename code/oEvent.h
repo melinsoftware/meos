@@ -50,6 +50,9 @@
 #define cVacantId 888888888
 #define cNoClubId 999999999
 
+constexpr int MaxOrderRank = 20000;
+constexpr int MaxRankingConstant = numeric_limits<int>::max();
+
 class MeOSFileLock;
 class RunnerDB;
 class gdioutput;
@@ -187,11 +190,6 @@ struct BackupInfo : public CompetitionInfo {
 
 class oListInfo;
 class MetaListContainer;
-
-typedef bool (__cdecl* ERRORMESG_FCN)(char *bf256);
-typedef bool (__cdecl* OPENDB_FCN)(void);
-typedef int  (__cdecl* SYNCHRONIZE_FCN)(oBase *obj);
-typedef bool (__cdecl* SYNCHRONIZELIST_FCN)(oBase *obj, int lid);
 
 enum class oListId {oLRunnerId=1, oLClassId=2, oLCourseId=4,
                     oLControlId=8, oLClubId=16, oLCardId=32,

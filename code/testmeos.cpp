@@ -406,6 +406,10 @@ void TestMeOS::setFile(const string &file) const {
   gdi_main->dbPushDialogAnswer("*" + file);
 }
 
+void TestMeOS::setFile(const wstring& file) const {
+  gdi_main->dbPushDialogAnswer("*" + gdioutput::narrow(file));
+}
+
 void TestMeOS::cleanup() const {
 }
 

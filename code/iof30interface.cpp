@@ -261,8 +261,24 @@ void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool up
     }
     for (unsigned leg = 0; leg < pc->getNumStages() && leg < coursePattern[0].size(); leg++) {
       pc->clearStageCourses(leg);
-      for (int m = 0; m < period; m++)
-        pc->addStageCourse(leg, coursePattern[(period - patternStart + m)%period][leg], -1);
+      int legToUse = leg;
+      while (legToUse > 0 && (pc->getLegType(legToUse) == LegTypes::LTExtra ||
+        pc->getLegType(legToUse) == LegTypes::LTIgnore))
+        legToUse--;
+      bool sameLeg = true;
+      for (int m = 1; m < period; m++) {
+        if (coursePattern[m][legToUse] != coursePattern[0][legToUse]) {
+          sameLeg = false;
+          break;
+        }
+      }
+      if (sameLeg) { // No forking
+        pc->addStageCourse(leg, coursePattern[0][legToUse], -1);
+      }
+      else {
+        for (int m = 0; m < period; m++)
+          pc->addStageCourse(leg, coursePattern[(period - patternStart + m) % period][legToUse], -1);
+      }
     }
 
     bool classHeader = false;
@@ -1049,10 +1065,20 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
       allR[k]->flagEntryTouched(false);
   }
 
+  map<pair<int, int>, int> teamLegToFixedCourse;
+
   oe.getTeams(0, allT, false);
   for (size_t k = 0; k < allT.size(); k++) {
     if (allT[k]->getEntrySource() == entrySourceId)
       allT[k]->flagEntryTouched(false);
+
+    for (int leg = 0; leg < allT[k]->getNumRunners(); leg++) {
+      pRunner r = allT[k]->getRunner(leg);
+      if (r && r->getCourseId() > 0) {
+        pair key(allT[k]->getId(), leg);
+        teamLegToFixedCourse[key] = r->getCourseId();
+      }
+    }
   }
 
   xmlList pEntries;
@@ -1309,6 +1335,25 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
       double f = *factor.rbegin();
       wstring fs = std::to_wstring(int((f - 1.0) * 100.0)) + L" %";
       oe.getDI().setString("LateEntryFactor", fs);
+    }
+  }
+
+
+  oe.getTeams(0, allT, false);
+  for (size_t k = 0; k < allT.size(); k++) {
+    for (int leg = 0; leg < allT[k]->getNumRunners(); leg++) {
+      pRunner r = allT[k]->getRunner(leg);
+      if (r) {
+        pair key(allT[k]->getId(), leg);
+        auto res = teamLegToFixedCourse.find(key);
+        if (res == teamLegToFixedCourse.end()) {
+          r->setCourseId(0);
+        }
+        else {
+          r->setCourseId(res->second);
+        }
+        r->synchronize(true);
+      }
     }
   }
 }
@@ -2181,6 +2226,12 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
         r->setReference(pid);
       }
     }
+  }
+
+  xmlobject score = xo.getObject("Score");
+  if (score && score.getRawPtr()) {
+    double s = atof(score.getRawPtr());
+    r->setRankingScore(s);
   }
 
   bool hasTime = true;

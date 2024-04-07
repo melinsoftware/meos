@@ -617,6 +617,17 @@ void oRunner::setClassId(int id, bool isManualUpdate) {
     return;
   }
 
+  if (nPc && isManualUpdate && nPc->isQualificationFinalBaseClass() && nPc != Class) {
+    int h = getDI().getInt("Heat"); // Clear heat if not a base class
+    if (h != 0) {
+      set<int> base;
+      nPc->getQualificationFinal()->getBaseClassInstances(base);
+      if (!base.count(h))
+        getDI().setInt("Heat", 0);
+    }
+  }
+
+
   if (tParentRunner) { 
     assert(!isManualUpdate); // Do not support! This may be destroyed if calling tParentRunner->setClass
     return;
@@ -685,16 +696,15 @@ void oRunner::setClassId(int id, bool isManualUpdate) {
   }
 }
 
-void oRunner::setCourseId(int id)
-{
-  pCourse pc=Course;
+void oRunner::setCourseId(int id) {
+  pCourse pc = Course;
 
-  if (id>0)
-    Course=oe->getCourse(id);
+  if (id > 0)
+    Course = oe->getCourse(id);
   else
-    Course=0;
+    Course = nullptr;
 
-  if (Course!=pc) {
+  if (Course != pc) {
     updateChanged();
     if (Class)
       getClassRef(true)->clearSplitAnalysis();
@@ -7003,6 +7013,28 @@ int oRunner::getRanking() const {
     return MaxRankingConstant;
   else
     return rank;
+}
+
+wstring oRunner::getRankingScore() const {
+  int raw = getDCI().getInt("Rank");
+  wchar_t wbf[32] = { 0 };
+  if (raw > MaxOrderRank) {
+    constexpr int TurnAround = MaxOrderRank * 100000;
+    double score = double(TurnAround - raw)/100;
+    if (score > 0 && score < 10000) {
+      swprintf_s(wbf, L"%.2f", score);
+    }
+  }
+  return wbf;
+}
+
+void oRunner::setRankingScore(double score) {
+  int rank = 0;
+  if (score > -10 && score < 10000) {
+    constexpr int TurnAround = MaxOrderRank * 100000;
+    rank = TurnAround - int(score * 100);
+  }
+  getDI().setInt("Rank", rank);
 }
 
 void oAbstractRunner::hasManuallyUpdatedTimeStatus() {

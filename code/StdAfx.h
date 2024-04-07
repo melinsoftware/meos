@@ -61,8 +61,6 @@ gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x 
 gdioutput *getExtraWindow(const string &tag, bool toForeGround);
 string uniqueTag(const char *base);
 
-void LoadPage(const string &name);
-
 wstring getTempFile();
 wstring getTempPath();
 void removeTempFile(const wstring &file); // Delete a temporyary

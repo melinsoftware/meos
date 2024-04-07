@@ -105,6 +105,7 @@ enum EPostType {
   lRunnerBib,
   lRunnerStartNo,
   lRunnerRank,
+  lRunnerRankScore,
   lRunnerCourse,
   lRunnerRogainingPoint,
   lRunnerRogainingPointTotal,
@@ -305,6 +306,7 @@ enum EFilterList
   EFilterAPIEntry, // Entry via API
   EFilterWrongFee,
   EFilterIncludeNotParticipating,
+  EFilterModifiedCard,
   _EFilterMax
 };
 

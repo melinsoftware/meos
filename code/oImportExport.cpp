@@ -292,7 +292,7 @@ bool oEvent::exportOECSV(const wchar_t *file, const set<int>& classes, int langu
           if (it->tStartTime > 0 && t > 0 && t > it->tStartTime)
             row.push_back(gdibase.recodeToNarrow(formatTimeHMS(t - it->tStartTime)));
           else
-            return "-----";
+            row.push_back("-----");
         }
       }
 

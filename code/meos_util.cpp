@@ -2243,7 +2243,7 @@ static bool noCapitalize(const wstring &str, size_t pos) {
     word.push_back(char(str[pos++]));
   }
 
-  if (word == "of" || word == "for" || word == "at" || word == "by")
+  if (word == "of" || word == "for" || word == "at" || word == "by" || word == "on")
     return true;
 
   if (word == "and" || word == "or" || word == "from" || word == "as" || word == "in")

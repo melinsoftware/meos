@@ -34,6 +34,8 @@ class Table;
 class InputInfo;
 enum CellType;
 
+constexpr int MaxVarNameLength = 28;
+
 class oDataDefiner {
 public:
   virtual ~oDataDefiner() {}
@@ -53,7 +55,7 @@ public:
 };
 
 struct oDataInfo {
-  char Name[28];
+  char Name[MaxVarNameLength];
   int Index;
   int Size;
   int Type;
@@ -70,7 +72,7 @@ struct oDataInfo {
 };
 
 struct oVariableInt {
-  char name[20];
+  char name[MaxVarNameLength];
   int *data32;
   __int64 *data64;
   oVariableInt() : data32(0), data64(0) {name[0] = 0;}
@@ -81,7 +83,7 @@ class oVariableString {
     oVariableString(wchar_t *buff, int size) : data(buff), maxSize(size), strData(0), strIndex(-2) { name[0] = 0; }
     oVariableString(vector<wstring> &vec) : data(0), maxSize(0), strData(&vec), strIndex(-1) { name[0] = 0; }
     oVariableString(vector<wstring> &vec, int position) : data(0), maxSize(0), strData(&vec), strIndex(position) { name[0] = 0; }
-    char name[20];
+    char name[MaxVarNameLength];
     bool store(const wchar_t *str);
   private:
     wchar_t *data;

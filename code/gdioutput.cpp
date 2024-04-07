@@ -6350,7 +6350,7 @@ void gdioutput::processToolbarMessage(const string &id, Table *tbl) {
   wstring msg;
   string cmd;
   if (getRecorder().recording()) { 
-    cmd = "tableCmd(\"" + id + "\"); //" + narrow(tbl->getTableName());
+    cmd = "tableCmd(\"" + id + "\"); //" + toUTF8(tbl->getTableName());
   }
   try {
     ButtonInfo bi;
