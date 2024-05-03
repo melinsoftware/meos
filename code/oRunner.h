@@ -263,6 +263,7 @@ public:
     FlagOutsideCompetition = 256,
     FlagNoTiming = 512, // No timing requested
     FlagNoDatabase = 1024, // Do not store in databse
+    FlagPayBeforeResult = 2048, // Require payment before result
   };
 
   bool hasFlag(TransferFlags flag) const;
@@ -1087,6 +1088,18 @@ public:
 
   /** Set rental card status (does not update fee)*/
   void setRentalCard(bool rental);
+
+
+  /** Require payment before giving result */
+  bool payBeforeResult(bool checkFlagOnly) const;
+
+  /** Set paid amount*/
+  void setPaid(int paid);
+  /** Set the fee*/
+  void setFee(int fee);
+
+  /** Set flag to require payment before result is given */
+  void setPayBeforeResult(bool flag);
 
 
   int getCardNo() const { return tParentRunner && cardNumber == 0 ? tParentRunner->cardNumber : cardNumber; }

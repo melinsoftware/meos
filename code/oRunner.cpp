@@ -1251,7 +1251,9 @@ bool oRunner::evaluateCard(bool doApply, vector<int>& missingPunches,
       if (*refStatus == StatusMAX && maxTimeStatus == 2)
         *refStatus = StatusUnknown;
     }
-    if (*refStatus == StatusUnknown || *refStatus == StatusCANCEL || *refStatus == StatusDNS || *refStatus == StatusMAX) {
+    if (payBeforeResult(false))
+      *refStatus = StatusDQ;
+    else if (*refStatus == StatusUnknown || *refStatus == StatusCANCEL || *refStatus == StatusDNS || *refStatus == StatusMAX) {
       if (maxTimeStatus == 1)
         *refStatus = StatusMAX;
       else
@@ -1604,7 +1606,9 @@ bool oRunner::evaluateCard(bool doApply, vector<int>& missingPunches,
     *refStatus == StatusNoTiming)
     *refStatus = StatusUnknown;
 
-  if (OK && (*refStatus == 0 || *refStatus == StatusDNS || *refStatus == StatusCANCEL || *refStatus == StatusMP || *refStatus == StatusOK || *refStatus == StatusDNF))
+  if (payBeforeResult(false))
+    *refStatus = StatusDQ;
+  else if (OK && (*refStatus == 0 || *refStatus == StatusDNS || *refStatus == StatusCANCEL || *refStatus == StatusMP || *refStatus == StatusOK || *refStatus == StatusDNF))
     *refStatus = StatusOK;
   else	*refStatus = RunnerStatus(max(int(StatusMP), int(*refStatus)));
 
@@ -7093,13 +7097,17 @@ void oAbstractRunner::setPaymentMode(int mode) {
 bool oAbstractRunner::hasLateEntryFee() const {
   if (!Class)
     return false;
+  
   int highFee = Class->getDCI().getInt("HighClassFee");
+  int highFee2 = Class->getDCI().getInt("SecondHighClassFee");
   int normalFee = Class->getDCI().getInt("ClassFee");
   
   int fee = getDCI().getInt("Fee");
   if (fee == normalFee || fee == 0)
     return false;
   else if (fee == highFee && highFee > normalFee && normalFee > 0)
+    return true;
+  else if (fee == highFee2 && highFee2 > normalFee && normalFee > 0)
     return true;
 
   wstring date = getEntryDate(true);
@@ -7109,6 +7117,43 @@ bool oAbstractRunner::hasLateEntryFee() const {
 
   return late;
 }
+
+bool oRunner::payBeforeResult(bool checkFlagOnly) const {
+  if (!hasFlag(TransferFlags::FlagPayBeforeResult))
+    return false;
+  if (checkFlagOnly)
+    return true;
+  int paid = getDCI().getInt("Paid");
+  return getEntryFee() > paid;
+}
+
+void oRunner::setPayBeforeResult(bool flag) {
+  if (hasFlag(TransferFlags::FlagPayBeforeResult) == flag)
+    return;
+  setFlag(TransferFlags::FlagPayBeforeResult, flag);
+  if (!flag && getStatus() == StatusDQ)
+    setStatus(RunnerStatus::StatusUnknown, true, ChangeType::Update, false);
+  vector<int> mp;
+  evaluateCard(true, mp, 0, ChangeType::Update);
+}
+
+void oRunner::setPaid(int paid) {
+  getDI().setInt("Paid", paid);
+}
+
+void oRunner::setFee(int fee) {
+  bool needPay = payBeforeResult(false);
+  bool paymentChanged = getDI().setInt("Fee", fee);
+  if (paymentChanged && needPay) {
+    if (getStatus() == StatusDQ)
+      setStatus(RunnerStatus::StatusUnknown, true, ChangeType::Update, false);
+  }
+  if (payBeforeResult(true)) {
+    vector<int> mp;
+    evaluateCard(true, mp, 0, ChangeType::Update);
+  }
+}
+
 
 int oRunner::classInstance() const {
   if (classInstanceRev.first == oe->dataRevision)

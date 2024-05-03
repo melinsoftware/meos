@@ -3638,13 +3638,14 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
         if (crs->useLastAsFinish()) {
           nc--;
         }
+        bool doAdjust = true;
         set< pair<unsigned, int> > rogaining;
         for (int k = firstControl; k<nc; k++) {
           if (size_t(k) >= sp.size())
             break;
           if (crs->getControl(k)->isRogaining(hasRogaining)) {
             if (sp[k].hasTime()) {
-              int time = sp[k].getTime(false) - r.getStartTime();
+              int time = sp[k].getTime(doAdjust) - r.getStartTime();
               int control = crs->getControl(k)->getFirstNumber();
               rogaining.insert(make_pair(time, control));
             }
@@ -3661,7 +3662,7 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
             xml.startTag("SplitTime");
           xml.write("ControlCode", crs->getControl(k)->getFirstNumber());
           if (sp[k].hasTime() && hasTiming)
-            xml.write("Time", formatRelTime(sp[k].getTime(false) - r.getStartTime()));
+            xml.write("Time", formatRelTime(sp[k].getTime(doAdjust) - r.getStartTime()));
           xml.endTag();
         }
 

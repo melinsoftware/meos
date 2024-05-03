@@ -1603,7 +1603,9 @@ bool TabTeam::loadPage(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(2.2);
   gdi.addButton("EditAnnotation", L"Kommentar >>", TeamCB, L"Lägg till eller redigera kommentarer om laget.");
+  gdi.dropLine(2.5);
 
+  posYForButtons = max(posYForButtons, gdi.getCY());
   gdi.setOnClearCb(TeamCB);
 
   addToolbar(gdi);

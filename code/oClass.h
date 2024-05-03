@@ -671,6 +671,9 @@ public:
   const wstring &getName() const {return Name;}
   void setName(const wstring &name, bool manualSet);
 
+  const wstring& getLongName() const;
+  void setLongName(const wstring& name);
+
   void Set(const xmlobject *xo);
   bool Write(xmlparser &xml);
 

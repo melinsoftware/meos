@@ -31,12 +31,13 @@ public:
 
 class AbsoluteTimeFormatter : public oDataDefiner {
   string name;
+  const SubSecond mode;
 public:
-  AbsoluteTimeFormatter(const char* n) : name(n) {}
+  AbsoluteTimeFormatter(const char* n, SubSecond mode) : name(n), mode(mode) {}
 
   const wstring& formatData(const oBase* obj) const override {
     int t = obj->getDCI().getInt(name);
-    return formatTime(t);
+    return formatTime(t, mode);
   }
   pair<int, bool> setData(oBase* obj, const wstring& input, wstring& output, int inputId) const override {
     int t = convertAbsoluteTimeMS(input);
@@ -397,5 +398,31 @@ public:
   int addTableColumn(Table* table, const string& description, int minWidth) const override {
     numChar = minWidth / 5;
     return table->addColumn(description, max(minWidth, 90), false, true);
+  }
+};
+
+class PaymentChangedNf : public oDataNotifier {
+  void notify(oBase* ob, int oldValue, int newValue) final {
+    oRunner* r = (oRunner *)ob;
+    if (r->payBeforeResult(true)) {
+      bool wasOK = oldValue >= r->getEntryFee();
+      if (!wasOK && r->getStatus() == StatusDQ)
+        r->setStatus(RunnerStatus::StatusUnknown, true, oBase::ChangeType::Update, false);
+      vector<int> mp;
+      r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
+    }
+  }
+};
+
+class FeeChangedNf : public oDataNotifier {
+  void notify(oBase* ob, int oldValue, int newValue) final {
+    oRunner* r = (oRunner*)ob;
+    if (r->payBeforeResult(true)) {
+      bool wasOK = r->getDCI().getInt("Paid") >= oldValue;
+      if (!wasOK && r->getStatus() == StatusDQ)
+        r->setStatus(RunnerStatus::StatusUnknown, true, oBase::ChangeType::Update, false);
+      vector<int> mp;
+      r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
+    }
   }
 };

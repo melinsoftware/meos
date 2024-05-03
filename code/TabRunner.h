@@ -121,16 +121,19 @@ private:
   static void updateStatus(gdioutput &gdi, pRunner r);
   static void autoGrowCourse(gdioutput &gdi);
 
-  void loadEconomy(gdioutput &gdi, oRunner &r);
+  void loadEconomy(gdioutput &gdi, oRunner &r, gdioutput *gdiMain, TabRunner *mainTab);
   
   class EconomyHandler : public GuiHandler {
     int runnerId;
     oEvent *oe;
+    gdioutput* gdiMain;
+    TabRunner* mainTab;
     oRunner &getRunner() const;
     void updateColor(gdioutput& gdi);
     void init(oRunner& r);
   public:
-    EconomyHandler(oRunner& r) { init(r); }
+    EconomyHandler(oRunner& r, gdioutput* gdiMain, TabRunner* mainTab) :
+       gdiMain(gdiMain), mainTab(mainTab) { init(r); }
     void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
     void save(gdioutput &gdi);
   };

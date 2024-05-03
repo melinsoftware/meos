@@ -558,14 +558,21 @@ void oClass::setCourse(pCourse c)
   }
 }
 
-void oClass::setName(const wstring &name, bool manualSet)
-{
+void oClass::setName(const wstring &name, bool manualSet) {
   if (getName() != name) {
     Name = name;
     if (manualSet)
       setFlag(TransferFlags::FlagManualName, true);
     updateChanged();
   }
+}
+
+const wstring& oClass::getLongName() const {
+return getDCI().getString("LongName");
+}
+
+void oClass::setLongName(const wstring& name) {
+getDI().setString("LongName", name);
 }
 
 oDataContainer &oClass::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const {
@@ -584,48 +591,53 @@ int oEvent::getNumClasses() const {
   return nc;
 }
 
-pClass oEvent::getClassCreate(int Id, const wstring &createName, set<wstring> &exactMatch) {
-  if (Id>0) {
-    oClassList::iterator it;
-    for (it=Classes.begin(); it != Classes.end(); ++it) {
-      if (it->Id==Id && !it->isRemoved()) {
-
-        if (compareClassName(createName, it->getName())) {
-          if (it!=Classes.begin())
+pClass oEvent::getClassCreate(int Id, const wstring& createName, set<wstring>& exactMatch) {
+  if (Id > 0) {
+    for (auto it = Classes.begin(); it != Classes.end(); ++it) {
+      if (it->Id == Id && !it->isRemoved()) {
+        if (compareClassName(createName, it->getName()) || compareClassName(createName, it->getLongName())) {
+          if (it != Classes.begin())
             Classes.splice(Classes.begin(), Classes, it, Classes.end());
-		  return &Classes.front();
+          return &Classes.front();
         }
         else {
-          Id=0; //Bad Id
+          Id = 0; //Bad Id
           break;
         }
       }
     }
   }
 
-  if (createName.empty() && Id>0) {
+  if (createName.empty() && Id > 0) {
     oClass c(this, Id);
     c.setName(getAutoClassName(), false);
     return addClass(c);
   }
   else {
-	  bool exact = exactMatch.count(createName) > 0;
+    bool exact = exactMatch.count(createName) > 0;
 
     //Check if class exist under different id
-    for (auto &c : Classes) {
+    for (auto& c : Classes) {
       if (c.isRemoved())
         continue;
-      
-      if (!exact && exactMatch.count(c.Name) == 0 && compareClassName(c.Name, createName)) {
-        return &c;
+
+      if (!exact && exactMatch.count(c.Name) == 0) {
+        bool matchName = compareClassName(c.Name, createName);
+        if (!matchName) {
+          const wstring &longName = c.getLongName();
+          matchName = !longName.empty() && compareClassName(longName, createName); 
+        }
+        if (matchName)
+          return &c;
       }
+
       if (exact && c.Name == createName) {
         return &c;
       }
     }
 
-    if (Id<=0)
-      Id=getFreeClassId();
+    if (Id <= 0)
+      Id = getFreeClassId();
 
     oClass c(this, Id);
     c.Name = createName;
@@ -3170,7 +3182,7 @@ int oClass::getEntryFee(const wstring &date, int age) const
   int normal = getDCI().getInt("ClassFee");
 
   if (late2 && veryHigh > 0)
-    return high;
+    return veryHigh;
   if (late && high > 0)
     return high;
   else

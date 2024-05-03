@@ -524,20 +524,25 @@ int TabClass::multiCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         return false;
 
       if (currentStage>=0){
-        ListBoxInfo lbi;
-        if (gdi.getSelectedItem("MCourses", lbi)) {
-          int courseid=lbi.data;
-
+        //ListBoxInfo lbi;
+        set<int> crsS;
+        gdi.getSelection("MCourses", crsS);
+        gdi.setSelection("MCourses", {});
+        if (!crsS.empty()) {
+          
           int ix = -1;
           ListBoxInfo selS;
           if (gdi.getSelectedItem("StageCourses", selS)) {
             ix = selS.index+1;
           }
 
-          pc->addStageCourse(currentStage, courseid, ix);
+          int n = 0;
+          for (int courseid : crsS)
+            pc->addStageCourse(currentStage, courseid, ix + (n++));
+
           pc->fillStageCourses(gdi, currentStage, "StageCourses");
           if (ix != -1)
-            gdi.selectItemByIndex("StageCourses", ix);
+            gdi.selectItemByIndex("StageCourses", ix + n -1);
 
           pc->synchronize();
           oe->checkOrderIdMultipleCourses(cid);
@@ -4326,7 +4331,7 @@ void TabClass::selectCourses(gdioutput &gdi, int legNo) {
   pc->fillStageCourses(gdi, currentStage, "StageCourses");
   int x2=gdi.getCX();
   gdi.fillDown();
-  gdi.addListBox("MCourses", 240, 200, MultiCB, L"Banor:").ignore(true);
+  gdi.addListBox("MCourses", 240, 200, MultiCB, L"Banor:", L"", true).ignore(true);
   oe->fillCourses(gdi, "MCourses", {}, true);
 
   gdi.setCX(x1);

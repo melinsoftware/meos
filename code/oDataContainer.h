@@ -54,6 +54,14 @@ public:
   virtual CellType getCellType() const;
 };
 
+/** Listen and act on data change*/
+class oDataNotifier {
+public:
+  virtual ~oDataNotifier() = default;
+  /** Notified when integer data changes */
+  virtual void notify(oBase* ob, int oldValue, int newValue) = 0;
+};
+
 struct oDataInfo {
   char Name[MaxVarNameLength];
   int Index;
@@ -66,6 +74,7 @@ struct oDataInfo {
   int decimalScale;
   vector<pair<wstring, wstring>> enumDescription;
   shared_ptr<oDataDefiner> dataDefiner;
+  shared_ptr<oDataNotifier> dataNotifier;
   int zeroSortPadding;
   oDataInfo();
   ~oDataInfo();
@@ -173,7 +182,7 @@ public:
   bool isInt(const char *name) const;
   bool isString(const char *name) const;
 
-  bool setInt(void *data, const char *Name, int V);
+  bool setInt(oBase *ob, void *data, const char *Name, int V);
   int getInt(const void *data, const char *Name) const;
 
   bool setInt64(void *data, const char *Name, __int64 V);
@@ -228,7 +237,7 @@ public:
   }
 
   inline bool setInt(const char *name, int value) {
-    if (oDC->setInt(Data, name, value)) {
+    if (oDC->setInt(oB, Data, name, value)) {
       oB->updateChanged();
       return true;
     }

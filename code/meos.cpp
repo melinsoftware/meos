@@ -84,6 +84,8 @@ AutoTask *autoTask = 0;
 #endif
 
 vector<gdioutput *> gdi_extra;
+gdioutput* getGDIForExtraWindow(HWND hWnd);
+
 void initMySQLCriticalSection(bool init);
 
 HWND hWndMain;
@@ -559,35 +561,35 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 // nCode - hook code.
 // wParam - message flag (not used).
 // lParam - address of an MSG structure.
-LRESULT CALLBACK GetMsgProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    MSG *lpmsg;
+LRESULT CALLBACK GetMsgProc(int nCode, WPARAM wParam, LPARAM lParam) {
+  MSG* lpmsg = (MSG*)lParam;
+  gdioutput* extra = nullptr;
 
-    lpmsg = (MSG *) lParam;
-    if (nCode < 0 || !(IsChild(hWndWorkspace, lpmsg->hwnd)))
-        return (CallNextHookEx(g_hhk, nCode, wParam, lParam));
 
-    switch (lpmsg->message) {
+  switch (lpmsg->message) {
   case WM_MOUSEMOVE:
   case WM_LBUTTONDOWN:
   case WM_LBUTTONUP:
   case WM_RBUTTONDOWN:
   case WM_RBUTTONUP:
-    if (gdi_main->getToolTip() != NULL) {
-      MSG msg;
+    if (nCode >= 0) {
+      if (IsChild(hWndWorkspace, lpmsg->hwnd))
+        extra = gdi_main;
+      else
+        extra = getGDIForExtraWindow(lpmsg->hwnd); 
+    }
 
+    if (extra != nullptr && extra->getToolTip() != nullptr) {
+      MSG msg;
       msg.lParam = lpmsg->lParam;
       msg.wParam = lpmsg->wParam;
       msg.message = lpmsg->message;
       msg.hwnd = lpmsg->hwnd;
-      SendMessage(gdi_main->getToolTip(), TTM_RELAYEVENT, 0,
-        (LPARAM) (LPMSG) &msg);
+      SendMessage(extra->getToolTip(), TTM_RELAYEVENT, 0,
+        (LPARAM)(LPMSG)&msg);
     }
-    break;
-  default:
-    break;
-    }
-    return (CallNextHookEx(g_hhk, nCode, wParam, lParam));
+  }
+  return CallNextHookEx(g_hhk, nCode, wParam, lParam);
 }
 
 void flushEvent(const string &id, const string &origin, DWORD data, int extraData)
@@ -851,6 +853,15 @@ gdioutput *getExtraWindow(const string &tag, bool toForeGround) {
     }
   }
   return 0;
+}
+
+gdioutput* getGDIForExtraWindow(HWND hWnd) {
+  for (size_t k = 1; k < gdi_extra.size(); k++) {
+    if (gdi_extra[k] && IsChild(gdi_extra[k]->getHWNDTarget(), hWnd)) {
+      return gdi_extra[k];
+    }
+  }
+  return nullptr;
 }
 
 gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x, int max_y, bool fixedSize) {

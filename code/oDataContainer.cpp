@@ -225,7 +225,7 @@ bool oDataContainer::isString(const char *name) const {
   return odi->Type == oDTString || odi->Type == oDTStringDynamic;
 }
 
-bool oDataContainer::setInt(void *data, const char *Name, int V)
+bool oDataContainer::setInt(oBase* ob, void *data, const char *Name, int V)
 {
   oDataInfo *odi=findVariable(Name);
 
@@ -239,8 +239,12 @@ bool oDataContainer::setInt(void *data, const char *Name, int V)
     throw std::exception("oDataContainer: Variable to large.");
 
   LPBYTE vd=LPBYTE(data)+odi->Index;
-  if (*((int *)vd)!=V){
-    *((int *)vd)=V;
+  int oldValue = *((int*)vd);
+  
+  if (oldValue != V) {
+    *((int*)vd) = V;
+    if (odi->dataNotifier)
+      odi->dataNotifier->notify(ob, oldValue, V);
     return true;
   }
   else return false;//Not modified
@@ -1489,6 +1493,9 @@ pair<int, bool>  oDataContainer::inputData(oBase *ob, int id,
             ob->synchronize(true);
 
           memcpy(&outN, vd, sizeof(int));
+
+          if (di.dataNotifier)
+            di.dataNotifier->notify(ob, k, no);
         }
 
         formatNumber(outN, di, bf);

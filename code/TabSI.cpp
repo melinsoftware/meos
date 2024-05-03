@@ -2448,8 +2448,7 @@ void TabSI::updateReadoutFunction(gdioutput& gdi) {
   gdi.hideWidget("PlaySound", hide);
 }
 
-void InsertSICard(gdioutput& gdi, SICard& sic)
-{
+void InsertSICard(gdioutput& gdi, SICard& sic) {
   TabSI& tsi = dynamic_cast<TabSI&>(*gdi.getTabs().get(TSITab));
   tsi.insertSICard(gdi, sic);
 }
@@ -3244,7 +3243,10 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
     }
   }
   else {
-    rout.statusline = lang.tl(L"Status: ") + runner->getStatusS(true, true);
+    if (runner->payBeforeResult(false))
+      rout.statusline = lang.tl("Betalning av anmälningsavgift inte registrerad");
+    else
+      rout.statusline = lang.tl(L"Status: ") + runner->getStatusS(true, true);
 
     playReadoutSound(SND::NotOK);
     if (!rout.MP.empty()) {
@@ -3619,9 +3621,9 @@ void TabSI::generateEntryLine(gdioutput& gdi, pRunner r) {
     else
       gdi.setText("Fee", lastFee);
 
-    gdi.dropLine(1.2);
+    gdi.dropLine(1);
     generatePayModeWidget(gdi);
-    gdi.dropLine(-1.2);
+    gdi.dropLine(-1);
   }
 
   gdi.popX();
@@ -3720,7 +3722,6 @@ void TabSI::updateEntryInfo(gdioutput& gdi)
       int np = nums - cs + 1;
       fee *= np;
     }
-
   }
 
   wstring method;
@@ -3755,9 +3756,16 @@ void TabSI::generateSplits(const pRunner r, gdioutput& gdi)
   }
   else {
     gdioutput gdiprint(2.0, gdi.getHWNDTarget(), splitPrinter);
-    vector<int> mp;
-    r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
-    r->printSplits(gdiprint);
+    if (r->payBeforeResult(false)) {
+      gdiprint.addString("", 0, "Betalning av anmälningsavgift inte registrerad");
+      gdiprint.dropLine(4);
+      gdiprint.addStringUT(0, r->getCompleteIdentification());
+    }
+    else {
+      vector<int> mp;
+      r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
+      r->printSplits(gdiprint);
+    }
     printProtected(gdi, gdiprint);
     //gdiprint.print(splitPrinter, oe, false, true);
   }
@@ -4785,7 +4793,9 @@ void TabSI::generatePayModeWidget(gdioutput& gdi) const {
   assert(pm.size() > 0);
   if (pm.size() == 1) {
     assert(pm[0].second == 0);
+    gdi.dropLine(0.2);
     gdi.addCheckbox("Paid", L"#" + pm[0].first, SportIdentCB, storedInfo.hasPaid);
+    gdi.dropLine(-0.2);
   }
   else {
     pm.insert(pm.begin(), make_pair(lang.tl(L"Faktureras"), 1000));
@@ -5226,6 +5236,12 @@ void TabSI::showReadoutStatus(gdioutput& gdi, const oRunner* r,
         }
       }
     }
+    else if (r->payBeforeResult(false)) {
+      bgColor = colorLightRed;
+      gdi.fillDown();
+      gdi.addString("", fontLarge, "Betalning av anmälningsavgift inte registrerad");
+      gdi.dropLine();     
+    }
     else {
       bgColor = colorLightRed;
       gdi.fillDown();
@@ -5280,10 +5296,32 @@ void TabSI::showReadoutStatus(gdioutput& gdi, const oRunner* r,
   if (bgColor != GDICOLOR::colorDefault)
     gdi.addRectangle(rc, bgColor);
 
-  rc.top += mrg / 2;
+  bool problem = bgColor == GDICOLOR::colorLightRed;
+
+  int off = 0;
+  if (problem) {
+    RECT rcTop, rcBottom;
+    rcTop.top = mrg+2;
+    rcTop.bottom = max(h / 8, gdi.scaleLength(30));
+    rcBottom.bottom = h - mrg - 2;
+    rcBottom.top = h - max(h / 8, gdi.scaleLength(30));
+    rcBottom.left = rcTop.left = mrg+2;
+    rcBottom.right = rcTop.right = w - mrg-2;
+    if (!rentalCard) 
+      gdi.addRectangle(rcTop, GDICOLOR::colorRed);
+    else {
+      int mid = (rcTop.top + rcTop.bottom) / 2;
+      rcTop.bottom = mid;
+      off = mid;
+      gdi.addRectangle(rcTop, GDICOLOR::colorRed);
+    }
+    gdi.addRectangle(rcBottom, GDICOLOR::colorRed);
+  }
+
+  rc.top += mrg / 2 + off;
   rc.right -= mrg / 2;
   rc.left += mrg / 2;
-  rc.bottom = h / 6;
+  rc.bottom = h / 6 + off;
 
   if (rentalCard) {
     gdi.addRectangle(rc, colorYellow);
@@ -5304,11 +5342,10 @@ void TabSI::showReadoutStatus(gdioutput& gdi, const oRunner* r,
     else
       gdi.addRectangle(rc, colorMediumRed);
 
-    gdi.setCX(w / 3);
+    gdi.addString("", rc.top + mrg, rc.left + mrg, fontMediumPlus, "Batteristatus");
     gdi.setCY(min(rc.top + mrg, rc.bottom - gdi.scaleLength(mrg * 5)));
-    gdi.fillDown();
-    gdi.pushX();
-    gdi.addString("", gdi.getCY(), rc.left + mrg, fontMediumPlus, "Batteristatus");
+    gdi.setCX(w / 3);
+
     gdi.fillRight();
     gdi.dropLine();
     gdi.addString("", fontMediumPlus, "Spänning:");

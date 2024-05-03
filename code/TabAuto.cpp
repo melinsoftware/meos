@@ -1112,7 +1112,7 @@ void PunchMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.addInput("nRunner", L"100", 10, 0, L"Antal löpare");
   gdi.addInput("nClass", L"10", 10, 0, L"Antal klasser");
   gdi.dropLine();
-  gdi.addCheckbox("UseRelay", "Med stafettklasser");
+  gdi.addCheckbox("UseRelay", "Med stafettklasser", nullptr, false);
   gdi.addButton("GenerateCMP", "Generera testtävling", AutomaticCB);
 }
 

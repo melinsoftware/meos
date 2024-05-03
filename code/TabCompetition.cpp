@@ -661,7 +661,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       gdi.popX();
 
       gdi.dropLine(3);
-      gdi.popX();
+      gdi.popX(); 
+
       gdi.addCheckbox("Clear", "Nollställ databaser");
       gdi.addCheckbox("IncludeWithoutClub", "Inkludera klubblösa");
 
@@ -1314,10 +1315,11 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
 
       gdi.dropLine();
       gdi.addButton("EventorAPI", "Anslutningsinställningar...", CompetitionCB);
-      gdi.dropLine();
+      gdi.dropLine(1.3);
       gdi.fillRight();
       gdi.pushX();
       gdi.addCheckbox("EventorCmp", "Hämta tävlingsdata", CompetitionCB, true);
+      gdi.dropLine(-0.1);
       gdi.addSelection("EventorSel", 300, 200);
       sort(events.begin(), events.end());
       st.wYear++; // Restore current time
@@ -1334,7 +1336,12 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
 
       gdi.dropLine(3);
       gdi.popX();
+
+
       gdi.addCheckbox("EventorDb", "Uppdatera löpardatabasen", CompetitionCB, true);
+      gdi.dropLine(1.5);
+      gdi.popX();
+      gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
       gdi.addCheckbox("IncludeWithoutClub", "Inkludera klubblösa");
 
       gdi.dropLine(3);
@@ -1348,6 +1355,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
     }
     else if (bi.id == "EventorDb") {
       gdi.setInputStatus("EventorNext", gdi.isChecked(bi.id) || gdi.isChecked("EventorCmp"));
+      gdi.setInputStatus("IncludeWithoutClub", gdi.isChecked(bi.id));
     }
     else if (bi.id == "EventorNext") {
       bool cmp = gdi.isChecked("EventorCmp");
@@ -1378,12 +1386,12 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
         wstring ttt = tt>0 ? ci->firstStart : L"";
         gdi.addInput("FirstStart", ttt, 10, 0, L"Första ordinarie starttid:", L"Skriv första starttid på formen HH:MM:SS");
 
-        gdi.addSelection("StartType", 200, 150, 0, L"Startmetod", L"help:startmethod");
+        gdi.addSelection("StartType", 200, 150, 0, L"Startmetod:", L"help:startmethod");
         gdi.addItem("StartType", lang.tl("Gemensam start"), SMCommon);
         gdi.addItem("StartType", lang.tl("Lottad startlista"), SMDrawn);
         gdi.addItem("StartType", lang.tl("Fria starttider"), SMFree);
         gdi.addItem("StartType", lang.tl("Jag sköter lottning själv"), SMCustom);
-        gdi.selectFirstItem("StartType");
+        gdi.selectItemByData("StartType", SMCustom);
         gdi.fillDown();
         gdi.popX();
         gdi.dropLine(3);

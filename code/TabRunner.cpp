@@ -366,7 +366,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
   if (gdi_settings) {
     TabRunner &dst = dynamic_cast<TabRunner&>(*gdi_settings->getTabs().get(TabType::TRunnerTab));
-    dst.loadEconomy(*gdi_settings, *r);
+    dst.loadEconomy(*gdi_settings, *r, &gdi, this);
   }
 }
 
@@ -639,7 +639,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
 
     gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
     if (gdi_settings) {
-      EconomyHandler h(*r);
+      EconomyHandler h(*r, nullptr, nullptr);
       h.save(*gdi_settings);
     }
 
@@ -1064,9 +1064,9 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         return 0;
       pRunner r = oe->getRunner(runnerId, 0);
       if (r && getExtraWindow("ecosettings", true) == nullptr) {
-        gdioutput *settings = createExtraWindow("ecosettings", L"Economy", gdi.scaleLength(550), gdi.scaleLength(350), true);
+        gdioutput* settings = createExtraWindow("ecosettings", lang.tl("Ekonomi"), gdi.scaleLength(550), gdi.scaleLength(350), true);
         TabRunner &dst = dynamic_cast<TabRunner&>(*settings->getTabs().get(TabType::TRunnerTab));
-        dst.loadEconomy(*settings, *r);
+        dst.loadEconomy(*settings, *r, &gdi, this);
       }
     }
     else if (bi.id == "EditAnnotation") {
@@ -1074,7 +1074,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         return 0;
       pRunner r = oe->getRunner(runnerId, 0);
       if (r && getExtraWindow("comments", true) == nullptr) {
-        gdioutput* settings = createExtraWindow("comments", L"Kommentarer", gdi.scaleLength(550), gdi.scaleLength(350), true);
+        gdioutput* settings = createExtraWindow("comments", lang.tl("Kommentarer"), gdi.scaleLength(550), gdi.scaleLength(350), true);
         TabRunner::loadComments(*settings, *r, make_shared<CommentHandler>(*r));
       }
     }
@@ -1254,7 +1254,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         pRunner r = oe->getRunner(runnerId, 0);
         gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
         if (gdi_settings) {
-          EconomyHandler h(*r);
+          EconomyHandler h(*r, nullptr, nullptr);
           h.save(*gdi_settings);
         }
       }
@@ -2382,10 +2382,8 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
       else {
         gdi.selectFirstItem("Fee");
       }
-      gdi.dropLine(1.2);
-
+      gdi.dropLine(1);
       tsi.generatePayModeWidget(gdi);
-      gdi.dropLine(-0.2);
     }
     else {
       gdi.dropLine();
@@ -3051,8 +3049,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
   const bool multiDay = oe->hasPrevStage();
 
   if (multiDay) {
-     gdi.dropLine(1.2);
- 
+    gdi.dropLine(1.2);
     int xx = gdi.getCX();
     int yy = gdi.getCY();
     gdi.dropLine(0.5);
@@ -3083,6 +3080,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
     rc.bottom = gdi.getCY();
 
     gdi.addRectangle(rc, colorLightGreen, true, false);
+    gdi.popX();
   }
 
   addExtraFields(*oe, gdi, oEvent::ExtraFieldContext::Runner);
@@ -3600,13 +3598,15 @@ void TabRunner::EconomyHandler::handle(gdioutput &gdi, BaseInfo &info, GuiEventT
     if (bi.id == "Close") {
       save(gdi);
       gdi.closeWindow();
+      gdiMain->addInfoBox("saved", lang.tl(L"Ekonomi för X sparad#" + getRunner().getUIName()), 2000);
     }
     else if (bi.id == "Save") {
       save(gdi);
+      gdi.addInfoBox("saved", lang.tl(L"Ekonomi för X sparad#"+getRunner().getUIName()), 2000);
     }
     else if (bi.id == "Cancel") {
       TabRunner &dst = dynamic_cast<TabRunner&>(*gdi.getTabs().get(TabType::TRunnerTab));
-      dst.loadEconomy(gdi, getRunner());
+      dst.loadEconomy(gdi, getRunner(), gdiMain, mainTab);
     }
   }
   else if (type == GuiEventType::GUI_INPUTCHANGE) {
@@ -3653,41 +3653,50 @@ void TabRunner::EconomyHandler::save(gdioutput &gdi) {
     int t = convertAbsoluteTimeHMS(gdi.getText("EntryTime"), -1);
     r.getDI().setInt("EntryTime", t);
   }
+  RunnerStatus sBefore = r.getStatus();
+  r.setPayBeforeResult(gdi.isChecked("PayBeforeResult"));
+
   int fee = oe->interpretCurrency(gdi.getText("Fee"));
   if (r.getClassRef(true)) {
     int def = r.getClassRef(true)->getEntryFee(r.getEntryDate(), r.getBirthAge());
     r.setFlag(oAbstractRunner::FlagFeeSpecified, def != fee);
   }
-  r.getDI().setInt("Fee", fee);
+  r.setFee(fee);
   int cf = oe->interpretCurrency(gdi.getText("Card"));
   if (cf > 0 || (cf == 0 && r.getDCI().getInt("CardFee") != -1))
     r.getDI().setInt("CardFee", cf);
   int paid = oe->interpretCurrency(gdi.getText("PaidAmount"));
-  r.getDI().setInt("Paid", paid);
-
+  r.setPaid(paid);
+  
   if (paid != 0) {
     int m = gdi.getSelectedItem("").first;
     if (m != 1000)
       r.getDI().setInt("PayMode", m);
   }
+  if (sBefore != r.getStatus() && gdiMain)
+    mainTab->selectRunner(*gdiMain, &r);
 }
 
-void TabRunner::loadEconomy(gdioutput &gdi, oRunner &r) {
+void TabRunner::loadEconomy(gdioutput &gdi, oRunner &r, gdioutput *gdiMain, TabRunner *mainTab) {
   gdi.clearPage(false);
   gdi.fillDown();
   gdi.pushX();
   gdi.addString("", fontMediumPlus, L"Ekonomihantering, X#" + r.getCompleteIdentification());
-  auto h = make_shared<EconomyHandler>(r);
+  auto h = make_shared<EconomyHandler>(r, gdiMain, mainTab);
 
   gdi.fillRight();
   gdi.addInput("EntryDate", r.getEntryDate(true), 10, 0, L"Anmälningsdatum:");
   gdi.fillDown();
-  gdi.addInput("EntryTime", formatTime(r.getDCI().getInt("EntryTime")), 10, 0, L"Anmälningstid:");
+  gdi.addInput("EntryTime", formatTime(r.getDCI().getInt("EntryTime"), SubSecond::Off), 10, 0, L"Anmälningstid:");
   gdi.setInputStatus("EntryDate", r.getTeam() == 0);
   gdi.setInputStatus("EntryTime", r.getTeam() == 0);
 
   gdi.popX();
-  gdi.dropLine();
+  gdi.dropLine(0.5);
+  gdi.addCheckbox("PayBeforeResult", "Kräv betalning innan resultatet godkänns", nullptr, r.payBeforeResult(true),
+                                     "Löparen diskvalificeras tills anmälningsavgiften är betalad");
+  
+  gdi.dropLine(0.5);
 
   gdi.fillRight();
   gdi.addInput("Fee", oe->formatCurrency(r.getDCI().getInt("Fee")), 6, 0, L"Avgift:").setHandler(h);
@@ -3728,8 +3737,9 @@ void TabRunner::loadEconomy(gdioutput &gdi, oRunner &r) {
   gdi.disableInput("ModCls");
 
   gdi.fillRight();
-  gdi.addButton("Cancel", "Ångra").setHandler(h);
-  gdi.addButton("Close", "Stäng").setHandler(h);
+  gdi.dropLine();
+  gdi.addButton("Cancel", "Återställ").setHandler(h);
+  gdi.addButton("Close", "Stäng", nullptr, "Spara och stäng").setHandler(h);
   gdi.addButton("Save", "Spara").setHandler(h);
   gdi.refresh();
 }
