@@ -28,30 +28,28 @@
 
 #include "oBase.h"
 #include "inthashmap.h"
+#include "TableType.h"
 
-
-class Table;
 class InputInfo;
-enum CellType;
 
 constexpr int MaxVarNameLength = 28;
 
 class oDataDefiner {
 public:
   virtual ~oDataDefiner() {}
-  virtual const wstring &formatData(const oBase *obj) const = 0;
-  virtual pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const = 0;
-  virtual void fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const {}
+  virtual const wstring &formatData(const oBase *obj, int index) const = 0;
+  virtual pair<int, bool> setData(oBase *obj, int index, const wstring &input, wstring &output, int inputId) const = 0;
+  virtual void fillInput(const oBase *obj, int index, vector<pair<wstring, size_t>> &out, size_t &selected) const {}
 
   /** Used to define/add the table column in the table*/
-  virtual int addTableColumn(Table *table, const string &description, int minWidth) const = 0;
+  virtual TableColSpec addTableColumn(Table *table, const string &description, int minWidth) const = 0;
   virtual void prepare(oEvent *oe) const {}
 
   // Return false to be cell read-only
-  virtual bool canEdit() const { return true; }
+  virtual bool canEdit(int index) const { return true; }
 
   // Return the desired cell type
-  virtual CellType getCellType() const;
+  virtual CellType getCellType(int index) const;
 };
 
 /** Listen and act on data change*/
@@ -68,7 +66,7 @@ struct oDataInfo {
   int Size;
   int Type;
   int SubType;
-  int tableIndex;
+  TableColSpec tableIndex;
   char Description[48];
   int decimalSize;
   int decimalScale;

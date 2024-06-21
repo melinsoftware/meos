@@ -3330,7 +3330,7 @@ void TabRunner::loadExtraFields(gdioutput& gdi, const oBase* r) {
   if (gdi.hasWidget("Rank")) {
     wstring out;
     if (r)
-      out = rankFormatter->formatData(r);
+      out = rankFormatter->formatData(r, 0);
     gdi.setText("Rank", out);
   }
 }
@@ -3361,7 +3361,7 @@ void TabRunner::saveExtraFields(gdioutput& gdi, oBase &r) {
 
   if (gdi.hasWidget("Rank")) {
     wstring out;
-    rankFormatter->setData(&r, gdi.getText("Rank"), out, 0);
+    rankFormatter->setData(&r, 0, gdi.getText("Rank"), out, 0);
   }
   //  di.setInt("Rank", gdi.getTextNo("Rank"));
 }

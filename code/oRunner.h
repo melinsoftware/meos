@@ -670,7 +670,7 @@ protected:
   // Running time as calculated by evalute. Used to detect changes.
   int tCachedRunningTime;
 
-  mutable pair<int, int> classInstanceRev;
+  mutable pair<int, int> classInstanceRev = make_pair(-1, -1);
 
   void clearOnChangedRunningTime();
 
@@ -734,18 +734,18 @@ protected:
 
   class RaceIdFormatter : public oDataDefiner {
     public:
-      const wstring &formatData(const oBase *obj) const override;
-      pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override;
-      int addTableColumn(Table *table, const string &description, int minWidth) const override;
+      const wstring &formatData(const oBase *obj, int index) const override;
+      pair<int, bool> setData(oBase *obj, int index, const wstring &input, wstring &output, int inputId) const override;
+      TableColSpec addTableColumn(Table *table, const string &description, int minWidth) const override;
   };
 
   class RunnerReference : public oDataDefiner {
   public:
-    const wstring &formatData(const oBase *obj) const override;
-    pair<int, bool> setData(oBase *obj, const wstring &input, wstring &output, int inputId) const override;
-    void fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const override;
-    int addTableColumn(Table *table, const string &description, int minWidth) const override;
-    CellType getCellType() const override;
+    const wstring &formatData(const oBase *obj, int index) const override;
+    pair<int, bool> setData(oBase *obj, int index, const wstring &input, wstring &output, int inputId) const override;
+    void fillInput(const oBase *obj, int index, vector<pair<wstring, size_t>> &out, size_t &selected) const override;
+    TableColSpec addTableColumn(Table *table, const string &description, int minWidth) const override;
+    CellType getCellType(int index) const override;
   };
  
   /** Get internal data buffers for DI */
@@ -1133,6 +1133,10 @@ public:
 
   void merge(const oBase &input, const oBase *base) final;
   
+  void setExtraPersonData(const wstring& sex, const wstring &nationality, 
+                          const wstring& rank, wstring& phone,
+                          const wstring& bib, const wstring& text, int dataA, int dataB);
+
   virtual ~oRunner();
 
   friend class oCard;

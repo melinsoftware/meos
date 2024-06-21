@@ -40,6 +40,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include "HTMLWriter.h"
 #include "RunnerDB.h"
 #include "image.h"
+//#include "onlineinput.h"
 
 extern Image image;
 using namespace restbed;
@@ -393,11 +394,23 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
   }
   else if (rq->parameters.count("page") > 0) {
     string what = rq->parameters.find("page")->second;
-    auto &writer = HTMLWriter::getWriter(HTMLWriter::TemplateType::Page, what);
+    auto& writer = HTMLWriter::getWriter(HTMLWriter::TemplateType::Page, what, {});
     writer.getPage(ref, rq->answer);
   }
   else if (rq->parameters.count("enter") > 0) {
-    auto &writer = HTMLWriter::getWriter(HTMLWriter::TemplateType::Page, "entryform");
+    auto fields = ref.getExtraFields(oEvent::ExtraFieldContext::DirectEntry);
+    
+    vector<pair<string, wstring>> fn;
+    auto makeUpper = [](string& v) -> string& {
+      for (char& c : v)
+        c = toupper(c);
+      return v;
+    };
+
+    for (auto& [field, name] : fields) {
+      fn.emplace_back(makeUpper(oEvent::extraFieldName(field)), name);
+    }
+    auto &writer = HTMLWriter::getWriter(HTMLWriter::TemplateType::Page, "entryform", fn);
     writer.getPage(ref, rq->answer);
   }
   else if (rq->parameters.count("image") > 0) {
@@ -1401,8 +1414,43 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
       }
     }
 
+    wstring birthyear, sex, nat;
+    wstring bib, phone, rank, text;
+    int dataA = 0; int dataB = 0;
+
     if (!permissionDenied && error.empty()) {
-      pRunner r = oe.addRunner(name, club, classId, cardNo, L"", true);
+      if (auto res = param.find("birthdate"); res != param.end())
+        birthyear = wideParam(res->second);
+      else if (auto res = param.find("birthyear"); res != param.end()) 
+        birthyear = wideParam(res->second);
+
+      if (auto res = param.find("sex"); res != param.end()) 
+        sex = wideParam(res->second);
+
+      if (auto res = param.find("nationality"); res != param.end()) 
+        nat = wideParam(res->second);
+     
+      if (auto res = param.find("bib"); res != param.end()) 
+        bib = wideParam(res->second);
+      
+      if (auto res = param.find("phone"); res != param.end())
+        phone = wideParam(res->second);
+
+      if (auto res = param.find("rank"); res != param.end())
+        rank = wideParam(res->second);
+
+      if (auto res = param.find("textA"); res != param.end())
+        text = wideParam(res->second);
+
+      if (auto res = param.find("dataA"); res != param.end())
+        dataA = atoi(res->second.c_str());
+
+      if (auto res = param.find("dataB"); res != param.end())
+        dataB = atoi(res->second.c_str());
+    }
+
+    if (!permissionDenied && error.empty()) {
+      pRunner r = oe.addRunner(name, club, classId, cardNo, birthyear, true);
       if (r && dbr) {
         r->init(*dbr, true);
       }
@@ -1416,6 +1464,8 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
         r->addClassDefaultFee(true);
         if (noTiming)
           r->setStatus(StatusNoTiming, true, oBase::ChangeType::Update, false);
+
+        r->setExtraPersonData(sex, nat, rank, phone, bib, text, dataA, dataB);
 
         r->synchronize();
         r->markClassChanged(-1);

@@ -47,6 +47,7 @@
 #include "qualification_final.h"
 #include "metalist.h"
 #include "generalresult.h"
+#include "datadefiners.h"
 
 char RunnerStatusOrderMap[100];
 
@@ -135,25 +136,25 @@ RunnerStatus oAbstractRunner::decodeStatus(const wstring &stat) {
   return StatusUnknown;
 }
 
-const wstring &oRunner::RaceIdFormatter::formatData(const oBase *ob) const {
+const wstring &oRunner::RaceIdFormatter::formatData(const oBase *ob, int index) const {
   return itow(dynamic_cast<const oRunner &>(*ob).getRaceIdentifier());
 }
 
-pair<int, bool> oRunner::RaceIdFormatter::setData(oBase *ob, const wstring &input, wstring &output, int inputId) const {
+pair<int, bool> oRunner::RaceIdFormatter::setData(oBase *ob, int index, const wstring &input, wstring &output, int inputId) const {
   int rid = _wtoi(input.c_str());
   if (input == L"0")
     ob->getDI().setInt("RaceId", 0);
   else if (rid>0 && rid != dynamic_cast<oRunner *>(ob)->getRaceIdentifier())
     ob->getDI().setInt("RaceId", rid);
-  output = formatData(ob);
+  output = formatData(ob, index);
   return make_pair(0, false);
 }
 
-int oRunner::RaceIdFormatter::addTableColumn(Table *table, const string &description, int minWidth) const {
+TableColSpec oRunner::RaceIdFormatter::addTableColumn(Table *table, const string &description, int minWidth) const {
   return table->addColumn(description, max(minWidth, 90), true, true);
 }
 
-const wstring &oRunner::RunnerReference::formatData(const oBase *obj) const {
+const wstring &oRunner::RunnerReference::formatData(const oBase *obj, int index) const {
   int id = obj->getDCI().getInt("Reference");
   if (id > 0) {
     pRunner r = obj->getEvent()->getRunner(id, 0);
@@ -167,7 +168,7 @@ const wstring &oRunner::RunnerReference::formatData(const oBase *obj) const {
  }
 
 
-pair<int, bool> oRunner::RunnerReference::setData(oBase *obj, const wstring &input, wstring &output, int inputId) const {
+pair<int, bool> oRunner::RunnerReference::setData(oBase *obj, int index, const wstring &input, wstring &output, int inputId) const {
   int oldRef = obj->getDCI().getInt("Reference"); 
   obj->getDI().setInt("Reference", inputId);
   bool clearAll = false;
@@ -187,11 +188,11 @@ pair<int, bool> oRunner::RunnerReference::setData(oBase *obj, const wstring &inp
     }
   }
 
-  output = formatData(obj);
+  output = formatData(obj, index);
   return make_pair(inputId, clearAll);
 }
 
-void oRunner::RunnerReference::fillInput(const oBase *obj, vector<pair<wstring, size_t>> &out, size_t &selected) const {
+void oRunner::RunnerReference::fillInput(const oBase *obj, int index, vector<pair<wstring, size_t>> &out, size_t &selected) const {
   const oRunner *r = static_cast<const oRunner *>(obj);
   int cls = r->getClassId(true);
   vector<pRunner> runners;
@@ -218,33 +219,34 @@ void oRunner::RunnerReference::fillInput(const oBase *obj, vector<pair<wstring, 
   }
 }
 
-int oRunner::RunnerReference::addTableColumn(Table *table, const string &description, int minWidth) const {
+TableColSpec oRunner::RunnerReference::addTableColumn(Table *table, const string &description, int minWidth) const {
   return table->addColumn(description, max(minWidth, 200), true, true);
 }
 
-CellType oRunner::RunnerReference::getCellType() const {
+CellType oRunner::RunnerReference::getCellType(int index) const {
   return CellType::cellSelection; 
 }
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
-oAbstractRunner::oAbstractRunner(oEvent *poe, bool loading):oBase(poe)
-{
-  Class=0;
-  Club=0;
+oAbstractRunner::oAbstractRunner(oEvent* poe, bool loading) :oBase(poe) {
+  Class = nullptr;
+  Club = nullptr;
   startTime = 0;
   tStartTime = 0;
 
   FinishTime = 0;
   tStatus = status = StatusUnknown;
-
+  tEntryTouched = true;
+  sqlChanged = true;
+  StartNo = 0;
   inputPoints = 0;
   if (loading || !oe->hasPrevStage())
     inputStatus = StatusOK;
   else
     inputStatus = StatusNotCompetiting;
-  
+
   inputTime = 0;
   inputPlace = 0;
 
@@ -253,24 +255,24 @@ oAbstractRunner::oAbstractRunner(oEvent *poe, bool loading):oBase(poe)
   tAdjustDataRevision = -1;
 }
 
-wstring oAbstractRunner::getInfo() const
-{
+wstring oAbstractRunner::getInfo() const {
   return getName();
 }
 
-void oAbstractRunner::setFinishTimeS(const wstring &t)
-{
+void oAbstractRunner::setFinishTimeS(const wstring &t) {
   setFinishTime(oe->getRelativeTime(t));
 }
 
-void oAbstractRunner::setStartTimeS(const wstring &t)
-{
+void oAbstractRunner::setStartTimeS(const wstring &t) {
   setStartTime(oe->getRelativeTime(t), true, ChangeType::Update);
 }
 
-oRunner::oRunner(oEvent *poe) :oAbstractRunner(poe, false)
-{
+oRunner::oRunner(oEvent *poe) :oAbstractRunner(poe, false) {
   isTemporaryObject = false;
+  tTimeAfter = 0;
+  tInitialTimeAfter = 0;
+  tempRT = 0;
+  tempStatus = StatusUnknown;
   Id = oe->getFreeRunnerId();
   Course = nullptr;
   StartNo = 0;
@@ -304,8 +306,7 @@ oRunner::oRunner(oEvent *poe) :oAbstractRunner(poe, false)
   tNumShortening = 0;
 }
 
-oRunner::oRunner(oEvent *poe, int id) :oAbstractRunner(poe, true)
-{
+oRunner::oRunner(oEvent *poe, int id) :oAbstractRunner(poe, true) {
   isTemporaryObject = false;
   Id = id;
   oe->qFreeRunnerId = max(id, oe->qFreeRunnerId);
@@ -337,8 +338,7 @@ oRunner::oRunner(oEvent *poe, int id) :oAbstractRunner(poe, true)
   tAdaptedCourseRevision = -1;
 }
 
-oRunner::~oRunner()
-{
+oRunner::~oRunner() {
   if (tInTeam){
     for(unsigned i=0;i<tInTeam->Runners.size(); i++)
       if (tInTeam->Runners[i] && tInTeam->Runners[i]->getId() == Id)
@@ -3777,7 +3777,8 @@ void oRunner::createMultiRunner(bool createMaster, bool sync)
 
   if (sync) {
     synchronize(true);
-    oe->removeRunner(toRemove);
+    if (toRemove.size() > 0)
+      oe->removeRunner(toRemove);
   }
 }
 
@@ -7475,4 +7476,27 @@ wstring oRunner::getExtIdentifierString2() const {
 void oRunner::setExtIdentifier2(const wstring& str) {
   int64_t val = converExtIdentifierString(str);
   setExtIdentifier2(val);
+}
+
+void oRunner::setExtraPersonData(const wstring &sex, const wstring &nationality, 
+                                 const wstring &rank, wstring &phone,
+                                 const wstring &bib, const wstring &text, 
+                                 int dataA, int dataB) {
+  oDataInterface di = getDI();
+  if (sex == L"F" || sex == L"f")
+    setSex(PersonSex::sFemale);
+  else if (sex == L"M" || sex == L"m")
+    setSex(PersonSex::sMale);
+
+  if (!rank.empty()) {
+    wstring out;
+    RankScoreFormatter rf;
+    rf.setData(this, 0, rank, out, 0);
+  }
+  di.setString("Phone", phone);
+  setBib(bib, _wtoi(bib.c_str()), true);
+  di.setString("TextA", text);
+  di.setInt("DataA", dataA);
+  di.setInt("DataB", dataB);
+  setNationality(nationality);
 }

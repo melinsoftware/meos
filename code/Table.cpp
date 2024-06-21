@@ -99,8 +99,8 @@ void Table::clearCellSelection(gdioutput *gdi) {
   }
 }
 
-int Table::addColumn(const string &Title, int width, bool isnum, bool formatRight) {
-  return addColumn(lang.tl(Title).c_str(), width, isnum, formatRight);
+TableColSpec Table::addColumn(const string &Title, int width, bool isnum, bool formatRight) {
+  return TableColSpec(addColumn(lang.tl(Title).c_str(), width, isnum, formatRight), 1);
 }
 
 int Table::addColumn(const wstring &translatedTitle, int width, bool isnum, bool formatRight) {

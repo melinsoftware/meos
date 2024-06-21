@@ -37,8 +37,18 @@ class HTMLWriter {
 
   static map <string, shared_ptr<HTMLWriter>> tCache;
 
-  static string localize(const string &in);
+  string localize(const string &in);
 
+  enum class Function {
+    NONE,
+    IF,
+    ENDIF,
+  };
+
+  map<string, wstring> conditions;
+
+  Function parseFunc(const string& str, string& arg) const;
+  bool hasCondition(const string& arg) const;
 
   class ImageWriter {
     wstring destination;
@@ -68,12 +78,19 @@ public:
     tCache.clear();
   }
   
+  template<typename T>
+  void setConditions(const T& cond) {
+    conditions.clear();
+    for (auto &[key, value] : cond)
+      conditions[key] = value;
+  }
+
   enum class TemplateType {
     List,
     Page
   };
 
-  static const HTMLWriter &getWriter(TemplateType type, const string &tag);
+  static const HTMLWriter &getWriter(TemplateType type, const string &tag, const vector<pair<string, wstring>> &options);
   
   struct TemplateInfo {
     string tag;

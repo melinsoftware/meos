@@ -42,7 +42,7 @@ oDataContainer::oDataContainer(int maxsize) {
 oDataContainer::~oDataContainer(void) {
 }
 
-CellType oDataDefiner::getCellType() const {
+CellType oDataDefiner::getCellType(int index) const {
   return CellType::cellEdit; 
 }
 
@@ -52,7 +52,6 @@ oDataInfo::oDataInfo() {
   Size = 0;
   Type = 0;
   SubType = 0;
-  tableIndex = 0;
   decimalSize = 0;
   decimalScale = 1;
   zeroSortPadding = 0;
@@ -343,7 +342,7 @@ bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v) {
 const wstring &oDataContainer::formatString(const oBase *ob, const char *Name) const {
   const oDataInfo *odi = findVariable(Name);
   if (odi->dataDefiner) {
-    return odi->dataDefiner->formatData(ob);
+    return odi->dataDefiner->formatData(ob, 0);
   }
   else if (odi->Type == oDTString) {
     return getString(ob, Name);
@@ -1202,7 +1201,7 @@ void oDataContainer::buildTableCol(Table *table)
         w = max<int>(w, lang.tl(di.enumDescription[k].second).length() * 6);
 
       if (di.zeroSortPadding)
-        di.tableIndex = table->addColumnPaddedSort(di.Description, w, di.zeroSortPadding, true);
+        di.tableIndex = TableColSpec(table->addColumnPaddedSort(di.Description, w, di.zeroSortPadding, true), 1);
 
       else
         di.tableIndex = table->addColumn(di.Description, w, false);
@@ -1327,10 +1326,10 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
   for (size_t kk = 0; kk < ordered.size(); kk++) {
     const oDataInfo &di=ordered[kk];
     if (di.dataDefiner != nullptr) {
-      if (di.tableIndex >= 0) {
-        table.set(di.tableIndex, ob, 1000 + di.tableIndex,
-                  di.dataDefiner->formatData(&ob), canEdit && di.dataDefiner->canEdit(),
-                  di.dataDefiner->getCellType());
+      for (int i = 0; i < di.tableIndex.numColumns(); i++) {
+        table.set(di.tableIndex[i], ob, 1000 + di.tableIndex[i],
+                  di.dataDefiner->formatData(&ob, i), canEdit && di.dataDefiner->canEdit(i),
+                  di.dataDefiner->getCellType(i));
       }
     }
     else if (di.Type==oDTInt) {
@@ -1339,11 +1338,11 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
         int nr;
         memcpy(&nr, vd, sizeof(int));
         if (di.SubType == oISCurrency) {
-          table.set(di.tableIndex, ob, 1000+di.tableIndex, ob.getEvent()->formatCurrency(nr), canEdit);
+          table.set(di.tableIndex[0], ob, 1000 + di.tableIndex[0], ob.getEvent()->formatCurrency(nr), canEdit);
         }
         else {
           formatNumber(nr, di, bf);
-          table.set(di.tableIndex, ob, 1000+di.tableIndex, bf, canEdit);
+          table.set(di.tableIndex[0], ob, 1000 + di.tableIndex[0], bf, canEdit);
         }
       }
       else {
@@ -1351,13 +1350,13 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
         memcpy(&nr, vd, sizeof(__int64));
         wchar_t bf[16];
         oBase::converExtIdentifierString(nr, bf);
-        table.set(di.tableIndex, ob, 1000+di.tableIndex, bf, canEdit);
+        table.set(di.tableIndex[0], ob, 1000 + di.tableIndex[0], bf, canEdit);
       }
     }
     else if (di.Type==oDTString) {
       LPBYTE vd=LPBYTE(data)+di.Index;
       if (di.SubType == oSSString || !canEdit) {
-        table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, (wchar_t *)vd, canEdit, cellEdit);
+        table.set(di.tableIndex[0], *((oBase*)&owner), 1000 + di.tableIndex[0], (wchar_t*)vd, canEdit, cellEdit);
       }
       else {
         wstring str((wchar_t *)vd);
@@ -1367,15 +1366,15 @@ int oDataContainer::fillTableCol(const oBase &owner, Table &table, bool canEdit)
             break;
           }
         }
-        table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, str, true, cellSelection);
+        table.set(di.tableIndex[0], *((oBase*)&owner), 1000 + di.tableIndex[0], str, true, cellSelection);
       }
     }
     else if (di.Type == oDTStringDynamic) {
       const wstring &str = (*strptr)[0][di.Index];
-      table.set(di.tableIndex, *((oBase*)&owner), 1000+di.tableIndex, str, canEdit, cellEdit);
+      table.set(di.tableIndex[0], *((oBase*)&owner), 1000 + di.tableIndex[0], str, canEdit, cellEdit);
     }
-    if (di.tableIndex >= 0)
-      nextIndex = di.tableIndex + 1;
+    if (di.tableIndex.numColumns() > 0)
+      nextIndex = di.tableIndex.nextColumn();
   }
   return nextIndex;
 }
@@ -1391,10 +1390,12 @@ pair<int, bool>  oDataContainer::inputData(oBase *ob, int id,
   for (size_t kk = 0; kk < ordered.size(); kk++) {
     const oDataInfo &di = ordered[kk];
 
-    if (di.tableIndex + 1000 == id) {
+    if (di.tableIndex.hasColumn(id - 1000)) {
       if (di.dataDefiner) {
-        const wstring &src = di.dataDefiner->formatData(ob);
-        auto ret = di.dataDefiner->setData(ob, input, output, inputId);
+        const int ix = di.tableIndex.getIndex(id - 1000);
+        const wstring &src = di.dataDefiner->formatData(ob, ix);
+        auto ret = di.dataDefiner->setData(ob, ix, 
+                                           input, output, inputId);
         bool ch = output != src;
         if (ch && noUpdate == false)
           ob->synchronize(true);
@@ -1569,7 +1570,7 @@ void oDataContainer::fillInput(const oBase *obj, int id, const char *name,
   if (!info) {
     for (size_t kk = 0; kk < ordered.size(); kk++) {
       const oDataInfo &di=ordered[kk];
-      if (di.tableIndex+1000 == id) {
+      if (di.tableIndex.hasColumn(id - 1000)) {
         info = &di;
         break;
       }
@@ -1587,7 +1588,7 @@ void oDataContainer::fillInput(const oBase *obj, int id, const char *name,
     }
   }
   else if (info && info->dataDefiner) {
-    info->dataDefiner->fillInput(obj, out, selected);
+    info->dataDefiner->fillInput(obj, info->tableIndex.getIndex(id-1000), out, selected);
   }
   else
     throw meosException("Invalid enum");

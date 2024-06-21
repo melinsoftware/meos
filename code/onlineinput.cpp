@@ -498,12 +498,15 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     bool paid = entry.getObjectBool("paid");
 
     xmlobject xname = entry.getObject("name");
-    wstring birthyear;
+    wstring birthyear, sex, nat;
     if (xname) {
       xname.getObjectString("birthdate", birthyear);
       if (birthyear.empty()) {
         xname.getObjectString("birthyear", birthyear);
       }
+
+      xname.getObjectString("sex", sex);
+      xname.getObjectString("nationality", nat);
     }
     
     wstring name;
@@ -513,6 +516,15 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
 
     wstring club;
     entry.getObjectString("club", club);
+
+    wstring bib, phone, rank, text;
+    entry.getObjectString("bib", bib);
+    entry.getObjectString("phone", phone);
+    entry.getObjectString("rank", rank);
+    entry.getObjectString("text", text);
+    int dataA = entry.getObjectInt("dataA");
+    int dataB = entry.getObjectInt("dataB");
+    bool noTiming = entry.getObjectBool("notiming");
 
     int cardNo = 0;
     bool hiredCard = false;
@@ -546,6 +558,7 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
           r = nullptr;
       }
     }
+
     if (r == nullptr)
       r = oe.addRunner(name, club, cls->getId(), cardNo, birthyear, true);
     else {
@@ -559,7 +572,8 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     if (fee == 0)
       fee = r->getDefaultFee();
 
-    r->getDI().setInt("Fee", fee);
+    auto di = r->getDI();
+    di.setInt("Fee", fee);
     int toPay = fee;
     int cf = 0;
     if (hiredCard) {
@@ -568,13 +582,18 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
         toPay += cf;
     }
     r->setFlag(oRunner::FlagAddedViaAPI, true);
-    r->getDI().setInt("CardFee", cf);
-    r->getDI().setInt("Paid", paid ? toPay : 0);
+    di.setInt("CardFee", cf);
+    di.setInt("Paid", paid ? toPay : 0);
+    r->setExtraPersonData(sex, nat, rank, phone, bib, text, dataA, dataB);
+
+    if (noTiming)
+      r->setStatus(StatusNoTiming, true, oBase::ChangeType::Update, false);
 
     if (id > 0) {
-      r->getDI().setInt("RaceId", id | (1 << 30));
+      di.setInt("RaceId", id | (1 << 30));
       raceId2R[id] = r;
     }
     r->synchronize(true);
   }
 }
+

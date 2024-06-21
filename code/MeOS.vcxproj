@@ -334,6 +334,7 @@
     <ClInclude Include="TabControl.h" />
     <ClInclude Include="TabCourse.h" />
     <ClInclude Include="Table.h" />
+    <ClInclude Include="TableType.h" />
     <ClInclude Include="TabList.h" />
     <ClInclude Include="TabMulti.h" />
     <ClInclude Include="TabRunner.h" />

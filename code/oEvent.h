@@ -228,10 +228,10 @@ class oEvent : public oBase
 
 protected:
   // Revision number for data modified on this client.
-  unsigned long dataRevision;
+  unsigned long dataRevision = 0;
 
   // Set to true if a global modification is made that should case all lists etc to regenerate.
-  bool globalModification;
+  bool globalModification = false;
   bool isMainEvent = false;
 
   gdioutput &gdibase;
@@ -240,23 +240,23 @@ protected:
 
   void startReconnectDaemon();
   
-  mutable int vacantId; //Cached vacant id
-  mutable int noClubId; //Cached no club id
+  mutable int vacantId = 0; //Cached vacant id
+  mutable int noClubId = 0; //Cached no club id
 
   wstring Name;
   wstring Annotation;
   wstring Date;
-  int ZeroTime;
+  int ZeroTime = 0;
 
   mutable map<wstring, wstring> date2LocalTZ;
   const wstring &getTimeZoneString() const;
 
-  int tCurrencyFactor;
+  int tCurrencyFactor = 1;
   wstring tCurrencySymbol;
   wstring tCurrencySeparator;
-  bool tCurrencyPreSymbol;
+  bool tCurrencyPreSymbol = false;
 
-  int tMaxTime;
+  int tMaxTime = 0;
 
   bool writeControls(xmlparser &xml);
   bool writeCourses(xmlparser &xml);
@@ -282,7 +282,7 @@ protected:
   shared_ptr<RunnerDB> runnerDB;
   shared_ptr<RunnerDB> runnerDBCopy;
 
-  MeOSFeatures *meosFeatures;
+  MeOSFeatures *meosFeatures = nullptr;
 
   oCardList Cards;
 
@@ -322,7 +322,7 @@ protected:
 
   bool needReEvaluate();
 
-  DirectSocket *directSocket;
+  DirectSocket *directSocket = nullptr;
 
   int getFreeRunnerId();
   int getFreeClassId();
@@ -333,16 +333,16 @@ protected:
   int getFreePunchId();
   int getFreeTeamId();
 
-  int qFreeRunnerId;
-  int qFreeClassId;
-  int qFreeCourseId;
-  int qFreeControlId;
-  int qFreeClubId;
-  int qFreeCardId;
-  int qFreePunchId;
-  int qFreeTeamId;
+  int qFreeRunnerId = 1;
+  int qFreeClassId = 1;
+  int qFreeCourseId = 1;
+  int qFreeControlId = 1;
+  int qFreeClubId = 1;
+  int qFreeCardId = 1;
+  int qFreePunchId = 1;
+  int qFreeTeamId = 1;
 
-  int nextFreeStartNo;
+  int nextFreeStartNo = 1;
   void updateFreeId();
   void updateFreeId(oBase *ob);
 
@@ -360,12 +360,12 @@ protected:
   string MySQLServer;
   string MySQLUser;
   string MySQLPassword;
-  int MySQLPort;
+  int MySQLPort = 3306;
   shared_ptr<MeosSQL> sqlConnection;
   bool isConnectedToServer = false;
   string serverName;//Verified (connected) server name.
 
-  MeOSFileLock *openFileLock;
+  MeOSFileLock *openFileLock = nullptr;
 
   bool sqlRemove(oBase *obj);
 
@@ -373,7 +373,7 @@ protected:
     return sqlConnection != nullptr && isConnectedToServer;
   }
 
-  bool hasPendingDBConnection;
+  bool hasPendingDBConnection = false;
   bool msSynchronize(oBase *ob);
   
   wstring clientName;
@@ -382,13 +382,13 @@ protected:
   DWORD currentClientCS; //The current, stored check sum.
 
   //Protected speaker functions.
-  int computerTime;
+  int computerTime = 0;
 
   // True if warning has beend issued for manual id modification
   bool hasWarnedModifiedExtId = false;
 
   multimap<int, oTimeLine> timeLineEvents;
-  int timeLineRevision;
+  int timeLineRevision = -1;
   set<int> timelineClasses;
   set<int> modifiedClasses;
 
@@ -409,7 +409,7 @@ protected:
   map<string, wstring> eventProperties;
   map<string, wstring> savedProperties;
   
-  bool tUseStartSeconds;
+  bool tUseStartSeconds = false;
 
   set<pair<int,int>> readPunchHash;
   void insertIntoPunchHash(int card, int code, int time);
@@ -445,7 +445,7 @@ protected:
   int setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int, pControl> > &rc, int currentTime, bool finish);
   void timeLinePrognose(TempResultMap &result, TimeRunner &tr, int prelT,
                         int radioNumber, const wstring &rname, int radioId);
-  int nextTimeLineEvent; // Time when next known event will occur.
+  int nextTimeLineEvent = 0; // Time when next known event will occur.
 
   // Tables
   map<string, shared_ptr<Table>> tables;
@@ -480,7 +480,7 @@ protected:
   void decodeStartGroups(const string &enc) const;
   
   // Temporarily disable recaluclate leader times
-  bool disableRecalculate;
+  bool disableRecalculate = false;
 public:
   /** Mark as main event.*/
   void setMainEvent() { isMainEvent = true; }
@@ -1237,7 +1237,6 @@ public:
                                                    const unordered_set<int> &personFilter);
   void fillRunners(gdioutput &gdi, const string &id, bool longName = false, int filter = 0);
 
-
   enum class ExtraFields {
     DataA = 0,
     DataB = 1,
@@ -1251,6 +1250,8 @@ public:
     Bib = 9,
     MaxField
   };
+
+  static string extraFieldName(ExtraFields field);
 
   enum class ExtraFieldContext {
     Runner = 0,

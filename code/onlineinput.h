@@ -57,6 +57,7 @@ protected:
   void processTeamLineups(oEvent &oe, const xmlList &updates);
   void processEntries(oEvent &oe, const xmlList &entries);
 
+
   void processPunches(oEvent &oe, const xmlList &punches);
   void processPunches(oEvent &oe, list< vector<wstring> > &rocData);
 
@@ -68,7 +69,6 @@ protected:
   void loadMachine(oEvent &oe, const wstring &name) final;
 
 public:
-
   int processButton(gdioutput &gdi, ButtonInfo &bi);
 
   void updateLabel(gdioutput& gdi);

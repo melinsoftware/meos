@@ -675,9 +675,13 @@ void HTMLWriter::enumTemplates(TemplateType type, vector<TemplateInfo> &descript
   }
 }
 
-const HTMLWriter &HTMLWriter::getWriter(TemplateType type, const string &tag) {
-  auto res = tCache.find(tag);
-  if (res != tCache.end()) {
+const HTMLWriter& HTMLWriter::getWriter(TemplateType type, const string &tag, 
+                                        const vector<pair<string, wstring>> &options) {
+  string cacheTag = tag;
+  for (auto& op : options)
+    cacheTag += "|" + op.first + gdioutput::narrow(op.second);
+
+  if (auto res = tCache.find(cacheTag); res != tCache.end()) {
     return *res->second;
   }
   else {
@@ -694,13 +698,10 @@ const HTMLWriter &HTMLWriter::getWriter(TemplateType type, const string &tag) {
       throw std::exception("Internal error");
 
     shared_ptr<HTMLWriter> tmpl = make_shared<HTMLWriter>();
+    tmpl->setConditions(options);
     tmpl->read(descriptionFile[ix].file);
 
-    vector<string> tagName;
-    split(tmpl->info, "@", tagName);
-    if (tagName.size() == 2)
-      tCache[tagName[0]] = tmpl;
-
+    tCache[cacheTag] = tmpl;
     return *tmpl;
   }
 }
@@ -709,19 +710,39 @@ string HTMLWriter::localize(const string &in) {
   string out;
   size_t offset = 0;
   size_t pos = in.find_first_of('$', offset);
+
+  auto specialTranslate = [this](const string& key, wstring& out) -> bool {
+    if (auto res = conditions.find(key); res != conditions.end()) {
+      out = res->second;
+      return true;
+    }
+    return false;
+  };
+
   while (pos != string::npos) {
     if (out.empty())
       out.reserve(in.length() * 2);
 
     size_t end = in.find_first_of('$', pos+1);
     if (end != string::npos && end > pos + 2) {
-      wstring key = gdioutput::fromUTF8(in.substr(pos + 1, end - pos - 1));
-      out += in.substr(offset, pos-offset);
-      if (key[0] != '!')
-        out += gdioutput::toUTF8(lang.tl(key));
-      else
-        out += gdioutput::toUTF8(lang.tl(key.substr(1), true));
+      string key = in.substr(pos + 1, end - pos - 1);
+      out += in.substr(offset, pos - offset);
 
+      wstring wkey;
+      if (!specialTranslate(key, wkey)) {
+        wkey = gdioutput::fromUTF8(key);
+
+        if (wkey[0] != '!')
+          wkey = lang.tl(wkey);
+        else
+          wkey = lang.tl(wkey.substr(1), true);
+      }
+
+      out += gdioutput::toUTF8(wkey);
+      
+      //wstring key = gdioutput::fromUTF8(in.substr(pos + 1, end - pos - 1));
+      
+      
       offset = end + 1;
       pos = in.find_first_of('$', offset);
     }
@@ -740,9 +761,13 @@ void HTMLWriter::read(const wstring &fileName) {
   string dmy;
   string *acc = &dmy;
   string str;
-  int ok = 0 ;
+  int ok = 0;
+  vector<int> ifBlock;
+
   const string comment = "//";
   while (getline(file, str)) {
+    bool skipLine = count(ifBlock.begin(), ifBlock.end(), 0) > 0;
+    string trimLine = trim(str);
     if (ok == 0 && str == "@MEOS EXPORT TEMPLATE") {
       ok = 1;
       continue;
@@ -761,21 +786,34 @@ void HTMLWriter::read(const wstring &fileName) {
       acc = &page;
       continue;
     }
-    else if (str.length() > 1 && str[0] == '%')
+    else if (trimLine.length() > 1 && trimLine[0] == '%')
       continue; // Ignore comment
-    else if (str == "@HEAD")
+    else if (trimLine == "@HEAD")
       acc = &head;
-    else if (str == "@DESCRIPRION")
+    else if (trimLine == "@DESCRIPRION")
       acc = &description;
-    else if (str == "@OUTERPAGE")
+    else if (trimLine == "@OUTERPAGE")
       acc = &outerpage;
-    else if (str == "@INNERPAGE")
+    else if (trimLine == "@INNERPAGE")
       acc = &innerpage;
-    else if (str == "@SEPARATOR")
+    else if (trimLine == "@SEPARATOR")
       acc = &separator;
-    else if (str == "@END")
+    else if (trimLine == "@END")
       acc = &end;
-    else {
+    else if (trimLine.length() > 1 && trimLine[0] == '@') {
+      string arg;
+      auto res = parseFunc(str.substr(1), arg);
+      if (res == Function::ENDIF) {
+        if (ifBlock.empty())
+          throw meosException("IF/END mismatch");
+        else
+          ifBlock.pop_back();
+      }
+      else if (res == Function::IF) {
+        ifBlock.push_back(hasCondition(arg));
+      }
+    }
+    else if (!skipLine) {
       size_t cix = str.rfind(comment);
       if (cix != string::npos) {
         if (cix == 0)
@@ -789,7 +827,26 @@ void HTMLWriter::read(const wstring &fileName) {
         *acc += " ";
     }
   }
+
+  if (!ifBlock.empty())
+    throw meosException("EOF: IF/END mismatch");
 }
+
+HTMLWriter::Function HTMLWriter::parseFunc(const string& str, string& arg) const {
+  if (str.substr(0, 3) == "IF ") {
+    arg = trim(str.substr(3));
+    return Function::IF;
+  }
+  else if (str == "ENDIF")
+    return Function::ENDIF;
+  
+  throw meosException("Unknown function: " + str);
+}
+
+bool HTMLWriter::hasCondition(const string& arg) const {
+  return conditions.count(arg) > 0;
+}
+
 namespace {
   void replaceAll(string& str, const string& from, const string& to) {
     size_t start_pos = 0;
@@ -1021,7 +1078,7 @@ void HTMLWriter::write(gdioutput &gdi, ostream &fout, const wstring &title,
       res->second->generate(gdi, fout, title, contentsDescription, respectPageBreak, rows, cols, time_ms, margin, scale);
     }*/
 
-    getWriter(TemplateType::List, typeTag).generate(gdi, fout, title, contentsDescription, respectPageBreak, rows, cols, time_ms, margin, scale);
+    getWriter(TemplateType::List, typeTag, {}).generate(gdi, fout, title, contentsDescription, respectPageBreak, rows, cols, time_ms, margin, scale);
   }
 }
 

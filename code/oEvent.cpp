@@ -286,7 +286,7 @@ oEvent::oEvent(gdioutput &gdi):oBase(0), gdibase(gdi)
 
   oRunnerData->addVariableInt("TimeAdjust", oDataContainer::oISTimeAdjust, "Tidsjustering");
   oRunnerData->addVariableInt("PointAdjust", oDataContainer::oIS32, "Poängjustering");
-  oRunnerData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring");
+  oRunnerData->addVariableInt("TransferFlags", oDataContainer::oIS32, "Överföring", make_shared<TransferFlagsFormatter>());
   oRunnerData->addVariableInt("Shorten", oDataContainer::oIS8U, "Avkortning");
   oRunnerData->addVariableInt("EntrySource", oDataContainer::oIS32, "Källa");
   oRunnerData->addVariableInt("Heat", oDataContainer::oIS8U, "Heat");
@@ -6787,6 +6787,43 @@ map<oEvent::ExtraFields, wstring> oEvent::getExtraFieldNames() const {
   return extraFields;
 }
 
+enum class ExtraFields {
+  DataA = 0,
+  DataB = 1,
+  TextA = 2,
+  Nationality = 3,
+  Sex = 4,
+  BirthDate = 5,
+  Rank = 6,
+  Phone = 7,
+  StartTime = 8,
+  Bib = 9,
+  MaxField
+};
+string oEvent::extraFieldName(ExtraFields field) {
+  switch (field) {
+  case ExtraFields::DataA:
+    return "DataA";
+  case ExtraFields::DataB:
+    return "DataB";
+  case ExtraFields::TextA:
+    return "TextA";
+  case ExtraFields::Nationality:
+    return "Nationality";
+  case ExtraFields::Sex:
+    return "Sex";
+  case ExtraFields::BirthDate:
+    return "BirthDate";
+  case ExtraFields::Rank:
+    return "Rank";
+  case ExtraFields::Phone:
+    return "Phone";
+  case ExtraFields::StartTime:
+    return "StartTime";
+  case ExtraFields::Bib:
+    return "Bib";
+  }
+}
 
 void oEvent::updateExtraFields(ExtraFieldContext context, const map<ExtraFields, wstring>& fields) {
   wstring ws = getDCI().getString("ExtraFields");

@@ -1991,9 +1991,12 @@ void oClass::updateLeaderTimes() const {
   while (needupdate) {
     needupdate = false;
     for (auto r : runners) {
-      if (r->tLeg == leg)
+      int rLeg = r->tLeg;
+      if (r->Class != this)
+        rLeg = mapLeg(rLeg);
+      if (rLeg == leg)
         r->storeTimes();
-      else if (r->tLeg > leg)
+      else if (rLeg > leg)
         needupdate = true;
     }
     if (leg >= tLeaderTime.size())
@@ -5122,7 +5125,7 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
     return; // Final class
   int instance = baseInstance;
 
-  int maxDepth = getNumStages();
+  const int maxDepth = getNumStages();
   bool needIter = true;
   const int limit = virtualClasses.size() - 1;
   bool wasReset = false;
@@ -5146,7 +5149,8 @@ void oClass::updateFinalClasses(oRunner* causingResult, bool updateStartNumbers)
   vector<vector<pRunner>> classSplit(virtualClasses.size());
   vector<vector<pRunner>> nonQualifiedLevel(getNumStages());
 
-  while (needIter && --maxDepth > 0) {
+  int maxIter = maxDepth;
+  while (needIter && --maxIter > 0) {
     needIter = false;
     if (size_t(instance) >= virtualClasses.size())
       break; // Final class

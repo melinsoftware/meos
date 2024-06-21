@@ -27,16 +27,10 @@
 #include "oBase.h"
 #include "inthashmap.h"
 #include "guihandler.h"
+#include "TableType.h"
 
 #define TableXMargin 40
 #define TableYMargin 30
-
-enum CellType {cellEdit, cellSelection, cellAction, cellCombo};
-enum KeyCommandCode;
-
-class Table;
-typedef void (*GENERATETABLEDATA)(Table &table, void *ptr);
-
 
 struct TableUpdateInfo {
   bool doAdd;
@@ -375,7 +369,7 @@ public:
 
   void showFilter(gdioutput &gdi);
 
-  int addColumn(const string &Title, int width, bool isnum, bool formatRight = false);
+  TableColSpec addColumn(const string &Title, int width, bool isnum, bool formatRight = false);
   int addColumn(const wstring &translatedTitle, int width, bool isnum, bool formatRight = false);
 
   int addColumnPaddedSort(const string &title, int width, int padding, bool formatRight = false);

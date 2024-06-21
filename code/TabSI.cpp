@@ -5232,7 +5232,7 @@ void TabSI::showReadoutStatus(gdioutput& gdi, const oRunner* r,
         int miss = r->getMissedTime();
         if (miss > 0) {
           gdi.addString("", fontMediumPlus, " Bomtid:").setColor(colorGreyBlue);
-          gdi.addStringUT(boldHuge, formatTime(miss));
+          gdi.addStringUT(boldHuge, formatTime(miss, SubSecond::Off));
         }
       }
     }
