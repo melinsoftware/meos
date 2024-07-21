@@ -61,7 +61,7 @@ protected:
 
   wstring getExportFileName() const;
   int bytesExported;
-  DWORD lastSync;
+  uint64_t lastSync;
 
   vector<string> errorLines;
   void formatError(gdioutput &gdi);

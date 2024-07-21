@@ -51,15 +51,22 @@
 
 char RunnerStatusOrderMap[100];
 
-bool oAbstractRunner::DynamicValue::isOld(const oEvent &oe) const {
+bool oAbstractRunner::DynamicValue::isOld(const oEvent &oe, int key) const {
+  return oe.dataRevision != dataRevision || forKey != key;
+}
+
+bool oAbstractRunner::DynamicValue::isOld(const oEvent& oe) const {
   return oe.dataRevision != dataRevision;
 }
 
-oAbstractRunner::DynamicValue &oAbstractRunner::DynamicValue::update(const oEvent &oe, int v, bool preferStd) {
-  if (preferStd)
+oAbstractRunner::DynamicValue &oAbstractRunner::DynamicValue::update(const oEvent &oe, int key, int v, bool preferStd) {
+  if (preferStd) {
     valueStd = v; // A temporary result for "default" when computing with result modules (internal calculation)
+    forKey = 0;
+  }
   else {
     value = v;
+    forKey = key;
     dataRevision = oe.dataRevision;
   }
   return *this;

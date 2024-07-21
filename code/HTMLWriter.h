@@ -43,6 +43,7 @@ class HTMLWriter {
     NONE,
     IF,
     ENDIF,
+    TEXTCOMMAND,
   };
 
   map<string, wstring> conditions;

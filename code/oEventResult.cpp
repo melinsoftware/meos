@@ -55,6 +55,12 @@ template<typename T> struct ResultCalcData {
   ResultCalcData(int g, int64_t s, T* d) : groupId(g), score(s), dst(d) {}
 };
 
+
+int resultKey(int from = oPunch::PunchStart, int to = oPunch::PunchFinish, oEvent::ResultType type = oEvent::ResultType::ClassResult, bool includePrel = false) {
+  assert(int(type) < 8);
+  return ((from * 1024 + to) * 8 + int(type))*2 + includePrel;
+}
+
 template<typename T, typename Apply> void calculatePlace(vector<ResultCalcData<T>> &data, Apply apply) {
   int groupId = -1;
   int cPlace = 0, vPlace = 0;
@@ -132,6 +138,7 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo) {
   int cPlace=0;
   int vPlace=0;
   int cTime=0;
+  int key = resultKey(controlIdFrom, controlIdTo);
 
   for (it=Runners.begin(); it != Runners.end(); ++it){
     if (it->getClassId(true)!=cClassId){
@@ -152,11 +159,10 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo) {
         vPlace=cPlace;
 
       cTime=it->tempRT;
-
-      it->tPlace.update(*this, vPlace, false); // XXX User other result container
+      it->tPlace.update(*this, key, vPlace, false);
     }
     else
-      it->tPlace.update(*this, 0, false);
+      it->tPlace.update(*this, key, 0, false);
   }
 }
 
@@ -215,6 +221,8 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
       }
     }
   }
+  
+  int resKey = resultKey(1, 2, resultType, includePreliminary);
 
   vector<const oRunner *> runners;
   {
@@ -225,6 +233,7 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
       getRunners(classes, runnersCls);
 
     runners.reserve(runnersCls.size());
+    
     
     bool resOK = lastResultCalcPrelState == includePreliminary && !lastResultCalcSplitResult;
     lastResultCalcPrelState = includePreliminary;
@@ -240,13 +249,13 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
       runners.push_back(&r);
       
       if (resOK) {
-        if (courseResults && r.tCoursePlace.isOld(*this))
+        if (courseResults && r.tCoursePlace.isOld(*this, resKey))
           resOK = false;
-        else if (classCourseResults && r.tCourseClassPlace.isOld(*this))
+        else if (classCourseResults && r.tCourseClassPlace.isOld(*this, resKey))
           resOK = false;
-        else if (totalResults && r.tTotalPlace.isOld(*this))
+        else if (totalResults && r.tTotalPlace.isOld(*this, resKey))
           resOK = false;
-        else if (r.tPlace.isOld(*this))
+        else if (r.tPlace.isOld(*this, resKey))
           resOK = false;
       }
     }
@@ -294,7 +303,7 @@ void oEvent::calculateResults(const set<int> &classes, ResultType resultType, bo
 
         for (pRunner r : resCalc.second) {
           r->updateComputedResultFromTemp();
-          r->tPlace.update(*oe, r->getTempResult().getPlace(), false);
+          r->tPlace.update(*oe, resKey,  r->getTempResult().getPlace(), false);
           if (r->tComputedStatus == StatusOK && r->tComputedTime>0) {
             pClass cls = r->getClassRef(true);
             cls->getLeaderInfo(oClass::AllowRecompute::No, 
@@ -376,14 +385,18 @@ void oEvent::calculateRunnerResults(ResultType resultType,
 
   bool useStdResultCtr = resultType == ResultType::ClassResultDefault || resultType == ResultType::TotalResultDefault;
 
+  int resKey = resultKey(1, 2, resultType, includePreliminary);
+
   if (courseResults)
-    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tCoursePlace.update(*this, value, useStdResultCtr); });
+    calculatePlace(resData, [this, resKey, useStdResultCtr](DT &res, int value) {res.dst->tCoursePlace.update(*this, resKey, value, useStdResultCtr); });
   else if (classCourseResults)
-    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tCourseClassPlace.update(*this, value, useStdResultCtr); });
+    calculatePlace(resData, [this, resKey, useStdResultCtr](DT &res, int value) {res.dst->tCourseClassPlace.update(*this, resKey, value, useStdResultCtr); });
   else if (totalResults)
-    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tTotalPlace.update(*this, value, useStdResultCtr); });
+    calculatePlace(resData, [this, resKey, useStdResultCtr](DT &res, int value) {res.dst->tTotalPlace.update(*this, resKey, value, useStdResultCtr); });
   else
-    calculatePlace(resData, [this, useStdResultCtr](DT &res, int value) {res.dst->tPlace.update(*this, value, useStdResultCtr); });
+    calculatePlace(resData, [this, resKey, useStdResultCtr](DT &res, int value) {
+    res.dst->tPlace.update(*this, resKey, value, useStdResultCtr);
+    });
 }
 
 bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultType resType) {
@@ -443,13 +456,14 @@ bool oEvent::calculateTeamResults(vector<const oTeam*> &teams, int leg, ResultTy
     else {
       p = 0;
     }
+    int resKey = resultKey(1, 2, resType, false);
 
     bool tmpDefaultResult = resType == ResultType::ClassResultDefault || resType == ResultType::TotalResultDefault;
     if (resType == ResultType::TotalResult || resType == ResultType::TotalResultDefault) {
-      it->getTeamPlace(sleg).totalP.update(*this, p, tmpDefaultResult);
+      it->getTeamPlace(sleg).totalP.update(*this, resKey, p, tmpDefaultResult);
     }
     else {
-      it->getTeamPlace(sleg).p.update(*this, p, tmpDefaultResult);
+      it->getTeamPlace(sleg).p.update(*this, resKey, p, tmpDefaultResult);
       res.version = tmpDefaultResult ? -1 : dataRevision;
       res.status = it->tmpCachedStatus;
       res.time = it->tmpDefinedTime;
@@ -583,6 +597,7 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
   }
   typedef ResultCalcData<const oTeam> DT;
   typedef ResultCalcData<const oRunner> DR;
+  int resKey = resultKey();
 
   vector<DR> legResultsData;
   legResultsData.reserve(Runners.size());
@@ -616,8 +631,8 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
       resData.emplace_back(clsId, totScore, t);
 
       for  (int i = 0; i < t->getNumRunners(); i++) {
-        t->getTeamPlace(i).p.update(*this, t->getTempResult().getPlace(), false);
-        t->getTeamPlace(i).totalP.update(*this, t->getTempResult().getPlace(), false);
+        t->getTeamPlace(i).p.update(*this, resKey, t->getTempResult().getPlace(), false);
+        t->getTeamPlace(i).totalP.update(*this, resKey, t->getTempResult().getPlace(), false);
         oTeam::ComputedLegResult res;
         res.version = dataRevision;
         int legTime = 0;
@@ -690,14 +705,14 @@ void oEvent::calculateModuleTeamResults(const set<int> &cls, vector<oTeam *> &te
       }
     }
 
-    calculatePlace(legResultsData, [this](DR &res, int value) {
-      res.dst->tPlace.update(*this, value, false);
-      res.dst->tTotalPlace.update(*this, value, false); });
+    calculatePlace(legResultsData, [this, resKey](DR &res, int value) {
+      res.dst->tPlace.update(*this, resKey, value, false);
+      res.dst->tTotalPlace.update(*this, resKey, value, false); });
     
     // Calculate and store total result
-    calculatePlace(resData, [this](DT &res, int value) {
+    calculatePlace(resData, [this, resKey](DT &res, int value) {
       for (int i = 0; i < res.dst->getNumRunners(); i++) {
-        res.dst->getTeamPlace(i).totalP.update(*this, value, false);
+        res.dst->getTeamPlace(i).totalP.update(*this, resKey, value, false);
       }});
   }
 }

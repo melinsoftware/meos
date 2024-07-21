@@ -3594,7 +3594,7 @@ void TabRunner::EconomyHandler::updateColor(gdioutput& gdi) {
 
 void TabRunner::EconomyHandler::handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) {
   if (type == GuiEventType::GUI_BUTTON) {
-    ButtonInfo &bi = dynamic_cast<ButtonInfo &>(info);
+    ButtonInfo bi = dynamic_cast<ButtonInfo &>(info);
     if (bi.id == "Close") {
       save(gdi);
       gdi.closeWindow();
@@ -3610,7 +3610,7 @@ void TabRunner::EconomyHandler::handle(gdioutput &gdi, BaseInfo &info, GuiEventT
     }
   }
   else if (type == GuiEventType::GUI_INPUTCHANGE) {
-    InputInfo &ii = dynamic_cast<InputInfo &>(info);
+    InputInfo ii = dynamic_cast<InputInfo &>(info);
     if (ii.id == "Fee") {
       gdi.check("ModFee", ii.changed() || getRunner().hasFlag(oAbstractRunner::FlagFeeSpecified));
       updateColor(gdi);
@@ -3630,7 +3630,7 @@ void TabRunner::EconomyHandler::handle(gdioutput &gdi, BaseInfo &info, GuiEventT
     }
   }
   else if (type == GuiEventType::GUI_LISTBOX) {
-    ListBoxInfo& lbi = dynamic_cast<ListBoxInfo&>(info);
+    ListBoxInfo lbi = dynamic_cast<ListBoxInfo&>(info);
     if (lbi.id == "PayMode") {
       if (lbi.data != 1000) {
         int paid = oe->interpretCurrency(gdi.getText("PaidAmount"));

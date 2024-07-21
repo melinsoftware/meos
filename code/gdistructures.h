@@ -48,7 +48,8 @@ public:
       return true;
     }
     else if (managedHandler) {
-      managedHandler->handle(gdi, *this, type);
+      auto spCopy = managedHandler;
+      spCopy->handle(gdi, *this, type);
       return true;
     }
     return false;

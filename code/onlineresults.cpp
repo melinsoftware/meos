@@ -392,7 +392,7 @@ void OnlineResults::status(gdioutput &gdi)
 
 void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   errorLines.clear();
-  DWORD tick = GetTickCount();
+  uint64_t tick = GetTickCount64();
   if (lastSync + interval * 1000 > tick)
     return;
 
@@ -460,6 +460,8 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       }
     }
 
+    constexpr int buffLimit = 64;
+
     try {
       if (sendToURL) {
         Download dwl;
@@ -484,7 +486,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           t = getTempFile();
           xmlparser xmlOut;
           xmlbuff.startXML(xmlOut, t);
-          moreToWrite = xmlbuff.commit(xmlOut, 250);
+          moreToWrite = xmlbuff.commit(xmlOut, buffLimit);
           xmlOut.endTag();
           xmlSize = xmlOut.closeOut();
           wstring result = getTempFile();
@@ -580,7 +582,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         gdi.addInfoBox("", L"Online Results Error X#"+gdi.widen(ex.what()), 5000);
     }
 
-    lastSync = GetTickCount();
+    lastSync = GetTickCount64();
     exportCounter++;
   }
 }

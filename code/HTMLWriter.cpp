@@ -775,6 +775,7 @@ void HTMLWriter::read(const wstring &fileName) {
     else if (ok == 1) {
       ok = 2;
       info = str;
+      skipLine = true;
     }
     else if (ok == 0 && str == "@MEOS PAGE") {
       ok = 3;
@@ -789,17 +790,17 @@ void HTMLWriter::read(const wstring &fileName) {
     else if (trimLine.length() > 1 && trimLine[0] == '%')
       continue; // Ignore comment
     else if (trimLine == "@HEAD")
-      acc = &head;
+      acc = &head, skipLine = true;
     else if (trimLine == "@DESCRIPRION")
-      acc = &description;
+      acc = &description, skipLine = true;
     else if (trimLine == "@OUTERPAGE")
-      acc = &outerpage;
+      acc = &outerpage, skipLine = true;
     else if (trimLine == "@INNERPAGE")
-      acc = &innerpage;
+      acc = &innerpage, skipLine = true;
     else if (trimLine == "@SEPARATOR")
-      acc = &separator;
+      acc = &separator, skipLine = true;
     else if (trimLine == "@END")
-      acc = &end;
+      acc = &end, skipLine = true;
     else if (trimLine.length() > 1 && trimLine[0] == '@') {
       string arg;
       auto res = parseFunc(str.substr(1), arg);
@@ -812,8 +813,12 @@ void HTMLWriter::read(const wstring &fileName) {
       else if (res == Function::IF) {
         ifBlock.push_back(hasCondition(arg));
       }
+
+      if (res != Function::TEXTCOMMAND)
+        continue;
     }
-    else if (!skipLine) {
+     
+    if (!skipLine) {
       size_t cix = str.rfind(comment);
       if (cix != string::npos) {
         if (cix == 0)
@@ -839,6 +844,10 @@ HTMLWriter::Function HTMLWriter::parseFunc(const string& str, string& arg) const
   }
   else if (str == "ENDIF")
     return Function::ENDIF;
+  else if (str == "END" || str == "INNERPAGE" || str == "OUTERPAGE" || str == "HEAD" || str == "SEPARATOR")
+    return Function::NONE;
+  else if (str.length() == 1)
+    return Function::TEXTCOMMAND;
   
   throw meosException("Unknown function: " + str);
 }
@@ -888,7 +897,7 @@ void HTMLWriter::generate(gdioutput &gdi,
 
   ImageWriter imgWriter(L"", false);
   
-  string meos = "<a href=\"https://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: "  + gdioutput::toUTF8(getMeosCompectVersion()) + "</a>";
+  string meos = "<a href=\"https://www.melin.nu/meos\" target=\"_blank\"><i>MeOS</i></a>: "  + gdioutput::toUTF8(getMeosCompectVersion());
 
   int margin = (w * marginPercent) / 100;
   int height = nRows * gdi.getLineHeight();

@@ -506,10 +506,12 @@ public:
     int dataRevision = -1;
     int value = -1;
     int valueStd = -1; // Value without result module
+    int forKey = 0; // Key for the type of result that is stored.
   public:
     void reset();
-    bool isOld(const oEvent &oe) const;
-    DynamicValue &update(const oEvent &oe, int v, bool setStd);
+    bool isOld(const oEvent& oe) const;
+    bool isOld(const oEvent &oe, int key) const;
+    DynamicValue &update(const oEvent &oe, int key, int v, bool setStd);
     void invalidate(bool invalid) { if (invalid) dataRevision = -1; }
     int get(bool preferStd) const; 
   };
