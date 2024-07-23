@@ -2555,3 +2555,32 @@ const string &codeRelativeTime(int rt) {
   res = bf;
   return res;
 }
+
+wstring addOrSubtractDays(const wstring& m, int days) {
+  // Convert wstring date to SYSTEMTIME
+  SYSTEMTIME st;
+  convertDateYMD(m, st, false);
+
+  // Convert SYSTEMTIME to FILETIME
+  FILETIME ft;
+  SystemTimeToFileTime(&st, &ft);
+
+  // Convert FILETIME to ULARGE_INTEGER for arithmetic
+  ULARGE_INTEGER ui;
+  ui.LowPart = ft.dwLowDateTime;
+  ui.HighPart = ft.dwHighDateTime;
+
+  // Add/subtract the number of days in 100-nanosecond intervals
+  const LONGLONG intervals_per_day = 24 * timeConstSecPerHour * static_cast<LONGLONG>(10000000);
+  ui.QuadPart += days * intervals_per_day;
+
+  // Convert back to FILETIME
+  ft.dwLowDateTime = ui.LowPart;
+  ft.dwHighDateTime = ui.HighPart;
+
+  // Convert FILETIME back to SYSTEMTIME
+  SYSTEMTIME new_st;
+  FileTimeToSystemTime(&ft, &new_st);
+
+  return convertSystemDate(new_st);
+}

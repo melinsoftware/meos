@@ -128,6 +128,9 @@ int convertAbsoluteTimeHMS(const string &m, int daysZeroTime);
 */
 int convertAbsoluteTimeHMS(const wstring &m, int daysZeroTime);
 
+// Add or subtract a number of days from a date in Y-M-D format
+wstring addOrSubtractDays(const wstring& m, int days);
+
 const vector<string> &split(const string &line, const string &separators, vector<string> &split_vector);
 
 const vector<wstring> &split(const wstring &line, const wstring &separators, vector<wstring> &split_vector);
