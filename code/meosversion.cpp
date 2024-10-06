@@ -23,19 +23,19 @@
 #include <vector>
 #include "meos_util.h"
 
-//ABCDEFGHIJKLMNOPQ
+//ABCDEFGHIJKLMNOPQR
 int getMeosBuild() {
-  string revision("$Rev: 1386 $");
+  string revision("$Rev: 1404 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2024-07-21 09:13:03 +0200 (sön, 21 jul 2024) $");
+  wstring date(L"$Date: 2024-09-09 22:37:46 +0200 (mån, 09 sep 2024) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Update 2"; // No parantheses (...)
+  return L"Update 3"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {

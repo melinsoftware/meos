@@ -1868,6 +1868,9 @@ bool gdioutput::setItems(const string& id, const vector<pair<wstring, size_t>>& 
           RedrawWindow(it->hWnd, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
           it->computed_hash = hash;
         }
+        else {
+          SendMessage(it->hWnd, CB_SETCURSEL, -1, 0);
+        }
       }
       else {
         if (it->computed_hash == 0 || it->computed_hash != hash) {
@@ -1885,6 +1888,9 @@ bool gdioutput::setItems(const string& id, const vector<pair<wstring, size_t>>& 
           SendMessage(it->hWnd, WM_SETREDRAW, TRUE, 0);
           RedrawWindow(it->hWnd, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
           it->computed_hash = hash;
+        }
+        else {
+          SendMessage(it->hWnd, LB_SETCURSEL, -1, 0);
         }
       }
       return true;

@@ -513,7 +513,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
             }
             else {
               forceNoZip = true;
-              pair<wstring, wstring> mk3(L"Content-Type", L"application/xml");
+              pair<wstring, wstring> mk3(L"Content-Type", L"text/plain");
               key.push_back(mk3);
             }
             addedHeader = true;

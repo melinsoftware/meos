@@ -948,6 +948,22 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
         tmpSortTime += getNumShortening(lg) * timeConstHour * 24 * 10;
         tmpCachedStatus = getLegStatus(lg, false, totalResult);
       }
+      else if (so == ClassLiveResult) {
+        // Live result: Coded last passed control
+        pRunner r = getRunner(lg);
+        if (r) {
+          setTmpTime(r->currentControlTime.second);
+          tmpSortTime += r->currentControlTime.first * 10 * timeConstHour; // Control index is 0, -1, -2... for more controls         
+          tmpSortTime += getNumShortening(lg) * timeConstHour * 24 * 10;
+          tmpCachedStatus = getLegStatus(lg, true, totalResult);
+          if (tmpCachedStatus == StatusUnknown && r->tOnCourseResults.hasAnyRes)
+            tmpCachedStatus = StatusOK;
+        }
+        else {
+          setTmpTime(0);
+          tmpCachedStatus = StatusDNS;
+        }
+      }
       else {
         setTmpTime(getLegRunningTime(lg, true, totalResult));
         tmpSortTime += getNumShortening(lg) * timeConstHour * 24 * 10;
