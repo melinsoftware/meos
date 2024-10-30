@@ -758,7 +758,7 @@ void AutoMachine::startCancelInterval(gdioutput &gdi, const char *startCommand, 
 
 void PrintResultMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   settingsTitle(gdi, "Resultatutskrift / export");
-  wstring time = (state == State::Create && interval <= 0) ? L"10:00" : formatTimeMS(interval, false, SubSecond::Off);
+  wstring time = (state == State::Create && interval <= 0) ? L"10:00" : formatTimeMS(interval * timeConstSecond, false, SubSecond::Off);
   startCancelInterval(gdi, "Save", state, IntervalMinute, time);
 
   if (state == State::Create) {
@@ -1328,7 +1328,7 @@ void SaveMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 
 void SaveMachine::settings(gdioutput &gdi, oEvent &oe, State state) {
   settingsTitle(gdi, "Säkerhetskopiering");
-  wstring time=state == State::Create ? L"10:00" : formatTimeMS(interval, false, SubSecond::Off);
+  wstring time=state == State::Create ? L"10:00" : formatTimeMS(interval * timeConstSecond, false, SubSecond::Off);
   startCancelInterval(gdi, "Save", state, IntervalMinute, time);
 
   int cx = gdi.getCX();
