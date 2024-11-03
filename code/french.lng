@@ -399,6 +399,7 @@ Du kan importera banor och klasser från OCADs exportformat = Vous pouvez import
 Du kan justera tiden för en viss enhet = Vous pouvez ajuster l'heure des bases
 Du måste ange minst två gafflingsvarienater = Vous devez renseigner au moins 2 variantes
 Du måste välja en klass = Vous devez choisir une catégorie
+Du saknar behörighet att skriva till 'X'. = Vous n'êtes pas autorisé à écrire sur 'X'.
 Duplicera = Dupliquer
 Duplicerad nummerlapp: X, Y = Dossards dupliqués : X, Y
 Dölj = Masquer
