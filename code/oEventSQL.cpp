@@ -852,7 +852,7 @@ void oEvent::closeDBConnection()
 
   if (!oe->empty() && hadDB) {
     save();
-    Name+=L" (Lokal kopia från: " + gdibase.widen(serverName) + L")";
+    Name += lang.tl(L" (Lokal kopia från: X)#" + gdibase.widen(serverName));
     wstring cn = currentNameId + L"." + gdibase.widen(serverName) + L".meos";
     getUserFile(CurrentFile, cn.c_str());
     serverName.clear();

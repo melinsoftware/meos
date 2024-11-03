@@ -3,6 +3,7 @@
 %s, block: %d = %s, bloc: %d
 (har stämplat) = (a poinçonné)
 (kopia) = (copie)
+(Lokal kopia från: X) = (Copie locale depuis: X)
 (ledare) = (leader)
 (lokalt) = (local, pas de serveur)
 (okänd) stämplade vid = (inconnu) a poinçonné
@@ -1069,7 +1070,6 @@ Liveresultat, radiotider = Résultats en direct avec radios
 Ljud = Son
 Ljudfiler, baskatalog = Répertoire de base des fichiers sonores
 Ljudval = Sélection des sons
-Lokal kopia från X = Copie locale de X
 Lokalt = Localement
 Long = Longue
 Longitud = Longitude
