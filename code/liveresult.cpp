@@ -1,6 +1,6 @@
 ﻿/********************i****************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -240,7 +240,7 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
         wstring font = getFont(gdi, timerScale);
         BaseInfo *bi = gdi.setText("timing", newRToWatch->getName(), false);
         dynamic_cast<TextInfo &>(*bi).changeFont(getFont(gdi, 0.7));
-        gdi.addTimer(h/2, w/2, boldHuge|textCenter|timeWithTenth, 0, 0, 0, NOTIMEOUT, font.c_str());
+        gdi.addTimer(h/2, w/2, boldHuge|textCenter|timeWithTenth, 0, L"",  0, nullptr, NOTIMEOUT, font.c_str());
         screenSize = 1;
       }
       else if (rToWatch.size() == 2) {
@@ -295,8 +295,10 @@ void LiveResult::handle(gdioutput &gdi, BaseInfo &bu, GuiEventType type) {
           startTimeR2 = diff;
         }
 
-        gdi.addTimer(h/2, w/2-w/4, boldHuge|textCenter|timeWithTenth, diff, 0, 0, NOTIMEOUT, font.c_str()).id = "timer1";
-        gdi.addTimer(h/2, w/2+w/4, boldHuge|textCenter|timeWithTenth, startTimeR2, 0, 0, NOTIMEOUT, font.c_str()).id = "timer2";
+        gdi.addTimer(h/2, w/2-w/4, boldHuge|textCenter|timeWithTenth, diff,
+                     L"", 0, nullptr, NOTIMEOUT, font.c_str()).id = "timer1";
+        gdi.addTimer(h/2, w/2+w/4, boldHuge|textCenter|timeWithTenth, startTimeR2,
+                     L"", 0, nullptr, NOTIMEOUT, font.c_str()).id = "timer2";
       }
 
       doRefresh = true;

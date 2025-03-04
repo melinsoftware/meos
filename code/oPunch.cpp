@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -159,17 +159,16 @@ wstring oPunch::getString() const {
   }
   ct = time.c_str();
   
-  wstring typeS = getType();
+  wstring typeS = getType(nullptr);
   const wchar_t *tp = typeS.c_str();
 
-  if (type==oPunch::PunchStart)
-    swprintf_s(bf, L"%s\t%s", tp, ct);
-  else if (type==oPunch::PunchFinish)
-    swprintf_s(bf, L"%s\t%s", tp, ct);
-  else if (type==oPunch::PunchCheck)
-    swprintf_s(bf, L"%s\t%s", tp, ct);
-  else
-  {
+  if (type == oPunch::PunchStart || type == oPunch::PunchCheck || type == oPunch::PunchFinish) {
+    if (false && punchUnit > 0)
+      swprintf_s(bf, L"%s/%d\t%s", tp, punchUnit, ct);
+    else
+      swprintf_s(bf, L"%s\t%s", tp, ct);
+  }
+  else {
     if (isUsed)
       swprintf_s(bf, L"%d\t%s", type, ct);
     else
@@ -274,14 +273,14 @@ bool oPunch::canRemove() const
   return true;
 }
 
-const wstring &oPunch::getType() const {
-  return getType(type);
+const wstring &oPunch::getType(const oCourse *crs) const {
+  return getType(type, crs);
 }
 
-const wstring &oPunch::getType(int t) {
-  if (t==oPunch::PunchStart)
+const wstring &oPunch::getType(int t, const oCourse* crs) {
+  if (t==oPunch::PunchStart || (crs && t == crs->getStartPunchType()))
     return lang.tl("Start");
-  else if (t==oPunch::PunchFinish)
+  else if (t==oPunch::PunchFinish || (crs && t == crs->getFinishPunchType()))
     return lang.tl("Mål");
   else if (t==oPunch::PunchCheck)
     return lang.tl("Check");

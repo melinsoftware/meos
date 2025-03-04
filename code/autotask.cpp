@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,9 +54,9 @@ void AutoTask::autoSave() {
       if (oe.getNumRunners() > 500)
         gdi.setWaitCursor(true);
 
-      DWORD tic = GetTickCount();
+      uint64_t tic = GetTickCount64();
       oe.save();
-      DWORD toc = GetTickCount();
+      uint64_t toc = GetTickCount64();
 
       if (toc > tic) {
         int timeToSave = toc - tic;
@@ -81,7 +81,7 @@ void AutoTask::autoSave() {
       gdi.alert(msg);
     }
     else
-      gdi.addInfoBox("", L"Tävlingsdata har sparats.", 10);
+      gdi.addInfoBox("", L"Tävlingsdata har sparats.", L"", BoxStyle::Header, 10);
 
     gdi.setWaitCursor(false);
 
@@ -108,7 +108,7 @@ void AutoTask::interfaceTimeout(const vector<gdioutput *> &windows) {
 
   wstring msg;
   try {
-    DWORD tick = GetTickCount();
+    uint64_t tick = GetTickCount64();
     for (size_t k = 0; k<windows.size(); k++) {
       if (windows[k])
         windows[k]->CheckInterfaceTimeouts(tick);
@@ -164,7 +164,7 @@ DWORD AutoTask::getAvgSynchTime() {
 }
 
 void AutoTask::synchronize(const vector<gdioutput *> &windows) {
-  DWORD tic = GetTickCount();
+  uint64_t tic = GetTickCount64();
   DWORD avg = getAvgSynchTime();
   //OutputDebugString(("AVG Update Time: " + itos(avg)).c_str());
   if (tic > lastSynchTime) {
@@ -189,7 +189,7 @@ void AutoTask::synchronize(const vector<gdioutput *> &windows) {
   lastTriedSynchTime = tic;
 
   if (synchronizeImpl(windows)) {
-    DWORD toc = GetTickCount();
+    uint64_t toc = GetTickCount64();
     if (toc > tic)
       addSynchTime(toc-tic);
 
@@ -203,7 +203,7 @@ void AutoTask::synchronize(const vector<gdioutput *> &windows) {
 }
 
 void AutoTask::advancePunchInformation(const vector<gdioutput *> &windows) {
-  DWORD tic = GetTickCount();
+  uint64_t tic = GetTickCount64();
   DWORD avg = getAvgSynchTime();
   //OutputDebugString(("Direct Update Time: " + itos(avg)).c_str());
   if (tic > lastSynchTime) {
@@ -223,7 +223,7 @@ void AutoTask::advancePunchInformation(const vector<gdioutput *> &windows) {
   }
 
   if (advancePunchInformationImpl(windows)) {
-    DWORD toc = GetTickCount();
+    uint64_t toc = GetTickCount64();
     if (toc > tic)
       addSynchTime(toc-tic);
     lastSynchTime = toc;

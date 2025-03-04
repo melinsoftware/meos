@@ -2,16 +2,11 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_OCOURSE_H__936E61C9_CDAC_490D_A475_E58190A2910C__INCLUDED_)
-#define AFX_OCOURSE_H__936E61C9_CDAC_490D_A475_E58190A2910C__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -82,6 +77,8 @@ protected:
   mutable int cachedHasRogaining;
   mutable int cacheDataRevision;
   void clearCache() const;
+
+  DataRevisionCache<int> bestTime;
 
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
@@ -232,7 +229,13 @@ public:
   wstring getControlsUI() const;
   vector<wstring> getCourseReadable(int limit) const;
 
+  int getBestTime() const;
+
   const wstring &getName() const {return Name;}
+  
+  /** Split the name (family:name) into family and name*/
+  void getNameAndFamily(wstring& name, wstring& family) const;
+  
   int getLength() const {return Length;}
   wstring getLengthS() const;
 
@@ -255,5 +258,3 @@ public:
   friend class oRunner;
   friend class MeosSQL;
 };
-
-#endif // !defined(AFX_OCOURSE_H__936E61C9_CDAC_490D_A475_E58190A2910C__INCLUDED_)

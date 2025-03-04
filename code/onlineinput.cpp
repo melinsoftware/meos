@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -64,27 +64,35 @@ static int OnlineCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   return 0;
 }
 
-OnlineInput::~OnlineInput() {
-}
-
 int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
+  if (oe == nullptr)
+    throw std::exception("Internal error");
+
   if (bi.id == "SaveMapping") {
     int ctrl = gdi.getTextNo("Code");
-    if (ctrl<1)
+    if (ctrl<1 || ctrl>=1024)
       throw meosException("Ogiltig kontrollkod");
     ListBoxInfo lbi;
     if (!gdi.getSelectedItem("Function", lbi))
       throw meosException("Ogiltig funktion");
-    specialPunches[ctrl] = (oPunch::SpecialPunch)lbi.data;
-    fillMappings(gdi);
+    oe->definePunchMapping(ctrl, oPunch::SpecialPunch(lbi.data));
+    fillMappings(*oe, gdi);
+    gdi.setInputStatus("LoadLastMapping", false);
   }
   else if (bi.id == "RemoveMapping") {
     set<int> sel;
     gdi.getSelection("Mappings", sel);
-    for (set<int>::iterator it = sel.begin(); it != sel.end(); ++it) {
-      specialPunches.erase(*it);
+    for (auto it = sel.begin(); it != sel.end(); ++it) {
+      oe->definePunchMapping(*it, oPunch::PunchUnused);
     }
-    fillMappings(gdi);
+    fillMappings(*oe, gdi);
+    gdi.setInputStatus("LoadLastMapping", false);
+  }
+  else if (bi.id == "LoadLastMapping") {
+    auto cm = oe->getPropertyString("ControlMap", L"");
+    oe->getDI().setString("ControlMap", cm);
+    fillMappings(*oe, gdi);
+    gdi.setInputStatus(bi.id, false);
   }
   else if (bi.id == "UseROC") {
     useROCProtocol = gdi.isChecked(bi.id);
@@ -114,14 +122,17 @@ void OnlineInput::updateLabel(gdioutput& gdi)
     gdi.setTextTranslate("CmpID_label", L"Tävlingens ID-nummer:", true);
 }
 
-void OnlineInput::fillMappings(gdioutput &gdi) const{
+void OnlineInput::fillMappings(oEvent& oe, gdioutput &gdi) {
+  specialPunches = oe.getPunchMapping();
   gdi.clearList("Mappings");
-  for (map<int, oPunch::SpecialPunch>::const_iterator it = specialPunches.begin(); it != specialPunches.end(); ++it) {
-    gdi.addItem("Mappings", itow(it->first) + L" \u21A6 " + oPunch::getType(it->second), it->first);
+  for (auto &[code, val] : specialPunches) {
+    gdi.addItem("Mappings", itow(code) + L" \u21A6 " + oPunch::getType(val, nullptr), code);
   }
 }
 
 void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
+  this->oe = &oe;
+
   int iv = interval;
   if (state == State::Create) {
     iv = 10;
@@ -133,9 +144,9 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
     time = itow(iv);
 
   settingsTitle(gdi, "Inmatning online");
-  startCancelInterval(gdi, "Save", state, IntervalSecond, time);
+  startCancelInterval(gdi, oe, "Save", state, IntervalType::IntervalSecond, time);
 
-  gdi.addInput("URL", url, 40, 0, L"URL:", L"Till exempel X#http://www.input.org/online.php");
+  gdi.addInput("URL", url, 40, 0, L"URL:", L"Till exempel X#https://www.input.org/online.php");
   gdi.addCheckbox("UseROC", "Använd ROC-protokoll", OnlineCB, useROCProtocol).setExtra(getId());
   gdi.addCheckbox("UseUnitId", "Använd enhets-id istället för tävlings-id", OnlineCB, useROCProtocol && useUnitId).setExtra(getId());
   gdi.setInputStatus("UseUnitId", useROCProtocol);
@@ -166,19 +177,21 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
     gdi.popX();
   }
 
-  gdi.addString("", boldText, "Kontrollmappning");
-  gdi.dropLine(0.5);
-
-  controlMappingView(gdi, OnlineCB, getId());
-  fillMappings(gdi);
+  controlMappingView(gdi, &oe, OnlineCB, getId());
+  fillMappings(oe, gdi);
 
   gdi.setCY(gdi.getHeight());
   gdi.popX();
   gdi.addString("", 10, "help:onlineinput");
 }
 
-void OnlineInput::controlMappingView(gdioutput& gdi, GUICALLBACK cb, int widgetId)
-{
+void OnlineInput::controlMappingView(gdioutput& gdi, oEvent *oe, GUICALLBACK cb, int widgetId) {
+  gdi.setRestorePoint("ControlMapping");
+  gdi.addString("", fontMediumPlus, "Kontrollmappning");
+  gdi.dropLine(0.5);
+
+  gdi.pushX();
+
   gdi.fillRight();
   gdi.addInput("Code", L"", 4, 0, L"Kod:");
   gdi.addSelection("Function", 80, 200, 0, L"Funktion:");
@@ -187,11 +200,38 @@ void OnlineInput::controlMappingView(gdioutput& gdi, GUICALLBACK cb, int widgetI
   gdi.addItem("Function", lang.tl("Check"), oPunch::PunchCheck);
   gdi.dropLine();
   gdi.addButton("SaveMapping", "Lägg till", cb).setExtra(widgetId);
+  
+  class HelpHandler : public GuiHandler {
+  public:
+    int xpos = 0;
+    void handle(gdioutput& gdi, BaseInfo& info, GuiEventType type) {
+      ButtonInfo bi = dynamic_cast<ButtonInfo&>(info);
+      gdi.removeWidget("Help");
+      gdi.addString("", bi.getY(), xpos, 10, "info:mapcontrol");
+      gdi.refresh();
+    };
+  };
+
+
+  auto hh = make_shared<HelpHandler>();
+
+  gdi.addButton("Help", "Hjälp").setHandler(hh);
+  
   gdi.popX();
   gdi.dropLine(2);
   gdi.addListBox("Mappings", 150, 150, 0, L"Definierade mappningar:", L"", true);
   gdi.dropLine();
+  gdi.fillDown();
   gdi.addButton("RemoveMapping", "Ta bort", cb).setExtra(widgetId);
+
+  auto cm = oe->getPropertyString("ControlMap", L"");
+  gdi.addButton("LoadLastMapping", "Hämta föregående", cb, "Ladda de inställningar som senast gjordes på den här datorn.").setExtra(widgetId);
+  if (cm.empty())
+    gdi.disableInput("LoadLastMapping");
+
+  RECT rc = gdi.getDimensionSince("ControlMapping");
+
+  hh->xpos = rc.right + gdi.scaleLength(20);
 }
 
 void OnlineInput::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
@@ -245,6 +285,7 @@ void OnlineInput::status(gdioutput &gdi)
 }
 
 void OnlineInput::saveMachine(oEvent &oe, const wstring &guiInterval) {
+  AutoMachine::saveMachine(oe, guiInterval);
   auto &cnt = oe.getMachineContainer().set(getTypeString(), getMachineName());
  
   cnt.set("url", url);
@@ -256,42 +297,45 @@ void OnlineInput::saveMachine(oEvent &oe, const wstring &guiInterval) {
   int iv = _wtoi(guiInterval.c_str());
   cnt.set("interval", iv);
 
-  vector<int> pm;
+  /*vector<int> pm;
   for (auto &v : specialPunches) {
     pm.push_back(v.first);
     pm.push_back(v.second);
   }
-  cnt.set("map", pm);
+  cnt.set("map", pm);*/
 }
 
-void OnlineInput::loadMachine(oEvent &oe, const wstring &name) {
-  auto *cnt = oe.getMachineContainer().get(getTypeString(), name);
+void OnlineInput::loadMachine(oEvent& oe, const wstring& name) {
+  auto* cnt = oe.getMachineContainer().get(getTypeString(), name);
   if (!cnt)
     return;
   AutoMachine::loadMachine(oe, name);
+  this->oe = &oe;
   url = cnt->getString("url");
   cmpId = cnt->getInt("cmpId");
   unitId = cnt->getString("unitId");
-  
+
   useROCProtocol = cnt->getInt("ROC") != 0;
   useUnitId = cnt->getInt("useId") != 0;
   interval = cnt->getInt("interval");
 
-  specialPunches.clear();
-  vector<int> pm = cnt->getVectorInt("map");
-  for (size_t j = 0; j + 1 < pm.size(); j+=2) {
-    specialPunches[pm[j]] = oPunch::SpecialPunch(pm[j + 1]);
+  if (cnt->has("map")) {
+    vector<int> pm = cnt->getVectorInt("map");
+    for (size_t j = 0; j + 1 < pm.size(); j += 2) {
+      oe.definePunchMapping(pm[j], oPunch::SpecialPunch(pm[j + 1])); // Load from v. 4.0 and earlier
+    }
   }
 }
 
 void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
-  oe->autoSynchronizeLists(true);
+  processProtected(gdi, ast, [&]() {
 
-  try {
+    oe->autoSynchronizeLists(true);
+
     Download dwl;
     dwl.initInternet();
     ProgressWindow pw(0);
-    vector<pair<wstring,wstring> > key;
+    vector<pair<wstring, wstring> > key;
     wstring q;
     if (useROCProtocol) {
       if (!useUnitId)
@@ -302,67 +346,62 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     else {
       pair<wstring, wstring> mk1(L"competition", itow(cmpId));
       key.push_back(mk1);
-	    pair<wstring, wstring> mk2(L"lastid", itow(lastImportedId));
+      pair<wstring, wstring> mk2(L"lastid", itow(lastImportedId));
       key.push_back(mk2);
     }
     wstring result = getTempFile();
-    dwl.downloadFile(url + q, result, key);
-    dwl.downLoadNoThread();
+    try {
+      dwl.downloadFile(url + q, result, key);
+      dwl.downLoadNoThread();
 
-    if (!useROCProtocol) {
-      xmlobject res;
-      xmlparser xml;
-      try {
-        xml.read(result);
-        res = xml.getObject("MIPData");
+      if (!useROCProtocol) {
+        xmlobject res;
+        xmlparser xml;
+        try {
+          xml.read(result);
+          res = xml.getObject("MIPData");
+        }
+        catch (std::exception&) {
+          throw meosException("Onlineservern svarade felaktigt.");
+        }
+
+        xmlList entries;
+        res.getObjects("entry", entries);
+        processEntries(*oe, entries);
+
+        xmlList cards;
+        res.getObjects("card", cards);
+        processCards(gdi, *oe, cards);
+
+        xmlList punches;
+        res.getObjects("p", punches);
+        processPunches(*oe, punches);
+
+        xmlList teamlineup;
+        res.getObjects("team", teamlineup);
+        processTeamLineups(*oe, teamlineup);
+
+        lastImportedId = res.getAttrib("lastid").getInt();
       }
-      catch(std::exception &) {
-        throw meosException("Onlineservern svarade felaktigt.");
+      else {
+        csvparser csv;
+        list<vector<wstring>> rocData;
+        csv.parse(result, rocData);
+        processPunches(*oe, rocData);
       }
 
-      xmlList entries;
-      res.getObjects("entry", entries);
-      processEntries(*oe, entries);
-
-      xmlList cards;
-      res.getObjects("card", cards);
-      processCards(gdi, *oe, cards);
-
-      xmlList punches;
-      res.getObjects("p", punches);
-      processPunches(*oe, punches);
-
-      xmlList teamlineup;
-      res.getObjects("team", teamlineup);
-      processTeamLineups(*oe, teamlineup);
-
-      lastImportedId = res.getAttrib("lastid").getInt();
+      struct _stat st;
+      _wstat(result.c_str(), &st);
+      bytesImported += st.st_size;
+      removeTempFile(result);
     }
-    else {
-      csvparser csv;
-      list< vector<wstring> > rocData;
-      csv.parse(result, rocData);
-      processPunches(*oe, rocData);
+    catch (...) {
+      removeTempFile(result);
+      throw;
     }
 
-    struct _stat st;
-    _wstat(result.c_str(), &st);
-    bytesImported += st.st_size;
-    removeTempFile(result);
-  }
-  catch (meosException &ex) {
-    if (ast == SyncNone)
-      throw;
-    else
-      gdi.addInfoBox("", wstring(L"Online Input Error X#") + ex.wwhat(), 5000);
-  }
-  catch(std::exception &ex) {
-    if (ast == SyncNone)
-      throw;
-    else
-      gdi.addInfoBox("", wstring(L"Online Input Error X#")+gdi.widen(ex.what()), 5000);
-  }
-  importCounter++;
+    importCounter++;
+  });
 }
 
 void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
@@ -372,6 +411,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
     punches[k].getObjectString("sno", startno);
 
     int originalCode = code;
+    
     if (specialPunches.count(code))
       code = specialPunches[code];
 
@@ -400,7 +440,7 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
     }
     oe.addFreePunch(time, code, originalCode, card, true, true);
 
-    addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" +  oe.getAbsTime(time));
+    addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code, r ? r->getCourse(false) : nullptr) + L"#" +  oe.getAbsTime(time));
   }
 }
 
@@ -437,7 +477,7 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
 
       lastImportedId = max(lastImportedId, punchId);
 
-      addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code) + L"#" + oe.getAbsTime(time));
+      addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code, r ? r->getCourse(false) : nullptr) + L"#" + oe.getAbsTime(time));
     }
     else
       throw meosException("Onlineservern svarade felaktigt.");
@@ -479,6 +519,8 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     }
   }
 
+  wstring error;
+
   for (auto &entry : entries) {
     pClass cls = nullptr;
 
@@ -486,13 +528,24 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     if (classId > 0)
       cls = oe.getClass(classId);
 
+    wstring clsName;
     if (!cls) {
-      wstring clsName;
       entry.getObjectString("classname", clsName);
       cls = oe.getClass(clsName);
     }
-    if (!cls)
+    if (!cls) {
+      if (error.empty()) {
+        error = L"#" + lang.tl("Okänd klass: ");
+        if (clsName.empty())
+          error += L"?";
+        else
+          error += clsName;
+
+        if (classId > 0)
+          error += L", Id = " + itow(classId);   
+      }
       continue;
+    }
 
     int fee = entry.getObjectInt("fee");
     bool paid = entry.getObjectBool("paid");
@@ -511,8 +564,9 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     
     wstring name;
     entry.getObjectString("name", name);
-    if (name.empty())
-      continue;
+    if (name.empty()) {
+      name = oe.getAutoRunnerName();
+    }
 
     wstring club;
     entry.getObjectString("club", club);
@@ -595,5 +649,7 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     }
     r->synchronize(true);
   }
+  if (!error.empty())
+    throw meosException(error);
 }
 

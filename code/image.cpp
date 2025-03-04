@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,16 +89,16 @@ vector<uint8_t> Image::loadResourceToMemory(LPCTSTR lpName, LPCTSTR lpType)  {
   return result;
 }
 
-HBITMAP Image::read_png(vector<uint8_t> &&inData, int &width, int &height, ImageMethod method) {
+pair<HBITMAP, uint8_t*> Image::read_png(vector<uint8_t> &&inData, int &width, int &height, ImageMethod method) {
   PngData inputStream;
   inputStream.memory = std::move(inData);
   png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
   if (!png) 
-    return nullptr;
+    return make_pair(nullptr, nullptr);
 
   png_infop info = png_create_info_struct(png);
   if (!info) 
-    return nullptr;
+    return make_pair(nullptr, nullptr);
 
   png_set_read_fn(png, &inputStream, readDataFromInputStream);
 
@@ -211,7 +211,7 @@ HBITMAP Image::read_png(vector<uint8_t> &&inData, int &width, int &height, Image
       }
     }
   }
-  return hbmp;
+  return make_pair(hbmp, dst);
 }
 
 uint64_t Image::computeHash(const vector<uint8_t>& data) {
@@ -240,7 +240,7 @@ void Image::read_file(const wstring& filename, vector<uint8_t>& data) {
   fin.close();
 }
 
-HBITMAP Image::read_png_file(const wstring &filename, int &width, int &height, uint64_t &hash, ImageMethod method) {
+pair<HBITMAP, uint8_t*> Image::read_png_file(const wstring &filename, int &width, int &height, uint64_t &hash, ImageMethod method) {
   width = 0;
   height = 0;
   PngData inputStream;
@@ -249,37 +249,34 @@ HBITMAP Image::read_png_file(const wstring &filename, int &width, int &height, u
   return read_png(std::move(inputStream.memory), width, height, method);
 }
 
-HBITMAP Image::read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int &width, int &height, ImageMethod method) {
+pair<HBITMAP, uint8_t*> Image::read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int &width, int &height, ImageMethod method) {
   width = 0;
   height = 0;
   PngData inputStream;
   inputStream.memory = loadResourceToMemory(lpName, lpType);
   if (inputStream.memory.empty())
-    return nullptr;
+    return make_pair(nullptr, nullptr);
   return read_png(std::move(inputStream.memory), width, height, method);
 }
 
-Image::Image()
-{
-}
+Image::Image() = default;
 
-Image::~Image()
-{
-}
+Image::~Image() = default;
 
-// Loads the PNG containing the splash image into a HBITMAP.
+// Loads image (or use alreadly loaded version
 HBITMAP Image::loadImage(uint64_t resource, ImageMethod method) {
   if (images.count(resource))
     return images[resource].image;
 
   int width, height;
-  HBITMAP hbmp = read_png_resource(MAKEINTRESOURCE(resource), _T("PNG"), width, height, method);
-  if (hbmp != 0) {
-    images[resource].image = hbmp;
+  auto hbmp = read_png_resource(MAKEINTRESOURCE(resource), _T("PNG"), width, height, method);
+  if (hbmp.first != nullptr) {
+    images[resource].image = hbmp.first;
+    images[resource].pixels = hbmp.second;
     images[resource].width = width;
     images[resource].height = height;
   }
-  return hbmp;
+  return hbmp.first;
 }
 
 int Image::getWidth(uint64_t resource) {
@@ -293,20 +290,22 @@ int Image::getHeight(uint64_t resource) {
 }
 
 void Image::drawImage(uint64_t resource, ImageMethod method, HDC hDC, int x, int y, int width, int height) {
-  HBITMAP bmp = loadImage(resource, method);
+  loadImage(resource, method);
   auto res = images.find(resource);
   if (res == images.end())
     return;
   
+  HBITMAP bmp = res->second.getVersion(width, height);
+
   HDC memdc = CreateCompatibleDC(hDC);
   SelectObject(memdc, bmp);
   
   BLENDFUNCTION bf;
   bf.BlendOp = AC_SRC_OVER;
   bf.BlendFlags = 0;
-  bf.SourceConstantAlpha =0xFF;  
+  bf.SourceConstantAlpha = 0xFF;  
   bf.AlphaFormat = AC_SRC_ALPHA;    
-  AlphaBlend(hDC, x, y, width, height, memdc, 0, 0, res->second.width, res->second.height, bf);
+  AlphaBlend(hDC, x, y, width, height, memdc, 0, 0, width, height, bf);
 
   DeleteDC(memdc);
 }
@@ -327,7 +326,9 @@ uint64_t Image::loadFromFile(const wstring& path, ImageMethod method) {
     Bmp &out = res.first->second;
     out.fileName = wstring(name) + ext;
     out.rawData = bytes;
-    out.image = read_png(std::move(bytes), out.width, out.height, method);
+    auto res = read_png(std::move(bytes), out.width, out.height, method);
+    out.image = res.first;
+    out.pixels = res.second;
   }
   return hash;
 }
@@ -355,7 +356,9 @@ void Image::reloadImage(uint64_t imgId, ImageMethod method) {
   if (res != images.end() && res->second.rawData.size() > 0) {
     auto copy = res->second.rawData;
     res->second.destroy();
-    res->second.image = read_png(std::move(copy), res->second.width, res->second.height, method);
+    auto img = read_png(std::move(copy), res->second.width, res->second.height, method);
+    res->second.image = img.first;
+    res->second.pixels = img.second;
     return;
   }
   throw meosException("Unknown image " + itos(imgId));
@@ -377,11 +380,291 @@ Image::Bmp::~Bmp() {
 
 void Image::Bmp::destroy() {
   if (image) {
+    pixels = nullptr;
     DeleteObject(image);
-    image = nullptr;
+    image = nullptr;    
   }
+  for (auto [key, hImg] : resamples) {
+    DeleteObject(hImg);
+  }
+  resamples.clear();
 }
 
+HBITMAP Image::Bmp::getVersion(int width, int height) {
+  if (image == nullptr)
+    return nullptr;
+
+  if (width == this->width && height == this->height)
+    return image;
+
+  if (auto res = resamples.find(make_pair(width, height)); res != resamples.end())
+    return res->second;
+
+  HBITMAP version = resample(width, height);
+  resamples[make_pair(width, height)] = version;
+
+  return version;
+}
+
+HBITMAP Image::Bmp::resample(int w, int h) {
+  // initialize return value
+  HBITMAP hbmp = NULL;
+
+  // prepare structure giving bitmap information (negative height indicates a top-down DIB)
+  BITMAPINFO bminfo;
+  ZeroMemory(&bminfo, sizeof(bminfo));
+  bminfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bminfo.bmiHeader.biWidth = w;
+  bminfo.bmiHeader.biHeight = ((LONG)-h);
+  bminfo.bmiHeader.biPlanes = 1;
+  bminfo.bmiHeader.biBitCount = 32;
+  bminfo.bmiHeader.biCompression = BI_RGB;
+
+  // create a DIB section that can hold the image
+  void* pvImageBits = NULL;
+  HDC hdcScreen = GetDC(NULL);
+  hbmp = CreateDIBSection(hdcScreen, &bminfo, DIB_RGB_COLORS, &pvImageBits, NULL, 0);
+  ReleaseDC(NULL, hdcScreen);
+
+  // extract the image into the HBITMAP
+  const size_t cbStride = w * 4;
+  const size_t cbStrideSrc = width * 4;
+  const size_t cbImage = cbStride * h;
+  byte* dst = static_cast<byte*>(pvImageBits);
+
+  struct fRGBA {
+    float r = 0;
+    float g = 0;
+    float b = 0;
+    float a = 0;
+
+    uint8_t getR() const {
+      return uint8_t(min(255, int(r)));
+    }
+    uint8_t getG() const {
+      return uint8_t(min(255, int(g)));
+    }
+    uint8_t getB() const {
+      return uint8_t(min(255, int(b)));
+    }
+    uint8_t getA() const {
+      return uint8_t(min(255, int(a)));
+    }
+
+    void add(const fRGBA& nb, float factor) {
+      r += nb.r * factor;
+      g += nb.g * factor;
+      b += nb.b * factor;
+      a += nb.a * factor;
+    }
+
+    void clear() {
+      r = 0;
+      g = 0;
+      b = 0;
+      a = 0;
+    }
+  };
+
+  class UpSample {
+    vector<vector<fRGBA>> data;
+    float xScale;
+    float yScale;
+    int w;
+    int h;
+  public:
+
+    UpSample(int width, int height, const uint8_t* pixels, int dstX, int dstY) {
+      float upFactor = 1;
+      if (dstX > width) {
+        upFactor = 3.f;
+        xScale = float(3 * width - 2) / float(dstX);
+        yScale = float(3 * height - 2) / float(dstY);
+        w = width * 3;
+        h = height * 3;
+        data.resize(height * 3);
+        for (auto& line : data)
+          line.resize(width * 3);
+        const size_t cbStride = width * 4;
+        constexpr float factor = 0.8f;
+        for (int y = 0, ydst = 0; y < height; y++, ydst += 3) {
+          const byte* src = pixels + cbStride * y;
+          auto& dstRow = data[ydst + 1];
+          int last = dstRow.size() - 1;
+          for (int x = 0, xdst = 0; x < width; x++, xdst += 3) {
+            int xs = x * 4;
+            dstRow[xdst + 1].g = src[xs + 1]; // Green 
+            dstRow[xdst + 1].b = src[xs + 0]; // Blue
+            dstRow[xdst + 1].r = src[xs + 2]; // Red
+            dstRow[xdst + 1].a = src[xs + 3]; //Alpha
+
+            dstRow[xdst].add(dstRow[xdst + 1], factor);
+            dstRow[xdst + 2].add(dstRow[xdst + 1], factor);
+            if (x > 0)
+              dstRow[xdst - 1].add(dstRow[xdst + 1], (1 - factor));
+            if (x + 1 < width)
+              dstRow[xdst + 3].add(dstRow[xdst + 1], (1 - factor));
+          }
+          dstRow[0].add(dstRow[1], (1 - factor));
+          dstRow[last].add(dstRow[last - 1], (1 - factor));
+
+
+          if (y == 0)
+            data[0] = data[1];
+          else {
+            auto& pRow = data[ydst];
+            for (int j = 0; j < pRow.size(); j++)
+              pRow[j].add(dstRow[j], factor);
+
+            auto& pRow2 = data[ydst - 1];
+            for (int j = 0; j < pRow.size(); j++)
+              pRow2[j].add(dstRow[j], (1 - factor));
+          }
+
+          if (y + 1 == height)
+            data[ydst + 2] = data[ydst + 1];
+          else {
+            auto& pRow = data[ydst + 2];
+            for (int j = 0; j < pRow.size(); j++)
+              pRow[j].add(dstRow[j], factor);
+
+            auto& pRow2 = data[ydst + 3];
+            for (int j = 0; j < pRow.size(); j++)
+              pRow2[j].add(dstRow[j], (1 - factor));
+          }
+        }
+      }
+      else {
+        xScale = float(width - 2) / float(dstX);
+        yScale = float(height - 2) / float(dstY);
+        w = width;
+        h = height;
+        data.resize(height);
+        for (auto& line : data)
+          line.resize(width);
+
+        const size_t cbStride = width * 4;
+        for (int y = 0; y < height; y++) {
+          const byte* src = pixels + cbStride * y;
+          auto& dstRow = data[y];
+          int last = dstRow.size() - 1;
+          for (int x = 0; x < width; x++) {
+            int xs = x * 4;
+            dstRow[x].g = src[xs + 1]; // Green 
+            dstRow[x].b = src[xs + 0]; // Blue
+            dstRow[x].r = src[xs + 2]; // Red
+            dstRow[x].a = src[xs + 3]; //Alpha
+          }
+        }
+      }
+
+      if (dstX < width || dstY < height) {
+        float ratX = float(width) / float(dstX);
+        float ratY = float(height) / float(dstY);
+        int xkern = int(2 * upFactor * ratX) | 1;
+        int ykern = int(2 * upFactor * ratY) | 1;
+        vector<vector<float>> kernel(ykern);
+        for (auto& row : kernel)
+          row.resize(xkern);
+
+        int centerx = (xkern - 1) / 2;
+        int centery = (ykern - 1) / 2;
+        double sum = 0;
+        for (int x = 0; x < xkern; x++) {
+          float xs = float(x - centerx) / float(centerx);
+          for (int y = 0; y < ykern; y++) {
+            float ys = float(y - centery) / float(centery);
+            float d = sqrt(xs * xs + ys * ys)*0.9;
+            if (d < 1.0001) {
+              float base = (1.0 - d * d);
+              sum += kernel[y][x] = base;
+            }
+          }
+        }
+        for (auto& row : kernel)
+          for (float& f : row)
+            f /= sum;
+
+        vector<vector<fRGBA>> copy = data;
+
+        for (int yy = 0; yy < h; yy++){
+          for (int xx = 0; xx < w; xx++) {
+            auto& t = data[yy][xx];
+            t.clear();
+
+            for (int y = 0; y < ykern; y++) {
+              for (int x = 0; x < xkern; x++) {
+                float f = kernel[y][x];
+                if (f > 0) {
+                  int xp = xx + x - centerx;
+                  xp = min(max(0, xp), w - 1);
+
+                  int yp = yy + y - centery;
+                  yp = min(max(0, yp), h - 1);
+                  t.add(copy[yp][xp], f);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    fRGBA getPixel(int x, int y) const {
+      float cx = x * xScale + 1;
+      float cy = y * yScale + 1;
+
+      int tx = min(max(1, int(round(cx))), w - 2);
+      int ty = min(max(1, int(round(cy))), h - 2);
+
+      //return data[ty][tx];
+
+      float fracX = cx - tx;
+      float fracY = cy - ty;
+      float sx = std::abs(fracX);
+      float sy = std::abs(fracY);
+
+      fRGBA ret;
+      if (fracX > 0) {
+        ret.add(data[ty][tx], 0.5 - sx);
+        ret.add(data[ty][tx+1], sx);
+      }
+      else {
+        ret.add(data[ty][tx], 0.5 - sx);
+        ret.add(data[ty][tx - 1], sx);
+      }
+    
+
+      if (fracY > 0) {
+        ret.add(data[ty][tx], 0.5 - sy);
+        ret.add(data[ty+1][tx], sy);
+      }
+      else {
+        ret.add(data[ty][tx], 0.5 - sy);
+        ret.add(data[ty-1][tx], sy);
+      }
+    
+
+      return ret;
+    }
+  };
+  
+  UpSample sampler(width, height, pixels, w, h);
+
+  for (int y = 0; y < h; y++) {
+    byte* row = dst + cbStride * y;
+    for (size_t x = 0; x < w; x++) {
+      auto p = sampler.getPixel(x, y);
+      int xs = x * 4;
+      row[xs + 1] = p.getG(); // Green 
+      row[xs + 0] = p.getB(); // Blue
+      row[xs + 2] = p.getR(); // Red
+      row[xs + 3] = p.getA();
+    }
+  }
+
+  return hbmp;
+}
 
 void Image::enumerateImages(vector<pair<wstring, size_t>>& img) const {
   img.clear();

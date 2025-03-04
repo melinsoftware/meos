@@ -48,17 +48,29 @@ public:
 class AbsoluteTimeFormatter : public oDataDefiner {
   string name;
   const SubSecond mode;
+  bool hms;
 public:
-  AbsoluteTimeFormatter(const char* n, SubSecond mode) : name(n), mode(mode) {}
+  AbsoluteTimeFormatter(const char* n, bool hms, SubSecond mode) : name(n), hms(hms), mode(mode) {}
 
   const wstring& formatData(const oBase* obj, int index) const override {
     int t = obj->getDCI().getInt(name);
-    return formatTime(t, mode);
+    if (hms)
+      return formatTimeHMS(t, mode);
+    else
+      return formatTime(t, mode);
   }
   pair<int, bool> setData(oBase* obj, int index, const wstring& input, wstring& output, int inputId) const override {
-    int t = convertAbsoluteTimeMS(input);
-    if (t == NOTIME)
-      t = 0;
+    int t;
+    if (hms) {
+      t = convertAbsoluteTimeHMS(input, -1);
+      if (t == NOTIME)
+        t = 0;
+    }
+    else {
+      t = convertAbsoluteTimeMS(input);
+      if (t == NOTIME)
+        t = 0;
+    }
     obj->getDI().setInt(name.c_str(), t);
     output = formatData(obj, index);
     return make_pair(0, false);
@@ -443,14 +455,40 @@ class FeeChangedNf : public oDataNotifier {
   }
 };
 
+class ShortNameChangedNf : public oDataNotifier {
+  void notify(oBase* ob, const wstring &newValue) final {
+    oClub* c = (oClub*)ob;
+    c->nameChanged();
+  }
+};
 
+class ShortNameFormatter : public oDataDefiner {
+public:
+
+  const wstring& formatData(const oBase* ob, int index) const override {
+    const oClub* club = static_cast<const oClub *>(ob);
+    return club->getCompactName();
+  }
+
+  pair<int, bool> setData(oBase* ob, int index, const wstring& input, wstring& output, int inputId) const override {
+    ob->getDI().setString("ShortName", input);
+    const oClub* club = static_cast<const oClub*>(ob);
+    output = club->getCompactName();
+    return make_pair(0, false);
+  }
+
+  TableColSpec addTableColumn(Table* table, const string& description, int minWidth) const override {
+    return table->addColumn(description, max(minWidth, 90), true, true);
+  }
+};
 
 class TransferFlagsFormatter : public oDataDefiner {
   wstring t = L"true";
   wstring f = L"false";
   mutable vector<pair<oAbstractRunner::TransferFlags, bool>> fieldOrder;
+  const bool forTeam;
 public:
-  TransferFlagsFormatter() {}
+  TransferFlagsFormatter(bool forTeam) : forTeam(forTeam) {}
 
   const wstring& formatData(const oBase* obj, int index) const override {
     const oAbstractRunner* r = static_cast<const oAbstractRunner *>(obj);
@@ -472,25 +510,28 @@ public:
 
   TableColSpec addTableColumn(Table* table, const string& description, int minWidth) const final {
     fieldOrder.clear();
-    auto first = table->addColumn("Anmäld API", max(minWidth, 90), false);
-    fieldOrder.emplace_back(oAbstractRunner::FlagAddedViaAPI, false);
+    int first = 100;
+    if (!forTeam) {
+      first = table->addColumn("Anmäld API", max(minWidth, 90), false).firstColumn();
+      fieldOrder.emplace_back(oAbstractRunner::FlagAddedViaAPI, false);
 
-    table->addColumn("Förskottsbetalning", max(minWidth, 90), false);
-    fieldOrder.emplace_back(oAbstractRunner::FlagPayBeforeResult, true);
+      table->addColumn("Förskottsbetalning", max(minWidth, 90), false);
+      fieldOrder.emplace_back(oAbstractRunner::FlagPayBeforeResult, true);
 
-    table->addColumn("Ändrad bricka", max(minWidth, 90), false);
-    fieldOrder.emplace_back(oAbstractRunner::FlagUpdateCard, false);
+      table->addColumn("Ändrad bricka", max(minWidth, 90), false);
+      fieldOrder.emplace_back(oAbstractRunner::FlagUpdateCard, false);
 
-    table->addColumn("Ändrad avgift", max(minWidth, 90), false);
-    fieldOrder.emplace_back(oAbstractRunner::FlagFeeSpecified, false);
+      table->addColumn("Ändrad avgift", max(minWidth, 90), false);
+      fieldOrder.emplace_back(oAbstractRunner::FlagFeeSpecified, false);
+    }
 
-    table->addColumn("Ändrat namn", max(minWidth, 90), false);
+    first = min(first, table->addColumn("Ändrat namn", max(minWidth, 90), false).firstColumn());
     fieldOrder.emplace_back(oAbstractRunner::FlagUpdateName, false);
 
     table->addColumn("Ändrad klass", max(minWidth, 90), false);
     fieldOrder.emplace_back(oAbstractRunner::FlagUpdateClass, false);
 
-    return TableColSpec(first.firstColumn(), 5);
+    return TableColSpec(first, fieldOrder.size());
   }
 
   bool canEdit(int index) const final { 

@@ -64,3 +64,15 @@ public:
   private:
     ImportFormatOptions option;
 };
+
+struct ExportSplitsData {
+  int cSVLanguageHeaderIndex = 0;
+  ImportFormats::ExportFormats filterIndex = ImportFormats::ExportFormats::IOF30;
+  bool includeStage = true;
+  bool unroll = false;
+  bool includeSplits = true;
+  bool withPartialResults = false;
+  pair<string, string> preferredIdTypes;
+
+  int legType = -1;
+};

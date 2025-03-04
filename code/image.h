@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include <map>
 #include <vector>
 
+
 class Image {
 public:
   enum class ImageMethod {
@@ -39,18 +40,28 @@ private:
 
   static void read_file(const wstring& filename, vector<uint8_t>& data);
 
-  static HBITMAP read_png_file(const wstring &filename, int &width, int &height, uint64_t &hash, ImageMethod method);
-  static HBITMAP read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int &width, int &height, ImageMethod method);
-  static HBITMAP read_png(vector<uint8_t> &&data, int &width, int &height, ImageMethod method);
+  static pair<HBITMAP, uint8_t*> read_png_file(const wstring& filename, int& width, int& height, uint64_t& hash, ImageMethod method);
+  static pair<HBITMAP, uint8_t*> read_png_resource(LPCTSTR lpName, LPCTSTR lpType, int& width, int& height, ImageMethod method);
+  static pair<HBITMAP, uint8_t*> read_png(vector<uint8_t>&& data, int& width, int& height, ImageMethod method);
 
-  struct Bmp {
+  class Bmp {
+  private:
+    map<pair<int, int>, HBITMAP> resamples;
+   
+    HBITMAP resample(int w, int h);
+
+  public:
     HBITMAP image = nullptr;
     int width = -1;
     int height = -1;
     wstring fileName;
+    uint8_t* pixels = nullptr;
     vector<uint8_t> rawData;
-    ~Bmp();
+
+    HBITMAP getVersion(int width, int height);
     void destroy();
+
+    ~Bmp();
   };
 
   map<uint64_t, Bmp> images;

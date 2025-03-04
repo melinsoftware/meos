@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,23 +23,23 @@
 #include <vector>
 #include "meos_util.h"
 
-//ABCDEFGHIJKLMNOPQR
+//ABCDEFGHIJKLMNOPQRSTU
 int getMeosBuild() {
-  string revision("$Rev: 1404 $");
+  string revision("$Rev: 1465 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2024-09-09 22:37:46 +0200 (mån, 09 sep 2024) $");
+  wstring date(L"$Date: 2025-03-03 22:53:58 +0100 (mån, 03 mar 2025) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Update 3"; // No parantheses (...)
+  return L"Beta 1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
-  return L"4.0";
+  return L"4.1";
 }
 
 wstring getMeosFullVersion() {

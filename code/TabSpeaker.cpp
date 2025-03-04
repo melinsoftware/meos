@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -839,46 +839,50 @@ void TabSpeaker::generateControlList(gdioutput &gdi, int classId)
   else
     course = pc->getCourse(true);
   */
-  vector<pControl> controls;
-
-  if (course)
-    course->getControls(controls);
   int previousControl = 0;
-  for (size_t k = 0; k < controls.size(); k++) {
-    int cid = course->getCourseControlId(k);
-    if (controlsToWatch.count(cid) ) {
 
-      if (selectedControl[classId].getControl() == -1) {
-        // Default control
-        selectedControl[classId].setControl(cid, previousControl);
-      }
+  if (course) {
+    vector<pControl> controls;
+    course->getControls(controls);
+    int offStart = course->useFirstAsStart() ? 1 : 0;
+    int offEnd = course->useLastAsFinish() ? 1 : 0;
 
-      char bf[16];
-      sprintf_s(bf, "ctrl%d", cid);
-      wstring name = course->getRadioName(cid);
-      /*if (controls[k]->hasName()) {
-        name = "#" + controls[k]->getName();
-        if (controls[k]->getNumberDuplicates() > 1)
-          name += "-" + itos(numbering++);
-      }
-      else {
-        name = lang.tl("radio X#" + itos(numbering++));
-        capitalize(name);
-        name = "#" + name;
-      }
-      */
-      wstring tooltip = lang.tl("kontroll X (Y)#" + itos(k+1) +"#" + itos(controls[k]->getFirstNumber()));
-      capitalize(tooltip);
-      ButtonInfo &bi = gdi.addButton(cx, cy, bw, bf, L"#" + name, tabSpeakerCB, L"#" + tooltip, false, false);
-      bi.setExtra(previousControl);
-      previousControl = cid;
-      cx+=bw;
+    for (size_t k = offStart; k < controls.size() -  offEnd; k++) {
+      int cid = course->getCourseControlId(k);
+      if (controlsToWatch.count(cid)) {
 
-      cb++;
-      if (cb>nbtn) {
-        cb=1;
-        cy+=gdi.getButtonHeight()+4;
-        cx=basex;
+        if (selectedControl[classId].getControl() == -1) {
+          // Default control
+          selectedControl[classId].setControl(cid, previousControl);
+        }
+
+        char bf[16];
+        sprintf_s(bf, "ctrl%d", cid);
+        wstring name = course->getRadioName(cid);
+        /*if (controls[k]->hasName()) {
+          name = "#" + controls[k]->getName();
+          if (controls[k]->getNumberDuplicates() > 1)
+            name += "-" + itos(numbering++);
+        }
+        else {
+          name = lang.tl("radio X#" + itos(numbering++));
+          capitalize(name);
+          name = "#" + name;
+        }
+        */
+        wstring tooltip = lang.tl("kontroll X (Y)#" + itos(k + 1) + "#" + itos(controls[k]->getFirstNumber()));
+        capitalize(tooltip);
+        ButtonInfo& bi = gdi.addButton(cx, cy, bw, bf, L"#" + name, tabSpeakerCB, L"#" + tooltip, false, false);
+        bi.setExtra(previousControl);
+        previousControl = cid;
+        cx += bw;
+
+        cb++;
+        if (cb > nbtn) {
+          cb = 1;
+          cy += gdi.getButtonHeight() + 4;
+          cx = basex;
+        }
       }
     }
   }
@@ -1182,14 +1186,11 @@ void TabSpeaker::manualTimePage(gdioutput &gdi) const
   gdi.refresh();
 }
 
-void TabSpeaker::storeManualTime(gdioutput &gdi)
-{
-  char bf[256];
-
+void TabSpeaker::storeManualTime(gdioutput &gdi) {
   int punch=gdi.getTextNo("Control");
 
   if (punch<=0)
-    throw std::exception("Kontrollnummer måste anges.");
+    throw meosException("Ogiltig kontrollkod");
 
   lastControl=gdi.getText("Control");
   const wstring &r_str=gdi.getText("Runner");
@@ -1201,7 +1202,7 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
   int itime=oe->getRelativeTime(time);
 
   if (itime <= 0)
-    throw std::exception("Ogiltig tid.");
+    throw meosException("Ogiltig tid.");
 
   pRunner r=oe->getRunnerByBibOrStartNo(r_str, false);
   int r_no = _wtoi(r_str.c_str());
@@ -1217,15 +1218,13 @@ void TabSpeaker::storeManualTime(gdioutput &gdi)
   else
     Name = lang.tl("Okänd");
 
-  if (sino <= 0) {
-    sprintf_s(bf, "Ogiltigt bricknummer.#%d", sino);
-    throw std::exception(bf);
-  }
+  if (sino <= 0) 
+    throw meosException("Ogiltigt bricknummer X#" + itos(sino));
 
   oe->addFreePunch(itime, punch, 0, sino, true, false);
 
   gdi.restore("manual", false);
-  gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch) + L"#" +  oe->getAbsTime(itime));
+  gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch, r ? r->getCourse(false) : nullptr) + L"#" +  oe->getAbsTime(itime));
 
   manualTimePage(gdi);
 }
@@ -1234,7 +1233,7 @@ void TabSpeaker::loadPriorityClass(gdioutput &gdi, int classId) {
 
   gdi.restore("PrioList");
   gdi.setRestorePoint("PrioList");
-  gdi.setOnClearCb(tabSpeakerCB);
+  gdi.setOnClearCb("speaker", tabSpeakerCB);
   runnersToSet.clear();
   vector<pRunner> r;
   oe->getRunners(classId, 0, r);
@@ -1250,7 +1249,7 @@ void TabSpeaker::loadPriorityClass(gdioutput &gdi, int classId) {
     int id = r[k]->getId();
     gdi.addCheckbox(x,y,"A" + itos(id), "", 0, pri>0);
     gdi.addCheckbox(x+dist,y,"B" + itos(id), "", 0, pri>1);
-    gdi.addStringUT(y-dist/3, x+dist*2, 0, r[k]->getCompleteIdentification());
+    gdi.addStringUT(y-dist/3, x+dist*2, 0, r[k]->getCompleteIdentification(oRunner::IDType::ParallelLeg));
     runnersToSet.push_back(id);
     y += dy;
   }
@@ -1306,33 +1305,34 @@ void TabSpeaker::getSettings(gdioutput &gdi, multimap<string, wstring> &settings
   settings.insert(make_pair("top", itow(int(rc.top))));
   settings.insert(make_pair("bottom", itow(int(rc.bottom))));
 
-  for (auto clsId : classesToWatch) {
+  for (int clsId : classesToWatch) {
     pClass cls = oe->getClass(clsId);
-    if (cls)
-      settings.insert(make_pair("class", cls->getName()));
+    if (cls) {
+      settings.emplace("class", cls->getName());
 
-    if (classId == clsId) {
-      settings.insert(make_pair("currentClass", cls->getName()));
-      if (selectedControl.count(clsId)) {
-        int cControl = selectedControl[clsId].getControl();
-        int cLeg = selectedControl[clsId].getLeg();
-        bool cTotal = selectedControl[clsId].isTotal();
-        settings.insert(make_pair("currentControl", itow(cControl)));
-        settings.insert(make_pair("currentLeg", itow(cLeg)));
-        settings.insert(make_pair("currentTotal", itow(cTotal)));
+      if (classId == clsId) {
+        settings.emplace("currentClass", cls->getName());
+        if (selectedControl.count(clsId)) {
+          int cControl = selectedControl[clsId].getControl();
+          int cLeg = selectedControl[clsId].getLeg();
+          bool cTotal = selectedControl[clsId].isTotal();
+          settings.emplace("currentControl", itow(cControl));
+          settings.emplace("currentLeg", itow(cLeg));
+          settings.emplace("currentTotal", itow(cTotal));
+        }
       }
     }
   }
 
   if (classId == -1) {
-    settings.insert(make_pair("currentClass", L"@Events"));
+    settings.emplace("currentClass", L"@Events");
   }
   else if (classId == -2) {
-    settings.insert(make_pair("currentClass", L"@Report"));
+    settings.emplace("currentClass", L"@Report");
   }
 
   for (auto ctrl : controlsToWatch) {
-    settings.insert(make_pair("control", itow(ctrl)));
+    settings.emplace("control", itow(ctrl));
   }
 }
 

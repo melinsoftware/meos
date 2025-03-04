@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 #include "autocomplete.h"
 #include "image.h"
 #include "binencoder.h"
+#include "TabAuto.h"
 
 extern oEvent *gEvent;
 extern Image image;
@@ -415,6 +416,8 @@ MetaList::MetaList() {
   supportToControl = false;
   hideLegSelection = false;
 }
+
+MetaList::~MetaList() = default;
 
 MetaListPost::MetaListPost(EPostType type_, EPostType align_, int leg_) : type(type_),
     alignType(align_), leg(leg_), minimalIndent(0), alignBlock(true), blockWidth(0), font(formatIgnore),
@@ -846,7 +849,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
               width = gdi.scaleLength(mp.getImageWidth());
           }
           else {
-            width = li.getMaxCharWidth(oe, gdi, par.selection, typeFormats, font,
+            width = li.getMaxCharWidth(*oe, gdi, par.selection, typeFormats, font,
               oPrintPost::encodeFont(fontFaces[i].font,
                 fontFaces[i].scale).c_str(),
               large, max(mp.blockWidth, extraMinWidth));
@@ -1688,7 +1691,8 @@ void MetaList::load(const xmlobject &xDef) {
 
         if (mp.type == lRunnerTotalPlace || mp.type == lRunnerTotalTimeStatus ||
           mp.type == lRunnerClassCourseTimeAfter || mp.type == lTeamTimeStatus || 
-          mp.type == lTeamLegTimeStatus || mp.type == lTeamLegTimeAfter) {
+          mp.type == lTeamLegTimeStatus || mp.type == lTeamLegTimeAfter || 
+          mp.type == lRunnerCourseTimeAfter) {
           hasResults_ = true;
           break;
         }
@@ -2176,6 +2180,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lCmpDate] = L"CmpDate";
     typeToSymbol[lCurrentTime] = L"CurrentTime";
     typeToSymbol[lClubName] = L"ClubName";
+    typeToSymbol[lClubNameShort] = L"ClubNameShort";
     typeToSymbol[lClassName] = L"ClassName";
     typeToSymbol[lClassStartName] = L"ClassStartName";
     typeToSymbol[lClassStartTime] = L"StartTimeForClass";
@@ -2195,12 +2200,16 @@ void MetaList::initSymbols() {
     typeToSymbol[lCourseNumControls] = L"CourseNumControls";
     typeToSymbol[lCourseShortening] = L"CourseShortening";
     typeToSymbol[lRunnerName] = L"RunnerName";
+    typeToSymbol[lRunnerNameCompact] = L"RunnerNameCompact";
     typeToSymbol[lRunnerGivenName] = L"RunnerGivenName";
     typeToSymbol[lRunnerFamilyName] = L"RunnerFamilyName";
     typeToSymbol[lRunnerLegTeamLeaderName] = L"RunnerLegTeamLeaderName";
     typeToSymbol[lRunnerCompleteName] = L"RunnerCompleteName";
+    typeToSymbol[lRunnerCompleteNameCompact] = L"RunnerCompleteNameCompact";
+    typeToSymbol[lRunnerCompleteNameCompactClub] = L"RunnerCompleteNameCompactClub";
     typeToSymbol[lPatrolNameNames] = L"PatrolNameNames";
     typeToSymbol[lPatrolClubNameNames] = L"PatrolClubNameNames";
+    typeToSymbol[lPatrolClubNameNamesShort] = L"PatrolClubNameNamesShort";
     typeToSymbol[lRunnerFinish] = L"RunnerFinish";
     typeToSymbol[lRunnerTime] = L"RunnerTime";
     typeToSymbol[lRunnerGrossTime] = L"RunnerGrossTime";
@@ -2208,6 +2217,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerTempTimeStatus] = L"RunnerTempTimeStatus";
     typeToSymbol[lRunnerTempTimeAfter] = L"RunnerTempTimeAfter";
     typeToSymbol[lRunnerTimeAfter] = L"RunnerTimeAfter";
+    typeToSymbol[lRunnerCourseTimeAfter] = L"RunnerCourseTimeAfter";
     typeToSymbol[lRunnerClassCourseTimeAfter] = L"RunnerClassCourseTimeAfter";
     typeToSymbol[lRunnerLostTime] = L"RunnerTimeLost";
     typeToSymbol[lRunnerPlace] = L"RunnerPlace";
@@ -2218,6 +2228,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerStartCond] = L"RunnerStartCond";
     typeToSymbol[lRunnerStartZero] = L"RunnerStartZero";
     typeToSymbol[lRunnerClub] = L"RunnerClub";
+    typeToSymbol[lRunnerClubShort] = L"RunnerClubShort";
     typeToSymbol[lRunnerCard] = L"RunnerCard";
     typeToSymbol[lRunnerRentalCard] = L"RunnerRentalCard";
     typeToSymbol[lRunnerBib] = L"RunnerBib";
@@ -2290,6 +2301,8 @@ void MetaList::initSymbols() {
     typeToSymbol[lTeamGrossTime] = L"TeamGrossTime";
     typeToSymbol[lTeamStatus] = L"TeamStatus";
     typeToSymbol[lTeamClub] = L"TeamClub";
+    typeToSymbol[lTeamClubShort] = L"TeamClubShort";
+
     typeToSymbol[lTeamRunner] = L"TeamRunner";
     typeToSymbol[lTeamRunnerCard] = L"TeamRunnerCard";
     typeToSymbol[lTeamBib] = L"TeamBib";
@@ -2429,6 +2442,7 @@ void MetaList::initSymbols() {
     orderToSymbol[SortByStartTime] = "StartTime";
     orderToSymbol[SortByStartTimeClass] = "StartTimeClass";
     orderToSymbol[SortByEntryTime] = "EntryTime";
+    orderToSymbol[SortByBib] = "Bibs";
     orderToSymbol[ClassPoints] = "ClassPoints";
     orderToSymbol[ClassTotalResult] = "ClassTotalResult";
     orderToSymbol[ClassTeamLegResult] = "ClassTeamLegResult";
@@ -2464,6 +2478,7 @@ void MetaList::initSymbols() {
     filterToSymbol[EFilterWrongFee] = "EFilterWrongFee";
     filterToSymbol[EFilterIncludeNotParticipating] = "EFilterIncludeNotParticipating";
     filterToSymbol[EFilterModifiedCard] = "EFilterModifiedCard";
+    filterToSymbol[EFilterTimeNoResult] = "EFilterTimeNoResult";
 
     for (map<EFilterList, string>::iterator it = filterToSymbol.begin();
       it != filterToSymbol.end(); ++it) {
@@ -2523,16 +2538,16 @@ void MetaList::initSymbols() {
   }
 }
 
-MetaListContainer::MetaListContainer(oEvent *owner): owner(owner) {}
+ListUpdater::~ListUpdater() = default;
 
+MetaListContainer::MetaListContainer(oEvent *owner): owner(owner) {}
 
 MetaListContainer::MetaListContainer(oEvent *owner, const MetaListContainer &src) {
   *this = src;
   this->owner = owner;
 }
 
-
-MetaListContainer::~MetaListContainer() {}
+MetaListContainer::~MetaListContainer() = default;
 
 
 const MetaList &MetaListContainer::getList(int index) const {
@@ -2698,9 +2713,10 @@ bool MetaListContainer::load(MetaListType type, const xmlobject &xDef, bool igno
       freeResultModules.emplace(dr->getTag(), GeneralResultCtr(dr->getTag().c_str(), dr->getName(false), dr));
     }
     
-    if (owner)
-      owner->updateChanged();
   }
+
+  if (owner)
+    owner->updateChanged();
 
   if (!err.empty())
     throw meosException(err);
@@ -2831,7 +2847,7 @@ void MetaListContainer::setupListInfo(int firstIndex,
 
     if (!resultsOnly || ml.hasResults()) {
       oListInfo &li = listMap[listIx];
-      li.Name = lang.tl(ml.getListName());
+      li.Name = ml.getLocalizedListName();
       li.listType = ml.getListType();
       li.supportClasses = ml.supportClasses();
       li.supportLegs = (ml.getListType() == oListInfo::EBaseTypeTeam) && ml.supportLegSelection();
@@ -3014,10 +3030,41 @@ void MetaListContainer::removeList(int index) {
 
   if (data[index].first != ExternalList)
     throw meosException("Invalid list type");
+  
+  EStdListType typeCode = EStdListType(EStdListType::EFirstLoadedList + index);
 
+  if (owner) {
+    TabAuto* ta = (TabAuto*)owner->gdiBase().getTabs().get(TAutoTab);
+    ta->removedList(typeCode);
+  }
+
+  set<int> toRemove;  
+  for (auto& [ix, par] : listParam) {
+    if (par.listCode == typeCode)
+      toRemove.insert(ix);
+  }
+
+  int currSize = 0;
+  while (currSize != toRemove.size()) {
+    currSize = toRemove.size();
+    for (auto& [ix, par] : listParam) {
+      if (par.nextList > 0 && toRemove.count(par.nextList - 1))
+        toRemove.insert(ix);
+      
+      if (par.previousList > 0 && toRemove.count(par.previousList - 1))
+        toRemove.insert(ix);
+    }
+  }
+
+  for (int ix : toRemove)
+    listParam.erase(ix);
+
+  string tag = data[index].second.getTag();
   data[index].first = RemovedList;
-  if (owner)
+
+  if (owner) {    
     owner->updateChanged();
+  }
 }
 
 void MetaListContainer::saveList(int index, const MetaList &ml) {
@@ -3228,6 +3275,18 @@ int MetaListContainer::addListParam(oListParam &param) {
   return ix;
 }
 
+void MetaListContainer::updateListParam(int ix, oListParam& param) {
+  auto res = listParam.find(ix);
+  if (res == listParam.end())
+    throw meosException("Listan borttagen");
+
+  res->second = param;
+  param.sourceParam = ix;
+
+  if (owner)
+    owner->updateChanged();
+}
+
 const oListParam &MetaListContainer::getParam(int index) const {
   if (!listParam.count(index))
     throw meosException("Internal error");
@@ -3302,6 +3361,13 @@ void MetaListContainer::getListsByResultModule(const string &tag, vector<int> &l
       listIx.push_back(k);
     }
   }
+}
+
+const wstring& MetaList::getLocalizedListName() const {
+  if (tag.empty())
+    return listName;
+  else
+    return lang.tl(listName);
 }
 
 oListInfo::EBaseType MetaList::getListType() const {

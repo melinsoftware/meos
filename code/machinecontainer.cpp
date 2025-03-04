@@ -1,6 +1,6 @@
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,11 @@
 #include "xmlparser.h"
 #include "gdioutput.h"
 #include "TabAuto.h"
+
+
+bool MachineContainer::AbstractMachine::has(const string& prop) const {
+  return props.find(prop) != props.end();
+}
 
 int MachineContainer::AbstractMachine::getInt(const string &v) const {
   return _wtoi(getString(v).c_str());

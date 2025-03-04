@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -496,8 +496,7 @@ void xmlparser::openOutput(const wchar_t *file, bool useCutMode)
   openOutputT(file, useCutMode, "");
 }
 
-void xmlparser::openOutputT(const wchar_t *file, bool useCutMode, const string &type)
-{
+void xmlparser::openOutputT(const wchar_t *file, bool useCutMode, const string &type) {
   toString = false;
   cutMode = useCutMode;
   foutFile.open(file);
@@ -505,7 +504,7 @@ void xmlparser::openOutputT(const wchar_t *file, bool useCutMode, const string &
   tagStackPointer=0;
 
   if (foutFile.bad())
-    throw meosException(wstring(L"Writing to XML file failed: ") + wstring(file));
+    throw meosException(L"Kunde inte skriva till 'X'.#" + wstring(file));
 
   if (utfConverter)
     fOut() << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n\n";

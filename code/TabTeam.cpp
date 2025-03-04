@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@
 #include "MeOSFeatures.h"
 #include "RunnerDB.h"
 #include "autocomplete.h"
+#include "iof30interface.h"
 
 #include "TabSI.h"
 
@@ -63,7 +64,6 @@ int teamSearchCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
 }
 
 int TabTeam::searchCB(gdioutput &gdi, int type, void *data) {
-  static DWORD editTick = 0;
   wstring expr;
   bool showNow = false;
   bool filterMore = false;
@@ -74,7 +74,6 @@ int TabTeam::searchCB(gdioutput &gdi, int type, void *data) {
     expr = trim(ii.text);
     filterMore = expr.length() > lastSearchExpr.length() &&
                   expr.substr(0, lastSearchExpr.length()) == lastSearchExpr;
-    editTick = GetTickCount();
     if (expr != lastSearchExpr) {
       int nr = oe->getNumRunners();
       if (timeToFill < 50 || (filterMore && (timeToFill * lastFilter.size())/nr < 50))
@@ -636,6 +635,20 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     else if (bi.id == "DoAddTeamMembers") {
       doAddTeamMembers(gdi);
     }
+    else if (bi.id == "ExportForking") {
+      int filterIndex = 0;
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"IOF CourseData, version 3.0 (xml)", L"*.xml"));
+      wstring save = gdi.browseForSave(ext, L"xml", filterIndex);
+      if (save.length() > 0) {
+        IOF30Interface iof30(oe, false, false);
+        xmlparser xml;
+        xml.openOutput(save.c_str(), false);
+        iof30.writeForkings(xml);
+        xml.closeOut();
+      }
+
+    }
     else if (bi.id == "SaveTeams") {
       saveTeamImport(gdi, bi.getExtraInt() != 0);
     }
@@ -657,7 +670,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
       TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
       tsi.setCardNumberField("DirCard");
-      gdi.setPostClearCb(TeamCB);
+      gdi.setPostClearCb("clear_si_link",TeamCB);
       bool rent = false;
       gdi.dropLine(1.1);
    
@@ -1606,7 +1619,7 @@ bool TabTeam::loadPage(gdioutput &gdi)
   gdi.dropLine(2.5);
 
   posYForButtons = max(posYForButtons, gdi.getCY());
-  gdi.setOnClearCb(TeamCB);
+  gdi.setOnClearCb("team", TeamCB);
 
   addToolbar(gdi);
   
@@ -1622,6 +1635,8 @@ bool TabTeam::loadPage(gdioutput &gdi)
   gdi.fillRight();
   gdi.addButton("ImportTeams", "Importera laguppställningar", TeamCB);
   gdi.addButton("AddTeamMembers", "Skapa anonyma lagmedlemmar", TeamCB, "Fyll obesatta sträckor i alla lag med anonyma tillfälliga lagmedlemmar (N.N.)");
+  gdi.addButton("ExportForking", "Exportera gaffling", TeamCB);
+
   rc.right = gdi.getCX() + gdi.getLineHeight();
   gdi.dropLine(2);
   rc.bottom = gdi.getHeight();
@@ -1636,9 +1651,9 @@ bool TabTeam::loadPage(gdioutput &gdi)
 }
 
 void TabTeam::fillTeamList(gdioutput &gdi) {
-  timeToFill = GetTickCount();
+  uint64_t tic = GetTickCount64();
   oe->fillTeams(gdi, "Teams");
-  timeToFill = GetTickCount() - timeToFill;
+  timeToFill = GetTickCount64() - tic;
   lastSearchExpr = L"";
   ((InputInfo *)gdi.setText("SearchText", getSearchString()))->setFgColor(colorGreyBlue);
     lastFilter.clear();
@@ -1722,7 +1737,7 @@ void TabTeam::doTeamImport(gdioutput &gdi) {
       if (useExisting) {
         pRunner r = findRunner(member.name, member.cardNo);
         if (r != 0)
-          mdesc += r->getCompleteIdentification();
+          mdesc += r->getCompleteIdentification(oRunner::IDType::OnlyThis);
         else {
           mdesc += member.name + lang.tl(L" (ej funnen)");
           warn = true;
@@ -2009,14 +2024,15 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   bool removeAnnonumousTeamMember = false;
   int crsIdR = r->getCourseId();
   int crsIdROld = oldR ? oldR->getCourseId() : 0;
-
+  wstring oldBib = oldR ? oldR->getBib() : L"";
   if (r->getTeam()) {
     pTeam otherTeam = r->getTeam();
     int otherLeg = r->getLegNumber();
     otherTeam->setRunner(otherLeg, oldR, true);
     if (oldR) {
       oldR->setCourseId(crsIdR);
-      oldR->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
+      oldR->setBib(r->getBib(), 0, false);
+      oldR->evaluateCard(true, mp, 0, oBase::ChangeType::Update); 
     }
     otherTeam->checkValdParSetup();
     otherTeam->apply(oBase::ChangeType::Update, nullptr);
@@ -2031,6 +2047,8 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
     else
       oldR->setClassId(r->getClassId(false), true);
     removeAnnonumousTeamMember = oldR->isAnnonumousTeamMember();
+    
+    oldR->setBib(r->getBib(), 0, false);
     oldR->setCourseId(crsIdR);
     oldR->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
     oldR->synchronize(true);
@@ -2038,6 +2056,7 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
 
   t->setRunner(leg, r, true);
   r->setCourseId(crsIdROld);
+  r->setBib(oldBib, 0, false);
   r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
   t->checkValdParSetup();
   t->apply(oBase::ChangeType::Update, nullptr);
@@ -2074,7 +2093,7 @@ bool TabTeam::warnDuplicateCard(gdioutput &gdi, string id, int cno, pRunner r) {
   InputInfo &cardNo = dynamic_cast<InputInfo &>(gdi.getBaseInfo(id.c_str()));
   if (warnCardDupl) {
     cardNo.setBgColor(colorLightRed);
-    gdi.updateToolTip(id, L"Brickan används av X.#" + warnCardDupl->getCompleteIdentification());
+    gdi.updateToolTip(id, L"Brickan används av X.#" + warnCardDupl->getCompleteIdentification(oRunner::IDType::OnlyThis));
     cardNo.refresh();
     return warnCardDupl->getTeam() == r->getTeam();
   }

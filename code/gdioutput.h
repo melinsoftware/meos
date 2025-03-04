@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -113,8 +113,6 @@ protected:
 
   void restoreInternal(const RestoreInfo& ri);
 
-  void drawCloseBox(HDC hDC, RECT& Close, bool pressed);
-
   void setFontCtrl(HWND hWnd);
 
   list<TextInfo> TL;
@@ -152,8 +150,8 @@ protected:
 
   map<string, RestoreInfo> restorePoints;
 
-  shared_ptr<GuiEvent> onClear;
-  shared_ptr<GuiEvent> postClear;
+  list<GuiEvent> onClear;
+  list<GuiEvent> postClear;
 
   list<InfoBox> IBox;
 
@@ -172,6 +170,7 @@ protected:
   HWND hWndAppMain;
   HWND hWndToolTip;
   HWND hWndTab;
+  list<RECT> monitorConfiguration;
 
   HBRUSH Background;
 
@@ -230,6 +229,13 @@ protected:
   void doEscape();
   bool doUpDown(int direction);
 
+  void drawBoxText(HDC hDC, const InfoBox& Box, bool highligh);
+  void drawBoxes(HDC hDC, RECT& rc);
+  void drawBox(HDC hDC, InfoBox& box, RECT& pos);
+  void drawBoxBg(HDC hDC, const InfoBox& box) const;
+  void computeBoxesBoundingBox(RECT& rc) const;
+  void drawCloseBox(HDC hDC, RECT& Close, bool pressed);
+
   FixedTabs* tabs;
 
   wstring currentFont;
@@ -250,7 +256,7 @@ protected:
   DWORD foregroundColor;
 
   mutable bool commandLock;
-  mutable DWORD commandUnlockTime;
+  mutable uint64_t commandUnlockTime;
 
   bool hasCommandLock() const;
   void setCommandLock() const;
@@ -298,6 +304,13 @@ protected:
   mutable shared_ptr<GuiMeasure> guiMeasure;
 
 public:
+
+  void updateMonitorConfiguration();
+
+  // For enumeration
+  void addMonitorRect(const RECT& rc) {
+    monitorConfiguration.push_back(rc);
+  }
 
   AutoCompleteInfo& addAutoComplete(const string& key);
   void clearAutoComplete(const string& key);
@@ -366,7 +379,13 @@ public:
   void setColorMode(DWORD bgColor1, DWORD bgColor2 = -1,
     DWORD fgColor = -1, const wstring& bgImage = L"");
 
+  bool hasFGColor() const;
+  bool hasBGColor() const;
+  bool hasBGColor2() const;
+
   DWORD getFGColor() const;
+  
+  
   DWORD getBGColor() const;
   DWORD getBGColor2() const;
   const wstring& getBGImage() const;
@@ -439,18 +458,19 @@ public:
   void addTable(const shared_ptr<Table>& table, int x, int y);
   Table& getTable() const; //Get the (last) table. If needed, add support for named tables...
 
-
   ToolInfo& addToolTip(const string& id, const wstring& tip, HWND hWnd, RECT* rc = nullptr);
+  void removeToolTip(const string& id);
+
   ToolInfo* getToolTip(const string& id);
   ToolInfo& updateToolTip(const string& id, const wstring& tip);
 
   HWND getToolTip() { return hWndToolTip; }
 
   void init(HWND hWnd, HWND hMainApp, HWND hTab);
-  bool openDoc(const wchar_t* doc);
-  wstring browseForSave(const vector< pair<wstring, wstring> >& filter,
+  bool openDoc(const wstring &doc);
+  wstring browseForSave(const vector<pair<wstring, wstring>>& filter,
     const wstring& defext, int& FilterIndex);
-  wstring browseForOpen(const vector< pair<wstring, wstring> >& filter,
+  wstring browseForOpen(const vector<pair<wstring, wstring>>& filter,
     const wstring& defext);
   wstring browseForFolder(const wstring& folderStart, const wchar_t* descr);
 
@@ -470,21 +490,23 @@ public:
   bool canClear();
   
   template<typename H>
-  void setPostClearCb(H cb) {
-    postClear = make_shared<GuiEvent>(cb);
+  void setPostClearCb(const char *id, H cb) {
+    if (find_if(postClear.begin(), postClear.end(), [&id](auto& c) {return c.id == id; }) == postClear.end())
+      postClear.emplace_back(cb);
   }
 
   template<typename H>
-  void setOnClearCb(H cb) {
-    onClear = make_shared<GuiEvent>(cb);
+  void setOnClearCb(const char* id, H cb) {
+    if (find_if(onClear.begin(), onClear.end(), [&id](auto& c) {return c.id == id; }) == onClear.end())
+      onClear.emplace_back(cb);
   }
 
   void clearPostClearCb() {
-    postClear.reset();
+    postClear.clear();
   }
 
   void clearOnClearCb() {
-    onClear.reset();
+    onClear.clear();
   }
 
   void restore(const string& restorePointId = "", bool doRefresh = true);
@@ -505,20 +527,28 @@ public:
   bool getWidgetRestorePoint(const string& id, string& restorePoint) const;
   void setWidgetRestorePoint(const string& id, const string& restorePoint);
 
-  void CheckInterfaceTimeouts(DWORD T);
-  bool RemoveFirstInfoBox(const string& id);
-  void drawBoxText(HDC hDC, RECT& tr, InfoBox& Box, bool highligh);
-  void drawBoxes(HDC hDC, RECT& rc);
-  void drawBox(HDC hDC, InfoBox& Box, RECT& pos);
-  void addInfoBox(string id, wstring text, int TimeOut = 0, GUICALLBACK cb = nullptr);
+  void CheckInterfaceTimeouts(uint64_t T);
+  
+  bool removeFirstInfoBox(const string& id);
+
+  InfoBox &addInfoBox(const string &id, 
+                      const wstring &text, 
+                      const wstring &extraLine, 
+                      BoxStyle style = BoxStyle::Header,
+                      int timeOut = 0, 
+                      GUICALLBACK cb = nullptr, 
+                      bool autoRefresh = true);
+  
+  
   void updateObjectPositions();
   void drawBackground(HDC hDC, RECT& rc);
   void renderRectangle(HDC hDC, RECT* clipRegion, const RectangleInfo& ri);
 
   void updateScrollbars() const;
+  void updateToolTips();
 
-  void setOffsetY(int oy) { OffsetY = oy; }
-  void setOffsetX(int ox) { OffsetX = ox; }
+  void setOffsetY(int oy);
+  void setOffsetX(int ox);
   int getPageY() const;
   int getPageX() const;
   int getOffsetY() const { return OffsetY; }
@@ -529,8 +559,8 @@ public:
   void calcStringSize(TextInfo& ti, HDC hDC = 0) const;
   void formatString(const TextInfo& ti, HDC hDC) const;
 
-  static wstring getTimerText(TextInfo* tit, DWORD T);
-  static wstring getTimerText(int ZeroTime, int format, bool timeInSeconds);
+  static wstring getTimerText(const TextInfo &tit, uint64_t T);
+  static wstring getTimerText(int ZeroTime, int format, bool timeInSeconds, const wstring &textFormat);
 
   void fadeOut(string Id, int ms);
   void setWaitCursor(bool wait);
@@ -604,9 +634,9 @@ public:
   }
 
   enum class AskAnswer { AnswerNo = 0, AnswerYes = 1, AnswerCancel = 2, AnswerOK = 3 };
-  bool ask(const wstring& s);
+  bool ask(const wstring& s, const char *yesButton = nullptr, const char *noButton = nullptr);
   AskAnswer askOkCancel(const wstring& s);
-  AskAnswer askCancel(const wstring& s);
+  AskAnswer askCancel(const wstring& s, const char* yesButton = nullptr, const char* noButton = nullptr);
 
   void alert(const string& msg) const;
   void alert(const wstring& msg) const;
@@ -686,21 +716,19 @@ public:
   BaseInfo* setTextTranslate(const char* id, const wchar_t* text, bool update = false);
   BaseInfo* setTextTranslate(const string& id, const wstring& text, bool update = false);
 
-
   BaseInfo* setText(const char* id, const wstring& text, bool update = false, int requireExtraMatch = -1, bool updateOriginal = true);
   BaseInfo* setText(const wchar_t* id, const wstring& text, bool update = false) {
     return setText(narrow(id), text, update);
   }
   BaseInfo* setText(const char* id, int number, bool update = false);
-  BaseInfo* setText(const string& id, const wstring& text, bool update = false)
-  {
+  BaseInfo* setText(const string& id, const wstring& text, bool update = false) {
     return setText(id.c_str(), text, update);
   }
   BaseInfo* setTextZeroBlank(const char* id, int number, bool update = false);
-  BaseInfo* setText(const string& id, int number, bool update = false)
-  {
+  BaseInfo* setText(const string& id, int number, bool update = false) {
     return setText(id.c_str(), number, update);
   }
+  TextInfo* setImage(const string& id, int imgId, bool update = false);
 
   void clearPage(bool autoRefresh, bool keepToolbar = false);
 
@@ -815,11 +843,17 @@ public:
   TextInfo& addStringUT(int format, const string& text, GUICALLBACK cb = nullptr);
   // XXX Temporary
 
+  TextInfo& addImage(const string& id, int format, const wstring& imageId,
+    int width = 0, int height = 0, GUICALLBACK cb = nullptr) {
+    return addImage(id, getCY(), getCX(), format, imageId, width, height, cb);
+  }
+
   TextInfo& addImage(const string& id, int yp, int xp, int format, const wstring& imageId,
     int width = 0, int height = 0, GUICALLBACK cb = nullptr);
 
-  TextInfo& addTimer(int yp, int xp, int format, DWORD ZeroTime,
-    int xlimit = 0, GUICALLBACK cb = nullptr, int TimeOut = NOTIMEOUT, const wchar_t* fontFace = nullptr);
+  TextInfo& addTimer(int yp, int xp, int format, DWORD zeroTime, const wstring &textSrc = L"",
+                     int xlimit = 0, GUICALLBACK cb = nullptr, 
+                     int TimeOut = NOTIMEOUT, const wchar_t* fontFace = nullptr);
 
   TextInfo& addTimeout(int TimeOut, GUICALLBACK cb);
 

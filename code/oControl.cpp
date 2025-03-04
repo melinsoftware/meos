@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -703,26 +703,26 @@ int oControl::getNumRunnersRemaining() const {
 
 void oEvent::setupControlStatistics() const {
   // Reset all times
-  for (oControlList::const_iterator it = Controls.begin(); it != Controls.end(); ++it) {
-    it->tMissedTimeMax = 0;
-    it->tMissedTimeTotal = 0;
-    it->tNumVisitorsActual = 0;
-    it->tNumVisitorsExpected = 0;
-    it->tNumRunnersRemaining = 0;
-    it->tMissedTimeMedian = 0;
-    it->tMistakeQuotient = 0;
-    it->tStatDataRevision = dataRevision; // Mark as up-to-date
+  for (auto &ctrl : Controls) {
+    ctrl.tMissedTimeMax = 0;
+    ctrl.tMissedTimeTotal = 0;
+    ctrl.tNumVisitorsActual = 0;
+    ctrl.tNumVisitorsExpected = 0;
+    ctrl.tNumRunnersRemaining = 0;
+    ctrl.tMissedTimeMedian = 0;
+    ctrl.tMistakeQuotient = 0;
+    ctrl.tStatDataRevision = dataRevision; // Mark as up-to-date
   }
 
-  map<int, pair<int, vector<int> > > lostPerControl; // First is "actual" misses,
+  map<int, pair<int, vector<int>>> lostPerControl; // First is "actual" misses,
   vector<int> delta;
-  for (auto it = Runners.begin(); it != Runners.end(); ++it) {
-    if (it->isRemoved())
+  for (auto &r : Runners) {
+    if (r.isRemoved())
       continue;
-    pCourse pc = it->getCourse(true);
+    pCourse pc = r.getCourse(true);
     if (!pc)
       continue;
-    it->getSplitAnalysis(delta);
+    r.getSplitAnalysis(delta);
 
     int nc = pc->getNumControls();
     if (unsigned(nc) < delta.size()) {
@@ -746,23 +746,29 @@ void oEvent::setupControlStatistics() const {
       }
     }
 
-    if (!it->isVacant() && it->getStatus() != StatusDNS && it->getStatus() != StatusCANCEL
-                        && it->getStatus() != StatusNotCompetiting) {
-
-      for (int i = 0; i < nc; i++) {
+    if (!r.isVacant() && r.getStatus() != StatusDNS && r.getStatus() != StatusCANCEL
+                        && r.getStatus() != StatusNotCompetiting) {
+      bool foundRadio = false;
+      bool unordered = pc->getCommonControl() != false;
+      
+      for (int i = nc - 1; i >= 0; i--) {
         pControl ctrl = pc->getControl(i);
         ctrl->tNumVisitorsExpected++;
 
-        if (it->getStatus() == StatusUnknown)
-          ctrl->tNumRunnersRemaining++;
+        if (r.getStatus() == StatusUnknown) {
+          if (!foundRadio && r.getPunchTime(i, false, false, false) == -1)
+            ctrl->tNumRunnersRemaining++;
+          else if (!unordered) {
+            foundRadio = true;
+          }
+        }
       }
-
     }
   }
 
-  for (oControlList::const_iterator it = Controls.begin(); it != Controls.end(); ++it) {
-    if (!it->isRemoved()) {
-      int id = it->getId();
+  for (auto &ctrl : Controls) {
+    if (!ctrl.isRemoved()) {
+      int id = ctrl.getId();
 
       auto res = lostPerControl.find(id);
       if (res != lostPerControl.end()) {
@@ -774,16 +780,16 @@ void oEvent::setupControlStatistics() const {
             avg = res->second.second[nMistakes / 2];
           else
             avg = (res->second.second[nMistakes / 2] + res->second.second[nMistakes / 2 -1]) / 2;
-          it->tMissedTimeMedian = avg;
+          ctrl.tMissedTimeMedian = avg;
         }
-        if (it->tNumVisitorsActual > 0)
-          it->tMistakeQuotient = (int)round((100.00 * res->second.first) / double(it->tNumVisitorsActual));
+        if (ctrl.tNumVisitorsActual > 0)
+          ctrl.tMistakeQuotient = (int)round((100.00 * res->second.first) / double(ctrl.tNumVisitorsActual));
         else
-          it->tMistakeQuotient = 0;
+          ctrl.tMistakeQuotient = 0;
       }
       else {
-        it->tMistakeQuotient = 0;
-        it->tMissedTimeMedian = 0;
+        ctrl.tMistakeQuotient = 0;
+        ctrl.tMissedTimeMedian = 0;
       }
     }
   }
@@ -869,6 +875,8 @@ const shared_ptr<Table> &oControl::getTable(oEvent *oe) {
     table->addColumn("Status", 70, false);
     table->addColumn("Stämpelkoder", 100, true);
     table->addColumn("Antal löpare", 70, true, true);
+    table->addColumn("Kvar-i-skogen", 70, true, true);
+
     table->addColumn("Bomtid (max)", 70, true, true);
     table->addColumn("Bomtid (medel)", 70, true, true);
     table->addColumn("Bomtid (median)", 70, true, true);
@@ -912,8 +920,10 @@ void oControl::addTableRow(Table &table) const {
   table.set(row++, it, TID_STATUS, getStatusS(), canEdit, cellSelection);
   table.set(row++, it, TID_CODES, codeNumbers(), true);
 
+  table.set(row++, it, 50, itow(getNumVisitors(false)), false);
+  table.set(row++, it, 50, itow(getNumRunnersRemaining()), false);
+
   int nv = getNumVisitors(true);
-  table.set(row++, it, 50, itow(nv), false);
   table.set(row++, it, 51, nv > 0 ? formatTime(getMissedTimeMax(), SubSecond::Off) : L"-", false);
   table.set(row++, it, 52, nv > 0 ? formatTime(getMissedTimeTotal()/nv, SubSecond::Off) : L"-", false);
   table.set(row++, it, 53, nv > 0 ? formatTime(getMissedTimeMedian(),  SubSecond::Off) : L"-", false);

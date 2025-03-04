@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,6 +55,8 @@ class LocalizerImpl
   map<wstring, wstring> unknown;
   void loadTable(const vector<string> &raw, const wstring &language);
   mutable oWordList *givenNames;
+
+  void addUnknown(const wstring& var);
 
 public:
 
@@ -145,8 +147,7 @@ const wstring &Localizer::LocalizerInternal::tl(const wstring &str) const {
   return *ret;
 }
 
-const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
-{
+const wstring &LocalizerImpl::translate(const wstring &str, bool &found) {
   found = false;
   static int i = 0;
   const int bsize = 17;
@@ -162,7 +163,7 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
     found = true;
     return value[i];
   }
-
+  
   if (str[0]==',' || str[0]==' ' || str[0]=='.'
        || str[0]==':'  || str[0]==';' || str[0]=='<' || str[0]=='>' || str[0]=='-' || str[0]==0x96) {
     unsigned k=1;
@@ -215,6 +216,13 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
     swap(value[i], ret);
     return value[i];
   }
+  else if (str[0] == '@') {
+    // Untranslated string with substitution
+    i = (i + 1) % bsize;
+    value[i] = str.substr(1);
+    found = true;
+    return value[i];
+  }
 
   auto isDigit = [](wchar_t c) {
     return c >= '0' && c <= '9';
@@ -226,7 +234,7 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
       last != ';' && last != '<' && last != '>' && last != '-' && last != 0x96 && !isDigit(last)) {
 #ifdef _DEBUG
     if (str.length()>1)
-      unknown[str] = L"";
+      addUnknown(str);
 #endif
     found = false;
     i = (i + 1)%bsize;
@@ -258,13 +266,19 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found)
   }
 #ifdef _DEBUG
   if (key.length() > 1 && _wtoi(key.c_str()) == 0)
-    unknown[key] = L"";
+    addUnknown(key);
 #endif
 
   found = false;
   i = (i + 1)%bsize;
   value[i] = str;
   return value[i];
+}
+
+void LocalizerImpl::addUnknown(const wstring& key) {
+  if (unknown.emplace(key, L"").second) {
+    OutputDebugString((L"Missing resource: " + key).c_str());
+  }
 }
 
 void LocalizerImpl::saveUnknown(const wstring &file)

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -749,8 +749,7 @@ oClub *RunnerDB::getClub(const wstring &name) const
   return 0;
 }
 
-void RunnerDB::saveClubs(const wstring &file)
-{
+void RunnerDB::saveClubs(const wstring &file) {
   xmlparser xml;
 
   xml.openOutputT(file.c_str(), true, "meosclubs");

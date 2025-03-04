@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -322,6 +322,8 @@ bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v) {
 
     if (wcscmp((wchar_t *)vd, v.c_str())!=0){
       wcsncpy_s((wchar_t *)vd, odi->Size/sizeof(wchar_t), v.c_str(), (odi->Size-1)/sizeof(wchar_t));
+      if (odi->dataNotifier)
+        odi->dataNotifier->notify(ob, v);
       return true;
     }
     else return false;//Not modified
@@ -332,6 +334,8 @@ bool oDataContainer::setString(oBase *ob, const char *name, const wstring &v) {
       return false; // Same string
 
     str = v;
+    if (odi->dataNotifier)
+      odi->dataNotifier->notify(ob, v);
     return true;
   }
   else
@@ -1515,7 +1519,8 @@ pair<int, bool>  oDataContainer::inputData(oBase *ob, int id,
 
         if (wcscmp((wchar_t *)vd, str) != 0) {
           wcsncpy_s((wchar_t *)vd, di.Size / sizeof(wchar_t), str, (di.Size - 1) / sizeof(wchar_t));
-
+          if (di.dataNotifier)
+            di.dataNotifier->notify(ob, input);
           ob->updateChanged();
           if (noUpdate == false)
             ob->synchronize(true);

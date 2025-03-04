@@ -204,12 +204,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Melin Software HB"
             VALUE "FileDescription", "meos"
-            VALUE "FileVersion", "4.0.0.1"
+            VALUE "FileVersion", "4.1.0.1"
             VALUE "InternalName", "meos"
-            VALUE "LegalCopyright", "Copyright © 2007-2024"
+            VALUE "LegalCopyright", "Copyright © 2007-2025"
             VALUE "OriginalFilename", "MeOS.exe"
             VALUE "ProductName", "  meos"
-            VALUE "ProductVersion", "4.0.0.1"
+            VALUE "ProductVersion", "4.1.0.1"
         END
     END
     BLOCK "VarFileInfo"

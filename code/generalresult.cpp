@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,7 +51,10 @@ bool GeneralResultCtr::operator<(const GeneralResultCtr &c) const {
                        c.name.c_str(), c.name.length()) == CSTR_LESS_THAN;
 }
 
-GeneralResultCtr::~GeneralResultCtr() {
+const wstring& GeneralResultCtr::getName() const {
+  if (!name.empty() && name[0] == '%')
+    return lang.tl(name.substr(1));
+  else return name;
 }
 
 GeneralResultCtr::GeneralResultCtr(const GeneralResultCtr &ctr) {
@@ -148,9 +151,9 @@ void GeneralResult::calculateTeamResults(vector<oTeam *> &teams,
   if (teams.empty())
     return;
 
-  if (lockPrepare)
+  if (lockPrepare>2)
     throw meosException("Bad cyclic call");
-  lockPrepare = true;
+  lockPrepare++;
 
   try {
     set<int> clsId;
@@ -228,10 +231,10 @@ void GeneralResult::calculateTeamResults(vector<oTeam *> &teams,
         teams[k] = (oTeam *)teamScore[k].tr;
       }
     }
-    lockPrepare = false;
+    lockPrepare--;
   }
   catch (...) {
-    lockPrepare = false;
+    lockPrepare--;
     throw;
   }
 }
@@ -316,9 +319,9 @@ void GeneralResult::calculateIndividualResults(vector<oRunner *> &runners,
   if (runners.empty())
     return;
 
-  if (lockPrepare)
+  if (lockPrepare > 2)
     throw meosException("Bad cyclic call");
-  lockPrepare = true;
+  lockPrepare++;
 
   try {
 
@@ -425,10 +428,10 @@ void GeneralResult::calculateIndividualResults(vector<oRunner *> &runners,
     }
   }
   catch (...) {
-    lockPrepare = false;
+    lockPrepare--;
     throw;
   }
-  lockPrepare = false;
+  lockPrepare--;
 }
 
 void GeneralResult::prepareCalculations(oEvent &oe, bool classResult, const set<int> &cls, vector<pRunner> &runners, vector<pTeam> &teams, int inputNumber) const {

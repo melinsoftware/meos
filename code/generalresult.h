@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ class GeneralResult
 {
 private:
   const oListParam *context;
-  mutable bool lockPrepare = false;
+  mutable int lockPrepare = 0;
 
 protected:
 
@@ -338,16 +338,19 @@ struct GeneralResultCtr {
   bool operator<(const GeneralResultCtr &c) const;
   shared_ptr<GeneralResult> ptr;
 
-  // True if implicitly loaded (form list or by class results)
+  // True if implicitly loaded (from list or by class results)
   bool isImplicit() const {
     return fileSource == L"*";
   }
 
+  const wstring& getName() const; 
+
   GeneralResultCtr(const char *tag, const wstring &name, const shared_ptr<GeneralResult> &ptr);
   GeneralResultCtr(const wstring &file, const shared_ptr<DynamicResult> &ptr);
-  GeneralResultCtr() {}
+  GeneralResultCtr() = default;
 
-  ~GeneralResultCtr();
+  ~GeneralResultCtr() = default;
+
   GeneralResultCtr(const GeneralResultCtr &ctr);
   void operator=(const GeneralResultCtr &ctr);
 };

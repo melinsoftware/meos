@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ void SpeakerMonitor::setClassFilter(const set<int> &filter, const set<int> &cfil
   classFilter = filter;
   controlIdFilter = cfilter;
   oListInfo li;
-  maxClassNameWidth = oe.gdiBase().scaleLength(li.getMaxCharWidth(&oe, classFilter, EPostType::lClassName, L"", gdiFonts::normalText));
+  maxClassNameWidth = oe.gdiBase().scaleLength(li.getMaxCharWidth(oe, classFilter, EPostType::lClassName, L"", gdiFonts::normalText));
 }
 
 void SpeakerMonitor::setLimits(int place, int num) {
@@ -207,7 +207,7 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
     else
       msg = L"";
     
-    msg += r->getCompleteIdentification(false);
+    msg += r->getCompleteIdentification(oRunner::IDType::ParallelLeg);
     int xlimit = totWidth + extraWidth - (timeWidth + dx);
     gdi.addStringUT(yp, xp + timeWidth + dx, fontMediumPlus, msg, xlimit);
     
@@ -252,7 +252,7 @@ void SpeakerMonitor::renderResult(gdioutput &gdi,
     else
       msg += L" ";
 
-    msg += r->getCompleteIdentification(false) + L" ";
+    msg += r->getCompleteIdentification(oRunner::IDType::ParallelLeg) + L" ";
     
     msg += lang.tl(message);
     gdi.addStringUT(gdi.getCY(), gdi.getCX(), breakLines, msg, totWidth);
@@ -563,7 +563,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
         msg = L"tar ledningen med tiden X.#" + timeS;
         if (behind  && res.place>2) {
           wstring stime(getTimeDesc(behind->runTime, totTime));
-          details.push_back(L"är X före Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
+          details.push_back(L"är X före Y#" + stime + L"#" + behind->r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
         }
       }
       else
@@ -578,7 +578,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
                       getOrder(res.place) + L"#" + timeS);
           if (ahead && res.place != 2) {
             wstring stime(getTimeDesc(ahead->runTime, totTime));
-            details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+            details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
           }
         }
         else {
@@ -594,7 +594,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
                   getOrder(res.place) + L"#" + timeS;
         if (ahead && res.place != 2) {
           wstring stime(getTimeDesc(ahead->runTime, totTime));
-          details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+          details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
         }
       }
       else {
@@ -635,7 +635,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
         msg = L"tar ledningen vid X med tiden Y.#" + thelocation + timeS;
         if (behind) {
           wstring stime(getTimeDesc(behind->runTime, totTime));
-          details.push_back(L"är X före Y#" + stime + L"#" + behind->r->getCompleteIdentification(false));
+          details.push_back(L"är X före Y#" + stime + L"#" + behind->r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
         }
       }
       else
@@ -650,7 +650,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
                         getOrder(res.place) + L"#" + timeS);
           if (ahead) {
             wstring stime(getTimeDesc(ahead->runTime, totTime));
-            details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+            details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
           }
         }
         else {
@@ -667,7 +667,7 @@ void SpeakerMonitor::getMessage(const oEvent::ResultEvent &res,
                       L"#" + timeS;
         if (ahead && res.place>2) {
           wstring stime(getTimeDesc(ahead->runTime, totTime));
-          details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(false));
+          details.push_back(L"är X efter Y#" + stime + L"#" + ahead->r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
         }
       }
       else {
@@ -694,7 +694,7 @@ void SpeakerMonitor::getSharedResult(const oEvent::ResultEvent &res, wstring &de
     if (k > 0)
       detail += L", ";
     
-    detail += shared[k]->getCompleteIdentification(false);
+    detail += shared[k]->getCompleteIdentification(oRunner::IDType::ParallelLeg);
   }
 }
 

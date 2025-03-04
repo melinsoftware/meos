@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,7 +87,7 @@ bool oEvent::msSynchronize(oBase *ob)
 
   string err;
   if (sqlConnection->getErrorMessage(err))
-    gdibase.addInfoBox("sqlerror", gdibase.widen(err), 15000);
+    gdibase.addInfoBox("sqlerror", gdibase.widen(err), L"Databasvarning", BoxStyle::HeaderWarning, 15000);
 
   if (ret==0) {
     verifyConnection();
@@ -99,8 +99,8 @@ bool oEvent::msSynchronize(oBase *ob)
   }
 
   if (ret==1) {
-    gdibase.RemoveFirstInfoBox("sqlwarning");
-    gdibase.addInfoBox("sqlwarning", L"Varning: ändringar i X blev överskrivna#" + ob->getInfo(), 5000);
+    gdibase.removeFirstInfoBox("sqlwarning");
+    gdibase.addInfoBox("sqlwarning", L"Varning: ändringar i X blev överskrivna#" + ob->getInfo(), L"Databasvarning", BoxStyle::HeaderWarning, 5000);
   }
   return ret!=0;
 }
@@ -392,6 +392,7 @@ bool oEvent::uploadSynchronize()
             wchar_t CurrentNameId[64];
             wcscpy_s(CurrentNameId, currentNameId.c_str());
             wcscpy_s(CurrentNameId + len - 7, 64 - len + 7, ex);
+            CurrentNameId[63] = 0;
             currentNameId = CurrentNameId;
           }
         }
@@ -430,7 +431,7 @@ bool oEvent::uploadSynchronize()
   else if (stat == opStatusWarning) {
     string err;
     sqlConnection->getErrorMessage(err);
-    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), 5000);
+    gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), L"", BoxStyle::Header, 5000);
   }
 
   set<uint64_t> img;
@@ -529,7 +530,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci)
     string err;
     sqlConnection->getErrorMessage(err);
     wstring info = L"Databasvarning: X#" + lang.tl(err);
-    gdibase.addInfoBox("sqlerror", info, 15000);
+    gdibase.addInfoBox("sqlerror", info, L"Databasvarning", BoxStyle::HeaderWarning, 15000);
   }
 
   // Cache database locally

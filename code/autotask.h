@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,8 +43,8 @@ private:
   deque<DWORD> synchQueue;
   deque<DWORD> directQueue;
 
-  DWORD lastSynchTime;
-  DWORD lastTriedSynchTime;
+  uint64_t lastSynchTime;
+  uint64_t lastTriedSynchTime;
   void addSynchTime(DWORD tick);
   DWORD getAvgSynchTime();
 

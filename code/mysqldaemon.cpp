@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -102,11 +102,11 @@ void MySQLReconnect::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast)
     mysqlStatus=0;
     string err;
     if (!oe->reConnect(err)) {
-      gdi.addInfoBox("", L"warning:dbproblem#" + gdi.widen(err), 9000);
+      gdi.addInfoBox("", L"warning:dbproblem#" + gdi.widen(err), L"Databasvarning", BoxStyle::HeaderWarning, 9000);
       interval = 10;
     }
     else {
-      gdi.addInfoBox("", L"Återansluten mot databasen, tävlingen synkroniserad.", 10000);
+      gdi.addInfoBox("", L"Återansluten mot databasen, tävlingen synkroniserad.", L"", BoxStyle::Header, 10000);
       timeReconnect = getLocalTime();
       gdi.setDBErrorState(false);
       gdi.setWindowTitle(oe->getTitleName());
@@ -144,7 +144,7 @@ void MySQLReconnect::status(gdioutput &gdi) {
     gdi.addStringUT(1, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkRed);
     gdi.fillRight();
     gdi.addString("", 0, "Nästa försök:");
-    gdi.addTimer(gdi.getCY(),  gdi.getCX()+10, timerCanBeNegative, (GetTickCount()-timeout)/1000);
+    gdi.addTimer(gdi.getCY(),  gdi.getCX()+10, timerCanBeNegative, (GetTickCount64()-timeout)/1000);
   }
   else {
     gdi.addStringUT(0, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkGrey);

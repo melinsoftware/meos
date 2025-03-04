@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -388,7 +388,7 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.fillRight();
       gdi.addButton("Cancel", "Avbryt", CourseCB).setCancel();
       gdi.addButton("SaveLegLen", "Spara", CourseCB).setDefault();
-      gdi.setOnClearCb(CourseCB);
+      gdi.setOnClearCb("course", CourseCB);
       gdi.setData("EditLengths", 1);
       gdi.refresh();
     }
@@ -420,7 +420,7 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       if (!file.empty()) {
         pdfwriter pdf;
         pdf.generatePDF(gdi, file, L"Report", L"MeOS", gdi.getTL(), true);
-        gdi.openDoc(file.c_str());
+        gdi.openDoc(file);
       }
     }
     else if (bi.id == "WithLoops") {
@@ -739,9 +739,9 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       saveLegLengths(gdi);
       return true;
     }
-    if (courseId>0)
+    else if (courseId > 0)
       save(gdi, 0);
-
+    
     return true;
   }
   return 0;
@@ -916,7 +916,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.disableInput("Save");
 
   selectCourse(gdi, oe->getCourse(courseId));
-  gdi.setOnClearCb(CourseCB);
+  gdi.setOnClearCb("course", CourseCB);
 
   gdi.refresh();
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -227,9 +227,9 @@ public:
 
   HLS(WORD H, WORD L, WORD S) : hue(H), lightness(L), saturation(S) {}
   HLS() : hue(0), lightness(0), saturation(1) {}
-  WORD hue;
-  WORD lightness;
-  WORD saturation;
+  short hue;
+  short lightness;
+  short saturation;
   void lighten(double f);
   void saturate(double s);
   void colorDegree(double d);
@@ -303,3 +303,5 @@ void string2Wide(const string &in, wstring &out);
 void wide2String(const wstring &in, string &out);
 
 void checkWriteAccess(const wstring &file);
+
+void moveFile(const wstring& src, const wstring& dst);

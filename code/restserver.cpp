@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2024 Melin Software HB
+Copyright (C) 2009-2025 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ Eksoppsvägen 16, SE-75646 UPPSALA, Sweden
 #include "HTMLWriter.h"
 #include "RunnerDB.h"
 #include "image.h"
-//#include "onlineinput.h"
+#include "cardsystem.h"
 
 extern Image image;
 using namespace restbed;
@@ -226,7 +226,7 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
       "<title>MeOS Information Service</title>"
       "</head>"
       "<body>"
-      "<img src=\"/meos?image=meos\" alt=\"MeOS\">"
+      "<img src=\"/meos?image=meos\" alt=\"MeOS\" style=\"width:16em; height:6.656em;\">"
       "<p>" + ref.gdiBase().toUTF8(lang.tl(getMeosFullVersion())) + "<p>"
       "<ul>\n";
 
@@ -543,7 +543,7 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
       getSelection(param.find("class")->second, cls);
     pair<string, string> preferredIdTypes;
 
-    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, preferredIdTypes, -1, false, false, true, false, false);
+    oe.exportIOFSplits(oEvent::IOF30, exportFile.c_str(), false, useUTC, cls, preferredIdTypes, -1, true, false, false, true, false, false);
     ifstream fin(exportFile.c_str());
     string rbf;
     while (std::getline(fin, rbf)) {
@@ -1405,11 +1405,14 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
       error = L"Ogiltigt bricknummer X#" + itow(cardNo);
     }
     else {
+      if (oe.deprecateOldCards() && oe.getCardSystem().isDeprecated(cardNo))
+        error = L"Brickan är av äldre typ och kan inte användas.";
+
       vector<pRunner> runners;
       oe.getRunnersByCardNo(cardNo, true, oEvent::CardLookupProperty::CardInUse, runners);
       for (auto r : runners) {
         if (!r->getCard()) {
-          error = L"Bricknummret är upptaget (X)#" + r->getCompleteIdentification();
+          error = L"Bricknummret är upptaget (X)#" + r->getCompleteIdentification(oRunner::IDType::OnlyThis);
         }
       }
     }
@@ -1475,7 +1478,7 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
           rentCard.emplace_back("hiredCard", L"true");
         }
         xml.write("Fee", rentCard, itow(r->getDCI().getInt("Fee") + max(cf, 0)));
-        xml.write("Info", r->getClass(true) + L", " + r->getCompleteIdentification(false));
+        xml.write("Info", r->getClass(true) + L", " + r->getCompleteIdentification(oRunner::IDType::ParallelLeg));
         if (r->getStatus() == StatusNoTiming)
           xml.write("NoTiming", "true");
       }

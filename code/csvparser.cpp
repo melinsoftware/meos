@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -445,8 +445,16 @@ bool csvparser::outputRow(const string &row)
   fout << row << endl;
   return true;
 }
-bool csvparser::outputRow(const vector<string> &out)
-{
+
+bool csvparser::outputRow(const vector<wstring>& out) {
+  vector<string> outUTF(out.size());
+  for (int i = 0; i < out.size(); i++)
+    outUTF[i] = gdioutput::toUTF8(out[i]);
+
+  return outputRow(outUTF);
+}
+
+bool csvparser::outputRow(const vector<string> &out) {
   int size=out.size();
 
   for(int i=0;i<size;i++){
@@ -1199,7 +1207,7 @@ void csvparser::parse(const wstring &file, list<vector<wstring>> &data) {
     throw meosException(L"Failed to read file, " + file);
 
   bool isUTF8 = false;
-  bool firstLine = true;
+  bool detectType = true;
   vector<wchar_t *> sp;
   vector<wchar_t> wbf_a;
   wbf_a.resize(size_t(flen)+1);
@@ -1207,7 +1215,8 @@ void csvparser::parse(const wstring &file, list<vector<wstring>> &data) {
   wstring w;
   while(std::getline(fin, rbf)) {
     const char *bf = rbf.c_str();
-    if (firstLine) {
+    if (detectType) {
+      detectType = false;
       if (rbf.length() > 3 && rbf[0] == -17 && rbf[1] == -69 && rbf[2] == -65) {
         isUTF8 = true;
         bf += 3;
@@ -1217,6 +1226,22 @@ void csvparser::parse(const wstring &file, list<vector<wstring>> &data) {
         vector<wchar_t>().swap(wbf_a);
         parseUnicode(file, data);
         return;
+      }
+      else {
+        // Auto detect UTF-8
+        isUTF8 = true;
+        while (std::getline(fin, rbf)) {
+          if (rbf.length() > 0) {
+            int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, rbf.c_str(), rbf.length(), nullptr, 0);
+            if (wlen <= 0) {
+              isUTF8 = false;
+              break;
+            }
+          }
+        }
+        fin.clear();
+        fin.seekg(0);
+        continue;
       }
     }
    
@@ -1231,7 +1256,6 @@ void csvparser::parse(const wstring &file, list<vector<wstring>> &data) {
       wchar_t *wbfL = const_cast<wchar_t *>(w.c_str());
       split(wbfL, sp);
     }
-    firstLine = false;
     
     if (!sp.empty()) {
       data.push_back(vector<wstring>());
@@ -1451,7 +1475,7 @@ int csvparser::importRanking(oEvent &oe, const wstring &file, vector<wstring> &p
       continue;
     if (res != name2RankDup.end()) {
       if (res->second.second)
-        problems.push_back(r->getCompleteIdentification());
+        problems.push_back(r->getCompleteIdentification(oRunner::IDType::OnlyThis));
       else {
         res->second.second = true;
         r->getDI().setInt("Rank", res->second.first);

@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ class OnlineInput :
   public AutoMachine
 {
 protected:
+  map<int, oPunch::SpecialPunch> specialPunches;
+  oEvent* oe = nullptr;
   wstring url;
   int cmpId;
   wstring unitId;
@@ -43,15 +45,14 @@ protected:
   bool useUnitId;
 
   deque<wstring> info;
-  map<int, oPunch::SpecialPunch> specialPunches;
-
+  
   void addInfo(const wstring &line) {
     if (info.size() >= 10)
       info.pop_back();
     info.push_front(line);
   }
 
-  void fillMappings(gdioutput &gdi) const;
+  void fillMappings(oEvent& oe, gdioutput &gdi);
 
   void processCards(gdioutput &gdi, oEvent &oe, const xmlList &cards);
   void processTeamLineups(oEvent &oe, const xmlList &updates);
@@ -75,12 +76,14 @@ public:
 
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
   void settings(gdioutput &gdi, oEvent &oe, State state) final;
-  static void controlMappingView(gdioutput& gdi, GUICALLBACK cb, int widgetId);
-  OnlineInput *clone() const {return new OnlineInput(*this);}
+  static void controlMappingView(gdioutput& gdi, oEvent *oe, GUICALLBACK cb, int widgetId);
+  shared_ptr<AutoMachine> clone() const final { 
+    return make_shared<OnlineInput>(*this);
+  }
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   OnlineInput() : AutoMachine("Onlineinput", Machines::mOnlineInput), cmpId(0), importCounter(1),
                     bytesImported(0), lastSync(0), lastImportedId(0), useROCProtocol(false), useUnitId(false) {}
-  ~OnlineInput();
+  ~OnlineInput() = default;
   friend class TabAuto;
 };

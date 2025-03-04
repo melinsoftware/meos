@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "oEventDraw.h"
 
 class QFEditor;
+class DrawOptimAlgo;
 
 class TabClass :
   public TabBase
@@ -32,12 +33,10 @@ class TabClass :
   struct PursuitSettings {
     bool use;
     int firstTime;
-    int maxTime;
-
+    
     PursuitSettings(oClass &c) {
       firstTime = timeConstHour;
       use = c.interpretClassType() != ctOpen;
-      maxTime = timeConstHour;
     }
   };
 
@@ -109,13 +108,20 @@ class TabClass :
   wstring courseFilter;
   
   bool lastHandleBibs;
+
+  bool hasShownDrawAdjustHint = false;
+  bool needDrawAdjust = false;
+
   // Generate a table with class settings
   void showClassSettings(gdioutput &gdi);
 
   void visualizeField(gdioutput &gdi);
+  void getGroupNumbers(map<int, int>& groupNumber, map<int, wstring>& groups) const;
 
+  static GDICOLOR getGroupColor(int nr, bool dark);
+  static wchar_t getGroupSymbol(int nr);
   // Read input from the table with class settings
-  void readClassSettings(gdioutput &gdi);
+  bool readClassSettings(gdioutput &gdi, bool throwError);
 
   // Prepare for drawing by declaring starts and blocks
   void prepareForDrawing(gdioutput &gdi);
@@ -130,7 +136,7 @@ class TabClass :
   vector< vector<int> > forkingSetup;
   static const wchar_t *getCourseLabel(bool pool);
 
-  void getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb);
+  int getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb);
   void saveClassSettingsTable(gdioutput &gdi, set<int> &classModifiedFee, bool &modifiedBib);
 
   static wstring getBibCode(AutoBibType bt, const wstring &key);
@@ -143,7 +149,10 @@ class TabClass :
 
   oEvent::DrawMethod getDefaultMethod(const set<oEvent::DrawMethod> &allowedValues) const;
 
-  void createDrawMethod(gdioutput& gdi);
+  oEvent::DrawMethod createDrawMethod(gdioutput& gdi, bool includeSeeded, GUICALLBACK cb);
+
+  RECT multiDrawRect = { 0,0,0,0 };
+  void generateManualMultiClassDrawSettings(gdioutput &gdi, oEvent::DrawMethod method);
 
   void enableLoadSettings(gdioutput &gdi);
 
@@ -168,8 +177,13 @@ class TabClass :
 
   shared_ptr<GuiHandler> startGroupHandler;
   shared_ptr<QFEditor> qfEditor;
-
+  shared_ptr<DrawOptimAlgo> drawAnalysis;
 public:
+
+  pair<const ClassInfo*, const DrawInfo *> getClassInfo(int cid) const;
+
+  void drawInputChanged(gdioutput &gdi);
+  
   void loadStartGroupSettings(gdioutput &gdi, bool reload);
   void drawStartGroups(gdioutput &gdi);
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -422,10 +422,7 @@ void Table::sort(int col, bool forceDirection)
     }
     assert(TableSortIndex::table == 0);
     TableSortIndex::table = this;
-    //DWORD sStart = GetTickCount();
     std::stable_sort(sortIndex.begin()+2, sortIndex.end());
-    //DWORD sEnd = GetTickCount();
-    //string st = itos(sEnd-sStart);
     TableSortIndex::table = 0;
     PrevSort = origCol;
 

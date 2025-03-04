@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -223,7 +223,7 @@ bool oEvent::exportOECSV(const wchar_t *file, const set<int>& classes, int langu
     row[OEclubno] = conv_is(it->getClubId());
 
     if (it->getClubRef()) {
-      row[OEclub] = gdibase.recodeToNarrow(it->getClubRef()->getDI().getString("ShortName"));
+      row[OEclub] = gdibase.recodeToNarrow(it->getClubRef()->getCompactName());
       row[OEclubcity] = gdibase.recodeToNarrow(it->getClub());
     }
     row[OEnat] = gdibase.recodeToNarrow(di.getString("Nationality"));
@@ -286,7 +286,7 @@ bool oEvent::exportOECSV(const wchar_t *file, const set<int>& classes, int langu
         pPunch punch = *punchIt;
         if (!punch->isUsed && !(punch->isFinish() && !pc->useLastAsFinish()) && !(punch->isStart() && !pc->useFirstAsStart()) && !punch->isCheck())
         {
-          row.push_back(gdibase.recodeToNarrow(punch->getType()));
+          row.push_back(gdibase.recodeToNarrow(punch->getType(it->getCourse(false))));
 
           int t = punch->getAdjustedTime();
           if (it->tStartTime > 0 && t > 0 && t > it->tStartTime)
@@ -1245,7 +1245,7 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
     else if (stat == opStatusWarning) {
       string err;
       sqlConnection->getErrorMessage(err);
-      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), 5000);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), L"Databasvarning", BoxStyle::HeaderWarning, 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -1380,7 +1380,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     else if (stat == opStatusWarning) {
       string err;
       sqlConnection->getErrorMessage(err);
-      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), 5000);
+      gdibase.addInfoBox("", wstring(L"Kunde inte ladda upp löpardatabasen (X).#") + lang.tl(err), L"Databasvarning", BoxStyle::HeaderWarning, 5000);
     }
 
     gdibase.addString("", 0, "Klart");
@@ -2683,6 +2683,7 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
                              bool oldStylePatrolExport, bool useUTC,
                              const set<int> &classes,
                              const pair<string, string>& preferredIdTypes, int leg,
+                             bool withPartialResult,
                              bool teamsAsIndividual, bool unrollLoops,
                              bool includeStageInfo, bool forceSplitFee,
                              bool useEventorQuirks) {
@@ -2707,7 +2708,8 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
     IOF30Interface writer(this, forceSplitFee, useEventorQuirks);
     writer.setPreferredIdType(preferredIdTypes);
     writer.writeResultList(xml, classes, leg, useUTC, 
-                           teamsAsIndividual, unrollLoops, includeStageInfo);
+                           teamsAsIndividual, unrollLoops, 
+                           includeStageInfo, withPartialResult);
   }
 
   xml.closeOut();

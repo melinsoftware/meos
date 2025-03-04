@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -439,10 +439,12 @@ public:
   int getDrawNumReserved() const;
   void setDrawNumReserved(int st);
 
-  enum class DrawSpecified {
-    FixedTime = 1, Vacant = 2, Extra = 4
+  enum class DrawSpecified { // 8 bits allowed (update reserve)
+    FixedTime = 1, Vacant = 2, Extra = 4, FixedInterval = 8, Late = 16, Early = 32, Fast = 64, Slow = 128
   };
   
+  void adjustNumVacant(int leg, int numVacant);
+
   void setDrawSpecification(const vector<DrawSpecified> &ds);
   set<DrawSpecified> getDrawSpecification() const;
 
@@ -773,6 +775,11 @@ public:
   friend class TabSpeaker;
 };
 
-static const oClass::DrawSpecified DrawKeys[4] = { oClass::DrawSpecified::FixedTime,
+static const oClass::DrawSpecified DrawKeys[8] = { oClass::DrawSpecified::FixedTime,
                                                    oClass::DrawSpecified::Vacant, 
-                                                   oClass::DrawSpecified::Extra };
+                                                   oClass::DrawSpecified::Extra,
+                                                   oClass::DrawSpecified::FixedInterval,
+                                                   oClass::DrawSpecified::Early,
+                                                   oClass::DrawSpecified::Late,
+                                                   oClass::DrawSpecified::Fast,
+                                                   oClass::DrawSpecified::Slow };

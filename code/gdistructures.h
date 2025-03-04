@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +25,9 @@
 #include <cassert>
 #include "guihandler.h"
 #include "gdifonts.h"
+
+class Table;
+enum KeyCommandCode;
 
 class BaseInfo {
 protected:
@@ -133,8 +136,8 @@ public:
   int nTooltip;
   int nTables;
 
-  shared_ptr<GuiEvent> onClear;
-  shared_ptr<GuiEvent> postClear;
+  list<GuiEvent> onClear;
+  list<GuiEvent> postClear;
 
   set<string> restorePoints;
 
@@ -210,28 +213,31 @@ public:
   }
   wstring text;
   wstring font;
+  wstring timerFormat;
 
   int xp = -1;
   int yp = -1;
 
+  uint64_t zeroTime = -1;
+  uint64_t timeOut = 0;
+  GUICALLBACK callBack;
+
   int format;
   DWORD color;
+  
+  RECT textRect;
+
   int xlimit;
   int lineBreakPrioity;
   int absPrintX;
   int absPrintY;
 
-  bool hasTimer;
-  DWORD zeroTime = -1;
-  DWORD timeOut = 0;
-
-  bool hasCapture;
-  GUICALLBACK callBack;
-  RECT textRect;
   int realWidth; // The calculated actual width of the string in pixels
+
   bool highlight;
   bool active;
-
+  bool hasTimer;
+  bool hasCapture;
 
   HWND getControlWindow() const final {throw std::exception("Unsupported");}
 
@@ -448,20 +454,31 @@ public:
   HWND getControlWindow() const final { throw std::exception("Unsupported"); }
 };
 
+enum class BoxStyle {
+  Header,
+  HeaderWarning,
+  SubLine,
+};
+
 class InfoBox final: public BaseInfo {
 public:
-  InfoBox() : callBack(0), HasCapture(0), HasTCapture(0), TimeOut(0) {}
+  InfoBox() : callBack(nullptr), hasCapture(false), hasTCapture(false), timeOut(0) {}
   wstring text;
+  wstring underLine;
+
   GUICALLBACK callBack;
+  
+  RECT textRect = { 0,0,0,0 };
+  RECT close = { 0,0,0,0 };
+  RECT boundingBox = { 0,0,0,0 };
+  
+  uint64_t timeOut;
+  
+  BoxStyle style;
+  int underlineY = 0;
 
-  RECT TextRect;
-  RECT Close;
-  RECT BoundingBox;
-
-  bool HasCapture;
-  bool HasTCapture;
-
-  DWORD TimeOut;
+  bool hasCapture;
+  bool hasTCapture;
 
   HWND getControlWindow() const final {throw std::exception("Unsupported");}
 };
@@ -471,6 +488,8 @@ typedef list<TextInfo> TIList;
 struct ToolInfo {
   string name;
   TOOLINFOW ti;
+  RECT rc;
+  bool hasRect = false;
   wstring tip;
-  uintptr_t id;
+  uintptr_t id = 0;
 };

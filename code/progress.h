@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 
 ************************************************************************/
 
+#include <atomic>
+
 class ProgressWindow {
   HWND hWnd;
   int lastProgress;
@@ -30,10 +32,10 @@ class ProgressWindow {
 
   HANDLE thread;
   mutable CRITICAL_SECTION syncObj;
-  volatile bool terminate;
-  volatile bool running;
+  std::atomic_bool terminate;
+  std::atomic_bool running;
 
-  bool initialized;
+  std::atomic_bool initialized;
   int lastPrg;
   int subStart;
   int subEnd;

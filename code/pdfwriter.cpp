@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -152,12 +152,12 @@ const float fontFromGdiScale(double gdiScale) {
   return float(s);
 }
 
-void pdfwriter::generatePDF(const gdioutput &gdi,
-                            const wstring &file,
-                            const wstring &pageTitleW,
-                            const wstring &authorW,
-                            const list<TextInfo> &tl,
-                            bool respectPageBreak) {
+void pdfwriter::generatePDF(const gdioutput& gdi,
+  const wstring& file,
+  const wstring& pageTitleW,
+  const wstring& authorW,
+  const list<TextInfo>& tl,
+  bool respectPageBreak) {
   checkWriteAccess(file);
   string pageTitle = gdi.narrow(pageTitleW); // XXX WCS
   string author = gdi.narrow(authorW);
@@ -168,7 +168,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   HPDF_UseUTFEncodings(pdf);
 
   // Set compression mode
-  HPDF_SetCompressionMode (pdf, HPDF_COMP_ALL);
+  HPDF_SetCompressionMode(pdf, HPDF_COMP_ALL);
   string creator = "MeOS " + gdi.toUTF8(getMeosCompectVersion());
   HPDF_SetInfoAttr(pdf, HPDF_INFO_CREATOR, creator.c_str());
   HPDF_SetInfoAttr(pdf, HPDF_INFO_TITLE, pageTitle.c_str());
@@ -177,7 +177,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   map<wstring, PDFFontSet> fonts;
 
   // Create default-font
-  PDFFontSet &fs = fonts[L""];
+  PDFFontSet& fs = fonts[L""];
   {
     FontInfo fi;
     TextInfo ti;
@@ -191,7 +191,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
     fs.fontBold = getPDFFont(fi.bold, 1.0, tmp, scale);
     fs.fontScaleBold = scale;
     fs.fontItalic = getPDFFont(fi.italic, 1.0, tmp, scale);
-    fs.fontScaleItalic = scale;  
+    fs.fontScaleItalic = scale;
   }
 
   fs.fontScale = 0.9f;
@@ -199,7 +199,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   fs.fontScaleItalic = 0.9f;
 
   // Add a new page object.
-  HPDF_Page page = HPDF_AddPage (pdf);
+  HPDF_Page page = HPDF_AddPage(pdf);
 
   // Set page size
   HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
@@ -216,7 +216,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   float w = HPDF_Page_GetWidth(page);
   float h = HPDF_Page_GetHeight(page);
   float scale = (w / maxX) * 0.95f;
-  
+
   double gdiScale = gdi.getScale();
   const float fontScale = fontFromGdiScale(gdiScale);
 
@@ -233,23 +233,23 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
   pageInfo.yMM2PrintC *= fontScale;
   pageInfo.xMM2PrintK = 0;
   pageInfo.yMM2PrintK = 0;
-  
+
   list<RectangleInfo> rectangles;
   pageInfo.renderPages(tl, rectangles, true, respectPageBreak, pages);
-  for (size_t j = 0; j< pages.size(); j++) {
+  for (size_t j = 0; j < pages.size(); j++) {
     wstring pinfo = pageInfo.pageInfo(pages[j]);
     if (!pinfo.empty()) {
       selectFont(page, fs, fontSmall, scale);
-      HPDF_Page_BeginText (page);
+      HPDF_Page_BeginText(page);
       float df = min(w, h) * 0.04f;
       float sw = HPDF_Page_TextWidth(page, gdi.toUTF8(pinfo).c_str());
       float sy = HPDF_Page_TextWidth(page, "MMM");
 
-      HPDF_Page_TextOut (page, w - sw - df , h - sy, gdi.toUTF8(pinfo).c_str());
+      HPDF_Page_TextOut(page, w - sw - df, h - sy, gdi.toUTF8(pinfo).c_str());
       HPDF_Page_EndText(page);
     }
 
-    vector<PrintTextInfo> &info = pages[j].text;
+    vector<PrintTextInfo>& info = pages[j].text;
 
     for (size_t k = 0; k < info.size(); k++) {
       if ((info[k].ti.format & 0xFF) == textImage) {
@@ -257,12 +257,12 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
           throw meosException("Unsupported image");
 
         uint64_t imgId = _wcstoui64(info[k].ti.text.c_str() + 1, nullptr, 10);
-        auto &data = image.getRawData(imgId);
+        auto& data = image.getRawData(imgId);
         auto image = HPDF_LoadPngImageFromMem(pdf, data.data(), data.size());
         int imgW = info[k].ti.textRect.right - info[k].ti.textRect.left;
         int imgH = info[k].ti.textRect.bottom - info[k].ti.textRect.top;
 
-        HPDF_Page_DrawImage(page, image, info[k].xp, h - info[k].yp, (imgW*scale), (imgH*scale));
+        HPDF_Page_DrawImage(page, image, info[k].xp, h - info[k].yp, (imgW * scale), (imgH * scale));
 
         continue;
       }
@@ -274,7 +274,7 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
         float fontScaleLoc;
         wstring tmpFile;
         fonts[info[k].ti.font] = fs; //Default fallback
-        PDFFontSet &f = fonts[info[k].ti.font];
+        PDFFontSet& f = fonts[info[k].ti.font];
 
         HPDF_Font font = getPDFFont(fi.normal, float(gdi.getScale()), tmpFile, fontScaleLoc);
         if (!tmpFile.empty())
@@ -301,55 +301,57 @@ void pdfwriter::generatePDF(const gdioutput &gdi,
         }
       }
 
-      selectFont(page, fonts[info[k].ti.font], info[k].ti.format, scale*fontScale);
-      HPDF_Page_BeginText (page);
+      selectFont(page, fonts[info[k].ti.font], info[k].ti.format, scale * fontScale);
+      HPDF_Page_BeginText(page);
       float r = GetRValue(info[k].ti.color);
       float g = GetGValue(info[k].ti.color);
       float b = GetBValue(info[k].ti.color);
-      HPDF_Page_SetRGBFill (page, r/255.0f, g/255.0f, b/255.0f);
+      HPDF_Page_SetRGBFill(page, r / 255.0f, g / 255.0f, b / 255.0f);
       string nt = gdi.toUTF8(info[k].ti.text);
-        
+
       if (info[k].ti.format & textRight) {
         float w = float(info[k].ti.xlimit) * scale;
         float sw = HPDF_Page_TextWidth(page, nt.c_str());
         //float space = info[k].ti.xlimit > 0 ? 2 * HPDF_Page_GetCharSpace(page) : 0;
         float space = info[k].ti.xlimit > 0 ? HPDF_Page_TextWidth(page, "-") : 0;
 
-        HPDF_Page_TextOut (page, info[k].xp + w - sw - space, h - info[k].yp,
-                            nt.c_str());
+        HPDF_Page_TextOut(page, info[k].xp + w - sw - space, h - info[k].yp,
+          nt.c_str());
       }
       else if (info[k].ti.format & textCenter) {
         float w = float(info[k].ti.xlimit) * scale;
         float sw = HPDF_Page_TextWidth(page, nt.c_str());
-        HPDF_Page_TextOut (page, info[k].xp + (w - sw) *0.5f, h - info[k].yp,
-                            nt.c_str());
+        HPDF_Page_TextOut(page, info[k].xp + (w - sw) * 0.5f, h - info[k].yp,
+          nt.c_str());
       }
       else {
-        HPDF_Page_TextOut (page, info[k].xp, h - info[k].yp, nt.c_str());
+        HPDF_Page_TextOut(page, info[k].xp, h - info[k].yp, nt.c_str());
       }
-      HPDF_Page_EndText (page);
+      HPDF_Page_EndText(page);
     }
-    if (j+1 < pages.size()) {
+    if (j + 1 < pages.size()) {
       // Add a new page object.
-      page = HPDF_AddPage (pdf);
+      page = HPDF_AddPage(pdf);
 
       // Set page size
       HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
-      HPDF_Page_SetFontAndSize (page, fs.font, 16);
+      HPDF_Page_SetFontAndSize(page, fs.font, 16);
     }
   }
 
   // Save the document to a file
   wstring tmpResW = getTempFile();
   string tmpRes(tmpResW.begin(), tmpResW.end());
-  HPDF_SaveToFile (pdf, tmpRes.c_str());
-  DeleteFileW(file.c_str());
-  BOOL res = MoveFile(tmpResW.c_str(), file.c_str());
-  removeTempFile(tmpResW);
-
-  if (!res) {
-    throw meosException("Failed to save pdf the specified file.");
+  HPDF_SaveToFile(pdf, tmpRes.c_str());
+  
+  try {
+    moveFile(tmpResW, file);
   }
+  catch (...) {
+    removeTempFile(tmpResW);
+    throw;
+  }
+
   return;
 }
 
