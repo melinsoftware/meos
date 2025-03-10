@@ -1222,7 +1222,7 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
     addOECSVCompetitorDB(*it);
   }
     
-  gdibase.addString("", 0, "Klart. Antal importerade: X#" + itos(data.size()));
+  gdibase.addString("", 0, "Klart. Antal importerade: X#" + itos(data.size()-1));
   gdibase.refresh();
 
   setProperty("DatabaseUpdate", getRelativeDay());
