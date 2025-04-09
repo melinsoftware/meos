@@ -831,7 +831,7 @@ public:
     else if (tStatus == StatusUnknown)
       return false;
     else
-      return true;
+      return !isStatusUnknown(false, false);
   }
 
   /** Returns a check time (or zero for no time). */

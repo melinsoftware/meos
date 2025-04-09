@@ -415,7 +415,7 @@ void oEvent::generatePreReport(gdioutput& gdi) {
 
     if (cNo > 0 && crs) {
       int maxP = getCardSystem().getMaxNumPunch(cNo);
-      if (maxP > 0 && cNo > 0)
+      if (maxP > 0 && maxP < crs->getNumControls())
         too_many_controls.push_back(&r);
     }
   }
@@ -490,8 +490,25 @@ void oEvent::generatePreReport(gdioutput& gdi) {
       gdi.addStringUT(y, x + tab[3], 0, r->getStartTimeS());
   };
 
-  auto showReport = [&gdi, tab, &showRunner](const auto& problemRunners, const string &detail) {
-    gdi.addString("", 1, detail + "#" + itos(problemRunners.size()));
+  auto showHeader = [&gdi](const string& detail, int count) {
+    gdi.pushX();
+    gdi.fillRight();
+    if (count == 0) {
+      gdi.addImage("", gdi.getCY() - gdi.scaleLength(2), gdi.getCX(), 0, itow(IDI_MEOSCHECK), gdi.scaleLength(16), gdi.scaleLength(16));
+      gdi.fillDown();
+      gdi.addString("", 1, detail + "#" + itos(count)).setColor(colorDarkGreen);
+    }
+    else {
+      gdi.addImage("", gdi.getCY() - gdi.scaleLength(2), gdi.getCX(), 0, itow(IDI_MEOSERROR), gdi.scaleLength(16), gdi.scaleLength(16));
+      gdi.fillDown();
+      gdi.addString("", 1, detail + "#" + itos(count)).setColor(colorDarkRed);
+    }
+    gdi.popX();
+    gdi.dropLine(0.2);
+  };
+
+  auto showReport = [&gdi, tab, &showRunner, &showHeader](const auto& problemRunners, const string &detail) {
+    showHeader(detail, problemRunners.size());
     int maxShow = 0;
     const int x = gdi.getCX();
     for (auto& r : problemRunners) {
@@ -524,7 +541,22 @@ void oEvent::generatePreReport(gdioutput& gdi) {
   gdi.dropLine();
   showReport(si_duplicate, "SI-dubbletter: X");
 
-  if (useLongTimes()) { // Warn SICard5 + long times
+
+  if (oe->deprecateOldCards()) {
+    vector<pRunner> oldCard;
+    auto& cardSystem = oe->getCardSystem();
+    for (auto& r : Runners) {
+      if (r.isRemoved())
+        continue;
+      if (r.getCardNo() > 0 && cardSystem.isDeprecated(r.getCardNo())) {
+        oldCard.push_back(&r);
+      }
+    }
+
+    gdi.dropLine();
+    showReport(oldCard, "Löparbrickor av äldre typ: X.");
+  }
+  else if (useLongTimes()) { // Warn SICard5 + long times
     vector<pRunner> si5Card;
     for (auto &r : Runners) {
       if (r.isRemoved())
@@ -549,6 +581,8 @@ void oEvent::generatePreReport(gdioutput& gdi) {
         continue;
       pClass cls = r.getClassRef(true);
       if (cls->hasCoursePool() || cls->hasFreeStart())
+        continue;
+      if (cls->isForked(r.getLegNumber()))
         continue;
       if (cls->getStartType(r.getLegNumber()) != StartTypes::STDrawn)
         continue;
@@ -585,7 +619,9 @@ void oEvent::generatePreReport(gdioutput& gdi) {
     }
 
     gdi.dropLine();
-    gdi.addString("", 1, "Deltagare med samma bana och samma starttid X.#" + itos(cntDupCrs));
+    showHeader("Deltagare med samma bana och samma starttid X.", cntDupCtr);
+
+    //gdi.addString("", 1, "Deltagare med samma bana och samma starttid X.#" + itos(cntDupCrs));
     int crsId = -1;
     int xc = gdi.getCX();
     for (auto& dup : counterCourseStartTimeR) {
@@ -600,7 +636,8 @@ void oEvent::generatePreReport(gdioutput& gdi) {
     }
 
     gdi.dropLine();
-    gdi.addString("", 1, "Deltagare med samma första kontroll och samma starttid X.#" + itos(cntDupCtr));
+    showHeader("Deltagare med samma första kontroll och samma starttid X.", cntDupCtr);
+    //gdi.addString("", 1, "Deltagare med samma första kontroll och samma starttid X.#" + itos(cntDupCtr));
     int ctrlId = -1;
     for (auto& dup : counterFirstControlStartTimeR) {
       if (ctrlId != dup.first.first) {

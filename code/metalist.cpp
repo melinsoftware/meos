@@ -2187,6 +2187,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lClassStartTimeRange] = L"StartTimeForClassRange";
     typeToSymbol[lClassLength] = L"ClassLength";
     typeToSymbol[lClassResultFraction] = L"ClassResultFraction";
+    typeToSymbol[lClassRemainInForest] = L"ClassRemainInForest";
     typeToSymbol[lClassAvailableMaps] = L"ClassAvailableMaps";
     typeToSymbol[lClassTotalMaps] = L"ClassTotalMaps";
     typeToSymbol[lClassNumEntries] = L"ClassNumEntries";

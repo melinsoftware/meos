@@ -51,6 +51,7 @@ enum EPostType {
   lClassStartTimeRange,
   lClassLength,
   lClassResultFraction,
+  lClassRemainInForest  ,
   lClassAvailableMaps,
   lClassTotalMaps,
   lClassNumEntries,

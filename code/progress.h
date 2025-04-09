@@ -21,36 +21,45 @@
 ************************************************************************/
 
 #include <atomic>
+#include <thread>
+#include <mutex>
 
 class ProgressWindow {
-  HWND hWnd;
-  int lastProgress;
-  DWORD lastTime;
-  volatile int progress;
-  DWORD time;
-  double speed;
+  HWND hWnd = nullptr;
+  uint64_t lastTime = 0;
+  uint64_t time = 0;
+  double speed = 0;
 
-  HANDLE thread;
-  mutable CRITICAL_SECTION syncObj;
+  shared_ptr<std::thread> threadObj;
   std::atomic_bool terminate;
   std::atomic_bool running;
 
-  std::atomic_bool initialized;
-  int lastPrg;
-  int subStart;
-  int subEnd;
+  int lastProgress = 0;
+  int progress = 0;
+
+  
+  int lastPrg = 0;
+  int subStart = 0;
+  int subEnd = 1000;
+
+  void draw(int count, int progress) const;
+  void process();
+  mutable std::mutex mtx;
+  std::condition_variable exitCond;
+
+  const int p_width;
+  const int p_height;
+
 public:
   // Start showing progress
   void init();
 
-  ProgressWindow(HWND hWndParent);
+  ProgressWindow(HWND hWndParent, double scale);
   virtual ~ProgressWindow();
 
-  void process();
-
   int getProgress() const;
+  int computeProgress(int dt) const;
   void setProgress(int prg);
   void setSubProgress(int prg);
   void initSubProgress(int start, int end);
-  void draw(int count);
 };

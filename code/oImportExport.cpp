@@ -33,21 +33,13 @@
 #include "gdioutput.h"
 #include "gdifonts.h"
 #include "meosexception.h"
-#include "inthashmap.h"
 
 #include "oDataContainer.h"
 #include "csvparser.h"
-#include "oFreeImport.h"
 
-#include "random.h"
-#include "SportIdent.h"
 #include "RunnerDB.h"
 #include "meos_util.h"
-#include "meos.h"
-#include "importformats.h"
 
-#include <io.h>
-#include <fcntl.h>
 #include "localizer.h"
 #include "iof30interface.h"
 #include "gdiconstants.h"
@@ -104,8 +96,7 @@ wstring &getFirst(wstring &inout, int maxNames) {
   return inout;
 }
 
-bool oEvent::exportOECSV(const wchar_t *file, const set<int>& classes, int languageTypeIndex, bool includeSplits)
-{
+bool oEvent::exportOECSV(const wchar_t *file, const set<int>& classes, int languageTypeIndex, bool includeSplits) {
   enum {
     OEstno = 0, OEcard = 1, OEid = 2, OEsurname = 3, OEfirstname = 4,
     OEbirth = 5, OEsex = 6, OEnc = 8, OEstart = 9, OEfinish = 10, OEtime = 11, OEstatus = 12,
@@ -1212,6 +1203,9 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
 
   cp.parse(oecsvfile, data);
 
+  if (data.empty())
+    throw meosException("Ogiltigt filformat");
+
   gdibase.addString("", 0, "Behandlar löpardatabasen").setColor(colorGreen);
   
   gdibase.refresh();
@@ -1222,7 +1216,7 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
     addOECSVCompetitorDB(*it);
   }
     
-  gdibase.addString("", 0, "Klart. Antal importerade: X#" + itos(data.size()));
+  gdibase.addString("", 0, "Klart. Antal importerade: X#" + itos(data.size()-1));
   gdibase.refresh();
 
   setProperty("DatabaseUpdate", getRelativeDay());

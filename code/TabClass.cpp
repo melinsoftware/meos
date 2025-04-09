@@ -3463,13 +3463,13 @@ void TabClass::showClassSettings(gdioutput& gdi) {
   }
 
   vector<pair<wstring, size_t>> drawHints;
-  drawHints.emplace_back(makeDash(L"Inga"), int(ClassInfo::Hint::Default));
+  drawHints.emplace_back(lang.tl(L"Inga"), int(ClassInfo::Hint::Default));
   drawHints.emplace_back(lang.tl("Tidig"), int(ClassInfo::Hint::Early));
   drawHints.emplace_back(lang.tl("Sen"), int(ClassInfo::Hint::Late));
   drawHints.emplace_back(lang.tl("Angiven tid"), int(ClassInfo::Hint::Fixed));
 
   vector<pair<wstring, size_t>> drawProp;
-  drawProp.emplace_back(makeDash(L"Normal"), int(ClassInfo::Speed::Normal));
+  drawProp.emplace_back(lang.tl(L"Normal"), int(ClassInfo::Speed::Normal));
   drawProp.emplace_back(lang.tl("Långsam"), int(ClassInfo::Speed::Slow));
   drawProp.emplace_back(lang.tl("Snabb"), int(ClassInfo::Speed::Fast));
  

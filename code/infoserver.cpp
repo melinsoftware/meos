@@ -97,6 +97,7 @@ InfoBaseCompetitor::InfoBaseCompetitor(int id) : InfoBase(id) {
   status = 0;
   startTime = 0;
   runningTime = 0;
+  preliminary = false;
 }
 
 InfoCompetitor::InfoCompetitor(int id) : InfoBaseCompetitor(id) {
@@ -470,6 +471,10 @@ void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) co
   prop.emplace_back("org", itow(organizationId));
   prop.emplace_back("cls", itow(classId));
   prop.emplace_back("stat", itow(status));
+
+  if (preliminary)
+    prop.emplace_back("prel", L"true");
+
   prop.emplace_back("st", itow(startTime));
   prop.emplace_back("rt", itow(runningTime));
   if (course != 0)
@@ -511,17 +516,25 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
   }
 
   RunnerStatus s = bc.getStatusComputed(true);
-
+  bool prel = false;
   int rt = bc.getRunningTime(true) * (10/timeConstSecond);
   if (rt > 0) {
-    if (s == RunnerStatus::StatusUnknown)
+    if (s == RunnerStatus::StatusUnknown) {
       s = RunnerStatus::StatusOK;
-
-    if (s == RunnerStatus::StatusNoTiming)
-      rt = 0;
+      prel = true;
+    }
+    else if (s == RunnerStatus::StatusNoTiming) {
+      rt = 0;      
+    }
   }
-  else if (isPossibleResultStatus(s))
+  else if (isPossibleResultStatus(s)) {
     s = StatusUnknown;
+  }
+
+  if (prel != preliminary) {
+    preliminary = prel;
+    ch = true;
+  }
 
   if (status != s) {
     status = s;
@@ -737,6 +750,7 @@ bool InfoTeam::synchronize(oTeam &t) {
 void InfoTeam::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector< pair<string, wstring> > prop;
   prop.push_back(make_pair("id", itow(getId())));
+
   xmlbuffer &sub = xml.startTag("tm", prop);
   InfoBaseCompetitor::serialize(sub, diffOnly, 0);
   wstring def;

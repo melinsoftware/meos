@@ -498,7 +498,7 @@ void oClass::getNumResults(int leg, int &total, int &finished, int &dns) const {
     if (r.tLeg == tleg || c.singleClass) {
       c.total++;
 
-      if (r.tStatus != StatusUnknown)
+      if (!r.isStatusUnknown(false, false) && r.tStatus != StatusDNS)
         c.finished++;
       
       if (r.tStatus == StatusDNS)
@@ -1676,6 +1676,13 @@ pCourse oClass::getCourse(bool getSampleFromRunner) const {
     res = getCourse(0,0, true);
 
   return res;
+}
+
+bool oClass::isForked(int leg) const {
+  leg = mapLeg(leg);
+  if (leg < MultiCourse.size())
+    return MultiCourse[leg].size() > 1;
+  return false;
 }
 
 void oClass::getCourses(int leg, vector<pCourse> &courses) const {

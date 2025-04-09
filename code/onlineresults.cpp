@@ -400,7 +400,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     if (!sendToFile && !sendToURL)
       return;
 
-    ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWNDTarget() : 0);
+    ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWNDTarget() : 0, gdi.getScale());
     pwMain.init();
 
     if (allClasses)
@@ -467,7 +467,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       if (sendToURL) {
         Download dwl;
         dwl.initInternet();
-        ProgressWindow pw(0);
+        ProgressWindow pw(nullptr, gdi.getScale());
         vector<pair<wstring, wstring> > key;
         pair<wstring, wstring> mk1(L"competition", itow(cmpId));
         key.push_back(mk1);

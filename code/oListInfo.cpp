@@ -1202,7 +1202,14 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       if (pc && !invalidClass) {
         int total, finished,  dns;
         pc->getNumResults(par.getLegNumber(pc), total, finished, dns);
-        swprintf_s(wbf, L"(%d / %d)", finished, total);
+        swprintf_s(wbf, L"(%d / %d)", finished, max(finished, total-dns));
+      }
+      break;
+    case lClassRemainInForest:
+      if (pc && !invalidClass) {
+        int total, finished, dns;
+        pc->getNumResults(par.getLegNumber(pc), total, finished, dns);
+        swprintf_s(wbf, L"%d", max(0, total - dns - finished));
       }
       break;
     case lCourseLength:

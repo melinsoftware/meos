@@ -1148,7 +1148,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
 
       wstring zipped = getTempFile();
       zip(zipped.c_str(), 0, fileList);
-      ProgressWindow pw(gdi.getHWNDTarget());
+      ProgressWindow pw(gdi.getHWNDTarget(), gdi.getScale());
       pw.init();
       vector<pair<wstring,wstring> > key;
       getAPIKey(key);
@@ -1242,7 +1242,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
 
       wstring zipped = getTempFile();
       zip(zipped.c_str(), 0, fileList);
-      ProgressWindow pw(gdi.getHWNDTarget());
+      ProgressWindow pw(gdi.getHWNDTarget(), gdi.getScale());
       pw.init();
       vector<pair<wstring,wstring> > key;
       getAPIKey(key);
@@ -3000,7 +3000,7 @@ void TabCompetition::getEventorCmpData(gdioutput &gdi, int id,
                                        const wstring &entryFile,
                                        const wstring &dbFile) const
 {
-  ProgressWindow pw(gdi.getHWNDTarget());
+  ProgressWindow pw(gdi.getHWNDTarget(), gdi.getScale());
   pw.init();
   gdi.fillDown();
   gdi.addString("", 1, "Ansluter till Internet").setColor(colorGreen);
@@ -4004,7 +4004,7 @@ void TabCompetition::selectExportSplitOptions(gdioutput& gdi, oEvent* oe, const 
 
    data.withPartialResults = gdi.isChecked("IncludePreliminary");
    oe->setProperty("IncludePreliminary", data.withPartialResults);
-   ImportFormats::ExportFormats filterIndex = ImportFormats::setExportFormat(*oe, gdi.getSelectedItem("Type").first);
+   data.filterIndex = ImportFormats::setExportFormat(*oe, gdi.getSelectedItem("Type").first);
 
    data.cSVLanguageHeaderIndex = gdi.getSelectedItem("LanguageType").first;
    data.includeSplits = gdi.isChecked("ExportSplitTimes");

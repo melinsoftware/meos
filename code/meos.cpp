@@ -672,7 +672,7 @@ LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
       gdi->escape();
   }
   else if (wParam==VK_F2) {
-    ProgressWindow pw(hWnd);
+    ProgressWindow pw(hWnd, 1.0);
 
     pw.init();
     for (int k=0;k<=20;k++) {

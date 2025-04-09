@@ -1222,7 +1222,7 @@ bool oRunner::evaluateCard(bool doApply, vector<int>& missingPunches,
   if (!clz)
     return false;
 
-  if (clz->ignoreStartPunch())
+  if (clz->ignoreStartPunch() && tStartTime > 0)
     tUseStartPunch = false;
 
   const pCourse course = getCourse(true);

@@ -3501,6 +3501,7 @@ void TabSI::entryCard(gdioutput& gdi, const SICard& sic)
 
   wstring name;
   wstring club;
+  bool setClub = false;
   int age = 0;
   if (showDatabase()) {
     pRunner db_r = oe->dbLookUpByCard(sic.CardNumber);
@@ -3508,6 +3509,7 @@ void TabSI::entryCard(gdioutput& gdi, const SICard& sic)
     if (db_r) {
       name = db_r->getNameRaw();
       club = db_r->getClub();
+      setClub = true;
       age = db_r->getBirthAge();
 
       if (gdi.hasWidget("BirthDate")) 
@@ -3528,10 +3530,10 @@ void TabSI::entryCard(gdioutput& gdi, const SICard& sic)
     name = wstring(sic.lastName) + L", " + wstring(sic.firstName);
 
   gdi.setText("Name", name);
-  if (gdi.hasWidget("Club") && !club.empty())
+  if (gdi.hasWidget("Club") && (!club.empty() || setClub))
     gdi.setText("Club", club);
 
-  if (club.empty() && gdi.hasWidget("Club"))
+  if (club.empty() && !setClub && gdi.hasWidget("Club"))
     gdi.setInputFocus("Club");
   else if (name.empty())
     gdi.setInputFocus("Name");

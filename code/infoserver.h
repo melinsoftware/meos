@@ -165,19 +165,21 @@ struct RadioTime {
 class InfoBaseCompetitor : public InfoBase {
   protected:
     wstring name;
+    wstring bib;
+    wstring nationality;
+
     int organizationId;
     int classId;
-
     int status;
     int startTime;
     int runningTime;
-    wstring bib;
-    wstring nationality;
+
+    bool preliminary;
     void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
     bool synchronizeBase(oAbstractRunner &bc);
   public:
     InfoBaseCompetitor(int id);
-    virtual ~InfoBaseCompetitor() {}
+    virtual ~InfoBaseCompetitor() = default;
 };
 
 class InfoCompetitor : public InfoBaseCompetitor {

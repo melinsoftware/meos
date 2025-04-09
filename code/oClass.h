@@ -688,6 +688,7 @@ public:
   pCourse getCourse(bool getSampleFromRunner = false) const;
 
   void getCourses(int leg, vector<pCourse> &courses) const;
+  bool isForked(int leg) const;
 
   pCourse getCourse(int leg, unsigned fork=0, bool getSampleFromRunner = false) const;
   int getCourseId() const {if (Course) return Course->getId(); else return 0;}

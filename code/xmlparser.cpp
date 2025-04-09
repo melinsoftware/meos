@@ -64,7 +64,7 @@ inline bool isBlankSpace(char b) {
 
 void xmlparser::setProgress(HWND hWnd)
 {
-  progress = new ProgressWindow(hWnd);
+  progress = new ProgressWindow(hWnd, gdi_main->getScale());
 }
 
 void xmlparser::access(int index) {

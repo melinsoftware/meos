@@ -875,7 +875,7 @@ bool oEvent::save(const wstring &fileIn, bool isAutoSave) {
 
   const wchar_t *file = fileIn.c_str();
   xmlparser xml;
-  ProgressWindow pw(gdibase.getHWNDTarget());
+  ProgressWindow pw(gdibase.getHWNDTarget(), gdibase.getScale());
 
   if (Runners.size()>200)
     pw.init();
