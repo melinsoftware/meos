@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -823,7 +823,7 @@ int oCourse::getIdSum(int nC) {
 
   int id = 0;
   for (int k = 0; k<min(nC, nControls); k++)
-    id = 31 * id + (Controls[k] ? Controls[k]->getId() : 0);
+    id = 431 * id + (Controls[k] ? Controls[k]->getId() : 0);
 
   if (id == 0)
     return getId();
@@ -1040,6 +1040,7 @@ int oCourse::getStartPunchType() const {
 
 void oEvent::getCourses(vector<pCourse> &crs) const{
   crs.clear();
+  crs.reserve(Courses.size());
   for (oCourseList::const_iterator it = Courses.begin(); it != Courses.end(); ++it) {
     if (it->isRemoved())
       continue;
@@ -1599,4 +1600,50 @@ void oCourse::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &se
     oe->oCourseData->fillInput(this, id, 0, out, selected);
     return;
   }
+}
+
+void oCourse::getNameAndFamily(wstring& name, wstring& family) const {
+  vector<wstring> fn;
+  split(this->Name, L":", fn);
+  if (fn.size() == 2) {
+    family = std::move(fn[0]);
+    name = std::move(fn[1]);
+  }
+  else {
+    name = this->Name;
+    family = L"";
+  }
+}
+
+int oCourse::getBestTime() const {
+  if (!bestTime.needsUpdate(*oe))
+    return bestTime.get();
+
+  vector<pRunner> rs;
+  oe->getRunners(-1, -1, rs, false);
+
+  map<int, int> bestTimes;
+
+  for (pRunner r : rs) {
+    pCourse crs = r->getCourse(false);
+    if (crs && r->isStatusOK(false, false) && !r->noTiming()) {
+      int rt = r->getRunningTime(false);
+      if (auto res = bestTimes.emplace(crs->getId(), rt); !res.second) {
+        res.first->second = min(res.first->second, rt);
+      }
+    }
+  }
+
+  vector<pCourse> crs;
+  oe->getCourses(crs);
+
+  for (pCourse c : crs) {
+    auto res = bestTimes.find(c->getId());
+    if (res != bestTimes.end())
+      c->bestTime.update(*oe, res->second);
+    else
+      c->bestTime.update(*oe, -1);
+  }
+
+  return bestTime.get();
 }

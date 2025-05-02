@@ -1,7 +1,7 @@
 #pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,10 +45,13 @@ public:
     const wstring &getString(const string &v) const;
     vector<int> getVectorInt(const string &v) const;
     set<int> getSetInt(const string &v) const;
+    bool has(const string& prop) const;
 
     void set(const string &name, int v);
     void set(const string &name, const vector<int> &v);
     void set(const string &name, const wstring &v);
+    void set(const string& name, const string& v) = delete;
+
     void set(const string &name, bool v) {
       set(name, int(v));
     }

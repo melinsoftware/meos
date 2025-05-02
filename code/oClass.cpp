@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -481,6 +481,8 @@ void oClass::getNumResults(int leg, int &total, int &finished, int &dns) const {
 
     if (!(ct == oClassIndividual || ct == oClassIndividRelay || ct == oClassKnockout))
       cnt[c.Id].team = true;
+    else if (ct == oClassKnockout && c.isQualificationFinalBaseClass())
+      cnt[c.Id].team = true; // Count teams in the base class
   }
 
   for (auto &r : oe->Runners) {
@@ -491,12 +493,12 @@ void oClass::getNumResults(int leg, int &total, int &finished, int &dns) const {
     if (c.team)
       continue;
 
-    int tleg = leg > 0 ? leg : c.maxleg;
+    int tleg = leg >= 0 ? leg : c.maxleg;
 
     if (r.tLeg == tleg || c.singleClass) {
       c.total++;
 
-      if (r.tStatus != StatusUnknown)
+      if (!r.isStatusUnknown(false, false) && r.tStatus != StatusDNS)
         c.finished++;
       
       if (r.tStatus == StatusDNS)
@@ -1676,6 +1678,13 @@ pCourse oClass::getCourse(bool getSampleFromRunner) const {
   return res;
 }
 
+bool oClass::isForked(int leg) const {
+  leg = mapLeg(leg);
+  if (leg < MultiCourse.size())
+    return MultiCourse[leg].size() > 1;
+  return false;
+}
+
 void oClass::getCourses(int leg, vector<pCourse> &courses) const {
   leg = mapLeg(leg);
 
@@ -1931,6 +1940,8 @@ oClass::LeaderInfo &oClass::getLeaderInfo(AllowRecompute recompute, int leg) con
 }
 
 bool oClass::LeaderInfo::updateComputed(int rt, Type t) {
+  if (rt <= 0)
+    return false;
   bool update = false;
 
   switch (t) {
@@ -1955,6 +1966,8 @@ bool oClass::LeaderInfo::updateComputed(int rt, Type t) {
 }
 
 bool oClass::LeaderInfo::update(int rt, Type t) {
+  if (rt <= 0)
+    return false;
   bool update = false;
   switch (t) {
   case Type::Leg:
@@ -5528,4 +5541,49 @@ void oClass::setFlag(TransferFlags flag, bool onoff) {
   int cf = getDCI().getInt("TransferFlags");
   cf = onoff ? (cf | flag) : (cf & (~flag));
   getDI().setInt("TransferFlags", cf);
+}
+
+void oClass::adjustNumVacant(int leg, int numVacant) {
+  const int vacantClubId = oe->getVacantClub(false);
+  const bool multiDay = oe->hasPrevStage();
+  
+  if (numVacant < 0)
+    throw meosException("Internal error");
+
+  if (numVacant > 0 && getClassType() == oClassRelay)
+    throw meosException("Vakanser stöds ej i stafett.");
+
+  if (numVacant > 0 && (leg > 0 || getParentClass()))
+    throw meosException("Det går endast att sätta in vakanser på sträcka 1.");
+
+  if (size_t(leg) < legInfo.size()) {
+    setStartType(leg, STDrawn, true); //Automatically change start method
+  }
+  else if (leg == -1) {
+    for (size_t j = 0; j < legInfo.size(); j++)
+      setStartType(j, STDrawn, true); //Automatically change start method
+  }
+  
+  vector<int> currentVacant;
+  vector<pRunner> rList;
+  oe->getRunners({ Id }, rList);
+
+  for (pRunner r : rList) {
+    if (r->tInTeam)
+      continue; // Cannot remove team runners
+    if (r->getClubId() == vacantClubId)
+      currentVacant.push_back(r->getId());
+  }
+
+  vector<int> toRemove;
+  while (currentVacant.size() > numVacant) {
+    toRemove.push_back(currentVacant.back());
+    currentVacant.pop_back();
+  }
+
+  while (currentVacant.size() < numVacant) {
+    pRunner r = oe->addRunnerVacant(Id);
+    currentVacant.push_back(r->getId());
+  }
+  oe->removeRunner(toRemove);
 }

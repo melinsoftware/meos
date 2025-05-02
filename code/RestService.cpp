@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ void RestService::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.addInput("RootMap", gdi.recodeToWide(rootMap));
   gdi.setInputStatus("RootMap", !rootMap.empty());
 
-  startCancelInterval(gdi, "Save", state, IntervalNone, L"");
+  startCancelInterval(gdi, oe, "Save", state, IntervalType::IntervalNone, L"");
   
   if (!server) {
     gdi.addInput("Port", itow(port), 10, 0, L"Port:", L"#http://localhost:[PORT]/meos");

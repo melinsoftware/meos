@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,6 +97,7 @@ InfoBaseCompetitor::InfoBaseCompetitor(int id) : InfoBase(id) {
   status = 0;
   startTime = 0;
   runningTime = 0;
+  preliminary = false;
 }
 
 InfoCompetitor::InfoCompetitor(int id) : InfoBaseCompetitor(id) {
@@ -269,12 +270,13 @@ bool InfoCompetition::synchronize(oEvent &oe, bool onlyCmp, const set<int> &incl
       continue;
     if (cid != 0 && r[k]->getClassRef(true)->getQualificationFinal() != nullptr)
       continue;
-
+    if (r[k]->isVacant())
+      continue;
     int wid = r[k]->getId();
     knownId.insert(wid);
-    map<int, InfoCompetitor>::iterator res = competitors.find(wid);
+    auto res = competitors.find(wid);
     if (res == competitors.end())
-      res = competitors.insert(make_pair(wid, InfoCompetitor(wid))).first;
+      res = competitors.emplace(wid, InfoCompetitor(wid)).first;
     if (res->second.synchronize(*this, *r[k]))
       needCommit(res->second);
   }
@@ -325,7 +327,7 @@ bool InfoClass::synchronize(bool includeCourses, oClass &c, const set<int> &ctrl
   int no = c.getSortIndex();
   bool mod = false;
   
-  vector< vector<int> > rc;
+  vector<vector<int>> rc;
   size_t s = c.getNumStages();
   
   if (includeCourses) {
@@ -373,9 +375,11 @@ bool InfoClass::synchronize(bool includeCourses, oClass &c, const set<int> &ctrl
     pCourse pc = c.getCourse(true); // Get a course representative for the leg.
     rc.push_back(vector<int>());
     if (pc) {
+      int offStart = pc->useFirstAsStart() ? 1 : 0;
+      int offEnd = pc->useLastAsFinish() ? 1 : 0;
       vector<pControl> ctrl;
       pc->getControls(ctrl);
-      for (size_t j = 0; j < ctrl.size(); j++) {
+      for (size_t j = offStart; j < ctrl.size() - offEnd; j++) {
         if (ctrls.count(pc->getCourseControlId(j))) {
           rc.back().push_back(pc->getCourseControlId(j));
         }
@@ -467,6 +471,10 @@ void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) co
   prop.emplace_back("org", itow(organizationId));
   prop.emplace_back("cls", itow(classId));
   prop.emplace_back("stat", itow(status));
+
+  if (preliminary)
+    prop.emplace_back("prel", L"true");
+
   prop.emplace_back("st", itow(startTime));
   prop.emplace_back("rt", itow(runningTime));
   if (course != 0)
@@ -508,17 +516,25 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
   }
 
   RunnerStatus s = bc.getStatusComputed(true);
-
+  bool prel = false;
   int rt = bc.getRunningTime(true) * (10/timeConstSecond);
   if (rt > 0) {
-    if (s == RunnerStatus::StatusUnknown)
+    if (s == RunnerStatus::StatusUnknown) {
       s = RunnerStatus::StatusOK;
-
-    if (s == RunnerStatus::StatusNoTiming)
-      rt = 0;
+      prel = true;
+    }
+    else if (s == RunnerStatus::StatusNoTiming) {
+      rt = 0;      
+    }
   }
-  else if (isPossibleResultStatus(s))
+  else if (isPossibleResultStatus(s)) {
     s = StatusUnknown;
+  }
+
+  if (prel != preliminary) {
+    preliminary = prel;
+    ch = true;
+  }
 
   if (status != s) {
     status = s;
@@ -578,7 +594,7 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
     pClass cls = t->getClassRef(true);
     if (cls) {
       LegTypes lt = cls->getLegType(ltu);
-      while (ltu > 0 && (lt == LTParallelOptional || lt == LTParallel|| lt == LTExtra || lt == LTIgnore) ) {
+      while (ltu > 0 && (lt == LTParallelOptional || lt == LTParallel || lt == LTExtra || lt == LTIgnore) ) {
         ltu--;
         lt = cls->getLegType(ltu);
       }
@@ -588,6 +604,11 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
       s = t->getLegStatus(ltu - 1, true, false);
     }
   }
+
+  if (status == StatusUnknown && s == StatusOK)
+    s = StatusUnknown;
+  else
+    s = max(s, status);
 
   if (totalStatus != s) {
     totalStatus = s;
@@ -729,6 +750,7 @@ bool InfoTeam::synchronize(oTeam &t) {
 void InfoTeam::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector< pair<string, wstring> > prop;
   prop.push_back(make_pair("id", itow(getId())));
+
   xmlbuffer &sub = xml.startTag("tm", prop);
   InfoBaseCompetitor::serialize(sub, diffOnly, 0);
   wstring def;

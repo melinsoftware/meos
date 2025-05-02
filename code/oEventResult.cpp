@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -922,7 +922,7 @@ void oEvent::getGeneralResults(bool onlyEditable, vector< pair<int, pair<string,
 
   for (size_t k = 0; k < generalResults.size(); k++) {
     if (!onlyEditable || generalResults[k].isDynamic()) {
-      tagNameList.push_back(make_pair(100 + k, make_pair(generalResults[k].tag, lang.tl(generalResults[k].name))));
+      tagNameList.push_back(make_pair(100 + k, make_pair(generalResults[k].tag, generalResults[k].getName())));
       if (count[generalResults[k].name] > 1) {
         size_t res = generalResults[k].tag.find_last_of('v');
         if (res != string::npos) {

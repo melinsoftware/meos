@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,9 +23,9 @@
 
 #include "tabbase.h"
 #include "gdioutput.h"
-#include "Printer.h"
 #include <string>
 #include "oListInfo.h"
+#include "importformats.h"
 
 using namespace std;
 
@@ -52,6 +52,11 @@ enum Machines {
 class AutoMachine
 {
 public:
+  enum class Status {
+    Good,
+    Error,
+    Warning,
+  };
 
   enum class State {
     Edit,
@@ -63,26 +68,81 @@ private:
   int myid;
   static int uniqueId;
   const Machines type;
+  bool isSaved = false;
 
 protected:
-  bool editMode;
+  Status lastRunStatus = Status::Good;
+  wstring lastStatusMsg;
 
+  bool editMode;
+  
   void settingsTitle(gdioutput &gdi, const char *title);
-  enum IntervalType {IntervalNone, IntervalMinute, IntervalSecond};
-  void startCancelInterval(gdioutput &gdi, const char *startCommand, State state, IntervalType type, const wstring &interval);
+  enum class IntervalType {IntervalNone, IntervalMinute, IntervalSecond};
+  void startCancelInterval(gdioutput &gdi, oEvent &oe, const char *startCommand, State state, IntervalType type, const wstring &interval);
   
   virtual bool hasSaveMachine() const {
     return false;
   }
   
+  template<typename OP>
+  void processProtected(gdioutput& gdi, AutoSyncType ast, OP op) {
+    lastRunStatus = Status::Good;
+    lastStatusMsg.clear();
+
+    try {
+      op();
+    }
+    catch (const meosException& ex) {
+      lastRunStatus = Status::Error;
+      lastStatusMsg = ex.wwhat();
+      if (ast == AutoSyncType::SyncNone)
+        throw;
+    }
+    catch (const std::exception& ex) {
+      lastRunStatus = Status::Error;
+      lastStatusMsg = gdioutput::widen(ex.what());
+      if (ast == AutoSyncType::SyncNone)
+        throw;
+    }
+    catch (...) {
+      lastRunStatus = Status::Error;
+      throw;
+    }
+
+    if (!lastStatusMsg.empty()) {
+      string id = getTypeString() + "_warning";
+      gdi.removeFirstInfoBox(id);
+      gdi.addInfoBox(id, lastStatusMsg, getDescription(), BoxStyle::HeaderWarning, 10000);
+    }
+  }
+
 public:
 
+  Status getStatus() const {
+    return lastRunStatus;
+  }
+
+  const wstring &getStatusMsg() const {
+    return lastStatusMsg;
+  }
+
+  virtual bool requireList(EStdListType type) const {
+    return false;
+  }
+
   virtual void saveMachine(oEvent &oe, const wstring &guiInterval) {
+    isSaved = true;
   }
 
   virtual void loadMachine(oEvent &oe, const wstring &name) {
     if (name != L"default")
       machineName = name;
+
+    isSaved = true;
+  }
+
+  bool wasSaved() {
+    return isSaved;
   }
 
   // Return true to auto-remove
@@ -93,20 +153,24 @@ public:
   static AutoMachine *getMachine(int id);
   static void resetGlobalId() {uniqueId = 1;}
   int getId() const {return myid;}
-  static AutoMachine* construct(Machines);
+  static shared_ptr<AutoMachine> construct(Machines);
   static Machines getType(const string &typeStr);
-  static string getDescription(Machines type);
+  static wstring getDescription(Machines type);
   static string getTypeString(Machines type);
   string getTypeString() const { return getTypeString(type); }
   wstring getMachineName() const {
     return machineName.empty() ? L"default" : machineName;
   }
+  wstring getDescription() const {
+    return getDescription(type);
+  }
+
 
   void setEditMode(bool em) {editMode = em;}
   string name;
   wstring machineName;
   DWORD interval; //Interval seconds
-  DWORD timeout; //Timeout (TickCount)
+  uint64_t timeout; //Timeout (TickCount)
   bool synchronize;
   bool synchronizePunches;
 
@@ -116,7 +180,8 @@ public:
   virtual bool isEditMode() const {return editMode;}
   virtual void status(gdioutput &gdi) = 0;
   virtual bool stop() {return true;}
-  virtual AutoMachine *clone() const = 0;
+  virtual shared_ptr<AutoMachine> clone() const = 0;
+  virtual void cancelEdit() {}
 
   Machines getType() {
     return type;
@@ -127,89 +192,24 @@ public:
   virtual ~AutoMachine() = 0 {}
 };
 
-class PrintResultMachine :
-  public AutoMachine
-{
-protected:
-  wstring exportFile;
-  wstring exportScript;
-  bool doExport;
-  bool doPrint;
-  bool structuredExport;
-  PrinterObject po;
-  set<int> classesToPrint;
-  bool pageBreak;
-  bool showHeader;
-  bool showInterResult;
-  bool splitAnalysis;
-  bool notShown;
-  oListInfo listInfo;
-  bool readOnly;
-  int htmlRefresh;
-  bool lock; // true while printing
-  bool errorLock; // true while showing error dialog
-public:
-  PrintResultMachine *clone() const {
-    PrintResultMachine *prm = new PrintResultMachine(*this);
-    prm->lock = false;
-    prm->errorLock = false;
-    return prm;
-  }
-  void status(gdioutput &gdi) final;
-  void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
-  void settings(gdioutput &gdi, oEvent &oe, State state) final;
-  void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
-
-  void setHTML(const wstring &file, int timeout) {
-    exportFile = file;
-    doExport = true;
-    doPrint = false;
-    if (timeout > 0)
-      interval = timeout;
-  }
-
-  PrintResultMachine(int v):AutoMachine("Resultatutskrift", Machines::mPrintResultsMachine) {
-    interval=v;
-    pageBreak = true;
-    showHeader = false;
-    showInterResult = true;
-    notShown = true;
-    splitAnalysis = true;
-    lock = false;
-    errorLock = false;
-    readOnly = false;
-    doExport = false;
-    doPrint = true;
-    structuredExport = true;
-    htmlRefresh = v;
-  }
-  PrintResultMachine(int v, const oListInfo &li):AutoMachine("Utskrift / export", Machines::mPrintResultsMachine), listInfo(li) {
-    interval=v;
-    pageBreak = true;
-    showHeader = false;
-    showInterResult = true;
-    notShown = true;
-    splitAnalysis = true;
-    lock = false;
-    errorLock = false;
-    readOnly = true;
-    doExport = false;
-    doPrint = true;
-    structuredExport = false;
-    htmlRefresh = v;
-  }
-  friend class TabAuto;
-};
-
 class SaveMachine :
   public AutoMachine
 {
-protected:
+private:
   wstring baseFile;
-  int saveIter;
+  int saveIter = 0;
+
+protected:
+  bool hasSaveMachine() const final {
+    return true;
+  }
+  void saveMachine(oEvent& oe, const wstring& guiInterval) final;
+  void loadMachine(oEvent& oe, const wstring& name) final;
+
 public:
-  SaveMachine *clone() const {
-    SaveMachine *prm = new SaveMachine(*this);
+
+  shared_ptr<AutoMachine> clone() const final {
+    auto prm = make_shared<SaveMachine>(*this);
     return prm;
   }
 
@@ -218,7 +218,7 @@ public:
   void settings(gdioutput &gdi, oEvent &oe, State state) final;
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
 
-  SaveMachine():AutoMachine("Säkerhetskopiera", Machines::mSaveBackup) , saveIter(0) {
+  SaveMachine():AutoMachine("Säkerhetskopiera", Machines::mSaveBackup) {
   }
 };
 
@@ -232,7 +232,9 @@ protected:
   set<int> controlsSI;
 public:
   void settings(gdioutput &gdi, oEvent &oe, State state);
-  PrewarningMachine *clone() const {return new PrewarningMachine(*this);}
+  shared_ptr<AutoMachine> clone() const final {
+    return make_shared<PrewarningMachine>(*this);
+  }
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
@@ -253,7 +255,10 @@ protected:
 
 public:
   void settings(gdioutput &gdi, oEvent &oe, State state);
-  MySQLReconnect *clone() const {return new MySQLReconnect(*this);}
+  shared_ptr<AutoMachine> clone() const final { 
+    return make_shared<MySQLReconnect>(*this);
+  }
+
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   bool stop();
@@ -277,7 +282,10 @@ class PunchMachine :
 protected:
   int radio;
 public:
-  PunchMachine *clone() const {return new PunchMachine(*this);}
+  shared_ptr<AutoMachine> clone() const final { 
+    return make_shared<PunchMachine>(*this);
+  }
+
   void settings(gdioutput &gdi, oEvent &oe, State state) final;
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
@@ -294,14 +302,18 @@ protected:
   wstring file;
   set<int> classes;
   int leg;
+  ExportSplitsData data;
 public:
-  SplitsMachine *clone() const {return new SplitsMachine(*this);}
+  shared_ptr<AutoMachine> clone() const final {
+    return make_shared<SplitsMachine>(*this);
+  }
+
   void settings(gdioutput &gdi, oEvent &oe, State state) final;
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) final;
 
-  SplitsMachine() : AutoMachine("Sträcktider/WinSplits", Machines::mSplitsMachine), leg(-1) {}
+  SplitsMachine() : AutoMachine("Export av resultat/sträcktider", Machines::mSplitsMachine), leg(-1) {}
   friend class TabAuto;
 };
 
@@ -319,7 +331,7 @@ private:
   bool synchronizePunches = false;
   void updateSyncInfo();
 
-  list<AutoMachine *> machines;
+  list<shared_ptr<AutoMachine>> machines;
   void setTimer(AutoMachine *am);
 
   void timerCallback(gdioutput &gdi);
@@ -333,6 +345,8 @@ protected:
 
 public:
 
+  void removedList(EStdListType type);
+
   AutoMachine *getMachine(int id);
   bool stopMachine(AutoMachine *am);
   void killMachines();
@@ -340,7 +354,7 @@ public:
 
   AutoMachine &addMachine(const AutoMachine &am) {
     machines.push_back(am.clone());
-    setTimer(machines.back());
+    setTimer(machines.back().get());
     return *machines.back();
   }
 

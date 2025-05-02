@@ -2,7 +2,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,7 +57,8 @@ class oDataNotifier {
 public:
   virtual ~oDataNotifier() = default;
   /** Notified when integer data changes */
-  virtual void notify(oBase* ob, int oldValue, int newValue) = 0;
+  virtual void notify(oBase* ob, int oldValue, int newValue) {}
+  virtual void notify(oBase* ob, const wstring &newValue) {}
 };
 
 struct oDataInfo {

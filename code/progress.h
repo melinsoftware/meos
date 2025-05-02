@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,35 +20,46 @@
 
 ************************************************************************/
 
+#include <atomic>
+#include <thread>
+#include <mutex>
+
 class ProgressWindow {
-  HWND hWnd;
-  int lastProgress;
-  DWORD lastTime;
-  volatile int progress;
-  DWORD time;
-  double speed;
+  HWND hWnd = nullptr;
+  uint64_t lastTime = 0;
+  uint64_t time = 0;
+  double speed = 0;
 
-  HANDLE thread;
-  mutable CRITICAL_SECTION syncObj;
-  volatile bool terminate;
-  volatile bool running;
+  shared_ptr<std::thread> threadObj;
+  std::atomic_bool terminate;
+  std::atomic_bool running;
 
-  bool initialized;
-  int lastPrg;
-  int subStart;
-  int subEnd;
+  int lastProgress = 0;
+  int progress = 0;
+
+  
+  int lastPrg = 0;
+  int subStart = 0;
+  int subEnd = 1000;
+
+  void draw(int count, int progress) const;
+  void process();
+  mutable std::mutex mtx;
+  std::condition_variable exitCond;
+
+  const int p_width;
+  const int p_height;
+
 public:
   // Start showing progress
   void init();
 
-  ProgressWindow(HWND hWndParent);
+  ProgressWindow(HWND hWndParent, double scale);
   virtual ~ProgressWindow();
 
-  void process();
-
   int getProgress() const;
+  int computeProgress(int dt) const;
   void setProgress(int prg);
   void setSubProgress(int prg);
   void initSubProgress(int start, int end);
-  void draw(int count);
 };

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -358,7 +358,7 @@ int TabClub::clubCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.addButton("SaveSettings", "Spara", ClubsCB).setDefault();
       gdi.addButton("Cancel", "Avbryt", ClubsCB).setCancel();
       gdi.dropLine(2);
-      gdi.setOnClearCb(ClubsCB);
+      gdi.setOnClearCb("clubs", ClubsCB);
       oe->getDI().fillDataFields(gdi);
     }
     else if (bi.id == "SaveSettings") {
@@ -538,7 +538,7 @@ int TabClub::clubCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         else
           fee = di.getInt("Fee");
 
-        wstring info = filtered[k]->getClass(false) + L", " + filtered[k]->getCompleteIdentification();
+        wstring info = filtered[k]->getClass(false) + L", " + filtered[k]->getCompleteIdentification(oRunner::IDType::OnlyThis);
 
         gdi.addStringUT(0,  info + L" (" + oe->formatCurrency(fee) + L")");
         if (count % 5 == 0)
@@ -572,7 +572,7 @@ int TabClub::clubCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       if (!file.empty()) {
         pdfwriter pdf;
         pdf.generatePDF(gdi, file, lang.tl("Faktura"), oe->getDCI().getString("Organizer"), gdi.getTL(), true);
-        gdi.openDoc(file.c_str());
+        gdi.openDoc(file);
       }
     }
 

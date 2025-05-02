@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,42 +21,22 @@
 ************************************************************************/
 
 #include "stdafx.h"
-#include <shlobj.h>
 
-#include "oEvent.h"
-#include "xmlparser.h"
-#include <process.h>
-
-#include "gdioutput.h"
-#include "commctrl.h"
-
-#include "localizer.h"
 #include "progress.h"
 
+#include <chrono>
 
-void start_progress_thread(void *ptr)
-{
-  ProgressWindow *pw=(ProgressWindow *)ptr;
-  pw->process();
-}
+constexpr int p_width_base = 230;
+constexpr int p_height_base = 12;
 
-const int p_width = 230;
-const int p_height = 12;
-
-ProgressWindow::ProgressWindow(HWND hWndParent)
-{
-  lastPrg = 0;
-  initialized = false;
-  subStart = 0;
-  subEnd = 1000;
-  hWnd = hWndParent;
+ProgressWindow::ProgressWindow(HWND hWndParent, double scale) : hWnd(hWndParent), 
+    p_height(int(p_height_base * scale)),
+    p_width(int(p_width_base * scale)) {
   terminate = false;
   running = false;
 }
 
-void ProgressWindow::init()
-{
-  initialized = true;
+void ProgressWindow::init() {
   progress = 0;
   lastProgress = 0;
   time = 0;
@@ -72,52 +52,39 @@ void ProgressWindow::init()
   SetWindowPos(hWnd, HWND_TOPMOST, 0,0,0,0, SWP_NOSIZE|SWP_NOMOVE);
   SetActiveWindow(hWnd);
   UpdateWindow(hWnd);
-  InitializeCriticalSection(&syncObj);
-  thread = (HANDLE)_beginthread(start_progress_thread, 0,  this);
+    
+  threadObj = make_shared<std::thread>(&ProgressWindow::process, this);
 }
 
-ProgressWindow::~ProgressWindow()
-{
-  if (initialized) {
+ProgressWindow::~ProgressWindow() {
+  if (threadObj) {
     setProgress(1000);
-    EnterCriticalSection(&syncObj);
-    terminate = true;
-    LeaveCriticalSection(&syncObj);
-
-    int maxCount = 100;
-    while (maxCount-- > 0 && running) {
-      Sleep(20);
-    }
-    EnterCriticalSection(&syncObj);
-    if (running)
-      TerminateThread(thread, 0);
-    LeaveCriticalSection(&syncObj);
-
-//	  CloseHandle(thread);
-    DeleteCriticalSection(&syncObj);
-
+    terminate.store(true);
+    //exitCond.notify_all();
+    threadObj->join();
+    threadObj.reset();
     DestroyWindow(hWnd);
   }
 }
 
-void ProgressWindow::process()
-{
+void ProgressWindow::process() {
   running = true;
+  uint64_t baseC = GetTickCount64();
   while (!terminate) {
-    EnterCriticalSection(&syncObj);
-    if (!terminate)
-      draw(GetTickCount()/40);
-    LeaveCriticalSection(&syncObj);
-    if (!terminate)
-      Sleep(33);
+   if (!terminate)
+      draw((GetTickCount64() - baseC)/40, getProgress());
+
+   if (!terminate) {
+     std::unique_lock<std::mutex> lk(mtx);
+     exitCond.wait_for(lk, std::chrono::milliseconds(33));
+   }
   }
   running = false;
 }
 
-void ProgressWindow::draw(int count)
+void ProgressWindow::draw(int count, int prgBase) const
 {
-  HDC hDC = GetDC(hWnd);
-  int prgBase = getProgress();
+  HDC hDC = GetDC(hWnd);  
   int prg = min((prgBase * p_width)/1000, p_width-1);
   int center = int(prg*((cos(count*0.1)+1)*0.8) / 2);
 
@@ -186,44 +153,43 @@ void ProgressWindow::draw(int count)
   ReleaseDC(hWnd, hDC);
 }
 
-int ProgressWindow::getProgress() const
-{
-  DWORD now = GetTickCount();
+int ProgressWindow::getProgress() const {
+  uint64_t now = GetTickCount64();
   int dt = int(now-time);
-  EnterCriticalSection(&syncObj);
-    int dp = int(dt * speed);
-    dp = min<int>(dp, int(progress - lastProgress));
-  LeaveCriticalSection(&syncObj);
+  std::lock_guard<std::mutex> lock(mtx);
+  return computeProgress(dt);
+}
+
+int ProgressWindow::computeProgress(int dt) const {
+  int dp = std::max(0, int(dt * speed));
+  dp = min<int>(dp, int(progress - lastProgress));
   return min(progress + dp, 1000);
 }
 
-void ProgressWindow::setProgress(int prg)
-{
+void ProgressWindow::setProgress(int prg) {
   if (prg <= lastPrg + 1)
     return;
   lastPrg = prg;
-  if (!initialized)
+  if (!threadObj)
     return;
-  EnterCriticalSection(&syncObj);
+
+  std::lock_guard<std::mutex> lock(mtx);
   lastProgress = progress;
   lastTime = time;
-  time = GetTickCount();
-  int newProgress = getProgress();
+  time = GetTickCount64();
+  int newProgress = computeProgress(0);
   newProgress = prg > newProgress ? prg : newProgress;
   if (lastTime>0)
     speed = double(prg - lastProgress) / double(time-lastTime);
   progress = max(newProgress, int(progress));
-  LeaveCriticalSection(&syncObj);
 }
 
-void ProgressWindow::setSubProgress(int prg)
-{
+void ProgressWindow::setSubProgress(int prg) {
   prg = subStart + prg *(subEnd-subStart) / 1000;
   setProgress(prg);
 }
 
-void ProgressWindow::initSubProgress(int start, int end)
-{
+void ProgressWindow::initSubProgress(int start, int end) {
   subStart = start;
   subEnd = end;
 }

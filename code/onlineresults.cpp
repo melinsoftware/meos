@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ int OnlineResults::processButton(gdioutput &gdi, ButtonInfo &bi) {
 void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
   int iv = interval;
   if (state == State::Create) {
-    iv = 10;
+    iv = 1;
     url = oe.getPropertyString("MOPURL", L"");
     file = oe.getPropertyString("MOPFolderName", L"");
     oe.getAllClasses(classes);
@@ -115,7 +115,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
     time = itow(iv);
 
   settingsTitle(gdi, "Resultat online");
-  startCancelInterval(gdi, "Save", state, IntervalSecond, time);
+  startCancelInterval(gdi, oe, "Save", state, IntervalType::IntervalSecond, time);
 
   int basex = gdi.getCX();
   gdi.pushY();
@@ -376,7 +376,7 @@ void OnlineResults::status(gdioutput &gdi)
   if (sendToFile || sendToURL) {
     if (interval > 0) {
       gdi.addString("", 0, "Exporterar om: ");
-      gdi.addTimer(gdi.getCY(), gdi.getCX(), timerIgnoreSign, (GetTickCount() - timeout) / 1000);
+      gdi.addTimer(gdi.getCY(), gdi.getCX(), timerIgnoreSign, (GetTickCount64() - timeout) / 1000);
     }
     gdi.addString("", 0, "Antal skickade uppdateringar X (Y kb)#" +
                           itos(exportCounter-1) + "#" + itos(bytesExported/1024));
@@ -391,86 +391,87 @@ void OnlineResults::status(gdioutput &gdi)
 }
 
 void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
-  errorLines.clear();
-  uint64_t tick = GetTickCount64();
-  if (lastSync + interval * 1000 > tick)
-    return;
+  processProtected(gdi, ast, [&]() {
+    errorLines.clear();
+    uint64_t tick = GetTickCount64();
+    if (lastSync + interval * 1000 > tick)
+      return;
 
-  if (!sendToFile && !sendToURL)
-    return;
-  ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWNDTarget() : 0);
-  pwMain.init();
+    if (!sendToFile && !sendToURL)
+      return;
 
-  if (allClasses)
-    oe->getAllClasses(classes);
+    ProgressWindow pwMain((sendToURL && ast == SyncNone) ? gdi.getHWNDTarget() : 0, gdi.getScale());
+    pwMain.init();
 
-  wstring t;
-  int xmlSize = 0;
-  InfoCompetition &ic = getInfoServer();
-  xmlbuffer xmlbuff;
-  if (dataType == DataType::MOP10 || dataType == DataType::MOP20) {
-    if (ic.synchronize(*oe, false, classes, controls, dataType != DataType::MOP10)) {
-      lastSync = tick; // If error, avoid to quick retry
-      ic.getDiffXML(xmlbuff);
-    }
-  }
-  else {
-    t = getTempFile();
-    if (dataType == DataType::IOF2)
-      oe->exportIOFSplits(oEvent::IOF20, t.c_str(), false, false,
-                          classes, make_pair("",""), - 1, false, true, true, false, false);
-    else if (dataType == DataType::IOF3)
-      oe->exportIOFSplits(oEvent::IOF30, t.c_str(), false, false, 
-                          classes, make_pair("", ""), -1, false, true, true, false, false);
-    else
-      throw meosException("Internal error");
-  }
+    if (allClasses)
+      oe->getAllClasses(classes);
 
-  if (!t.empty() || xmlbuff.size() > 0) {
-    if (sendToFile) {
-
-      if (xmlbuff.size() > 0) {
-        t = getTempFile();
-        xmlparser xml;
-        if (sendToURL) {
-          xmlbuffer bcopy = xmlbuff;
-          bcopy.startXML(xml, t);
-          bcopy.commit(xml, xmlbuff.size());
-        }
-        else {
-          xmlbuff.startXML(xml, t);
-          xmlbuff.commit(xml, xmlbuff.size());
-        }
-        xml.endTag();
-        xmlSize = xml.closeOut();
-
-      }
-      wstring fn = getExportFileName();
-
-      if (!CopyFile(t.c_str(), fn.c_str(), false))
-        gdi.addInfoBox("", L"Kunde inte skriva resultat till X#" + fn);
-      else if (!sendToURL) {
-        ic.commitComplete();
-        bytesExported +=xmlSize;
-        removeTempFile(t);
-      }
-
-      if (!exportScript.empty()) {
-        ShellExecute(NULL, NULL, exportScript.c_str(), fn.c_str(), NULL, SW_HIDE);
+    wstring t;
+    int xmlSize = 0;
+    InfoCompetition& ic = getInfoServer();
+    xmlbuffer xmlbuff;
+    if (dataType == DataType::MOP10 || dataType == DataType::MOP20) {
+      if (ic.synchronize(*oe, false, classes, controls, dataType != DataType::MOP10)) {
+        lastSync = tick; // If error, avoid to quick retry
+        ic.getDiffXML(xmlbuff);
       }
     }
+    else {
+      t = getTempFile();
+      if (dataType == DataType::IOF2)
+        oe->exportIOFSplits(oEvent::IOF20, t.c_str(), false, false,
+          classes, make_pair("", ""), -1, false, false, true, true, false, false);
+      else if (dataType == DataType::IOF3)
+        oe->exportIOFSplits(oEvent::IOF30, t.c_str(), false, false,
+          classes, make_pair("", ""), -1, true, false, true, true, false, false);
+      else
+        throw meosException("Internal error");
+    }
 
-    constexpr int buffLimit = 64;
+    if (!t.empty() || xmlbuff.size() > 0) {
+      if (sendToFile) {
 
-    try {
+        if (xmlbuff.size() > 0) {
+          t = getTempFile();
+          xmlparser xml;
+          if (sendToURL) {
+            xmlbuffer bcopy = xmlbuff;
+            bcopy.startXML(xml, t);
+            bcopy.commit(xml, xmlbuff.size());
+          }
+          else {
+            xmlbuff.startXML(xml, t);
+            xmlbuff.commit(xml, xmlbuff.size());
+          }
+          xml.endTag();
+          xmlSize = xml.closeOut();
+
+        }
+        wstring fn = getExportFileName();
+
+        if (!CopyFile(t.c_str(), fn.c_str(), false))
+          gdi.addInfoBox("", L"Kunde inte skriva resultat till X#" + fn, L"");
+        else if (!sendToURL) {
+          ic.commitComplete();
+          bytesExported += xmlSize;
+          removeTempFile(t);
+        }
+
+        if (!exportScript.empty()) {
+          ShellExecute(NULL, NULL, exportScript.c_str(), fn.c_str(), NULL, SW_HIDE);
+        }
+      }
+
+      constexpr int buffLimit = 64;
+
       if (sendToURL) {
         Download dwl;
         dwl.initInternet();
-        ProgressWindow pw(0);
-        vector<pair<wstring,wstring> > key;
-    		pair<wstring, wstring> mk1(L"competition", itow(cmpId));
+        ProgressWindow pw(nullptr, gdi.getScale());
+        vector<pair<wstring, wstring> > key;
+        pair<wstring, wstring> mk1(L"competition", itow(cmpId));
         key.push_back(mk1);
-		    pair<wstring, wstring> mk2(L"pwd", passwd);
+        pair<wstring, wstring> mk2(L"pwd", passwd);
         key.push_back(mk2);
 
         bool addedHeader = false;
@@ -481,8 +482,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         string tmp;
         const int total = max<int>(xmlbuff.size(), 1u);
 
-        while(moreToWrite) {
-
+        while (moreToWrite) {
           t = getTempFile();
           xmlparser xmlOut;
           xmlbuff.startXML(xmlOut, t);
@@ -490,23 +490,23 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           xmlOut.endTag();
           xmlSize = xmlOut.closeOut();
           wstring result = getTempFile();
-
+          bool wasZip = false;
           if (!forceNoZip && ((zipFile && xmlSize > 1024) || forceZIP)) {
             wstring zipped = getTempFile();
             zip(zipped.c_str(), 0, vector<wstring>(1, t));
             removeTempFile(t);
             t = zipped;
-
+            wasZip = true;
             struct _stat st;
             _wstat(t.c_str(), &st);
             bytesExported += st.st_size;
           }
           else
-            bytesExported +=xmlSize;
+            bytesExported += xmlSize;
 
 
           if (!addedHeader) {
-            if (zipFile) {
+            if (wasZip) {
               forceZIP = true;
               pair<wstring, wstring> mk3(L"Content-Type", L"application/zip");
               key.push_back(mk3);
@@ -522,7 +522,7 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           dwl.postFile(url, t, result, key, pw);
           removeTempFile(t);
 
-          pwMain.setProgress(1000-(1000 * xmlbuff.size())/total);
+          pwMain.setProgress(1000 - (1000 * xmlbuff.size()) / total);
 
           xmlparser xml;
           xmlobject res;
@@ -530,13 +530,13 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
             xml.read(result);
             res = xml.getObject("MOPStatus");
           }
-          catch(std::exception &) {
+          catch (std::exception&) {
             ifstream is(result.c_str());
-            is.seekg (0, is.end);
+            is.seekg(0, is.end);
             int length = (int)is.tellg();
-            is.seekg (0, is.beg);
-            char * buffer = new char [length+1];
-            is.read (buffer,length);
+            is.seekg(0, is.beg);
+            char* buffer = new char[length + 1];
+            is.read(buffer, length);
             is.close();
             removeTempFile(result);
             buffer[length] = 0;
@@ -568,23 +568,11 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         else
           throw meosException("Misslyckades med att ladda upp onlineresultat");
       }
-    }
-    catch (meosException &ex) {
-      if (ast == SyncNone)
-        throw;
-      else
-        gdi.addInfoBox("", L"Online Results Error X#" + lang.tl(ex.wwhat()), 5000);
-    }
-    catch(std::exception &ex) {
-      if (ast == SyncNone)
-        throw;
-      else
-        gdi.addInfoBox("", L"Online Results Error X#"+gdi.widen(ex.what()), 5000);
-    }
 
-    lastSync = GetTickCount64();
-    exportCounter++;
-  }
+      lastSync = GetTickCount64();
+      exportCounter++;
+    }
+  });
 }
 
 void OnlineResults::formatError(gdioutput &gdi) {
@@ -621,6 +609,7 @@ wstring OnlineResults::getExportFileName() const {
 }
 
 void OnlineResults::saveMachine(oEvent &oe, const wstring &guiInterval) {
+  AutoMachine::saveMachine(oe, guiInterval);
   auto &cnt = oe.getMachineContainer().set(getTypeString(), getMachineName());
   cnt.set("file", file);
   cnt.set("url", url);

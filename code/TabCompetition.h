@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,9 +24,9 @@
 #include "tabbase.h"
 #include "gdiconstants.h"
 #include "oFreeImport.h"
+#include "importformats.h"
 
 class PrefsEditor;
-class ImportFormats;
 
 class TabCompetition :
   public TabBase
@@ -113,8 +113,7 @@ class TabCompetition :
 
   set<int> allTransfer;
 
-
-  void checkReadyForResultExport(gdioutput &gdi, const set<int> &classFilter);
+  void checkReadyForResultExport(gdioutput &gdi,  const set<int> &classFilter, bool checkVacant);
 
   void displayRunners(gdioutput &gdi, const vector<pRunner> &changedClass) const;
 
@@ -128,10 +127,10 @@ class TabCompetition :
   
   FlowOperation checkStageFilter(gdioutput &gdi, const wstring &fname, set<int> &filter, pair<string, string> &preferredIdProvider);
   
-  void setExportOptionsStatus(gdioutput &gdi, int format) const;
+  static void setExportOptionsStatus(gdioutput &gdi, int format);
 
   void selectStartlistOptions(gdioutput &gdi);
-  void selectExportSplitOptions(gdioutput &gdi);
+  void selectExportSplitOptions(gdioutput& gdi);
 
   void showSelectId(std::pair<bool, bool>& priSecondId, gdioutput& gdi);
   pair<string, string> TabCompetition::getPreferredIdTypes(gdioutput& gdi);
@@ -155,6 +154,15 @@ protected:
   void clearCompetitionData();
 
 public:
+
+  static void selectExportSplitOptions(gdioutput& gdi, oEvent* oe, const set<int>& allTransfer, const ExportSplitsData *data);
+
+  static void readExportSplitSettings(gdioutput& gdi, oEvent* oe, set<int>& allTransfer, ExportSplitsData &data);
+
+  static void exportSplitsData(oEvent* oe, const wstring& save,
+    const set<int>& allTransfer,
+    const ExportSplitsData& data, bool openDocument);
+
   void loadSettings(gdioutput& gdi);
   void showExtraFields(gdioutput& gdi, oEvent::ExtraFieldContext type);
 

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -165,19 +165,21 @@ struct RadioTime {
 class InfoBaseCompetitor : public InfoBase {
   protected:
     wstring name;
+    wstring bib;
+    wstring nationality;
+
     int organizationId;
     int classId;
-
     int status;
     int startTime;
     int runningTime;
-    wstring bib;
-    wstring nationality;
+
+    bool preliminary;
     void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
     bool synchronizeBase(oAbstractRunner &bc);
   public:
     InfoBaseCompetitor(int id);
-    virtual ~InfoBaseCompetitor() {}
+    virtual ~InfoBaseCompetitor() = default;
 };
 
 class InfoCompetitor : public InfoBaseCompetitor {
@@ -189,8 +191,8 @@ class InfoCompetitor : public InfoBaseCompetitor {
     int cardNo = 0;
     bool isRunning = false;
     bool synchronize(const InfoCompetition &cmp, oRunner &c);
-    bool changeTotalSt;
-    bool changeRadio;
+    bool changeTotalSt = false;
+    bool changeRadio = false;
     mutable bool changeCard = false;
   public:
     bool synchronize(bool useTotalResults, bool useCourse, oRunner &c);

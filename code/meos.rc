@@ -61,6 +61,10 @@ IDI_MEOSINFO            PNG                     "info24.png"
 
 IDI_MEOSWARN            PNG                     "warn24.png"
 
+IDI_MEOSCHECK           PNG                     "check32.png"
+
+IDI_MEOSERROR           PNG                     "error32.png"
+
 IDI_MEOSEDIT            PNG                     "edit.png"
 
 IDI_MEOSCLASS24         PNG                     "class24.png"
@@ -204,12 +208,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Melin Software HB"
             VALUE "FileDescription", "meos"
-            VALUE "FileVersion", "4.0.0.1"
+            VALUE "FileVersion", "4.1.0.1"
             VALUE "InternalName", "meos"
-            VALUE "LegalCopyright", "Copyright © 2007-2024"
+            VALUE "LegalCopyright", "Copyright © 2007-2025"
             VALUE "OriginalFilename", "MeOS.exe"
             VALUE "ProductName", "  meos"
-            VALUE "ProductVersion", "4.0.0.1"
+            VALUE "ProductVersion", "4.1.0.1"
         END
     END
     BLOCK "VarFileInfo"

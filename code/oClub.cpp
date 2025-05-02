@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,36 +31,76 @@
 #include "oEvent.h"
 #include "gdioutput.h"
 #include "gdifonts.h"
-#include "RunnerDB.h"
-#include <cassert>
 #include "Table.h"
+#include "intkeymapimpl.hpp"
 #include "localizer.h"
 #include "pdfwriter.h"
 #include "HTMLWriter.h"
+#include "csvparser.h"
+#include "RunnerDB.h"
 
-#include "intkeymapimpl.hpp"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-oClub::oClub(oEvent *poe): oBase(poe)
-{
+oClub::oClub(oEvent *poe): oBase(poe) {
   getDI().initData();
   Id=oe->getFreeClubId();
 }
 
-oClub::oClub(oEvent *poe, int id): oBase(poe)
-{
+oClub::oClub(oEvent *poe, int id): oBase(poe) {
   getDI().initData();
   Id=id;
   if (id != cVacantId && id != cNoClubId)
     oe->qFreeClubId = max(id, oe->qFreeClubId);
 }
 
+oClub::~oClub() = default;
 
-oClub::~oClub(){
+map<wstring, wstring> oClub::manualCompactNameMap;
+
+extern wchar_t exePath[MAX_PATH];
+
+void oClub::loadNameMap() {
+  wchar_t ccpath[MAX_PATH];
+  // To run in debugger, copy this file (from the installation) to MeOS data directory or to the folder of the exe file
+  getUserFile(ccpath, L"clubnamemap.csv");  
+  wstring path = ccpath;
+
+  if (!fileExists(path) && exePath[0]) {
+    path = exePath;
+    path += L"\\clubnamemap.csv";
+  }
+
+#ifdef _DEBUG
+  if (!fileExists(path))
+    path = L".\\..\\Lists\\clubnamemap.csv";
+#endif
+
+  bool good = false;
+  if (fileExists(path)) {
+    csvparser csv;
+    list<vector<wstring>> data;
+    csv.parse(path, data);
+    good = true;
+    for (auto& row : data) {
+      if (row.size() == 2)
+        manualCompactNameMap[row[0]] = row[1];
+      else
+        good = false;
+    }
+  }
+  if (!good) {
+#ifdef _DEBUG
+    MessageBox(NULL, L"Error processing clubnamemap.csv.\n\nTo run in debugger, copy this file (from the installation) to MeOS data directory or to the folder of meos.exe", L"MeOS", MB_ICONWARNING | MB_OK);
+#else
+   MessageBox(NULL, (L"Error processing: " + path).c_str(), L"MeOS", MB_ICONWARNING | MB_OK);
+#endif
+
+  }
 }
+
 
 wstring oClub::getInfo() const {
   return L"Club: " + name;
@@ -84,63 +124,122 @@ bool oClub::write(xmlparser &xml)
   return true;
 }
 
-void oClub::set(const xmlobject &xo)
-{
+void oClub::set(const xmlobject& xo) {
   xmlList xl;
   xo.getObjects(xl);
 
-  xmlList::const_iterator it;
-
-  for(it=xl.begin(); it != xl.end(); ++it){
-    if (it->is("Id")){
-      Id=it->getInt();
+  wstring tName;
+  for (auto it = xl.begin(); it != xl.end(); ++it) {
+    if (it->is("Id")) {
+      Id = it->getInt();
     }
-    else if (it->is("Name")){
-      internalSetName(it->getWStr());
+    else if (it->is("Name")) {
+      tName = it->getWStr();
     }
-    else if (it->is("oData")){
+    else if (it->is("oData")) {
       getDI().set(*it);
     }
-    else if (it->is("Updated")){
+    else if (it->is("Updated")) {
       Modified.setStamp(it->getRawStr());
     }
     else if (it->is("AltName")) {
       altNames.push_back(it->getWStr());
     }
   }
+  internalSetName(tName);
 }
 
-void oClub::internalSetName(const wstring &n)
-{
-  if (name != n) {
-    name = n;
-    const wchar_t *bf = name.c_str();
-    int len = name.length();
-    int ix = -1;
-    for (int k=0;k <= len-9; k++) {
-      if (bf[k] == 'S') {
-        if (wcscmp(bf+k, L"Skid o OK")==0) {
-          ix = k;
-          break;
+
+void oClub::internalSetName(const wstring &n) {
+  name = n;
+  const wchar_t *bf = name.c_str();
+  int len = name.length();
+  int ix = -1;
+  for (int k=0;k <= len-9; k++) {
+    if (bf[k] == 'S') {
+      if (wcscmp(bf+k, L"Skid o OK")==0) {
+        ix = k;
+        break;
+      }
+      if (wcscmp(bf+k, L"Skid o OL")==0) {
+        ix = k;
+        break;
+      }
+    }
+  }
+  if (ix >= 0) {
+    tPrettyName = name;
+    if (wcscmp(bf+ix, L"Skid o OK")==0)
+      tPrettyName.replace(ix, 9, L"SOK", 3);
+    else if (wcscmp(bf+ix, L"Skid o OL")==0)
+      tPrettyName.replace(ix, 9, L"SOL", 3);
+  }
+
+  wstring sn = getDCI().getString("ShortName");
+  if (!sn.empty() && sn != n) {
+    tCompactName = sn;
+  }
+  else {
+    auto res = manualCompactNameMap.find(name);
+    if (res != manualCompactNameMap.end()) {
+      tCompactName = res->second;
+      return;
+    }
+
+    vector<wstring> out;
+    split(getDisplayName(), L" ", out);
+    int skipped = 0;
+    bool properName = false;
+    for (auto& w : out) {
+      bool skip = false;
+      if (w.size() <= 3) {
+        skip = true;
+        for (int i = 0; i < w.size(); i++) {
+          skip = skip && w[i] >= 'A' && w[i] <= 'Z';
         }
-        if (wcscmp(bf+k, L"Skid o OL")==0) {
-          ix = k;
-          break;
+      }
+      else if (_wcsicmp(w.c_str(),L"GOIF") == 0 || 
+        _wcsicmp(w.c_str(), L"Orientering") == 0 ||
+        _wcsicmp(w.c_str(), L"Orienteering") == 0 ||
+        _wcsicmp(w.c_str(), L"Suunnistajat") == 0)
+        skip = true;
+      else {
+        int pCount = 0;
+        for (int i = 0; i < w.size(); i++) {
+          if (w[i] > 'Z') {
+            pCount++;
+            if (pCount >= 2) {
+              properName = true;
+              break;
+            }
+          }
+        }
+      }
+      if (skip) {
+        w.clear();
+        skipped++;
+      }
+
+    }
+    tCompactName = L"";
+    if (skipped > 0 && properName) {
+      for (auto& w : out) {
+        if (!w.empty()) {
+          if (tCompactName.empty())
+            tCompactName = w;
+          else
+            tCompactName += L" " + w;
         }
       }
     }
-    if (ix >= 0) {
-      tPrettyName = name;
-      if (wcscmp(bf+ix, L"Skid o OK")==0)
-        tPrettyName.replace(ix, 9, L"SOK", 3);
-      else if (wcscmp(bf+ix, L"Skid o OL")==0)
-        tPrettyName.replace(ix, 9, L"SOL", 3);
-    }
-  }
+
+    auto cn = manualCompactNameMap.find(tCompactName);
+    if (cn != manualCompactNameMap.end())
+      tCompactName = cn->second;
+  }  
 }
 
-void oClub::setName(const wstring &n)
-{
+void oClub::setName(const wstring &n) {
   if (n != name) {
     internalSetName(n);
     updateChanged();

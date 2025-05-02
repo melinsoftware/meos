@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2024 Melin Software HB
+Copyright (C) 2009-2025 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,7 +36,9 @@ public:
   
   void save(oEvent &oe, gdioutput &gdi, bool doProcess) override;
   void settings(gdioutput &gdi, oEvent &oe, State state) override;
-  RestService *clone() const override { return new RestService(*this); }
+  shared_ptr<AutoMachine> clone() const final { 
+    return make_shared<RestService>(*this); 
+  }
   void status(gdioutput &gdi) override;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) override;
   

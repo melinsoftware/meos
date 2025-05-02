@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,10 +22,12 @@
 ************************************************************************/
 #include "tabbase.h"
 #include "oListInfo.h"
+#include "HTMLWriter.h"
 
 class LiveResult;
 class ListEditor;
 class MethodEditor;
+class ListUpdater;
 
 class TabList :
   public TabBase
@@ -74,22 +76,23 @@ protected:
 
   bool noReEvaluate;
   
-  int baseButtons(gdioutput &gdi, int extraButtons);
-
+  
 private:
   // Not supported, copy works not.
-  TabList(const TabList &);
-  const TabList &operator = (const TabList &);
+  TabList(const TabList &) = delete;
+  const TabList &operator=(const TabList &) = delete;
   
   map<string, int> htmlTemplateTag2Id;
-  map<int, wstring> html2IdToInfo;
+  map<int, HTMLWriter::TemplateInfo> html2IdToInfo;
+
+  ListUpdater *listUpdater = nullptr;
 
   string settingsTarget;
   oListParam tmpSettingsParam;
   void changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindow);
   void leavingList(const string &wnd);
 
-  pair<gdioutput *, TabList *> makeOwnWindow(gdioutput &gdi);
+  pair<gdioutput *, TabList *> makeOwnWindow(gdioutput &gdi, bool forNewList);
 
   /** Set animation mode*/
   void setAnimationMode(gdioutput &gdi);
@@ -113,6 +116,9 @@ private:
 public:
   /** Returns a collection of public lists. */
   void static getPublicLists(oEvent &oe, vector<oListParam> &lists);
+
+  /** Generate list buttons */
+  static int baseButtons(gdioutput& gdi, int extraButtons, bool ownWindow);
 
   MethodEditor &getMethodEditor();
 
@@ -159,7 +165,9 @@ public:
   const char * getTypeStr() const {return "TListTab";}
   TabType getType() const {return TListTab;}
 
+
+  gdioutput *showList(gdioutput& gdi, const oListInfo& listInfo, ListUpdater *listUpdater);
+
   TabList(oEvent *oe);
   ~TabList(void);
-  friend int ListsEventCB(gdioutput *gdi, int type, void *data);
 };

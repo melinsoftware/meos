@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -846,7 +846,7 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
     con->query().exec("SET sql_log_bin=off");
   }
   catch (const Exception &ex) {
-    oe->gdiBase().addInfoBox("binlog", L"warn:mysqlbinlog#" + oe->gdiBase().widen(ex.what()), 10000);
+    oe->gdiBase().addInfoBox("binlog", L"warn:mysqlbinlog#" + oe->gdiBase().widen(ex.what()), L"", BoxStyle::Header, 10000);
   }
 
   try{
@@ -994,7 +994,7 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
     return opStatusFail;
   int errorCount = 0;
   int totErrorCount = 0;
-  ProgressWindow pw(oe->gdiBase().getHWNDTarget());
+  ProgressWindow pw(oe->gdiBase().getHWNDTarget(), oe->gdiBase().getScale());
   try {
     const vector<oDBClubEntry> &cdb = oe->runnerDB->getClubDB(true);
     size_t size = cdb.size();
@@ -1154,7 +1154,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
 
   if (!oe->Id) return SyncUpdate(oe);
 
-  ProgressWindow pw(oe->gdiBase().getHWNDTarget());
+  ProgressWindow pw(oe->gdiBase().getHWNDTarget(), oe->gdiBase().getScale());
 
   try {
     con->select_db("MeOSMain");
@@ -1506,8 +1506,8 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
         oClub t(oe, row["Id"]);
 
         string n = row["Name"];
-        t.internalSetName(fromUTF(n));
         storeData(t.getDI(), row, oe->dataRevision);
+        t.internalSetName(fromUTF(n));
 
         oe->runnerDB->addClub(t, false);
 
@@ -1576,8 +1576,7 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
 void MeosSQL::storeClub(const RowWrapper &row, oClub &c)
 {
   string n = row["Name"];
-  c.internalSetName(fromUTF(n));
-
+  
   c.sqlUpdated = row["Modified"];
   c.counter = row["Counter"];
   c.Removed = row["Removed"];
@@ -1586,6 +1585,7 @@ void MeosSQL::storeClub(const RowWrapper &row, oClub &c)
 
   synchronized(c);
   storeData(c.getDI(), row, c.oe->dataRevision);
+  c.internalSetName(fromUTF(n));
 }
 
 void MeosSQL::storeControl(const RowWrapper &row, oControl &c)
@@ -1754,8 +1754,7 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
                                   bool readCourseCard,
                                   bool readClassClub,
                                   bool readRunners,
-                                  bool allowSubRead)
-{
+                                  bool allowSubRead) {
   OpFailStatus success = opStatusOK;
   oEvent *oe=r.oe;
 
@@ -1768,10 +1767,13 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
 
   r.sName = fromUTF((string)row["Name"]);
   r.getRealName(r.sName, r.tRealName);
-  r.setCardNo(row["CardNo"], false, true);
+  
+  if (!r.cardWasSet)
+    r.setCardNo(row["CardNo"], false, true);
   r.StartNo = row["StartNo"];
   r.tStartTime = r.startTime = row["StartTime"];
-  r.FinishTime = row["FinishTime"];
+  if (!r.finishTimeWasSet)
+    r.FinishTime = row["FinishTime"];
   r.tStatus = r.status = RunnerStatus(int(row["Status"]));
 
   r.inputTime = row["InputTime"];
@@ -1853,36 +1855,38 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
   }
   else r.Club=0;
 
-  pCard oldCard = r.Card;
+  if (!r.cardWasSet) {
+    pCard oldCard = r.Card;
 
-  if (int(row["Card"])!=0) {
-    r.Card = oe->getCard(int(row["Card"]));
+    if (int(row["Card"]) != 0) {
+      r.Card = oe->getCard(int(row["Card"]));
 
-    if (!r.Card){
-      oCard oc(oe, row["Card"]);
-      oc.setImplicitlyCreated();
-      if (allowSubRead)
-        success = min(success, syncRead(true, &oc));
-      if (!oc.isRemoved()) {
-        r.Card = oe->addCard(oc);
-        r.Card->changed = false;
+      if (!r.Card) {
+        oCard oc(oe, row["Card"]);
+        oc.setImplicitlyCreated();
+        if (allowSubRead)
+          success = min(success, syncRead(true, &oc));
+        if (!oc.isRemoved()) {
+          r.Card = oe->addCard(oc);
+          r.Card->changed = false;
+        }
+        else {
+          addedFromDatabase(r.Card);
+        }
       }
-      else {
-        addedFromDatabase(r.Card);
-      }
+      else if (readCourseCard && allowSubRead)
+        success = min(success, syncRead(false, r.Card));
     }
-    else if (readCourseCard && allowSubRead)
-      success = min(success, syncRead(false, r.Card));
-  }
-  else r.Card=0;
+    else r.Card = nullptr;
 
-  // Update card ownership
-  if (oldCard && oldCard != r.Card && oldCard->tOwner == &r)
-    oldCard->tOwner = 0;
+    // Update card ownership
+    if (oldCard && oldCard != r.Card && oldCard->tOwner == &r)
+      oldCard->tOwner = nullptr;
+  }
 
   // This is updated by addRunner if this is a temporary copy.
   if (r.Card)
-    r.Card->tOwner=&r;
+    r.Card->tOwner = &r;
 
   // This only loads indexes
   r.decodeMultiR(string(row["MultiR"]));
@@ -2092,9 +2096,7 @@ bool MeosSQL::remove(oBase *ob)
   return true;
 }
 
-
-OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll)
-{
+OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll) {
   errorMessage.clear();
 
   if (CmpDataBase.empty())
@@ -2137,7 +2139,12 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll)
   wstring str = L"write runner " + r->sName + L", st = " + itow(r->startTime) + L"\n";
   OutputDebugString(str.c_str());
   */
-  return syncUpdate(queryset, "oRunner", r);
+  OpFailStatus res = syncUpdate(queryset, "oRunner", r);
+  if (res != OpFailStatus::opStatusFail) {
+    r->cardWasSet = false; // Clear flag that this data was set here
+    r->finishTimeWasSet = false;
+  }
+  return res;
 }
 
 bool MeosSQL::isOld(int counter, const string &time, oBase *ob)
@@ -2201,33 +2208,36 @@ OpFailStatus MeosSQL::syncRead(bool forceRead, oRunner *r, bool readClassClub, b
       r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
 
       //Forget evaluated changes. Not our buisness to update.
-      r->changed = false;
-
-      return success;
-    }
-    else {
-      if (r->Card && readCourseCard)
-        syncRead(false, r->Card);
-      if (r->Class && readClassClub)
-        syncRead(false, r->Class, readClassClub);
-      if (r->Course && readCourseCard) {
-        set<int> controlIds;
-        syncReadCourse(false, r->Course, controlIds);
-        if (readClassClub)
-          syncReadControls(r->oe, controlIds);
+      if (!r->cardWasSet && !r->finishTimeWasSet) {
+        r->changed = false;
+        return success;
       }
-      if (r->Club && readClassClub)
-        syncRead(false, r->Club);
- 
-      if (r->changed)
-        return syncUpdate(r, false);
-
-      vector<int> mp;
-      r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
-      r->changed = false;
-      return  opStatusOK;
+      else {
+        // Preserve card/finish time set on this client even in case of data collision
+        r->changed = true;
+      }
     }
 
+    if (r->Card && readCourseCard)
+      syncRead(false, r->Card);
+    if (r->Class && readClassClub)
+      syncRead(false, r->Class, readClassClub);
+    if (r->Course && readCourseCard) {
+      set<int> controlIds;
+      syncReadCourse(false, r->Course, controlIds);
+      if (readClassClub)
+        syncReadControls(r->oe, controlIds);
+    }
+    if (r->Club && readClassClub)
+      syncRead(false, r->Club);
+ 
+    if (r->changed)
+      return syncUpdate(r, false);
+
+    vector<int> mp;
+    r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
+    r->changed = false;
+  
     return  opStatusOK;
   }
   catch (const Exception& er){

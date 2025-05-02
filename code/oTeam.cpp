@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1966,7 +1966,7 @@ void oEvent::getTeams(int classId, vector<pTeam> &t, bool sort) {
     if (it->isRemoved())
       continue;
 
-    if (classId == 0 || it->getClassId(false) == classId)
+    if (classId <= 0 || it->getClassId(false) == classId)
       t.push_back(&*it);
   }
 }
@@ -2621,13 +2621,25 @@ const pair<wstring, int> oTeam::getRaceInfo() {
     }
   }
   else {
-    vector<oFreePunch*> pl;
-    oe->synchronizeList(oListId::oLPunchId);
-    oe->getPunchesForRunner(Id, true, pl);
-    if (!pl.empty()) {
-      res.first = lang.tl(L"Senast sedd: X vid Y.#" +
-                          oe->getAbsTime(pl.back()->getTimeInt()) +
-                          L"#" + pl.back()->getType());
+    for (int j = 0; j < Runners.size(); j++) {
+      if (!Runners[j])
+        continue;
+
+      if (Runners[j]->getFinishTime() > 0) {
+        res.first = lang.tl(L"Senast sedd: X vid Y.#" +
+          Runners[j]->getFinishTimeS(false, SubSecond::Auto) +
+          L"#" + lang.tl("växeln"));
+      }
+      else {
+        vector<oFreePunch*> pl;
+        oe->synchronizeList(oListId::oLPunchId);
+        oe->getPunchesForRunner(Runners[j]->getId(), true, pl);
+        if (!pl.empty()) {
+          res.first = lang.tl(L"Senast sedd: X vid Y.#" +
+            oe->getAbsTime(pl.back()->getTimeInt()) +
+            L"#" + pl.back()->getType(Runners[j]->getCourse(false)));
+        }
+      }
     }
   }
 
@@ -2680,4 +2692,38 @@ pRunner oTeam::getRunnerBestTimePar(int linearLegInput) const {
     }
   }
   return res;
+}
+
+DynamicRunnerStatus oTeam::getDynamicStatus() const {
+  if (tStatus == StatusNotCompetiting || tStatus == StatusCANCEL)
+    return DynamicRunnerStatus::StatusInactive;
+
+  bool finishStat = tStatus != RunnerStatus::StatusUnknown &&
+    tStatus != RunnerStatus::StatusOutOfCompetition &&
+    tStatus != RunnerStatus::StatusNoTiming;
+
+  //if (getFinishTime() > 0 && finishStat)
+  //  return DynamicRunnerStatus::StatusFinished;
+
+  bool allFinish = true;
+  bool someActive = false;
+  for (pRunner r : Runners) {
+    if (r) {
+      DynamicRunnerStatus st = r->getDynamicStatus();
+      if (st == DynamicRunnerStatus::StatusActive) {
+        someActive = true;
+        allFinish = false;
+        break;
+      }
+      else if (st != DynamicRunnerStatus::StatusFinished)
+        allFinish = false;
+    }
+  }
+  if (someActive)
+    return DynamicRunnerStatus::StatusActive;
+
+  if (allFinish && tStatus != RunnerStatus::StatusDNS)
+    return DynamicRunnerStatus::StatusFinished;
+
+  return DynamicRunnerStatus::StatusInactive;
 }

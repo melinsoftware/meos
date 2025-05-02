@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1664,9 +1664,9 @@ HLS &HLS::RGBtoHLS(DWORD lRGBColor)
   R = GetRValue(lRGBColor);
   G = GetGValue(lRGBColor);
   B = GetBValue(lRGBColor);
-  WORD &L = lightness;
-  WORD &H = hue;
-  WORD &S = saturation;
+  short &L = lightness;
+  short &H = hue;
+  short &S = saturation;
 
   /* calculate lightness */
   cMax = (BYTE)max( max(R,G), B);
@@ -1923,11 +1923,12 @@ wstring encodeSex(PersonSex sex) {
 }
 
 PersonSex interpretSex(const wstring &sex) {
-  if (sex == L"F" || sex == L"K" || sex == L"W")
+  int sexC = sex.empty() ? 0 : sex[0];
+  if (sexC == 'F' || sexC == 'K' || sexC == 'W' || sexC == 'f' || sexC == 'k' || sexC == 'w')
     return sFemale;
-  else if (sex == L"M" || sex == L"H")
+  else if (sexC == 'M' || sexC == 'H' || sexC == 'm' || sexC == 'h')
     return sMale;
-  else if (sex == L"B")
+  else if (sexC == 'B' || sexC == 'b')
     return sBoth;
   else
     return sUnknown;
@@ -2439,17 +2440,31 @@ void wide2String(const wstring &in, string &out) {
 }
 
 void checkWriteAccess(const wstring &file) {
-  if (_waccess(file.c_str(), 4) == 0)
-    return;
+  int flag = CREATE_NEW;
+  if (_waccess(file.c_str(), 4) == 0) {
+    flag = OPEN_EXISTING;
+  }
 
-  auto h = CreateFile(file.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+  auto h = CreateFile(file.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, flag, FILE_ATTRIBUTE_NORMAL, 0);
   if (h == INVALID_HANDLE_VALUE) {
     wchar_t absPath[260];
     _wfullpath(absPath, file.c_str(), 260);
 
-    throw meosException(L"Du saknar behörighet att skriva till 'X'.#" + wstring(absPath));
+    DWORD err = GetLastError();
+    
+    if (err == ERROR_ACCESS_DENIED)
+      throw meosException(wstring(L"Behörighet saknas för att skriva till 'X'.#") + absPath);
+    else
+      throw meosException(wstring(L"Kunde inte skriva till 'X'.#") + absPath);
   }
   CloseHandle(h);
+}
+
+void moveFile(const wstring& src, const wstring& dst) {
+  DeleteFile(dst.c_str());
+  if (!MoveFile(src.c_str(), dst.c_str())) {
+    throw meosException(L"Kunde inte skriva till 'X'.#" + dst);
+  }
 }
 
 int compareStringIgnoreCase(const wstring &a, const wstring &b) {
@@ -2554,4 +2569,33 @@ const string &codeRelativeTime(int rt) {
   string &res = StringCache::getInstance().get();
   res = bf;
   return res;
+}
+
+wstring addOrSubtractDays(const wstring& m, int days) {
+  // Convert wstring date to SYSTEMTIME
+  SYSTEMTIME st;
+  convertDateYMD(m, st, false);
+
+  // Convert SYSTEMTIME to FILETIME
+  FILETIME ft;
+  SystemTimeToFileTime(&st, &ft);
+
+  // Convert FILETIME to ULARGE_INTEGER for arithmetic
+  ULARGE_INTEGER ui;
+  ui.LowPart = ft.dwLowDateTime;
+  ui.HighPart = ft.dwHighDateTime;
+
+  // Add/subtract the number of days in 100-nanosecond intervals
+  const LONGLONG intervals_per_day = 24 * timeConstSecPerHour * static_cast<LONGLONG>(10000000);
+  ui.QuadPart += days * intervals_per_day;
+
+  // Convert back to FILETIME
+  ft.dwLowDateTime = ui.LowPart;
+  ft.dwHighDateTime = ui.HighPart;
+
+  // Convert FILETIME back to SYSTEMTIME
+  SYSTEMTIME new_st;
+  FileTimeToSystemTime(&ft, &new_st);
+
+  return convertSystemDate(new_st);
 }

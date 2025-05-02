@@ -1,17 +1,11 @@
-﻿// oClub.h: interface for the oClub class.
+﻿#pragma once
+// oClub.h: interface for the oClub class.
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_OCLUB_H__8B2917E2_6A48_4E7F_82AD_4F8C64167439__INCLUDED_)
-#define AFX_OCLUB_H__8B2917E2_6A48_4E7F_82AD_4F8C64167439__INCLUDED_
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
-
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,13 +41,12 @@ class oDataInterface;
 class oDataConstInterface;
 class Table;
 
-class oClub : public oBase
-{
+class oClub : public oBase {
 protected:
 
   struct InvoiceLine {
     InvoiceLine() : fee(0), rent(0), paid(0), payMode(0) {}
-    vector< pair<int, pair<bool, wstring> > > xposAndString;
+    vector<pair<int, pair<bool, wstring>>> xposAndString;
     int fee;
     int rent;
     int paid;
@@ -66,7 +59,10 @@ protected:
   wstring name;
   vector<wstring> altNames;
   wstring tPrettyName;
+  wstring tCompactName;
 
+  static map<wstring, wstring> manualCompactNameMap;
+  
   static const int dataSize = 768;
   int getDISize() const final {return dataSize;}
   BYTE oData[dataSize];
@@ -141,6 +137,12 @@ protected:
 
 public:
 
+  static void loadNameMap();
+
+  void nameChanged() {
+    internalSetName(name);
+  }
+
   static const shared_ptr<Table> &getTable(oEvent *oe);
 
   int getStartGroup() const;
@@ -178,6 +180,9 @@ public:
 
   const wstring &getDisplayName() const {return tPrettyName.empty() ?  name : tPrettyName;}
 
+  const wstring& getCompactName() const { return tCompactName.empty() ? name : tCompactName; }
+
+
   void setName(const wstring &n);
 
   void merge(const oBase &input, const oBase *base) final;
@@ -198,4 +203,3 @@ public:
   friend class MeosSQL;
 };
 
-#endif // !defined(AFX_OCLUB_H__8B2917E2_6A48_4E7F_82AD_4F8C64167439__INCLUDED_)

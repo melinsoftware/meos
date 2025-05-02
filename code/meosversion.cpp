@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,23 +23,23 @@
 #include <vector>
 #include "meos_util.h"
 
-//ABCDEFGHIJKLMNOPQR
+//ABCDEFGHIJKLMNOPQRSTU
 int getMeosBuild() {
-  string revision("$Rev: 1404 $");
+  string revision("$Rev: 1479 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2024-09-09 22:37:46 +0200 (mån, 09 sep 2024) $");
+  wstring date(L"$Date: 2025-04-06 14:03:35 +0200 (sön, 06 apr 2025) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Update 3"; // No parantheses (...)
+  return L"RC1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
-  return L"4.0";
+  return L"4.1";
 }
 
 wstring getMeosFullVersion() {
@@ -67,21 +67,6 @@ wstring getMeosCompectVersion() {
 }
 
 void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
-  supp.emplace_back(L"IFK Kiruna");
-  supp.emplace_back(L"Smedjebackens OK");
-  supp.emplace_back(L"Gunnar Persson, Svanesunds GIF");
-  supp.emplace_back(L"Køge Orienteringsklub");
-  supp.emplace_back(L"Simrishamns OK");
-  supp.emplace_back(L"OK Fryksdalen");
-  supp.emplace_back(L"Magnus Asplund, Sundbybergs IK");
-  supp.emplace_back(L"Frölunda OL");
-  supp.emplace_back(L"Hjobygdens OK");
-  supp.emplace_back(L"OK Malmia");
-  supp.emplace_back(L"Säterbygdens OK");
-  supp.emplace_back(L"OK Orinto");
-  supp.emplace_back(L"Trosabygdens OK");
-  supp.emplace_back(L"Hans Wilhelmsson, Säffle OK");
-  supp.emplace_back(L"Cent Vallées Orientation 12 (C.V.O. 12)");
   supp.emplace_back(L"OK Tyr, Karlstad");
   supp.emplace_back(L"Zdenko Rohac, KOB ATU Košice");
   supp.emplace_back(L"Hans Carlstedt, Sävedalens AIK");
@@ -142,6 +127,24 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Stein Östby, Malmö OK");
   supp.emplace_back(L"Eric Teutsch (o-store.ca)");
+  supp.emplace_back(L"Sportegyesület Hód-Mentor");
+  developSupp.emplace_back(L"Täby OK");
+  developSupp.emplace_back(L"Skogsluffarnas OK");
+  developSupp.emplace_back(L"FK Friskus-Varberg");
+  supp.emplace_back(L"Hagaby GoIF");
+  supp.emplace_back(L"Waxholms OK");
+  supp.emplace_back(L"Mariager Fjord OK");
+  supp.emplace_back(L"David Ek, FK Göingarna");
+  supp.emplace_back(L"Silkeborg OK");
+  supp.emplace_back(L"OK73");
+  supp.emplace_back(L"Ligue PACA");
+  developSupp.emplace_back(L"Sävedalens AIK");
+  supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
+  supp.emplace_back(L"Autidó");
+  supp.emplace_back(L"Tjalve OK");
+  supp.emplace_back(L"TV Jahn Wolfsburg");
+  developSupp.emplace_back(L"Malmö OK");
+  supp.emplace_back(L"Söderhamns OK");
 
   reverse(supp.begin(), supp.end());
 }

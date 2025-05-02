@@ -1,6 +1,6 @@
 ﻿/************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2024 Melin Software HB
+Copyright (C) 2009-2025 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ void AnimationData::takeOverInternal(const shared_ptr<AnimationData> &other) {
   animate = other->animate;
 }
 
-void AnimationData::renderPage(HDC hDC, gdioutput &gdi, DWORD time) {
+void AnimationData::renderPage(HDC hDC, gdioutput &gdi, uint64_t time) {
  
   bool addTextAnimation = false;
   if (doAnimation) {

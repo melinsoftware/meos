@@ -54,7 +54,7 @@ using std::tuple;
 
 bool getUserFile(wchar_t *fileNamePath, const wchar_t *fileName);
 bool getDesktopFile(wchar_t *fileNamePath, const wchar_t *fileName, const wchar_t *subFolder = 0);
-bool getMeOSFile(wchar_t *FileNamePath, const wchar_t *FileName);
+wstring getMeOSFile(const wchar_t *fileName);
 
 class gdioutput;
 gdioutput *createExtraWindow(const string &tag, const wstring &title, int max_x = 0, int max_y = 0, bool fixedSize = false);

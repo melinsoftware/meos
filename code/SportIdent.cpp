@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,14 +74,14 @@ SportIdent::SportIdent(HWND hWnd, DWORD Id, bool readVoltage) : readVoltage(read
 
   tcpPortOpen = 0;
   serverSocket = 0;
-  punchMap.resize(31, 0);
+  punchMap.resize(1024);
   punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
   punchMap[oPunch::SpecialPunch::PunchCheck] = oPunch::SpecialPunch::PunchCheck;
   punchMap[oPunch::SpecialPunch::PunchFinish] = oPunch::SpecialPunch::PunchFinish;
 }
 
 void SportIdent::resetPunchMap() {
-  punchMap.resize(31, 0);
+  punchMap.resize(1024);
   fill(punchMap.begin(), punchMap.end(), 0);
   punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
   punchMap[oPunch::SpecialPunch::PunchCheck] = oPunch::SpecialPunch::PunchCheck;
@@ -868,13 +868,13 @@ int SportIdent::MonitorTCPSI(WORD port, int localZeroTime)
       int r=0;
       while (r!=-1 && tcpPortOpen) {
 
-        DWORD timeout = GetTickCount() + 1000;
+        uint64_t timeout = GetTickCount64() + 1000;
         int iter = 0;
         while(r!=SOCKET_ERROR && r<15 && tcpPortOpen) {
           r=recv(client, temp, 15, MSG_PEEK);
           iter++;
           if (iter > 10) {
-            if (GetTickCount() > timeout) {
+            if (GetTickCount64() > timeout) {
               break;
             }
             else
@@ -1341,7 +1341,7 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
   debugLog(L"STARTREAD9 EXT-");
 
   int blocks_8_9_p_t[2]={0,1};
-  int blocks_10_11_SIAC[5]={0,4,5,6,7};
+  int blocks_10_11_SIAC[6]={0,1,4,5,6,7}; // Block 1 added,to handle SIACs using Beacon
   int limit = 1;
   int *blocks = blocks_8_9_p_t;
   bool readBattery = false;
@@ -1379,7 +1379,7 @@ void SportIdent::getSI9DataExt(HANDLE hComm)
           if (series == 15) {
             int nPunch = min(int(b[22]), 128);
             blocks = blocks_10_11_SIAC;
-            limit = 1 + (nPunch+31) / 32;
+            limit = 2 + (nPunch+31) / 32;   // Read Block 0, Block 1 + punches
 
             int cardNo = GetExtCardNumber(b);
             if (cardNo > 8000000 && cardNo < 9000000) {
@@ -1783,7 +1783,7 @@ bool SportIdent::getCard9Data(BYTE *data, SICard &card)
     // Card 10, 11, SIAC
     card.nPunch=min(int(data[22]), 128);
     for(unsigned k=0;k<card.nPunch;k++) {
-      analysePunch(data + 128 + 4*k, card.Punch[k].Time, card.Punch[k].Code, false);
+      analysePunch(data + 256 + 4*k, card.Punch[k].Time, card.Punch[k].Code, false);  // Modified since Block 1 is also read now
     }
   }
   else
@@ -1891,6 +1891,7 @@ bool SportIdent::getCard6Data(BYTE *data, SICard &card)
 
   return true;
 }
+int cn2;
 
 bool SportIdent::analysePunch(BYTE *data, DWORD &time, DWORD &control, bool subSecond) {
   if (*LPDWORD(data)!=0xEEEEEEEE && *LPDWORD(data)!=0x0)
@@ -1899,10 +1900,13 @@ bool SportIdent::analysePunch(BYTE *data, DWORD &time, DWORD &control, bool subS
     BYTE cn=data[1];
     BYTE pth=data[2];
     BYTE ptl=data[3];
-
+    cn = data[1];
     time = timeConstSecond * MAKEWORD(ptl, pth) + timeConstHour * 12 * (ptd & 0x1);
     if (!subSecond) {
-      control = cn + 256 * ((ptd >> 6) & 0x3);      
+        if (ptd >> 7 & 1) { //Beacon Start or Finish punch: Code stored in Block 1
+            cn = data[153];
+        }
+      control = cn + 256 * ((ptd >> 6) & 0x1);      
     }
     else {
       control = 0;
@@ -2037,7 +2041,7 @@ void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode) {
 
   auto mapPunch = [this](int code) {
     if (code > 0 && code < punchMap.size() && punchMap[code] > 0)
-      return punchMap[code];
+      return int(punchMap[code]);
     else
       return code;
   };
@@ -2588,7 +2592,6 @@ int SICard::getFirstTime() const {
   return 0;
 }
 
-
 map<int, oPunch::SpecialPunch> SportIdent::getSpecialMappings() const {
   map<int, oPunch::SpecialPunch> res;
   for (int j = 1; j < punchMap.size(); j++) {
@@ -2596,6 +2599,10 @@ map<int, oPunch::SpecialPunch> SportIdent::getSpecialMappings() const {
       res[j] = oPunch::SpecialPunch(punchMap[j]);
   }
   return res;
+}
+
+void SportIdent::clearSpecialMappings()  {
+  fill(punchMap.begin(), punchMap.end(), 0);
 }
 
 void SportIdent::addSpecialMapping(int code, oPunch::SpecialPunch p) {

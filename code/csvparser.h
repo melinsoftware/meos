@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,10 @@
 
 #include <vector>
 #include <map>
+#include <list>
 
+using std::list;
+using std::vector;
 class oEvent;
 struct SICard;
 class  ImportFormats;
@@ -107,7 +110,7 @@ public:
 
   static void convertUTF(const wstring &file);
 
-  void parse(const wstring &file, list< vector<wstring> > &dataOutput);
+  void parse(const wstring &file, list<vector<wstring>> &dataOutput);
 
   void importTeamLineup(const wstring &file,
                         const map<wstring, int> &classNameToNumber,
@@ -117,6 +120,7 @@ public:
   bool closeOutput();
 
   bool outputRow(const vector<string> &out);
+  bool outputRow(const vector<wstring>& out);
   bool outputRow(const string &row);
 
   int nimport;

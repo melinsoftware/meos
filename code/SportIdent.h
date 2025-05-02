@@ -9,7 +9,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -230,13 +230,14 @@ protected:
 
   bool readVoltage;
 
-  vector<int> punchMap;
+  vector<uint8_t> punchMap;
   SI_StationInfo* findStationInt(const wstring& com);
   void addTestStation(const wstring& com);
 
 public:
 
   map<int, oPunch::SpecialPunch> getSpecialMappings() const;
+  void clearSpecialMappings();
   void addSpecialMapping(int code, oPunch::SpecialPunch);
   void removeSpecialMapping(int code);
 

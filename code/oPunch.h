@@ -7,7 +7,7 @@
 
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 
 #include "meos_util.h"
 class oEvent;
-
+class oCourse;
 class oPunch : public oBase
 {
 protected:
@@ -88,8 +88,8 @@ public:
   bool isFinish(int finishType) const { return type == PunchFinish || type == finishType; }
   bool isCheck() const { return type == PunchCheck; }
   int getControlNumber() const { return type >= 30 ? type : 0; }
-  const wstring& getType() const;
-  static const wstring& getType(int t);
+  const wstring& getType(const oCourse* crs) const;
+  static const wstring& getType(int type, const oCourse* crs);
   int getTypeCode() const { return type; }
   wstring getString() const;
   wstring getSimpleString() const;
@@ -113,7 +113,7 @@ public:
 
   wstring getRunningTime(int startTime) const;
 
-  enum SpecialPunch { PunchStart = 1, PunchFinish = 2, PunchCheck = 3, HiredCard = 11111 };
+  enum SpecialPunch { PunchUnused = 0, PunchStart = 1, PunchFinish = 2, PunchCheck = 3, HiredCard = 11111 };
   void decodeString(const char* s);
   string codeString() const;
   void appendCodeString(string& dst) const;

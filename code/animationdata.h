@@ -2,7 +2,7 @@
 
 /************************************************************************
 MeOS - Orienteering Software
-Copyright (C) 2009-2024 Melin Software HB
+Copyright (C) 2009-2025 Melin Software HB
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -35,8 +35,8 @@ class AnimationData : public GuiHandler {
   bool animate;
 
   int page;
-  DWORD lastTime;
-  DWORD nextTime;
+  uint64_t lastTime;
+  uint64_t nextTime;
   DWORD timeOut;
   bool doAnimation;
   std::atomic_bool errorState;
@@ -60,5 +60,5 @@ public:
   void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type);
   bool takeOver(const shared_ptr<AnimationData> &other);
 
-  void renderPage(HDC hDC, gdioutput &gdi, DWORD time);
+  void renderPage(HDC hDC, gdioutput &gdi, uint64_t time);
 };

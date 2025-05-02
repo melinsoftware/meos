@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -394,8 +394,8 @@ void TabControl::visitorTable(Table &table) const {
         table.set(row++, it, TID_CARD, it.getCardNoString(), false);
 
         table.set(row++, it, TID_STATUS, punch->getTime(false, SubSecond::Auto), false);
-        table.set(row++, it, TID_CONTROL, punch->getType(), false);
-        table.set(row++, it, TID_CODES, j>0 ? p[j-1]->getType() : L"-", true);
+        table.set(row++, it, TID_CONTROL, punch->getType(nullptr), false);
+        table.set(row++, it, TID_CODES, j>0 ? p[j-1]->getType(nullptr) : L"-", true);
       }
     }
   }
@@ -622,7 +622,7 @@ bool TabControl::loadPage(gdioutput &gdi)
 
   selectControl(gdi, oe->getControl(controlId, false, true));
 
-  gdi.setOnClearCb(ControlsCB);
+  gdi.setOnClearCb("controls", ControlsCB);
 
   gdi.refresh();
   return true;
@@ -631,4 +631,9 @@ bool TabControl::loadPage(gdioutput &gdi)
 void TabControl::clearCompetitionData() {
   tableMode = false;
   controlId = 0;
+}
+
+void TabControl::showTable(gdioutput& gdi) {
+  tableMode = true;
+  loadPage(gdi);
 }

@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -714,24 +714,29 @@ wstring oCard::getRogainingSplit(int ix, int startTime) const
  return makeDash(L"-");
 }
 
-void oCard::remove()
-{
+void oCard::remove() {
   if (oe)
     oe->removeCard(Id);
 }
 
-bool oCard::canRemove() const
-{
+bool oCard::canRemove() const {
   return getOwner() == 0;
 }
 
 pair<int, int> oCard::getTimeRange() const {
   pair<int, int> t(24*timeConstHour, 0);
-  for(oPunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
+  bool finishLock = false;
+
+  for(auto it = punches.begin(); it != punches.end(); ++it) {
     if (it->hasTime()) {
       int pt = it->getTimeInt();
       t.first = min(t.first, pt);
-      t.second = max(t.second, pt);
+      if (it->isFinish()) {
+        t.second = it->getTimeInt(); // Do not allow times after finish
+        finishLock = true;
+      }
+      if (!finishLock && !it->isCheck() && !it->isStart())
+        t.second = max(t.second, pt);
     }
   }
   return t;
@@ -863,4 +868,27 @@ oCard::PunchOrigin oCard::isOriginalCard() const {
     return PunchOrigin::Unknown;
   else
     return PunchOrigin::Original;
+}
+
+int oCard::getStartPunchCode() const {
+  auto it = punches.begin();
+  if (it != punches.end()) {
+    if (it->getTypeCode() == oPunch::SpecialPunch::PunchStart)
+      return it->getPunchUnit();
+    ++it;
+    if (it != punches.end()) {
+      if (it->getTypeCode() == oPunch::SpecialPunch::PunchStart)
+        return it->getPunchUnit();
+    }
+  }
+  return 0;
+}
+
+int oCard::getFinishPunchCode() const {
+  auto it = punches.rbegin();
+  if (it != punches.rend()) {
+    if (it->getTypeCode() == oPunch::SpecialPunch::PunchFinish)
+      return it->getPunchUnit();
+  }
+  return 0;
 }

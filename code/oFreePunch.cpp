@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -193,7 +193,7 @@ void oFreePunch::addTableRow(Table &table) const {
   table.set(row++, it, TID_ID, itow(getId()), false, cellEdit);
   table.set(row++, it, TID_MODIFIED, getTimeStamp(), false, cellEdit);
   table.set(row++, it, TID_CARD, itow(getCardNo()), true, cellEdit);
-  table.set(row++, it, TID_CONTROL, getType(), true, cellEdit);
+  table.set(row++, it, TID_CONTROL, getType(nullptr), true, cellEdit);
   table.set(row++, it, TID_UNIT, punchUnit > 0 ? itow(punchUnit) : _EmptyWString, true, cellEdit);
 
   table.set(row++, it, TID_TIME, getTime(false, SubSecond::Auto), true, cellEdit);
@@ -231,7 +231,7 @@ pair<int, bool> oFreePunch::inputData(int id, const wstring &input,
     case TID_CONTROL:
       setType(input);
       synchronize(true);
-      output = getType();
+      output = getType(nullptr);
       break;
 
     case TID_UNIT:
@@ -518,7 +518,7 @@ pFreePunch oEvent::addFreePunch(int time, int type, int unit, int card, bool upd
               card->setupFromRadioPunches(*tr);
               vector<int> mp;
               card->synchronize();
-              tr->addPunches(card, mp);
+              tr->addCard(card, mp);
             }
           }
 

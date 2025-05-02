@@ -1,7 +1,7 @@
 ﻿#pragma once
 /************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -44,12 +44,14 @@ enum EPostType {
   lCmpDate,
   lCurrentTime,
   lClubName,
+  lClubNameShort,
   lClassName,
   lClassStartName,
   lClassStartTime,
   lClassStartTimeRange,
   lClassLength,
   lClassResultFraction,
+  lClassRemainInForest  ,
   lClassAvailableMaps,
   lClassTotalMaps,
   lClassNumEntries,
@@ -67,12 +69,16 @@ enum EPostType {
   lCourseClasses,
   lCourseNumControls,
   lRunnerName,
+  lRunnerNameCompact,
   lRunnerGivenName,
   lRunnerFamilyName,
   lRunnerCompleteName,
+  lRunnerCompleteNameCompact,
+  lRunnerCompleteNameCompactClub,
   lRunnerLegTeamLeaderName, // The runner on the (parallell) leg (in the team) with best result
   lPatrolNameNames, // Single runner's name or both names in a patrol
   lPatrolClubNameNames, // Single runner's club or combination of patrol clubs
+  lPatrolClubNameNamesShort, // Single runner's club (short) or combination of patrol clubs
   lRunnerFinish,
   lRunnerTime,
   lRunnerGrossTime,
@@ -86,6 +92,7 @@ enum EPostType {
   lRunnerCoursePlace,
   lRunnerTotalTimeAfter,
   lRunnerClassCourseTimeAfter,
+  lRunnerCourseTimeAfter,
   lRunnerTimeAfterDiff,
   lRunnerTempTimeStatus,
   lRunnerTempTimeAfter,
@@ -100,6 +107,7 @@ enum EPostType {
   lRunnerStartCond,
   lRunnerStartZero,
   lRunnerClub,
+  lRunnerClubShort,
   lRunnerCard,
   lRunnerRentalCard,
   lRunnerBib,
@@ -168,6 +176,7 @@ enum EPostType {
   lTeamGrossTime,
   lTeamStatus,
   lTeamClub,
+  lTeamClubShort,
   lTeamRunner,
   lTeamRunnerCard,
   lTeamBib,
@@ -307,6 +316,7 @@ enum EFilterList
   EFilterWrongFee,
   EFilterIncludeNotParticipating,
   EFilterModifiedCard,
+  EFilterTimeNoResult,
   _EFilterMax
 };
 
@@ -337,7 +347,7 @@ struct oPrintPost {
   static string encodeFont(const string &face, int factor);
   static wstring encodeFont(const wstring &face, int factor);
 
-  EPostType type;
+  mutable EPostType type;
   int format;
 
   wstring text;
@@ -377,6 +387,12 @@ struct SplitPrintListInfo {
   bool withResult = true;
   bool withAnalysis = true;
   bool withStandardHeading = true;
+  bool withAbsTime = true;
+  bool withControlCode = true;
+  bool withAccLegPlace = false;
+  bool withLegPlace = false;
+  bool withTimeLoss = false;
+
   int numClassResults = 3;
 
   void serialize(xmlparser& xml) const;
@@ -587,6 +603,8 @@ protected:
   list<oPrintPost> listPost;
   list<oPrintPost> subListPost;
   
+  void transformTypes(oEvent& oe) const;
+
   vector<char> listPostFilter;
   vector<char> listPostSubFilter;
   bool fixedType;
@@ -602,9 +620,16 @@ protected:
 
   shared_ptr<SplitPrintListInfo> splitPrintInfo;
 
+  EPostType transformType(oEvent& oe, EPostType in) const;
+
+  mutable int transformStatus = -1;
+
 public:
   ResultType getResultType() const;
 
+  /** Set no transformation of types (ignore prefs) */
+  void setNoTransform();
+  
   bool supportClasses;
   bool supportLegs;
   bool supportParameter;
@@ -679,7 +704,7 @@ public:
   friend class MetaList;
   friend class MetaListContainer;
 
-  int getMaxCharWidth(const oEvent *oe,
+  int getMaxCharWidth(oEvent &oe,
                       const gdioutput &gdi,
                       const set<int> &clsSel,
                       const vector< pair<EPostType, wstring> > &typeFormats,
@@ -688,8 +713,7 @@ public:
                       bool large = false, 
                       int minSize = 0) const;
 
-
-  int getMaxCharWidth(const oEvent *oe, 
+  int getMaxCharWidth(oEvent &oe, 
                       const set<int> &clsSel,
                       EPostType type, 
                       wstring formats,
@@ -697,13 +721,16 @@ public:
                       const wchar_t *fontFace = nullptr,
                       bool large = false, 
                       int minSize = 0) const {
-    vector< pair<EPostType, wstring> > typeFormats(1, make_pair(type, formats));
-    return getMaxCharWidth(oe, oe->gdiBase(), clsSel, typeFormats, font, fontFace, largeSize, minSize);
+    vector<pair<EPostType, wstring>> typeFormats(1, make_pair(type, formats));
+    return getMaxCharWidth(oe, oe.gdiBase(), clsSel, typeFormats, font, fontFace, largeSize, minSize);
   }
-
 
   const oListParam &getParam() const {return lp;}
   oListParam &getParam() {return lp;}
+
+  const list<oListInfo>& linkedLists() const {
+    return next;
+  }
 
   // Returns true if the list needs to be regenerated due to competition changes
   bool needRegenerate(const oEvent &oe) const;

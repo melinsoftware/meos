@@ -1,6 +1,6 @@
 ﻿/************************************************************************
     MeOS - Orienteering Software
-    Copyright (C) 2009-2024 Melin Software HB
+    Copyright (C) 2009-2025 Melin Software HB
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -364,7 +364,7 @@ void renderRowSpeakerList(const oSpeakerObject& r, const oSpeakerObject* next_r,
         flag |= timeWithTenth;
 
       row.push_back(SpeakerString(textRight, gdioutput::getTimerText(r.runningTime.time - leaderTime,
-        flag, false)));
+        flag, false, L"")));
     }
     else
       row.push_back(SpeakerString());
@@ -484,7 +484,7 @@ void renderRowSpeakerList(gdioutput &gdi, int type, const oSpeakerObject &r, int
       }
     }
     else {
-      gdi.addTimer(y, x + pos[k], row[k].format, row[k].timer / timeConstSecond, limit,
+      gdi.addTimer(y, x + pos[k], row[k].format, row[k].timer / timeConstSecond, L"", limit,
                    row[k].timeout != NOTIMEOUT ? SpeakerCB : nullptr, row[k].timeout);
     }
   }
@@ -557,7 +557,7 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
   list<oSpeakerObject> speakerList;
 
   //For preliminary times
-  updateComputerTime();
+  updateComputerTime(false);
 
   speakerList.clear();
   if (classHasTeams(ClassId)) {
@@ -766,11 +766,30 @@ void oEvent::speakerList(gdioutput &gdi, int ClassId, int leg, int ControlId,
     gdi.refresh();
 }
 
-void oEvent::updateComputerTime()
-{
+void oEvent::updateComputerTime(bool considerDate) {
   SYSTEMTIME st;
   GetLocalTime(&st);
-  computerTime=(((24+2+st.wHour)*timeConstHour+st.wMinute*timeConstMinute+st.wSecond*timeConstSecond - ZeroTime)%(24*timeConstHour)-2*timeConstHour) * (1000/timeConstSecond) + st.wMilliseconds;
+  if (!useLongTimes() && !considerDate)
+    computerTime = (((24+2+st.wHour)*timeConstHour+st.wMinute*timeConstMinute+st.wSecond*timeConstSecond - ZeroTime)%(24*timeConstHour)-2*timeConstHour) * (1000/timeConstSecond) + st.wMilliseconds;
+  else {
+    SYSTEMTIME stDate;
+    if (convertDateYMD(getDate(), stDate, true) == -1) {
+      stDate = st;
+      stDate.wHour = 0;
+      stDate.wMinute = 0;
+      stDate.wSecond = 0;
+      stDate.wMilliseconds = 0;
+    }
+
+    stDate.wHour = (ZeroTime / timeConstHour)%24;
+    stDate.wMinute = (ZeroTime / timeConstMinute) % 60;
+    stDate.wSecond = (ZeroTime / timeConstSecond) % 60;
+    st.wMilliseconds = (ZeroTime % timeConstSecond) * 1000;
+
+    int64_t zero = SystemTimeToInt64TenthSecond(stDate);
+    int64_t now = SystemTimeToInt64TenthSecond(st);
+    computerTime = (now - zero) * (1000 / timeConstSecond) + st.wMilliseconds % (1000 / timeConstSecond);
+  }
 }
 
 void oEvent::clearPrewarningSounds()
@@ -1011,7 +1030,7 @@ void insertResult(TempResultMap &rm, oRunner &r, int time,
 int oEvent::setupTimeLineEvents(int currentTime)
 {
   if (currentTime == 0) {
-    updateComputerTime();
+    updateComputerTime(false);
     currentTime = getComputerTime();
   }
 
@@ -1509,7 +1528,7 @@ int oEvent::setupTimeLineEvents(vector<pRunner> &started, const vector< pair<int
           if (preRunners.size() == 1 && place < 10)
             msg = locverb + L" på X plats, efter Y, på tiden Z.#" +
                         getOrder(place) +
-                        L"#" + preRunners[0]->getCompleteIdentification() +
+                        L"#" + preRunners[0]->getCompleteIdentification(oRunner::IDType::ParallelLegExtra) +
                         L"#" + timeS;
           else
              msg = locverb + L" på X plats med tiden Y.#" +
@@ -1597,7 +1616,7 @@ void oEvent::renderTimeLineEvents(gdioutput &gdi) const
 int oEvent::getTimeLineEvents(const set<int> &classes, vector<oTimeLine> &events,
                               set<__int64> &stored, int currentTime) {
   if (currentTime == 0) {
-    updateComputerTime();
+    updateComputerTime(false);
     currentTime = getComputerTime();
   }
   //OutputDebugString(("GetTimeLine at: " + getAbsTime(getComputerTime()) + "\n").c_str());
