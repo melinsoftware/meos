@@ -2456,7 +2456,6 @@ void checkWriteAccess(const wstring &file) {
       throw meosException(wstring(L"Behörighet saknas för att skriva till 'X'.#") + absPath);
     else
       throw meosException(wstring(L"Kunde inte skriva till 'X'.#") + absPath);
-
   }
   CloseHandle(h);
 }
