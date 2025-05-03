@@ -190,7 +190,10 @@ public:
   bool loadPage(gdioutput &gdi);
   bool loadPage(gdioutput &gdi, int runnerId);
 
-  static int addExtraFields(const oEvent &oe, gdioutput& gdi, oEvent::ExtraFieldContext context);
+  static int addExtraFields(const oEvent &oe, gdioutput& gdi, bool startNewLine, 
+                            bool oneLine, oEvent::ExtraFieldContext context,
+                            const vector<oEvent::ExtraFields>& exclude = {});
+
   static void saveExtraFields(gdioutput& gdi, oBase &r);
   static void loadExtraFields(gdioutput& gdi, const oBase* r);
 

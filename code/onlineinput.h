@@ -41,7 +41,12 @@ protected:
   int bytesImported;
   DWORD lastSync;
 
-  bool useROCProtocol;
+  enum class Type {
+    MIP,
+    ROC,
+    SICenter,
+  };
+  Type serverType = Type::MIP;
   bool useUnitId;
 
   deque<wstring> info;
@@ -61,6 +66,7 @@ protected:
 
   void processPunches(oEvent &oe, const xmlList &punches);
   void processPunches(oEvent &oe, list< vector<wstring> > &rocData);
+  void processPunchesSICenter(oEvent& oe, const wstring& filename);
 
   bool hasSaveMachine() const final {
     return true;
@@ -69,8 +75,12 @@ protected:
   void saveMachine(oEvent &oe, const wstring &guiInterval) final;
   void loadMachine(oEvent &oe, const wstring &name) final;
 
+  time_t getZeroTimeMSLinuxEpoch() const;
+  int mapPunch(int code) const;
+
 public:
   int processButton(gdioutput &gdi, ButtonInfo &bi);
+  int processListBox(gdioutput& gdi, ListBoxInfo& bi);
 
   void updateLabel(gdioutput& gdi);
 
@@ -83,7 +93,7 @@ public:
   void status(gdioutput &gdi) final;
   void process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) final;
   OnlineInput() : AutoMachine("Onlineinput", Machines::mOnlineInput), cmpId(0), importCounter(1),
-                    bytesImported(0), lastSync(0), lastImportedId(0), useROCProtocol(false), useUnitId(false) {}
+                    bytesImported(0), lastSync(0), lastImportedId(0), useUnitId(false) {}
   ~OnlineInput() = default;
   friend class TabAuto;
 };

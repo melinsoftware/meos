@@ -270,6 +270,8 @@ public:
 
   SportIdent(HWND hWnd, DWORD Id, bool readVoltage);
 
+  void readRawData(const wstring& file);
+
   void setSubSecondMode(bool subSec) { useSubsecondMode = subSec; }
   void resetPunchMap();
 

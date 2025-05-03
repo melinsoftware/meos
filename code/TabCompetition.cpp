@@ -3502,6 +3502,10 @@ void TabCompetition::entryForm(gdioutput &gdi, bool isGuide) {
   gdi.popX();
 
   gdi.dropLine(2.5);
+  gdi.addCheckbox("ShortClubName", "Föredra kort klubbnamn", nullptr, oe->getPropertyBool("PreferShortClubName", true));
+  gdi.popX();
+  gdi.dropLine(2);
+
   gdi.addInput("FileName", L"", 48, 0, L"Anmälningar (IOF (xml) eller OE-CSV)");
   gdi.dropLine();
   gdi.addButton("BrowseEntries", "Bläddra...", CompetitionCB).setExtra(L"FileName");
@@ -3551,6 +3555,8 @@ FlowOperation TabCompetition::saveEntries(gdioutput &gdi, bool removeRemoved, in
   vector<wstring> filename;
   for (string &fn : fields)
     filename.push_back(gdi.getText(fn));
+
+  oe->setProperty("PreferShortClubName", gdi.isChecked("ShortClubName"));
 
   for (size_t i = 0; i<filename.size(); i++) {
     if (filename[i].empty())

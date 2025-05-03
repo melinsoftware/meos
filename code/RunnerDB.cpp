@@ -1075,13 +1075,13 @@ void RunnerDB::updateAdd(const oRunner &r, map<int, int> &clubIdMap)
   if (dbe == nullptr) {
     dbe = addRunner(r.getName().c_str(), 0, localClubId, r.getCardNo());
     if (dbe)
-      dbe->dbe().setBirthYear(r.getDCI().getInt("BirthYear"));
+      dbe->dbe().setBirthDate(r.getBirthDate());
   }
   else {
     if (dbe->getExtId() == 0) { // Only update entries not in national db.
       dbe->setName(r.getName().c_str());
       dbe->dbe().clubNo = localClubId;
-      dbe->dbe().setBirthYear(r.getDCI().getInt("BirthYear"));
+      dbe->dbe().setBirthDate(r.getBirthDate());
     }
   }
 }

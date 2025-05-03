@@ -3182,7 +3182,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
     gdi.popX();
   }
 
-  addExtraFields(*oe, gdi, oEvent::ExtraFieldContext::Runner);
+  addExtraFields(*oe, gdi, true, false, oEvent::ExtraFieldContext::Runner);
 
   gdi.dropLine(0.5);
   gdi.popX();
@@ -3273,21 +3273,28 @@ bool TabRunner::loadPage(gdioutput &gdi)
   return true;
 }
 
-int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi, oEvent::ExtraFieldContext context) {
+int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi, 
+                              bool startNewLine, bool oneLine,
+                              oEvent::ExtraFieldContext context,
+                              const vector<oEvent::ExtraFields>& exclude) {
   map<oEvent::ExtraFields, wstring> extraFields = oe.getExtraFields(context);
 
-  if (!extraFields.empty())
+  for (oEvent::ExtraFields f : exclude)
+    extraFields.erase(f);
+
+  if (startNewLine && !extraFields.empty())
     gdi.dropLine(1.5);
 
   gdi.fillRight();
-  gdi.pushX();
+  if (startNewLine)
+    gdi.pushX();
   int colCount = 0;
   int baseY = gdi.getCY();
   bool firstLabel = true;
   int lastLabelX = 0;
 
-  auto newLine = [&colCount, context, &gdi, &baseY, &lastLabelX]() {
-    if (context != oEvent::ExtraFieldContext::DirectEntry) {
+  auto newLine = [&colCount, context, oneLine, &gdi, &baseY, &lastLabelX]() {
+    if (!oneLine) {
       const int limit = context == oEvent::ExtraFieldContext::Class ? 3 : 2;
       if (colCount >= limit) {
         gdi.dropLine(2);
@@ -3299,8 +3306,8 @@ int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi, oEvent::ExtraFie
     }
   };
   
-  auto addLabel = [context, &gdi, &baseY, &firstLabel, &lastLabelX](const wstring& label) {
-    if (context == oEvent::ExtraFieldContext::DirectEntry) {
+  auto addLabel = [oneLine, &gdi, &baseY, &firstLabel, &lastLabelX](const wstring& label) {
+    if (oneLine) {
       if (firstLabel)
         firstLabel = false;
       else {

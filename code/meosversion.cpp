@@ -25,17 +25,17 @@
 
 //ABCDEFGHIJKLMNOPQRSTU
 int getMeosBuild() {
-  string revision("$Rev: 1479 $");
+  string revision("$Rev: 1489 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2025-04-06 14:03:35 +0200 (sön, 06 apr 2025) $");
+  wstring date(L"$Date: 2025-05-03 07:07:44 +0200 (lör, 03 maj 2025) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC1"; // No parantheses (...)
+  return L""; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -93,11 +93,9 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"OK Rodhen");
   supp.emplace_back(L"Big Foot Orienteers");
   developSupp.emplace_back(L"OK Måsen");
-  supp.emplace_back(L"Ligue PACA");
   supp.emplace_back(L"Kamil Pipek, OK Lokomotiva Pardubice");
   supp.emplace_back(L"Foothills Wanderers Orienteering Club");
   supp.emplace_back(L"Per Eklöf / PE Design / PE Timing");
-  supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Kvarnsvedens GOIF OK");
   supp.emplace_back(L"Ingemar Lindström, OK Österåker");
   supp.emplace_back(L"OK Österåker");
@@ -120,7 +118,6 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"Ligue PACA");
   supp.emplace_back(L"SV Robotron Dresden");
   supp.emplace_back(L"Mats Holmberg, OK Gränsen");
-  supp.emplace_back(L"HEYRIES, ACA Aix en Provence");
   supp.emplace_back(L"Milen Marinov");
   supp.emplace_back(L"Miroslav Kollar, KOB Kysak");
   developSupp.emplace_back(L"FIF Hillerød Orientering");
@@ -145,6 +142,12 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"TV Jahn Wolfsburg");
   developSupp.emplace_back(L"Malmö OK");
   supp.emplace_back(L"Söderhamns OK");
+  supp.emplace_back(L"Järla Orientering");
+  supp.emplace_back(L"Enebybergs IF");
+  supp.emplace_back(L"IK Vikings OK");
+  supp.emplace_back(L"Naturfreunde Wien Orienteering");
+  supp.emplace_back(L"HEYRIES / ACA Aix en Provence");
+  supp.emplace_back(L"Allerød OK");
 
   reverse(supp.begin(), supp.end());
 }

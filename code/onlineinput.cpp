@@ -22,22 +22,13 @@
 
 #include "stdafx.h"
 
-#include "resource.h"
-
-#include <commctrl.h>
-#include <commdlg.h>
-
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <wchar.h>
 #include "oEvent.h"
 #include "gdioutput.h"
 
 #include "onlineinput.h"
 #include "meos_util.h"
-#include <shellapi.h>
 
-#include "gdiconstants.h"
 #include "meosException.h"
 #include "Download.h"
 #include "xmlparser.h"
@@ -54,12 +45,34 @@ static int OnlineCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
   switch (type) {
     case GUI_BUTTON: {
       //Make a copy
-      ButtonInfo bu=*static_cast<ButtonInfo *>(data);
+      ButtonInfo bu = dynamic_cast<ButtonInfo &>(*data);
       OnlineInput &ores = dynamic_cast<OnlineInput &>(*AutoMachine::getMachine(bu.getExtraInt()));
       return ores.processButton(*gdi, bu);
     }
     case GUI_LISTBOX:{
+      ListBoxInfo lbi = dynamic_cast<ListBoxInfo&>(*data);
+      OnlineInput& ores = dynamic_cast<OnlineInput&>(*AutoMachine::getMachine(lbi.getExtraInt()));
+      
+      return ores.processListBox(*gdi, lbi);
     }
+  }
+  return 0;
+}
+
+int OnlineInput::processListBox(gdioutput& gdi, ListBoxInfo& lbi) {
+  if (lbi.id == "ServerType") {
+    serverType = Type(lbi.data);
+    if (serverType == Type::ROC)
+      gdi.setText("URL", L"http://roc.olresultat.se/getpunches.asp");
+    else if (serverType == Type::SICenter)
+      gdi.setText("URL", L"https://center-origin.sportident.com/api/rest/v1/punches");
+    else {
+      gdi.check("UseUnitId", false);
+      useUnitId = false;
+      updateLabel(gdi);
+    }
+
+    gdi.setInputStatus("UseUnitId", serverType != Type::MIP);
   }
   return 0;
 }
@@ -93,19 +106,7 @@ int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
     oe->getDI().setString("ControlMap", cm);
     fillMappings(*oe, gdi);
     gdi.setInputStatus(bi.id, false);
-  }
-  else if (bi.id == "UseROC") {
-    useROCProtocol = gdi.isChecked(bi.id);
-    if (useROCProtocol) {
-      gdi.setText("URL", L"http://roc.olresultat.se/getpunches.asp");      
-    }
-    else {
-      gdi.check("UseUnitId", false);
-      gdi.setTextTranslate("CmpID_label", L"Tävlingens ID-nummer:", true);
-      useUnitId = false;
-    }
-    gdi.setInputStatus("UseUnitId", useROCProtocol);
-  }
+  } 
   else if (bi.id == "UseUnitId") {
     useUnitId = gdi.isChecked(bi.id);
     updateLabel(gdi);
@@ -114,8 +115,7 @@ int OnlineInput::processButton(gdioutput &gdi, ButtonInfo &bi) {
   return 0;
 }
 
-void OnlineInput::updateLabel(gdioutput& gdi)
-{
+void OnlineInput::updateLabel(gdioutput& gdi) {
   if (useUnitId)
     gdi.setTextTranslate("CmpID_label", L"Enhetens ID-nummer (MAC):", true);
   else
@@ -137,6 +137,18 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
   if (state == State::Create) {
     iv = 10;
     url = oe.getPropertyString("MIPURL", L"");
+    int st = oe.getPropertyInt("InputServer", 0);
+    switch (st) {
+    case 0:
+      serverType = Type::MIP;
+      break;
+    case 1:
+      serverType = Type::ROC;
+      break;
+    case 2:
+      serverType = Type::SICenter;
+      break;
+    }
   }
 
   wstring time;
@@ -147,14 +159,20 @@ void OnlineInput::settings(gdioutput &gdi, oEvent &oe, State state) {
   startCancelInterval(gdi, oe, "Save", state, IntervalType::IntervalSecond, time);
 
   gdi.addInput("URL", url, 40, 0, L"URL:", L"Till exempel X#https://www.input.org/online.php");
-  gdi.addCheckbox("UseROC", "Använd ROC-protokoll", OnlineCB, useROCProtocol).setExtra(getId());
-  gdi.addCheckbox("UseUnitId", "Använd enhets-id istället för tävlings-id", OnlineCB, useROCProtocol && useUnitId).setExtra(getId());
-  gdi.setInputStatus("UseUnitId", useROCProtocol);
 
-  if (useROCProtocol && useUnitId)
-    gdi.addInput("CmpID", unitId, 10, 0, L"Enhetens ID-nummer (MAC):");
+  gdi.addSelection("ServerType", 200, 100, OnlineCB, L"Typ:").setExtra(getId());
+  gdi.addItem("ServerType", L"MeOS Input Protocol (MIP)", int(Type::MIP));
+  gdi.addItem("ServerType", L"Radio Online Control (ROC)", int(Type::ROC));
+  gdi.addItem("ServerType", L"SportIdent Center (SI)", int(Type::SICenter));
+  gdi.selectItemByData("ServerType", int(serverType));
+  gdi.dropLine(0.5);
+  gdi.addCheckbox("UseUnitId", "Använd enhets-id istället för tävlings-id", OnlineCB, serverType != Type::MIP && useUnitId).setExtra(getId());
+  gdi.setInputStatus("UseUnitId", serverType != Type::MIP);
+
+  if (serverType != Type::MIP && useUnitId)
+    gdi.addInput("CmpID", unitId, 20, 0, L"Enhetens ID-nummer (MAC):");
   else
-    gdi.addInput("CmpID", itow(cmpId), 10, 0, L"Tävlingens ID-nummer:");
+    gdi.addInput("CmpID", itow(cmpId), 20, 0, L"Tävlingens ID-nummer:");
 
   gdi.dropLine(1);
 
@@ -212,7 +230,6 @@ void OnlineInput::controlMappingView(gdioutput& gdi, oEvent *oe, GUICALLBACK cb,
     };
   };
 
-
   auto hh = make_shared<HelpHandler>();
 
   gdi.addButton("Help", "Hjälp").setHandler(hh);
@@ -239,11 +256,30 @@ void OnlineInput::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
   int iv=gdi.getTextNo("Interval");
   const wstring &xurl=gdi.getText("URL");
 
-  if (!xurl.empty())
+  if (!xurl.empty()) {
     oe.setProperty("MIPURL", xurl);
+    oe.setProperty("InputServer", int(serverType));
+  }
 
   cmpId = gdi.getTextNo("CmpID");
   unitId = gdi.getText("CmpID");
+
+  if (useUnitId && serverType == Type::SICenter) {
+    vector<wstring> out;
+    split(unitId, L" ,;", out);
+    wstring modems;
+    for (auto& m : out) {
+      int mId = _wtoi(m.c_str());
+      if (mId > 0) {
+        if (!modems.empty())
+          modems += L",";
+        modems += itow(mId);
+      }
+    } 
+    if (modems.empty())
+      throw meosException("Invalid unit ID");
+    unitId = modems;
+  }
 
   if (xurl.empty()) {
     throw meosException("URL måste anges.");
@@ -291,7 +327,8 @@ void OnlineInput::saveMachine(oEvent &oe, const wstring &guiInterval) {
   cnt.set("url", url);
   cnt.set("cmpId", cmpId);
   cnt.set("unitId", unitId);
-  cnt.set("ROC", useROCProtocol);
+  cnt.set("ServerType", int(serverType));
+  
   cnt.set("useId", useUnitId);
 
   int iv = _wtoi(guiInterval.c_str());
@@ -315,7 +352,23 @@ void OnlineInput::loadMachine(oEvent& oe, const wstring& name) {
   cmpId = cnt->getInt("cmpId");
   unitId = cnt->getString("unitId");
 
-  useROCProtocol = cnt->getInt("ROC") != 0;
+  serverType = Type::MIP;
+  if (cnt->getInt("ROC") != 0)
+    serverType = Type::ROC; // MeOS 4.0
+  else {
+    switch (cnt->getInt("ServerType")) {
+    case 0:
+      serverType = Type::MIP;
+      break;
+    case 1:
+      serverType = Type::ROC;
+      break;
+    case 2:
+      serverType = Type::SICenter;
+      break;
+    }
+  }
+  
   useUnitId = cnt->getInt("useId") != 0;
   interval = cnt->getInt("interval");
 
@@ -327,9 +380,8 @@ void OnlineInput::loadMachine(oEvent& oe, const wstring& name) {
   }
 }
 
-void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
+void OnlineInput::process(gdioutput& gdi, oEvent* oe, AutoSyncType ast) {
   processProtected(gdi, ast, [&]() {
-
     oe->autoSynchronizeLists(true);
 
     Download dwl;
@@ -337,7 +389,17 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     ProgressWindow pw(nullptr, gdi.getScale());
     vector<pair<wstring, wstring> > key;
     wstring q;
-    if (useROCProtocol) {
+    if (serverType == Type::SICenter) {
+      // SportIdent Center uses milliseconds since linux Epoch 1970-01-01
+      if (!useUnitId)
+        q = L"?eventId=" + itow(cmpId) + L"&afterId=" + itow(lastImportedId) + L"&after=" + std::to_wstring(getZeroTimeMSLinuxEpoch());
+      else
+        q = L"?modem=" + unitId + L"&afterId=" + itow(lastImportedId) + L"&after=" + std::to_wstring(getZeroTimeMSLinuxEpoch());
+
+      pair<wstring, wstring> mk1(L"Accept", L"text/csv");
+      key.push_back(mk1);
+    }
+    else if (serverType == Type::ROC) {
       if (!useUnitId)
         q = L"?unitId=" + itow(cmpId) + L"&lastId=" + itow(lastImportedId) + L"&date=" + oe->getDate() + L"&time=" + oe->getZeroTime();
       else
@@ -354,7 +416,17 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       dwl.downloadFile(url + q, result, key);
       dwl.downLoadNoThread();
 
-      if (!useROCProtocol) {
+      if (serverType == Type::ROC) {
+        csvparser csv;
+        list<vector<wstring>> rocData;
+        csv.parse(result, rocData);
+        processPunches(*oe, rocData);
+      }
+      else if (serverType == Type::SICenter) {
+        // we can't use csv.parse as it expects semi-colon as separator
+        processPunchesSICenter(*oe, result);
+      }
+      else {
         xmlobject res;
         xmlparser xml;
         try {
@@ -383,12 +455,6 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 
         lastImportedId = res.getAttrib("lastid").getInt();
       }
-      else {
-        csvparser csv;
-        list<vector<wstring>> rocData;
-        csv.parse(result, rocData);
-        processPunches(*oe, rocData);
-      }
 
       struct _stat st;
       _wstat(result.c_str(), &st);
@@ -407,13 +473,23 @@ void OnlineInput::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
 void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
   for (size_t k = 0; k < punches.size(); k++) {
     int code = punches[k].getObjectInt("code");
-    wstring startno;
+    wstring startno, type;
     punches[k].getObjectString("sno", startno);
+    punches[k].getObjectString("type", type);
 
     int originalCode = code;
-    
-    if (specialPunches.count(code))
-      code = specialPunches[code];
+    if (type == L"start") {
+      code = oPunch::SpecialPunch::PunchStart;
+    }
+    else if (type == L"finish") {
+      code = oPunch::SpecialPunch::PunchFinish;
+    }
+    else if (type == L"check") {
+      code = oPunch::SpecialPunch::PunchCheck;
+    }
+    else {
+      code = mapPunch(code);
+    }
 
     pRunner r = 0;
 
@@ -442,13 +518,24 @@ void OnlineInput::processPunches(oEvent &oe, const xmlList &punches) {
       time = 0;
       addInfo(L"Ogiltig tid");
     }
+
+    if (code <= 0) {
+      addInfo(L"Ogiltig kontrollkod");
+      continue; 
+    }
+
+    if (card <= 0) {
+      addInfo(L"Ogiltigt bricknummer");
+      continue;
+    }
+
     oe.addFreePunch(time, code, originalCode, card, true, true);
 
     addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code, r ? r->getCourse(false) : nullptr) + L"#" +  oe.getAbsTime(time));
   }
 }
 
-void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
+void OnlineInput::processPunches(oEvent &oe, list<vector<wstring>> &rocData) {
   for (list< vector<wstring> >::iterator it = rocData.begin(); it != rocData.end(); ++it) {
     vector<wstring> &line = *it;
     if (line.size() == 4) {
@@ -461,9 +548,8 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
         time -= (time % timeConstSecond);
 
       int originalCode = code;
-      if (specialPunches.count(code))
-        code = specialPunches[code];
-
+      code = mapPunch(code);
+      
       pRunner r = oe.getRunnerByCardNo(card, time, oEvent::CardLookupProperty::Any);
 
       wstring rname;
@@ -490,14 +576,98 @@ void OnlineInput::processPunches(oEvent &oe, list< vector<wstring> > &rocData) {
   }
 }
 
+void OnlineInput::processPunchesSICenter(oEvent &oe, const wstring& filename) {
+
+	time_t epoch_abs = getZeroTimeMSLinuxEpoch();
+
+	std::wifstream file(filename);
+	if (!file.is_open())
+		return;
+
+	wstring line;
+
+	// Skip the header
+	std::getline(file, line);
+
+	while (std::getline(file, line)) {
+		wstringstream ss(line);
+		wstring field, type, cardstr;
+
+		int punchId, code, card, time;
+
+		std::getline(ss, field, L',');
+	    punchId = std::stoi(field);
+
+		std::getline(ss, cardstr, L',');
+		card = std::stoi(cardstr);
+
+		std::getline(ss, field, L',');
+		time_t epoch = std::stoll(field);
+        epoch -= epoch_abs; // in ms
+        time = (int)(epoch / 100); // in tenth of seconds
+
+		std::getline(ss, field, L',');
+		code = std::stoi(field);
+
+    int originalCode = code;
+    std::getline(ss, type, L',');
+    if (type == L"Start")
+      code = oPunch::SpecialPunch::PunchStart;
+    else if (type == L"Finish")
+      code = oPunch::SpecialPunch::PunchFinish;
+    else if (type == L"Check" || type == L"Clear")
+      code = oPunch::SpecialPunch::PunchCheck;
+    else
+      code = mapPunch(code);
+
+    if (!oe.supportSubSeconds())
+      time -= (time % timeConstSecond);
+
+		pRunner r = oe.getRunnerByCardNo(card, time, oEvent::CardLookupProperty::Any);
+
+		wstring rname;
+		if (r) {
+			rname = r->getName();
+			card = r->getCardNo();
+		}
+		else {
+			rname = lang.tl("Okänd") + L" (" + cardstr + L")";
+		}
+
+		if (time < 0) {
+			time = 0;
+			addInfo(L"Ogiltig tid");
+		}
+		oe.addFreePunch(time, code, originalCode, card, true, true);
+
+		lastImportedId = max(lastImportedId, punchId);
+
+		addInfo(L"Löpare: X, kontroll: Y, kl Z#" + rname + L"#" + oPunch::getType(code, r ? r->getCourse(false) : nullptr) + L"#" + oe.getAbsTime(time));
+	}
+
+	file.close();
+}
+
 void OnlineInput::processCards(gdioutput &gdi, oEvent &oe, const xmlList &cards) {
   for (size_t k = 0; k < cards.size(); k++) {
     SICard sic(ConvertedTimeStatus::Hour24);
     sic.CardNumber = cards[k].getObjectInt("number");
-    if (cards[k].getObject("finish"))
-      sic.FinishPunch.Time = cards[k].getObject("finish").getObjectInt("time") / (10 / timeConstSecond);
-    if (cards[k].getObject("start"))
-      sic.StartPunch.Time = cards[k].getObject("start").getObjectInt("time") / (10 / timeConstSecond);
+
+    if (xmlobject fin = cards[k].getObject("finish"); fin) {
+      sic.FinishPunch.Time = fin.getObjectInt("time") / (10 / timeConstSecond);
+      sic.FinishPunch.Code = fin.getObjectInt("code");
+    }
+
+    if (xmlobject sta = cards[k].getObject("start"); sta) {
+      sic.StartPunch.Time = sta.getObjectInt("time") / (10 / timeConstSecond);
+      sic.StartPunch.Code = sta.getObjectInt("code");
+    }
+
+    if (xmlobject chk = cards[k].getObject("check"); chk) {
+      sic.CheckPunch.Time = chk.getObjectInt("time") / (10 / timeConstSecond);
+      sic.CheckPunch.Code = chk.getObjectInt("code");
+    }
+
     xmlList punches;
     cards[k].getObjects("p", punches);
     for (size_t j = 0; j < punches.size(); j++) {
@@ -659,3 +829,31 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries) {
     throw meosException(error);
 }
 
+time_t OnlineInput::getZeroTimeMSLinuxEpoch() const {
+  SYSTEMTIME st;
+  convertDateYMD(oe->getDate(), st, false);
+
+  // Convert SYSTEMTIME to struct tm
+  tm tm{};
+  tm.tm_year = st.wYear - 1900;     // tm_year is years since 1900
+  tm.tm_mon = st.wMonth - 1;        // tm_mon is 0-based
+  tm.tm_mday = st.wDay;
+  tm.tm_hour = st.wHour;
+  tm.tm_min = st.wMinute;
+  tm.tm_sec = st.wSecond;
+  tm.tm_isdst = -1;
+
+  // Convert to epoch (UTC)
+  time_t epoch = _mkgmtime64(&tm) * 1000;  // mktime is in seconds
+  epoch += (time_t)oe->getZeroTimeNum() * 100;    // we use tenth of a second
+  return epoch;
+}
+
+int OnlineInput::mapPunch(int code) const {
+  if (auto res = specialPunches.find(code); res != specialPunches.end())
+    code = res->second;
+  else if (code == oPunch::SpecialPunch::PunchStart)
+    code = oPunch::SpecialPunch::PunchCheck; // Do not allow unmatched start
+
+  return code;
+}

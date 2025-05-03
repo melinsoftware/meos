@@ -148,8 +148,8 @@ int getRelativeDay() {
   ULARGE_INTEGER u;
   u.HighPart = ft.dwHighDateTime;
   u.LowPart = ft.dwLowDateTime;
-  __int64 qp = u.QuadPart;
-  qp /= __int64(10) * 1000 * 1000 * 3600 * 24;
+  uint64_t qp = u.QuadPart;
+  qp /= 10ll * 1000 * 1000 * 3600 * 24;
   qp -=  400*365;
   return int(qp);
 }
@@ -2456,6 +2456,7 @@ void checkWriteAccess(const wstring &file) {
       throw meosException(wstring(L"Behörighet saknas för att skriva till 'X'.#") + absPath);
     else
       throw meosException(wstring(L"Kunde inte skriva till 'X'.#") + absPath);
+
   }
   CloseHandle(h);
 }
@@ -2551,6 +2552,35 @@ const wstring &codeRelativeTimeW(int rt) {
   return res;
 }
 
+wstring addOrSubtractDays(const wstring& m, int days) {
+  // Convert wstring date to SYSTEMTIME
+  SYSTEMTIME st;
+  convertDateYMD(m, st, false);
+
+  // Convert SYSTEMTIME to FILETIME
+  FILETIME ft;
+  SystemTimeToFileTime(&st, &ft);
+
+  // Convert FILETIME to ULARGE_INTEGER for arithmetic
+  ULARGE_INTEGER ui;
+  ui.LowPart = ft.dwLowDateTime;
+  ui.HighPart = ft.dwHighDateTime;
+
+  // Add/subtract the number of days in 100-nanosecond intervals
+  constexpr int64_t intervals_per_day = 24 * timeConstSecPerHour * 10000000ull;
+  ui.QuadPart += days * intervals_per_day;
+
+  // Convert back to FILETIME
+  ft.dwLowDateTime = ui.LowPart;
+  ft.dwHighDateTime = ui.HighPart;
+
+  // Convert FILETIME back to SYSTEMTIME
+  SYSTEMTIME new_st;
+  FileTimeToSystemTime(&ft, &new_st);
+
+  return convertSystemDate(new_st);
+}
+
 const string &codeRelativeTime(int rt) {
   char bf[32];
   int subSec = timeConstSecond == 1 ? 0 : rt % timeConstSecond;
@@ -2569,33 +2599,4 @@ const string &codeRelativeTime(int rt) {
   string &res = StringCache::getInstance().get();
   res = bf;
   return res;
-}
-
-wstring addOrSubtractDays(const wstring& m, int days) {
-  // Convert wstring date to SYSTEMTIME
-  SYSTEMTIME st;
-  convertDateYMD(m, st, false);
-
-  // Convert SYSTEMTIME to FILETIME
-  FILETIME ft;
-  SystemTimeToFileTime(&st, &ft);
-
-  // Convert FILETIME to ULARGE_INTEGER for arithmetic
-  ULARGE_INTEGER ui;
-  ui.LowPart = ft.dwLowDateTime;
-  ui.HighPart = ft.dwHighDateTime;
-
-  // Add/subtract the number of days in 100-nanosecond intervals
-  const LONGLONG intervals_per_day = 24 * timeConstSecPerHour * static_cast<LONGLONG>(10000000);
-  ui.QuadPart += days * intervals_per_day;
-
-  // Convert back to FILETIME
-  ft.dwLowDateTime = ui.LowPart;
-  ft.dwHighDateTime = ui.HighPart;
-
-  // Convert FILETIME back to SYSTEMTIME
-  SYSTEMTIME new_st;
-  FileTimeToSystemTime(&ft, &new_st);
-
-  return convertSystemDate(new_st);
 }

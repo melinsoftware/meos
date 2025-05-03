@@ -75,7 +75,7 @@ SportIdent::SportIdent(HWND hWnd, DWORD Id, bool readVoltage) : readVoltage(read
   tcpPortOpen = 0;
   serverSocket = 0;
   punchMap.resize(1024);
-  punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
+  //punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
   punchMap[oPunch::SpecialPunch::PunchCheck] = oPunch::SpecialPunch::PunchCheck;
   punchMap[oPunch::SpecialPunch::PunchFinish] = oPunch::SpecialPunch::PunchFinish;
 }
@@ -83,7 +83,7 @@ SportIdent::SportIdent(HWND hWnd, DWORD Id, bool readVoltage) : readVoltage(read
 void SportIdent::resetPunchMap() {
   punchMap.resize(1024);
   fill(punchMap.begin(), punchMap.end(), 0);
-  punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
+  //punchMap[oPunch::SpecialPunch::PunchStart] = oPunch::SpecialPunch::PunchStart;
   punchMap[oPunch::SpecialPunch::PunchCheck] = oPunch::SpecialPunch::PunchCheck;
   punchMap[oPunch::SpecialPunch::PunchFinish] = oPunch::SpecialPunch::PunchFinish;
 }
@@ -1028,6 +1028,13 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
               DWORD ShortCard=MAKEWORD(bf[7], bf[6]);
               DWORD Series=bf[5];
 
+              /*for (int i = 0; i < 32; i++) {
+                uint32_t c = bf[i];
+                char xxx[20];
+                sprintf_s(xxx, "%X ", c);
+                OutputDebugStringA(xxx);                
+              }
+              OutputDebugStringA("\n");*/
 
               DWORD Card=MAKELONG(MAKEWORD(bf[7], bf[6]), MAKEWORD(bf[5], bf[4]));
 
@@ -1040,12 +1047,26 @@ bool SportIdent::MonitorSI(SI_StationInfo &si)
               uint8_t tss = bf[11]; // Sub second 1/256 seconds
               int tenth = (((100 * tss) / 256) + 4) / 10;
               Time += tenth;
+
+              int mode = si.stationMode();
+              if (mode == 11) {
+                int rawMode = bf[12] & 0xF;
+                switch (rawMode) {
+                case 2: // CTRL
+                case 4: // FIN
+                case 3: // STA
+                case 10: // CHK
+                case 7: // CLR
+                  mode = rawMode;
+                }
+              }
+
 #ifdef DEBUG_SI
               char str[128];
               sprintf_s(str, "EXTENDED: Card = %d, Station = %d, StationMode = %d", Card, Station, si.StationMode);
               MessageBox(NULL, str, NULL, MB_OK);
-#endif
-              addPunch(Time, Station & 511, Card & 0x00FFFFFF, si.stationMode());
+#endif              
+              addPunch(Time, Station & 511, Card & 0x00FFFFFF, mode);
             }
             break;
           }
@@ -2042,6 +2063,8 @@ void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode) {
   auto mapPunch = [this](int code) {
     if (code > 0 && code < punchMap.size() && punchMap[code] > 0)
       return int(punchMap[code]);
+    else if (code == oPunch::SpecialPunch::PunchStart)
+      return int(oPunch::SpecialPunch::PunchCheck); // Do not allow start unless explicitly set
     else
       return code;
   };
@@ -2086,7 +2109,7 @@ void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode) {
       sic.StartPunch.Time = Time;
       sic.StartPunch.Code = Station;
     }
-    else if (Mode == 10) {
+    else if (Mode == 10 || Mode == 7) { // Treat clear as check
       sic.CheckPunch.Time = Time;
       sic.CheckPunch.Code = Station;
     }
@@ -2625,4 +2648,96 @@ void SportIdent::addTestCard(int cardNo, const vector<int> &punches) {
 
 void SportIdent::debugLog(const wchar_t *msg) {
 
+}
+
+void SportIdent::readRawData(const wstring &file) {
+  std::ifstream fin(file);
+
+  BYTE b[128 * 5];
+  memset(b, 0, 128 * 5);
+  
+  int blocks_8_9_p_t[2] = { 0,1 };
+  int blocks_10_11_SIAC[6] = { 0,1,4,5,6,7 }; // Block 1 added,to handle SIACs using Beacon
+  int limit = 1;
+  int* blocks = blocks_8_9_p_t;
+ 
+  auto readBlock = [&](BYTE* dest) {
+    string line;
+    bool ok = false;
+    while (fin.good()) {
+      std::getline(fin, line);
+      size_t bl = line.find("Block");
+      if (bl != string::npos) {
+        ok = true;
+        std::getline(fin, line);
+        if (line[0] == '(')
+          memset(dest, 0xEE, 128);
+        for (int i = 0; i < 8; i++) {
+          if (line.size() < 60)
+            return false;
+
+          size_t ix = line.find_first_of(':');
+          if (ix != string::npos) {
+            ix++;
+            for (int j = 0; j < 16; j++) {
+              int a = line.at(ix + 3 * j + 1);
+              if (a >= '0' && a <= '9')
+                a -= '0';
+              else
+                a -= 'A' - 10;
+
+              int b = line.at(ix + 3 * j + 2);
+              if (b >= '0' && b <= '9')
+                b -= '0';
+              else
+                b -= 'A' - 10;
+
+              dest[i * 16 + j] = 16 * a + b;
+            }
+          }
+          else
+            return false;
+
+          std::getline(fin, line);
+        }
+
+        return true;
+      }
+    }
+    return false;
+  };
+
+  int rBlock = 0;
+  for (int k = 0; k < limit; k++) {
+    if (k == 0) {
+      readBlock(b);
+      rBlock++;
+    }
+    else {
+      while (rBlock < blocks[k]) {
+        BYTE dmy[128];
+        readBlock(dmy);
+        rBlock++;
+      }
+      readBlock(b + k * 128); 
+      rBlock++;
+    }
+    if (k == 0) {
+      int series = b[24] & 15;
+      if (series == 15) {
+        int nPunch = min(int(b[22]), 128);
+        blocks = blocks_10_11_SIAC;
+        limit = 2 + (nPunch + 31) / 32;   // Read Block 0, Block 1 + punches
+        int cardNo = GetExtCardNumber(b);
+      }
+      else {
+        limit = 2; // Card 8, 9, p, t
+      }
+    }
+  }
+
+  SICard card(ConvertedTimeStatus::Hour24);
+  if (getCard9Data(b, card)) {
+    addCard(card);
+  }
 }

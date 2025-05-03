@@ -1577,7 +1577,8 @@ int TabClass::classCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
           pc->setDrawInterval(ds.interval);
           pc->setDrawVacant(ds.vacant);
           pc->setDrawNumReserved(0);
-          pc->setDrawSpecification({oClass::DrawSpecified::FixedTime, oClass::DrawSpecified::FixedInterval, oClass::DrawSpecified::Vacant});
+          pc->setDrawSpecification({oClass::DrawSpecified::FixedTime, oClass::DrawSpecified::FixedInterval, 
+                                    oClass::DrawSpecified::Vacant, oClass::DrawSpecified::Extra});
         }
       }
       
@@ -4471,7 +4472,7 @@ bool TabClass::loadPage(gdioutput &gdi)
   
   gdi.popX();
 
-  TabRunner::addExtraFields(*oe, gdi, oEvent::ExtraFieldContext::Class);
+  TabRunner::addExtraFields(*oe, gdi, true, false, oEvent::ExtraFieldContext::Class);
 
   gdi.dropLine(1.5);
 

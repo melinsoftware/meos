@@ -74,6 +74,8 @@ class IOF30Interface {
   // Include data on stage number
   bool includeStageRaceInfo;
 
+  bool preferShortName;
+
   int classIdOffset = 0;
   int courseIdOffset = 0;
 

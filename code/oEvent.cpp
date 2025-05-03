@@ -465,6 +465,7 @@ void oEvent::initProperties() {
   getPropertyInt("UseHourFormat", 1);
   getPropertyInt("NameMode", FirstLast);
   getPropertyBool("CompactClubName", false);
+  getPropertyBool("PreferShortClubName", true);
 }
 
 void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> > &propNames) const {
@@ -487,6 +488,7 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
     filter.insert("PayModes");
     filter.insert("ReadVoltageExp");
     filter.insert("ControlMap");
+    filter.insert("InputServer");
   }
 
   // Boolean and integer properties
@@ -521,6 +523,7 @@ void oEvent::listProperties(bool userProps, vector< pair<string, PropertyType> >
   b.insert("IncludePreliminary");
   b.insert("CompactClubName");
   b.insert("OldCards");
+  b.insert("PreferShortClubName");
 
   // Integers
   i.insert("YouthFee");

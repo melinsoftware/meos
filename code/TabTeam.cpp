@@ -1596,7 +1596,7 @@ bool TabTeam::loadPage(gdioutput &gdi)
     gdi.popX();
   }
   
-  TabRunner::addExtraFields(*oe, gdi, oEvent::ExtraFieldContext::Team);
+  TabRunner::addExtraFields(*oe, gdi, true, false, oEvent::ExtraFieldContext::Team);
   
   gdi.dropLine(0.5);
   gdi.popX();

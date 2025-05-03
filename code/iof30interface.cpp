@@ -61,6 +61,7 @@ IOF30Interface::IOF30Interface(oEvent *oe, bool forceSplitFee, bool useEventorQu
                                 includeStageRaceInfo(true), useEventorQuirks(useEventorQuirks) {
   cachedStageNumber = -1;
   splitLateFee = forceSplitFee || oe->getPropertyInt("SplitLateFees", false) == 1;
+  preferShortName = oe->getPropertyBool("PreferShortClubName", true);
 }
 
 void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool updateClass,
@@ -2661,7 +2662,7 @@ pClub IOF30Interface::readOrganization(gdioutput &gdi, const xmlobject &xclub, b
   xclub.getObjectString("Name", name);
   xclub.getObjectString("ShortName", shortName);
 
-  if (shortName.length() > 4 && shortName.length() < name.length())
+  if (preferShortName && shortName.length() > 4 && shortName.length() < name.length())
     swap(name, shortName);
 
   if (name.length()==0 || !IsCharAlphaNumeric(name[0]))
@@ -3885,6 +3886,21 @@ void IOF30Interface::writePerson(xmlparser &xml, const oRunner &r) {
   xml.write("Family", r.getFamilyName());
   xml.write("Given", r.getGivenName());
   xml.endTag();
+
+  if (int by = r.getBirthYear(); by > 1900) {
+    wstring date = r.getBirthDate();
+    if (date.size() > 6)
+      xml.write("BirthDate", date);
+    else
+      xml.write("BirthDate", itow(by) + L"-01-01");
+
+  }
+
+  wstring nat = r.getNationality();
+  if (!nat.empty()) {
+    xml.write("Nationality", "code", nat.c_str());
+  }
+
 
   xml.endTag();
 }

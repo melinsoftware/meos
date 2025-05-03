@@ -2682,3 +2682,324 @@ xml-data = datos xml
 åtta = Ocho
 åttonde = Octavo
 övriga = Otros
+Aktivera kioskläge = Activate kiosk mode = Activar modo kiosco
+Alla okvalificerade = Any unqualified = Todos los no calificados
+Alla övriga = All remaining = Todos los demás
+Angiven tid = Given time = Hora indicada
+Anmäld API = API entry = Entrada API
+Anslut en SI-enhet och aktivera den = Connect and activate a SI unit = Conectar y activar una unidad SI
+Antal nivåer = Number of levels = Número de niveles
+Antal varv = Count Laps = Cuenta vueltas
+Antal varv (med extrakontroll) = Count Laps (with Extra Control) = Cuenta vueltas (con control extra)
+Använd ranking istället för placering i kval för att placera kvalificerade löpare i klasser = Use ranking instead of placement to distribute qualified runners into classes = Usar ranking en lugar de posición para distribuir corredores en categorias
+Avgiftshöjning två (procent) = Second fee increase (percent) = Segundo aumento de tarifa (porcentaje)
+Avgjorda klasser (prisutdelningslista) = Settled classes (Prize Ceremony List) = categorias definidas (Listado Entrega de Premios)
+Avläsning = Readout = Lectura
+Avstånd mellan förslag (minuter) = Distance between suggestions (minutes) = Distancia entre propuestas (minutos)
+Banpool, lottad startlista = Course pool, drawn start list = Listados del sorteo de salidas por recorridos
+Bantilldelningslista - %s = Assigned Courses - %s = Lista de asignación de recorridos - %s
+Begränsa antal nummerlappar per klass = Limit number of dorsals per class = Limitar número de dorsales por categoria
+Behörighet saknas för att skriva till 'X' = Access denied trying to write to 'X' = No hay permisos para escribir en 'X'
+Betalning av anmälningsavgift inte registrerad = Payment of entry fee not yet registered = Pago de inscripción no registrado
+Bevara höjd/bredd-relationen = Preserve aspect ratio = Conservar relación de aspecto
+Biathlonorienteering Relay = Biathlon Orienteering Relay = Relevo de biatlón-orientación
+Biathlonorienteering Sprint = Biathlon Orienteering Sprint = Sprint de biatlón-orientación
+Bild = Image = Imagen
+Bild under text = Image behind text = Imagen detrás del texto
+Bilder = Images = Imágenes
+Boka starttid = Request start time = Solicitar hora de inicio
+Bredd = Width = Ancho
+Brickan är av äldre typ = Card type is deprecated = La tarjeta es de tipo antiguo
+Brickan är av äldre typ och kan inte användas = The card is of older type and cannot be used = La tarjeta es de tipo antiguo y no puede usarse
+Bricktyp = Card type = Tipo de tarjeta
+Byt namn = Rename = Cambiar nombre
+Bästa tid = Best time = Mejor tiempo
+Checkenheter och Ej Start = Check units and Did Not Start = Comprobar participantes que no han salido
+Checktid = Check time = Hora de verificación
+ClassDataA = Class data A = Datos de categoria A
+ClassDataB = Class data B = Datos de categoria B
+ClassTextA = Class text = Texto de categoria
+ClubNameShort = Short club name = Nombre corto del club
+CourseNumControls = Number of controls = Número de controles
+Databasvarning = Database Warning = Advertencia de base de datos
+Datortid = Computer time = Hora del ordenador
+Deltagare med samma bana och samma starttid X = Competitors with the same course and start time X = Participantes con el mismo recorrido y hora de inicio X
+Deltagare med samma första kontroll och samma starttid X = Competitors with the same first control and start time X = Participantes con el mismo primer control y hora de inicio X
+EFilterModifiedCard = With modified result = Con resultado modificado
+EFilterTimeNoResult = Finish time but no result = Hora de llegada sin resultado
+Efteranmälan = Late entry = Inscripción tardía
+Ekonomi för X sparad = Economy for X was saved = Pago de X guardada
+Empty Results Split Print = Empty Results Split Print = Impresión de Spits vacíos
+En timme = One hour = Una hora
+Endast tidtagning = Endast tidtagning = Solo cronometraje
+Ett värde vars tolkning beror på listan = A value with a list dependent interpretation = Un valor cuya interpretación depende de la lista
+Exportera gaffling = Export forking = Exportar bifurcación
+Exportera mall = Export template = Exportar plantilla
+Exportera startlista = Export start list = Exportar listado de salida
+Exportera startlista på fil = Export start list to file = Exportar listado de salida a archivo
+Exportera underlag = Export basis = Base de Exportacion
+Extra data X = Extra data X = Datos extra X
+Extra datafält = Extra data fields = Campos de datos extra
+Final = Final = Final
+Från den här listan kan man skapa etiketter att klistra på kartor = From this list, you can create labels to stick on the maps = Desde esta lista, se pueden crear etiquetas para pegar en los mapas
+Födelsedatum = Birth date = Fecha de nacimiento
+För att visa kvar-i-skogen per deltagare eller kontroll finns följande vyer = To show remaining competitors per class or control you can use the following views = Para mostrar competidores restantes por categoria o control, se pueden usar las siguientes vistas
+För kommunikationstest kan man använda en separat testtävling = To test communication, you can use a separate test competition = Para probar la comunicación, se puede usar una competición de prueba separada
+Förskjut nummer inom klassen för att fylla luckor där laget/deltagaren i filen saknas i tävlingen = Shift numbers within a class to fill gaps when a listed team or competitor is missing = Desplazar números dentro de una categoria para llenar huecos cuando falta un equipo/participante
+Förskjutning = Displacement = Desplazamiento
+Förskjutning av klassers Id = Offset Class ID = Desplazamiento de ID de categoria
+Förskottsbetalning = Advance payment = Pago por adelantado
+Gafflingar lagvis = Forkings, teamwise = Bifurcaciones por equipo
+Gemensam lottning för banor kan inte användas med seedad lottning = Cannot draw classes with the same course together for the seeded method = No se puede usar sorteo conjunto para recorridos con sorteo con cabezas de serie
+Gör grundinställningar och tryck på 'X' för att göra en fördelning av starttider för klasserna = Make basic settings and press 'X' to generate an initial distribution of classes = Hacer configuraciones básicas y presionar 'X' para generar distribución inicial de categorias
+Hindra användning av äldre brickor = Prevent usage of old punching cards = Impedir uso de tarjetas antiguas
+Hjälp = Hjälp = Ayuda
+Horisontell = Horizontal = Horizontal
+Huvudlista = Main list = Lista principal
+Höjd = Height = Altura
+IOF CourseData, version 3.0 (xml) = IOF CourseData, version 3.0 (xml) = IOF CourseData, versión 3.0 (xml)
+IOF Startlista (xml) = IOF Start list (xml) = Lista de salida IOF (xml)
+IOF Startlista, version 2.0.3 (xml) = IOF Start list, version 2.0.3 (xml) = Lista de salida IOF, versión 2.0.3 (xml)
+IOF Startlista, version 3.0 (xml) = IOF Start list, version 3.0 (xml) = Lista de salida IOF, versión 3.0 (xml)
+Importera mall = Import template = Importar plantilla
+Importera nummerlappar = Import dorsals = Importar dorsales
+Include preliminary results and radio times = Include preliminary results and radio times = Incluir resultados preliminares y tiempos de radio
+Individual Example = Individual Example = Ejemplo individual
+Individual Results Split Print = Individual Results Split Print = Impresión de Splits individuales
+Individual Results Split Print (Narrow) = Individual Results Split Print (Narrow) = Impresión de Splits individuales (estrecha)
+Individual Rogaining Split Print = Individual Rogaining Split Print = Impresión de Splits individuales rogaining
+Individuell resultatlista, alla lopp = Individual result list, all races = Lista de resultados individuales, todas las carreras
+Individuell resultatlista, sammanställning av flera lopp = Individual results, summary = Resultados individuales, resumen de varias carreras
+Individuell resultatlista, visst lopp = Individual results, race = Resultados individuales, carrera específica
+Individuell resultatlista, visst lopp (STOR) = Individual results, race (LARGE) = Resultados individuales, carrera específica (GRANDE)
+Individuell startlista, visst lopp = Individual start list, race = Listado de salidas individuales, carrera específica
+Ingen ledig starttid kunde hittas = No free start time was found = No se encontró hora de inicio libre
+Ingen[bild] = None = Ninguna
+Inmatning Testning = Input Testing = Prueba de entrada
+Kan inte ersätta den inbyggda mallen X = Cannot overwrite built-in template X = No se puede sobrescribir la plantilla integrada X
+Klass / placering = Class / placement = categoria / posición
+Klass X (namnsuffix) = Class X (name suffix) = categoria X (sufijo de nombre)
+Klass efter ranking = Select class by ranking = Seleccionar categoria por ranking
+Klassen X är listad flera gånger = The class X is listed several times = La categoria X aparece listada varias veces
+Klassen lottas inte, boka starttid = Start list not drawn, request start time on the page SportIdent = categoria no sorteada, solicitar hora de inicio en la página de SportIdent
+Klassen tillåter ej val av starttid = The class does not allow request of start time = La categoria no permite seleccionar hora de salida  
+Klubbresultatlista = Club Results = Resultados por club  
+Klubbresultatlista - %s = Club Results - %s = Resultados por club - %s  
+Klubbstartlista = Club Start List = Listado de salida por club  
+Klubbstartlista - %s = Club Start List - %s = Listado de salida por club - %s  
+Klubbstartlista, lag = Club start list, team = Listado de salida por club, equipos  
+Kom ihåg listan = Remember the List = Recordar la lista  
+Kommentar = Comment = Comentario  
+Kommentarer = Comments = Comentarios  
+Kommentarer för X = Comments for X = Comentarios para X  
+Kräv betalning innan resultatet godkänns = Require payment before result is accepted = Requiere pago antes de aceptar el resultado  
+Kunde inte skriva till 'X' = Could not write to 'X' = No se pudo escribir en 'X'  
+Kval = Qualification = Clasificación  
+Kvalificeringsregler för X = Qualification Rules for X = Reglas de clasificación para X  
+Kvalklass = Qualification class = categoria clasificatoria  
+Ladda = Load = Cargar  
+Lag/deltagare i klassen som inte hittas i filen för tilldelas efterföljande lediga nummerlappar = Teams or competitors in the file that are not matched are assigned to the next available dorsal number = Equipos o participantes no encontrados en el archivo serán asignados al siguiente número disponible  
+Lap Count = Lap count = Conteo de vueltas  
+Lap count with extra punch = Lap count with extra punch = Conteo de vueltas con control adicional  
+Layout = Layout = Diseño  
+Listan borttagen = List removed = Lista eliminada  
+Listan kontroller = List: Controls = Lista: Controles  
+Listan kvar-i-skogen = List: In Forest = Lista: En el bosque  
+Live results, radio = Live results, radio = Resultados en vivo, radio  
+Lottad startlista = Drawn start list = Listados de salidas  
+Lägg till eller redigera kommentarer om deltagaren = Add or edit a comment about the competitor = Añadir o editar comentario del participante  
+Lägg till eller redigera kommentarer om laget = Add or edit a comment about the team = Añadir o editar comentario del equipo  
+Lägg till regler = Add rules = Añadir reglas  
+Länk till resultatlistan = Link to the result list = Enlace a la lista de resultados  
+Länk till startlistan = Link to the start list = Enlace a la lista de salida  
+Lås startlista = Lock start list = Bloquear lista de salida  
+Löparbrickor av äldre typ: X = Cards of older (deprecated) type: X = Tarjetas antiguas (obsoletas): X  
+Löpare med fler kontroller än brickan kan innehålla: X = Competitors with more controls than the card can hold: X = Participantes con más controles de los que la tarjeta puede almacenar: X  
+Löparen diskvalificeras tills anmälningsavgiften är betalad = The competitor becomes disqualified until the fee has been paid. = El participante será descalificado hasta que pague la cuota de inscripción  
+Mallar är textfiler som styr genereringen av HTML-kod = Templates are text file controlling the generation of HTML code. = Las plantillas son archivos de texto que controlan la generación de código HTML  
+Mallhantering = Template management = Gestión de plantillas  
+Manuellt startönskemål = Manual start request = Solicitud de salida manual  
+Manuellt ändrad brickdata = Manually modified card data = Datos de tarjeta modificados manualmente  
+Manuellt ändrad stämpling = Manually changed data = Registro modificado manualmente  
+Maxtid[setting] = Max time = Tiempo máximo  
+MeOS HTML Template = MeOS HTML Template = Plantilla HTML de MeOS  
+MeOS Three Days Race X = MeOS Three Days Race X = Carrera de tres días MeOS X  
+Minsta tid till start (minuter) = Minimum time to start (minutes) = Tiempo mínimo hasta la salida (minutos)  
+Minutstartlista = Minute start list = Listado de salida en minutos  
+Modifierade resultat = Modified results = Resultados modificados  
+N bästa = N best = N mejores  
+Namn/klubb från löpardatabasen = Name/club from runner database = Nombre/club desde la base de datos de corredores  
+Nivå X = Level X = Nivel X  
+Ny bild = New image = Nueva imagen  
+Observera att stämplingar före tävlingens nolltid inte kan hämtas = Note MeOS cannot fetch punches preceding the competition zero time = Ten en cuenta que MeOS no puede recuperar registros anteriores al tiempo cero de la competicion  
+Oförändrad brickdata = Original card data = Datos originales de la tarjeta  
+Okänd deltagare X = Unknown competitor X = Participante desconocido X  
+Okänd ursprungsstatus = Unknown data origin status = Estado de origen de datos desconocido  
+Okända brickor med registreringar = Unknown cards with registrations = Tarjetas desconocidas con registros  
+Okänt dataformat, rad X = Unknown dataformat, row X = Formato de datos desconocido, fila X  
+Okänt lag X = Unknown team X = Equipo desconocido X  
+Omstart: X = Restart: X = Reinicio: X  
+Patrol Rogaining = Patrol Rogaining = Rogaining en equipo  
+Patrol result = Patrol result = Resultado de equipo  
+Patrol results = Patrol results = Resultados de equipo  
+Patrol, start list = Patrol, start list = equipo, lista de salida  
+PatrolClubNameNamesShort = Patrol's short club name(s) = Nombre(s) corto(s) el equipo por club
+Placering X kvalificerar till Y = Place X qualifies for Y = Posición X califica para Y  
+Placeringar = Placements = Posiciones  
+Primärt = Primary = Primario  
+Prisutdelningslista = Prize Ceremony List = Listado de entrega de premios  
+Programinställningar = Programinställningar = Configuración del programa  
+Prologue + Pursuit = Prologue + Pursuit = Prólogo + Persecución  
+Publicera startlista = Publish Start List = Publicar listados de salida  
+Publicera startlistan på Eventor = Publish start list on Eventor = Publicar listados de salida en Eventor  
+Publicerar startlistan = Publishing the start list = Publicando los listados de salida  
+PunchControlPlaceTeamAcc = Total team place at control = Posición total del equipo en el control  
+PunchTeamTime = Team total time and split at control = Tiempo total del equipo y parcial en el control  
+PunchTeamTotalNamedTime = Total team named split time = Tiempo total con nombre del equipo  
+PunchTeamTotalTime = Total team running time to control = Tiempo total del equipo hasta el control  
+PunchTeamTotalTimeAfter = Team's time behind at control = Tiempo detrás del equipo en el control  
+Rader markerade med (*) kommer från en lista i tävlingen = Rows with a (*) originates from a list in the competition = Las filas marcadas con (*) provienen de una lista de la competicion 
+Radera alla = Remove all = Eliminar todo  
+Radera listan från aktuell tävling = Delete list from this competition = Eliminar lista de esta competicion  
+Redigera lista = Edit List = Editar lista  
+Reducerad = Reduced = Reducido  
+Regler = Rules = Reglas  
+Relay Example = Relay Example = Ejemplo de relevo  
+Relay Results Split Print = Relay Results Split Print = Impresión de resultados parciales de relevos  
+Relay/Team Results Split Print = Relay/Team Results Split Print = Impresión de resultados parciales de relevos/equipos  
+Reptid: X = Rope time: X = Tiempo de repeticion: X  
+Resultatlista - %s = Results - %s = Lista de resultados - %s  
+Resultatlista – inställningar = Results – settings = Lista de resultados – configuración  
+Resultatlista, Rogaining, lag = Results, Rogaining, team = Resultados, Rogaining, equipo  
+Rogaining results for a team, where each team member collects points individually = Rogaining results for a team, where each team member collects points individually = Resultados de Rogaining por equipo, donde cada miembro recolecta puntos individualmente  
+RunnerClubShort = Competitor's short club name = Nombre corto del club del participante  
+RunnerCompleteNameCompact = Complete name (compact) = Nombre completo (compacto)  
+RunnerCompleteNameCompactClub = Complete name with short club name = Nombre completo con nombre corto del club  
+RunnerCourseTimeAfter = Competitor's time behind on course = Tiempo detrás del participante en el recorrido  
+RunnerDataA = Competitor data A = Datos del participante A  
+RunnerDataB = Competitor data B = Datos del participante B  
+RunnerLegTeamLeaderName = First competitor in team to finish leg = Primer participante del equipo en terminar el tramo  
+RunnerNameCompact = Name and initial = Nombre e iniciales  
+RunnerRankScore = Ranking (score) = Clasificación (puntuacion)  
+RunnerRentalCard = Rental card = Tarjeta de alquiler  
+RunnerTextA = Competitor text = Texto del competidor
+Saknad brickavläsning = Missing card readout = Lectura de tarjeta faltante
+Samma bana och starttid i X = Same course and start time in X = Mismo recorrido y hora de inicio en X
+Samma bana på angränsande starttid: X = Same course on neighbouring start time: X = Mismo recorrido en la hora de inicio vecina: X
+Samma inledning och starttid i X = Same first controls and start time X = Mismos primeros controles y hora de inicio en X
+Sekundärt = Secondary = Secundario
+Sen = Late = Tarde
+Senast sedd = Last seen = Visto por ultima vez
+Sida = Page = Página
+Simulerar starttidstilldelning för X deltagare = Simulating start time assignments for X competitors = Simulando la asignación de tiempos de inicio para X competidores
+Simulering = Simulation = Simulación
+Sista starttid = Last start time = Última hora de inicio
+Skapa generell lista = Create General List = Crear lista general
+Skriv ut eller exportera listan automatiskt = Print or export the list automatically = Imprimir o exportar la lista automáticamente
+Slå ihop med befintlig lista = Merge with existing list = Fusionar con la lista existente
+Spara den här listan som en favoritlista = Save this list as a favorite list = Guardar esta lista como favorita
+Spara och stäng = Save and close = Guardar y cerrar
+Start på signal = Start on signal = Inicio con señal
+Starta nu = Start now = Iniciar ahora
+Startintervall (minuter) = Start interval (minutes) = Intervalo de inicio (minutos)
+Startlista X - sträcka Y = Start list X - leg Y = Lista de inicio X - tramo Y
+Startlista, lag = Start list, team = Lista de inicio, equipo
+Startmetod = Start method = Método de inicio
+Starttiden är låst = The start time is locked = La hora de inicio está bloqueada
+Starttiden är redan tilldelad = The start time is already assigned = La hora de inicio ya está asignada
+Stoppdatum två = Second stop date = Segunda fecha de parada
+Sträcktidslista = Split time list = Lista de tiempos parciales
+Stämpla för välja starttid = Punch to choose a start time = Marque para elegir una hora de inicio
+Sätt tiden = Set time = Establecer hora
+Ta bort sparad = Remove saved = Eliminar guardado
+Tabelläge kontroller = Table: Controls = Modo de tabla: Controles
+Team Rogaining Collect Points = Team Rogaining Collect Points = Equipo Rogaining acumula Puntos
+Team Rogaining Split Print = Team Rogaining Split Print = Splits del equipo Rogaining
+TeamClubShort = Team's short club name = Nombre corto del club del equipo
+TeamDataA = Team data A = Datos del equipo A
+TeamDataB = Team data B = Datos del equipo B
+TeamTextA = Team text = Texto del equipo
+Testning = Testing = Pruebas
+Tiden har passerat sista tillåtna starttid = Time has passed last allowed start time = Ha pasado el tiempo de la última hora de inicio permitida
+Tidig = Early = Temprano
+Tidsgräns X = Time limit X = Límite de tiempo X
+Tidskval = Time qualification = Calificación por tiempo
+Tilldela nummerlapp till resterande lag/deltagare i klasser med nummerlapp = Assign free dorsal numbers to remaining teams / competitors in the class = Asignar números de dorsal libres a los equipos/competidores restantes en la categoria
+Tilldela nummerlapp till vakanter = Assign dorsals to vacancies = Asignar números de dorsal a vacantes
+Tillsätt tillfälliga anonyma lagmedlemmar = Appoint Anonymous Team Members = Asignar miembros de equipo anónimos
+Tillåt deltagare med samma klubb och klass på närliggande starttid = Allow competitors from the same club and class on next start time = Permitir competidores del mismo club y categoria en la siguiente hora de inicio
+Tillåt klass med samma bana på samma starttid = Allow class with same course on same start time = Permitir categoria con el mismo recorrido en la misma hora de inicio
+Tillåt klass med samma bana på starttid före/efter = Allow class with same course before and after = Permitir categoria con el mismo recorrido antes y después
+Tillåt klass med samma bana på stattid före/efter = Allow class with the same course before/after = Permitir categoria con el mismo recorrido antes y después
+Tillåt klass med samma första kontroll vid samma starttid = Allow class with same first control at the same time = Permitir categoria con el mismo primer control en la misma hora de inicio
+Tolka vitt som genomskinligt = White as transparent = Interpretar blanco como transparente
+Topplista, N bästa = Leaderboard, N best = Tabla de clasificación, N mejores
+Totalt antal: X = Total number: X = Número total: X
+Två timmar = Two hours = Dos horas
+Underlista = Sub list = Lista Secundaria
+Unknown status code X = Unknown status code X = Código de estado desconocido X
+Uppdatera X = Update 'X' = Actualizar X
+Uppdatera sparad = Update saved = Actualizar guardado
+Ursprunglig tid: X = Original time: X = Hora original: X
+Use in X = Use in X = Usar en X
+Vertikal = Vertical = Vertical
+Vill du byta namn på X till Y eller lägga till en ny deltagare? = Do you want to rename X to Y or add a new competitor? = ¿Quieres renombrar X a Y o añadir un nuevo competidor?
+Vill du ersätta den redan installerade mallen X (Y) = Do you want to replace the already installed template X (Y) = ¿Quieres reemplazar la plantilla ya instalada X (Y)?
+Vill du spara en kopia av tävlingen med starttider för ytterligare analys? = Do you want to save a copy of the competition with start times for further analysis? = ¿Quieres guardar una copia del evento con las horas de inicio para análisis adicional?
+Vill du starta automaten? = Do you want to start the service? = ¿Quieres iniciar el servicio?
+Vill du ta bort alla banor från tävlingen? = Do you want to remove all courses from the competition? = ¿Quieres eliminar todos los recorridos del evento?
+Vill du ta bort brickan från hyrbrickslistan? = Do you want to remove the card from the rental card list? = ¿Quieres eliminar la tarjeta de la lista de tarjetas de alquiler?
+Vill du tömma listan med hyrbrickor? = Do you want to clear the rental card list? = ¿Quieres vaciar la lista de tarjetas de alquiler?
+Vill du uppdatera X med ändringarna? = Do you want to update X with the changes? = ¿Quieres actualizar X con los cambios?
+Vill du uppdatera starttiderna med avseende på manuella ändringar innan lottning? = Do you want to adjust start times before drawing, taking manual changes into consideration? = ¿Quieres ajustar las horas de inicio antes del sorteo, considerando los cambios manuales?
+Visa alla brickor = Show all cards = Mostrar todas las tarjetas
+Visa kvar-i-skogen = Show in forest = Mostrar en el bosque
+Visa startlistan = Show start list = Mostrar la lista de inicio
+Välj X för att justera övriga klasser med hänsyn tagen till manuella ändringar = Select X to adjust the start times for other classes, taking your changes into consideration = Seleccionar X para ajustar las horas de inicio para otras categorias, considerando tus cambios
+Välj bild = Select image = Seleccionar imagen
+Välj bland befintliga bilder = Select existing image = Seleccionar entre imágenes existentes
+Välj från flera förslag = Choose start time = Elegir hora de inicio
+Välj från lista = Detailed Selection = Selección detallada
+Välj lista = Select list = Seleccionar lista
+Välj starttid för X = Choose start time for X = Elegir hora de inicio para X
+Välj typ av ID att exportera = Select ID types to export = Seleccionar tipos de ID para exportar
+Välj vilken tid du vill sätta = Select which time to set = Seleccionar la hora a configurar
+X bästa = X best = X mejores
+X bästa okvalificerade = X best unqualified = X mejores no clasificados
+X deltagare i skogen visas inte = X competitors in forest are filtered from the view = X competidores en el bosque están filtrados de la vista
+X kvalificerade = X qualified = X calificados
+X: Startid för Y kl Z = X: Start time for Y at Z = X: Hora de inicio para Y en Z
+Youth Cup X = Youth Cup X = Copa Juvenil X
+ask:simulatestart = Carry out a simulation with the settings you have made (classes, starting depth, distance, rules) and with the registered participants who are in the classes. The competition is not affected. The result shows whether it is reasonable that everyone has time to start within the set start depth and how long extra waiting time to start may be required in different classes.\n\nAfterwards, you can also save a copy of the competition with simulated start times to study e.g. minute start list.\n\nDo you want to run the simulation? = Realiza una simulación con la configuración que hayas configurado (recorridos, salidas, distancia, reglas) y con los participantes registrados en las categorias. La competición no se verá afectada. El resultado muestra si es razonable que todos tengan tiempo de salida establecido y cuánto tiempo de espera adicional puede requerirse en los diferentes recorridos.\n\nDespués, también puedes guardar una copia de la competición con las horas de salida simuladas para consultar, por ejemplo, la lista de minutos de salida.\n\n¿Quieres ejecutar la simulación?
+ask:startkiosk = If you start a start time reservation kiosk, MeOS enters a state where no other operations are supported or settings can be changed. You need a connected and activated SI unit.\n\nYou should consider password protecting the database if you are exposing a kiosk.\n\nDo you want to start the kiosk mode? = Si inicia un quiosco de reserva de hora de inicio, MeOS entra en un estado donde no se admiten otras operaciones ni se pueden modificar los ajustes. Necesita una unidad SI conectada y activada.\n\nDebería considerar proteger la base de datos con contraseña si va a exponer un quiosco.\n\n¿Desea iniciar el modo quiosco?
+help:requeststart = Requesting start time is something in between free and drawn start time. By requesting a start time, MeOS ensures that there is a certain distance between participants in the same class or on the same course. If you have a requested start time, it is not necessary to use a start punch.\n\nSet parameters for start depth and how many/who are allowed to start at the same time. How far it is from the place where the booking is made to the start determines what is an appropriate minimum time to start value.\n\nYou can let the participants automatically get the first possible available start time after the minimum time to start, or let them choose from a number possible start times. It is possible and appropriate to print out a start certificate to take with you to the start.\n\nIf you are using a live results service, the start time will probably be displayed there when booked. = Solicitar hora de salida es un punto intermedio entre la hora de salida libre y la hora de salida sorteada. Al solicitar una hora de salida, MeOS garantiza que haya una distancia determinada entre los participantes de la misma categoria o del mismo recorrido. Si ya ha solicitado una hora de salida, no es necesario usar un registro de salida.\n\nEstablezca parámetros para la la salida y para saber cuántos participantes pueden salir a la vez. La distancia desde el lugar de la reserva hasta la salida determina el tiempo mínimo de salida adecuado.\n\nPuede permitir que los participantes obtengan automáticamente la primera hora de salida disponible después de la hora mínima de salida, o que elijan entre varias. Es posible y conveniente imprimir un certificado de salida para llevarlo consigo a la salida.\n\nSi utiliza un servicio de resultados en vivo, la hora de salida probablemente se mostrará allí al reservar
+help_second_fee = Use a second raised fee for direct entry at the competition day (for example). The higher fee is applied starting from and including the specified day. The specified percentage is relative the original fee. = Utilice una segunda tarifa incrementada para la inscripción directa el día de la competición (por ejemplo). La tarifa más alta se aplica a partir del día especificado, inclusive. El porcentaje especificado es relativo a la tarifa original.
+info:autolist = You have more options for the list and the export by showing and adjusting a list on the page Lists. Then press Automatize to start this service. = Tiene más opciones para listados y exportación mostrando y ajustando un listado en la página Listados. Luego, pulse "Automatizar" para iniciar este servicio.
+info:edittemplate = MeOS will try to open the template file. Unless you have edited such files before, Windows will ask you which app to use.\n\nChoose a text editor (like Notepad). = MeOS intentará abrir el archivo de plantilla. A menos que hayas editado estos archivos antes, Windows te preguntará qué aplicación usar.\n\nElige un editor de texto (como el Bloc de notas).
+info:offsetclassid = If you import entries and classes from different sources to the same competition, it might happen that there are clashes in the Id numbers of the classes. To separate the classes, you may enter an offset for the Class Id when working with files from a particular source; this will be added to the Id numbers.\n\nYou must specify the same offset each time you import from that source.\n\n A suitable number could be 1000 (which will work as long as every Id is less that 1000). = Si importa inscripciones y recorridos de diferentes fuentes a la misma competición, podría haber discrepancias en los números de identificación de los recorridos. Para separar los recorridos, puede introducir un desplazamiento para el ID de recorrido al trabajar con archivos de una fuente específica; este se añadirá a los números de identificación. Debe especificar el mismo desplazamiento cada vez que importe desde esa fuente. Un número adecuado podría ser 1000 (que funcionará siempre que cada ID sea menor que 1000).
+kolumner = columns = columnas
+prefsCompactClubName = Prefer short club name = Preferir nombre corto del club
+prefsExpStaFilename = Export start list = Exportar lista de salida
+prefsIncludePreliminary = Include preliminary result when exporting = Incluir resultados preliminares al exportar
+prefsRequestClubNeighbour = Request start: Allow same club neighbour = Solicitud de inicio: permitir vecino del mismo club
+prefsRequestLastStart = Request start: Last start = Solicitud de salida: última salida
+prefsRequestMaxParallel = Request start: Max parallel starts = Solicitud de salida: máximo de salidas simultaneas
+prefsRequestMinTime = Request start: Time to start = Solicitud de salida: tiempo hasta la salida
+prefsRequestProvideSuggestion = Request start: Make suggestions = Solicitud de salida: hacer sugerencias
+prefsRequestSameCourse = Request start: Same course = Solicitud de salida: mismo recorrido
+prefsRequestSameCourseNeighbour = Request start: Same course for neighbour = Solicitud de salida: mismo recorrido para vecino
+prefsRequestSameFirstControl = Request start: Same first control = Solicitud de salida: mismo primer control
+prefsRequestStartInterval = Request start: Interval = Solicitud de salida: intervalo
+prefsRequestSuggestInterval = Request start: Time between suggestions = Solicitud de salida: tiempo entre sugerencias
+prevsExpResFilename = Export results = Exportar resultados
+rader = rows = filas
+Ändra grundinställningar = Change basic settings = Cambiar configuración básica
+Ändra innehavare av bricka X = Change owner of card X = Cambiar propietario de la tarjeta X
+Ändra lokala inställningar = Change local settings = Cambiar configuración local
+Ändrad avgift = Changed fee = Tarifa modificada
+Ändrad bricka = Changed card = Tarjeta modificada
+Ändrad klass = Changed class = Categoría modificada
+Ändrat namn = Changed name = Nombre modificado
+Önskad starttid = Desired start time = Hora de salida deseada
+Önskemål = Request = Solicitud
+Övriga okvalificerade = Remaining unqualified = Otros No Clasificados

@@ -554,6 +554,14 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         TabList::splitPrintSettings(*oe, gdi, true, TSITab, TabList::Splits);
       }
     }
+    else if (bi.id == "RAW") {
+      vector< pair<wstring, wstring> > ext;
+      ext.push_back(make_pair(L"SI Config+ (RAW)", L"*.raw"));
+
+      wstring file = gdi.browseForOpen(ext, L"raw");
+      if (!file.empty()) 
+        getSI(gdi).readRawData(file);
+    }
     else if (bi.id == "AutoTie") {
       gEvent->setProperty("AutoTie", gdi.isChecked(bi.id));
     }
@@ -870,6 +878,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         }
 
         if (r && stringMatch(r->getName(), name)) {
+          TabRunner::saveExtraFields(gdi, *r);
           gdi.restore();
           //We have a match!
           SICard copy = activeSIC;
@@ -890,6 +899,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       if (r) {
         //We have a match!
         gdi.setData("RunnerId", r->getId());
+        TabRunner::saveExtraFields(gdi, *r);
 
         gdi.restore();
         SICard copy = activeSIC;
@@ -930,6 +940,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
           r->setRentalCard(true);
         }
         gdi.setData("RunnerId", r->getId());
+        TabRunner::saveExtraFields(gdi, *r);
 
         gdi.restore();
         SICard copy = activeSIC;
@@ -999,6 +1010,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         r->setRentalCard(true);
       }
 
+      TabRunner::saveExtraFields(gdi, *r);
       r->setStartTimeS(gdi.getText("StartTime"));
       r->setCardNo(activeSIC.CardNumber, false);
 
@@ -1060,6 +1072,8 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       }
       r->setStartTimeS(gdi.getText("StartTime"));
       r->setCardNo(activeSIC.CardNumber, false);
+
+      TabRunner::saveExtraFields(gdi, *r);
       gdi.restore();
       SICard copy_sic = activeSIC;
       activeSIC.clear(&activeSIC);
@@ -2192,6 +2206,10 @@ bool TabSI::loadPage(gdioutput& gdi) {
     gdi.addButton("AutoDetect", "Sök och starta automatiskt...", SportIdentCB);
     gdi.addButton("PrinterSetup", "Skrivarinställningar...", SportIdentCB, "Skrivarinställningar för sträcktider och startbevis");
 
+#ifdef _DEBUG
+    gdi.addButton("RAW", "Import RAW", SportIdentCB);
+#endif
+
     gdi.popX();
     gdi.fillDown();
     gdi.dropLine(2.2);
@@ -2905,10 +2923,33 @@ void TabSI::startInteractive(gdioutput& gdi, const SICard& sic, pRunner r, pRunn
       if (db_r)
         gdi.setText("Club", db_r->getClub()); //Data from DB
     }
+    
+    int cx = gdi.getCX();
+    int cy = gdi.getCY();
+    //gdi.setCY(cy)
+//    gdi.popX();
+//    gdi.dropLine();
+    int cnt = TabRunner::addExtraFields(*oe, gdi, false, false, 
+                                        oEvent::ExtraFieldContext::DirectEntry, {oEvent::ExtraFields::StartTime});
+    TabRunner::loadExtraFields(gdi, db_r);
+    /*auto setIf = [&gdi](const string& wg, const wstring& val) {
+      if (gdi.hasWidget(wg))
+        gdi.setText(wg, val);
+      };
+    */
     if (gdi.getText("Runners").empty() || !gdi.hasWidget("Club"))
       gdi.setInputFocus("Runners");
     else
       gdi.setInputFocus("Club");
+
+    if (cnt > 0) {
+      gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
+      gdi.dropLine(0.2);
+    }
+    else {
+      gdi.setCX(cx);
+      gdi.setCY(cy);
+    }
 
     //Process this card.
     activeSIC = sic;
@@ -3671,7 +3712,7 @@ void TabSI::generateEntryLine(gdioutput& gdi, pRunner r) {
   gdi.popX();
   gdi.dropLine(3.1);
 
-  int cnt = TabRunner::addExtraFields(*oe, gdi, oEvent::ExtraFieldContext::DirectEntry);
+  int cnt = TabRunner::addExtraFields(*oe, gdi, true, true, oEvent::ExtraFieldContext::DirectEntry);
   auto setIf = [&gdi](const string& wg, const wstring& val) {
     if (gdi.hasWidget(wg))
       gdi.setText(wg, val);
@@ -5084,6 +5125,7 @@ void TabSI::handleAutoComplete(gdioutput& gdi, AutoCompleteInfo& info) {
 
     bi->setExtra(ix + 1);
     if (bi->id == "Name" && ix >= 0) {
+      // Direct entry
       auto r = oe->getRunnerDatabase().getRunnerByIndex(ix);
       int year = r ? r->getBirthYear() : 0;
       if (year > 0) {
@@ -5110,6 +5152,7 @@ void TabSI::handleAutoComplete(gdioutput& gdi, AutoCompleteInfo& info) {
       }
     }
     else if (bi->id == "Runners" && ix >= 0) {
+      // Runners interactive readout
       auto r = oe->getRunnerDatabase().getRunnerByIndex(ix);
       if (gdi.hasWidget("Club") && r->dbe().clubNo) {
         if (gdi.getText("Club").empty()) {
@@ -5118,6 +5161,8 @@ void TabSI::handleAutoComplete(gdioutput& gdi, AutoCompleteInfo& info) {
             gdi.setText("Club", pclub->getName());
         }
       }
+
+      TabRunner::autoCompleteRunner(gdi, r);
     }
   }
   gdi.clearAutoComplete("");
