@@ -23,19 +23,19 @@
 #include <vector>
 #include "meos_util.h"
 
-//ABCDEFGHIJKLMNOPQRSTU
+//ABCDEFGHIJKLMNOPQRSTUV
 int getMeosBuild() {
-  string revision("$Rev: 1489 $");
+  string revision("$Rev: 1496 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2025-05-03 07:07:44 +0200 (lör, 03 maj 2025) $");
+  wstring date(L"$Date: 2025-06-03 11:38:23 +0200 (tis, 03 jun 2025) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L""; // No parantheses (...)
+  return L"U1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -148,6 +148,7 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"Naturfreunde Wien Orienteering");
   supp.emplace_back(L"HEYRIES / ACA Aix en Provence");
   supp.emplace_back(L"Allerød OK");
+  supp.emplace_back(L"IF Thor");
 
   reverse(supp.begin(), supp.end());
 }

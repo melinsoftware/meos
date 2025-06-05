@@ -755,10 +755,11 @@ void gdioutput::updateStringPosCache() {
   }
 }
 
-TextInfo& gdioutput::addTimer(int yp, int xp, int format, DWORD zeroTime, const wstring &textFormat, 
+TextInfo& gdioutput::addTimer(int yp, int xp, int format, int zeroTime, const wstring &textFormat, 
                               int xlimit, GUICALLBACK cb, int timeOut, const wchar_t* fontFace) {
   hasAnyTimer = true;
-  uint64_t zt = GetTickCount64() - 1000 * zeroTime;
+  int64_t signedTime = 1000 * zeroTime;
+  uint64_t zt = GetTickCount64() - signedTime;
   wstring text = getTimerText(zeroTime, format, true, textFormat);
 
   addStringUT(yp, xp, format, text, xlimit, cb, fontFace);
@@ -5354,8 +5355,8 @@ void gdioutput::CheckInterfaceTimeouts(uint64_t T)
     while(tit!=TL.end()){
       if (tit->hasTimer){
         wstring text = tit->xp > 0 ? getTimerText(*tit, T) : L"";
-        if (tit->timeOut && T>DWORD(tit->timeOut)){
-          tit->timeOut=0;
+        if (tit->timeOut && T > tit->timeOut){
+          tit->timeOut = 0;
           if (tit->callBack || tit->hasEventHandler())
             timeout.push_back(*tit);
         }

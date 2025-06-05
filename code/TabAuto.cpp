@@ -278,7 +278,7 @@ void TabAuto::setTimer(AutoMachine* am)
   uint64_t tc = GetTickCount64();
 
   if (am->interval > 0) {
-    DWORD to = am->interval * 1000 + tc;
+    uint64_t to = am->interval * 1000 + tc;
     am->timeout = to;
   }
 }

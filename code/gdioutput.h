@@ -851,7 +851,7 @@ public:
   TextInfo& addImage(const string& id, int yp, int xp, int format, const wstring& imageId,
     int width = 0, int height = 0, GUICALLBACK cb = nullptr);
 
-  TextInfo& addTimer(int yp, int xp, int format, DWORD zeroTime, const wstring &textSrc = L"",
+  TextInfo& addTimer(int yp, int xp, int format, int zeroTime, const wstring &textSrc = L"",
                      int xlimit = 0, GUICALLBACK cb = nullptr, 
                      int TimeOut = NOTIMEOUT, const wchar_t* fontFace = nullptr);
 

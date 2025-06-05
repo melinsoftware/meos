@@ -401,7 +401,7 @@ void renderRowSpeakerList(const oSpeakerObject& r, const oSpeakerObject* next_r,
     else {
       row.push_back(SpeakerString(textRight, L"[" + r.startTimeS + L"]"));
 
-      if (!r.missingStartTime) {
+      if (!r.missingStartTime && r.runningTimeLeg.preliminary < 0) {
         row.push_back(SpeakerString(timerCanBeNegative | textRight,
           r.runningTimeLeg.preliminary, 0)); // Timeout on start
       }

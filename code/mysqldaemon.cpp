@@ -144,7 +144,7 @@ void MySQLReconnect::status(gdioutput &gdi) {
     gdi.addStringUT(1, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkRed);
     gdi.fillRight();
     gdi.addString("", 0, "Nästa försök:");
-    gdi.addTimer(gdi.getCY(),  gdi.getCX()+10, timerCanBeNegative, (GetTickCount64()-timeout)/1000);
+    gdi.addTimer(gdi.getCY(),  gdi.getCX()+10, timerCanBeNegative, int((GetTickCount64()-timeout)/1000));
   }
   else {
     gdi.addStringUT(0, timeError + L": " + lang.tl("DATABASE ERROR")).setColor(colorDarkGrey);
