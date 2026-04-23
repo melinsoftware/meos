@@ -118,6 +118,8 @@ protected:
 
   list<TextInfo> TL;
 
+  shared_ptr<MouseHandler> mouseHandler;
+
   //True if textlist has increasing y-values so
   //that we can optimize rendering.
   bool renderOptimize;
@@ -314,6 +316,9 @@ public:
     monitorConfiguration.push_back(rc);
   }
 
+  void setMouseHandler(shared_ptr<MouseHandler> mh) { mouseHandler = mh; }
+  void clearMouseHandler() { mouseHandler.reset(); }
+
   AutoCompleteInfo& addAutoComplete(const string& key);
   void clearAutoComplete(const string& key);
   bool hasAutoComplete() const { return autoCompleteInfo != nullptr; }
@@ -423,6 +428,7 @@ public:
 
   int getButtonHeight() const;
   int scaleLength(int input) const { return int(scale * input + 0.5); }
+  int scaleLength(double input) const { return int(scale * input + 0.5); }
 
   // Fill in current printer settings
   void fetchPrinterSettings(PrinterObject& po) const;
@@ -480,6 +486,9 @@ public:
 
   /** Set map decoration renderer*/
   void setMapRenderer(shared_ptr<MapDataRenderer>& rdr);
+
+  /** Get map decoration renderer*/
+  MapDataRenderer *getMapRenderer() const;
 
   RectangleInfo& addRectangle(const RECT& rc, GDICOLOR Color = GDICOLOR(-1),
     bool DrawBorder = true, bool addFirst = false);

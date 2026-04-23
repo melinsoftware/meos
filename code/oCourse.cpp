@@ -532,6 +532,14 @@ void oCourse::setName(const wstring& n) {
   }
 }
 
+int oCourse::getClimb() const { 
+  return getDCI().getInt("Climb"); 
+}
+
+bool oCourse::setClimb(int climb) { 
+  return getDI().setInt("Climb", climb); 
+}
+
 void oCourse::setLength(int le) {
   if (le < 0 || le > 1000000)
     le = 0;

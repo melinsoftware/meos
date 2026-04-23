@@ -230,7 +230,7 @@ oEvent::oEvent(gdioutput &gdi) : oBase(nullptr), gdibase(gdi) {
   oClubData->addVariableString("Type", 20, "Typ");
   oClubData->addVariableInt("ExtId", oDataContainer::oIS64, "Externt Id");
 
-  vector< pair<wstring,wstring> > eInvoice;
+  vector<pair<wstring,wstring>> eInvoice;
   eInvoice.push_back(make_pair(L"E", L"Elektronisk"));
   eInvoice.push_back(make_pair(L"A", L"Elektronisk godkänd"));
   eInvoice.push_back(make_pair(L"P", L"Ej elektronisk"));
@@ -6882,7 +6882,7 @@ bool oEvent::supportSubSeconds() const {
 }
 
 void oEvent::supportSubSeconds(bool use) {
-  TabSI::getSI(gdiBase()).setSubSecondMode(use);
+  TabSI::getSI().setSubSecondMode(use);
   getDI().setInt("SubSeconds", use ? 1 : 0);
 }
 

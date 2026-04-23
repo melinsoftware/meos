@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <array>
 #include <tuple>
 
 class xmlobject;
@@ -28,7 +29,7 @@ class MapData : public std::enable_shared_from_this<MapData> {
   double latCenter;
   double lngCenter;
   vector<double> world;
-
+  mutable bool isUTM = true;
 public:
 
   void getDimensions(int& h, int& w) const;
@@ -55,9 +56,15 @@ public:
 
   pair<int, int> render(oEvent &oe, gdioutput& gdi, int xp, int yp,
                         const vector<tuple<oControl *, 
-                        wstring, RenderCType>> &ctrl) const;
+                        wstring, RenderCType>> &ctrl,
+                        bool fullMap) const;
+  
+  void geoReference(const vector<array<double, 4>> &cpt);
+  bool isGeoReferenced() const {
+    return world.size() == 6;
+  }
 
-  void setImage(uint64_t imgId);
+  void setImage(uint64_t imgId, bool clearWorld);
   uint64_t getImage() const {
     return imageId;
   }
@@ -76,10 +83,16 @@ public:
   void load(const string& raw);
 
   /** Start render a map at specified position (xp, yp). Returns lower right corner coordinates */
-  pair<int, int> render(oEvent& oe, gdioutput& gdi, int xp, int yp, const vector<tuple<oControl*, wstring, RenderCType>> &ctrl) const;
+  pair<int, int> render(oEvent& oe, gdioutput& gdi, int xp, int yp, 
+                        const vector<tuple<oControl*, wstring, RenderCType>> &ctrl,
+                        bool fullMap = false) const;
 
-  void add(shared_ptr<MapData>& newMap);
+  void clear();
 
+  int add(shared_ptr<MapData>& newMap);
+
+  void geoReference(int ix, const vector<array<double, 4>> &cpt);
+  
   bool validCoordinates(const oControl& ctrl) const;
 
   bool getCoordinatePosition(const oControl& ctrl, int& dimx, int& dimy, int& xp, int& yp) const;
@@ -94,7 +107,7 @@ class MapDataRenderer {
   int xmax = 0;
   int ymin = 0;
   int ymax = 0;
-
+  double scale;
   shared_ptr<const MapData> data;
 
   struct ControlData {
@@ -104,19 +117,23 @@ class MapDataRenderer {
     RenderCType type = RenderCType::CourseControl;
     int x = 0;
     int y = 0;
+    string tag;
     wstring label;
   };
 
   vector<ControlData> controls;
 
 public:
-  MapDataRenderer(const gdioutput& gdi, int x, int y, const shared_ptr<const MapData> &src);
+  MapDataRenderer(const gdioutput& gdi, int x, int y, double scale, const shared_ptr<const MapData> &src);
   ~MapDataRenderer();
 
   int addControl(RenderCType type, int x, int y, const wstring &label) {
     controls.emplace_back(type, x, y, label);
     return controls.size() - 1;
   }
+  double getScale() const { return scale; }
+  void addNamedControl(const string &tag, double relX, double relY, const wstring &label);
+  void removeNamedControl(const string &tag);
 
   void setView(int xmin, int xmax,  int ymin, int ymax);
   void renderDecoration(HDC hDC, gdioutput& gdi) const;

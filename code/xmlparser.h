@@ -138,6 +138,8 @@ protected:
 
   mutable wstring encodeString;
 public:
+  bool hasOpenOut() const { return tagStackPointer > 0; }
+
   void access(int index);
 
   void setProgress(HWND hWnd);

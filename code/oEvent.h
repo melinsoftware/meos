@@ -1065,7 +1065,7 @@ public:
   void exportIOFSplits(IOFVersion version, const wchar_t *file, bool oldStylePatrolExport,
                        bool useUTC,
                        const set<int> &classes,
-                       const pair<string, string> &preferredIdTypes,
+                       const tuple<string, string, bool> &preferredIdTypes,
                        const wstring &cmpName,
                        int leg,
                        bool withPartialResult,
@@ -1077,7 +1077,7 @@ public:
 
   void exportIOFStartlist(IOFVersion version, const wchar_t *file,
                           bool useUTC, const set<int> &classes,
-                          const pair<string, string>& preferredIdTypes,
+                          const tuple<string, string, bool>& preferredIdTypes,
                           bool teamsAsIndividual,
                           bool includeStageInfo,
                           bool forceSplitFee,
@@ -1304,7 +1304,7 @@ public:
     Runner = 0,
     Team = 1,
     Class = 2,
-    DirectEntry = 3,
+    QuickEntry = 3,
     MaxContext
   };
 

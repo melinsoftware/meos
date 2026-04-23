@@ -29,6 +29,18 @@
 class Table;
 enum KeyCommandCode;
 
+class MouseHandler {
+public:
+  enum class MouseEvent {
+    LButtonDown,
+    LButtonUp,
+  };
+
+  virtual void mouseButton(gdioutput &gdi, MouseEvent event, int x, int y) const = 0;
+  virtual ~MouseHandler() = 0 {};
+};
+
+
 class BaseInfo {
 protected:
   void *extra = nullptr;
@@ -240,29 +252,31 @@ public:
 
 class ButtonInfo final : public BaseInfo {
 private:
+  bool *updateLastData;
   bool originalState;
   bool isEditControl;
   bool checked;
-  bool* updateLastData;
   void synchData() const { if (updateLastData) *updateLastData = checked; }
 
 public:
-  ButtonInfo() : callBack(0), hWnd(0), AbsPos(false), fixedRightTop(false),
+  ButtonInfo() : callBack(0), hWnd(0), absPos(false), fixedRightTop(false),
     flags(0), storedFlags(0), originalState(false), isEditControl(false),
-    isCheckbox(false), checked(false), updateLastData(0) {}
+    isCheckbox(false), checked(false), updateLastData(nullptr) {}
 
   ButtonInfo& isEdit(bool e) { isEditControl = e; return *this; }
 
-  int xp;
-  int yp;
-  int width;
   wstring text;
   HWND hWnd;
-  bool AbsPos;
-  bool fixedRightTop;
+  GUICALLBACK callBack;
+  int xp = 0;
+  int yp = 0;
+  int width = 0;
   int flags;
   int storedFlags;
+  bool absPos;
+  bool fixedRightTop;
   bool isCheckbox;
+
   bool isDefaultButton() const { return (flags & 1) == 1; }
   bool isCancelButton() const { return (flags & 2) == 2; }
 
@@ -274,10 +288,10 @@ public:
   void moveButton(gdioutput& gdi, int xp, int yp);
   void getDimension(const gdioutput& gdi, int& w, int& h) const;
 
+  ButtonInfo &setAbsPos() { absPos = true; return *this; }
   ButtonInfo& setDefault();
   ButtonInfo& setCancel() { flags |= 2, storedFlags |= 2; return *this; }
   ButtonInfo& fixedCorner() { fixedRightTop = true; return *this; }
-  GUICALLBACK callBack;
   friend class gdioutput;
 
   HWND getControlWindow() const final { return hWnd; }
@@ -295,6 +309,7 @@ public:
   InputInfo &setBgColor(GDICOLOR c) {bgColor = c; return *this;}
   InputInfo &setFgColor(GDICOLOR c) {fgColor = c; return *this;}
   InputInfo &setFont(gdioutput &gdi, gdiFonts font);
+  InputInfo &limitText(int limit);
   GDICOLOR getBgColor() const {return bgColor;}
   GDICOLOR getFgColor() const {return fgColor;}
   /** Return the previously stored text */

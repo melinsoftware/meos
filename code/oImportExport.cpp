@@ -327,7 +327,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
     if (xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false, false);
       reader.setIdOffset(classIdOffset, courseIdOffset);
-      reader.setPreferredIdType(preferredIdType);
+      reader.setPreferredIdType(preferredIdType, false);
       reader.readEntryList(gdi, xo, removeNonexisting, filter, ent, fail, removed);
 
       for (auto &c : Clubs) {
@@ -1327,7 +1327,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
         if (op != FlowContinue)
           return;
 
-        reader.setPreferredIdType(preferredIdProvider);
+        reader.setPreferredIdType(preferredIdProvider, false);
       }
       reader.readCompetitorList(gdibase, xo, onlyWithClub, personCount, duplicateCount);
     }
@@ -2674,7 +2674,7 @@ void oEvent::exportTeamSplits(xmlparser& xml, const set<int>& classes, bool oldS
 void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
                              bool oldStylePatrolExport, bool useUTC,
                              const set<int> &classes,
-                             const pair<string, string>& preferredIdTypes, 
+                             const tuple<string, string, bool>& preferredIdTypes, 
                              const wstring &cmpName, int leg,
                              bool withPartialResult,
                              bool teamsAsIndividual, bool unrollLoops,
@@ -2703,7 +2703,7 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
       exportIOFResults(xml, true, classes, leg, oldStylePatrolExport);
     else {
       IOF30Interface writer(this, forceSplitFee, useEventorQuirks);
-      writer.setPreferredIdType(preferredIdTypes);
+      writer.setPreferredIdType(make_pair(get<0>(preferredIdTypes), get<1>(preferredIdTypes)), get<2>(preferredIdTypes));
       writer.writeResultList(xml, classes, leg, useUTC,
         teamsAsIndividual, unrollLoops,
         includeStageInfo, withPartialResult);
@@ -2720,7 +2720,7 @@ void oEvent::exportIOFSplits(IOFVersion version, const wchar_t *file,
 
 void oEvent::exportIOFStartlist(IOFVersion version, const wchar_t *file, bool useUTC,
                                 const set<int> &classes, 
-                                const pair<string, string>& preferredIdTypes,
+                                const tuple<string, string, bool>& preferredIdTypes,
                                 bool teamsAsIndividual,
                                 bool includeStageInfo, 
                                 bool forceSplitFee,
@@ -2734,7 +2734,7 @@ void oEvent::exportIOFStartlist(IOFVersion version, const wchar_t *file, bool us
     exportIOFStartlist(xml);
   else {
     IOF30Interface writer(this, forceSplitFee, useEventorQuirks);
-    writer.setPreferredIdType(preferredIdTypes);
+    writer.setPreferredIdType(make_pair(get<0>(preferredIdTypes), get<1>(preferredIdTypes)), get<2>(preferredIdTypes));
     writer.writeStartList(xml, classes, useUTC, teamsAsIndividual, includeStageInfo);
   }
   xml.closeOut();

@@ -22,30 +22,42 @@
 ************************************************************************/
 
 #include "tabbase.h"
+#include <memory>
 
 struct ClassDrawSpecification;
 
 class TabCourse :
   public TabBase
 {
-  int courseId;
   /** canSwitchViewMode: 0 = no, 1 = yes, 2 = switching to legs */
   void save(gdioutput &gdi, int canSwitchViewMode);
   int courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data);
-  bool addedCourse;
+
+  void locateMap(gdioutput &gdi);
 
   wstring time_limit;
   wstring point_limit;
   wstring point_reduction;
 
+  vector<ClassDrawSpecification> courseDrawClasses;
+
+  // Geo referencing a map
+  RECT mapRectangle;
+  map<int, pair<double, double>> relCoordControl;
+
+  int courseId = -1;
+  bool addedCourse = false;
   bool tableMode = false;
+
+  bool specifyControl(gdioutput &gdi, int controlId, int x, int y);
+
+  static void addImportMapWidgets(gdioutput &gdi);
 
   void fillCourseControls(gdioutput &gdi, const wstring &ctrl);
   void fillOtherCourses(gdioutput &gdi, oCourse &crs, bool withLoops);
 
   void saveLegLengths(gdioutput &gdi);
 
-  vector<ClassDrawSpecification> courseDrawClasses;
 
   oEvent::DrawMethod getDefaultMethod() const;
 
@@ -71,6 +83,10 @@ public:
 
   static void runCourseImport(gdioutput& gdi, const wstring &filename,
                               oEvent *oe, bool addToClasses, bool createClasses);
+
+  static void importMap(gdioutput &gdi,
+                        shared_ptr<MapData> &readMapData, 
+                        oEvent *oe);
 
   static void showMap(oEvent* oe, gdioutput& gdi, pCourse crs);
   static void setupCourseImport(gdioutput& gdi, GUICALLBACK cb);

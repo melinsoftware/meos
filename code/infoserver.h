@@ -68,6 +68,7 @@ public:
 
   bool isComplete() const { return complete; }
   void startXML(xmlparser &xml, const wstring &dest);
+  void startTagXML(xmlparser &xml);
 };
 
 class InfoBase
@@ -101,7 +102,8 @@ typedef InfoBase * pInfoBase;
 class InfoRadioControl : public InfoBase {
   protected:
     wstring name;
-    bool synchronize(oControl &c, int number);
+    bool trueRadio = false;
+    bool synchronize(oControl &c, bool trueRadio, int number);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
   public:
     InfoRadioControl(int id);
@@ -113,10 +115,14 @@ class InfoRadioControl : public InfoBase {
 class InfoClass : public InfoBase {
   protected:
     wstring name;
-    int sortOrder;
     vector< vector<int> > radioControls;
     vector<int> linearLegNumberToActual;
     vector<int> courses;
+    int sortOrder = 0;
+    int numMaps = 0;
+    int length = 0;
+    int climb = 0;
+
   public:
     bool synchronize(bool includeCourses, oClass &c, const set<int> &ctrls);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
@@ -193,7 +199,7 @@ class InfoCompetitor : public InfoBaseCompetitor {
     bool synchronize(const InfoCompetition &cmp, oRunner &c);
     bool changeTotalSt = false;
     bool changeRadio = false;
-    mutable bool changeCard = false;
+    mutable bool changeCard = true;
   public:
     bool synchronize(bool useTotalResults, bool useCourse, oRunner &c);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
@@ -251,10 +257,19 @@ protected:
     void includeCourse(bool inc) { withCourse = inc; }
 
     const vector<int> &getControls(int classId, int legNumber) const;
-    bool synchronize(oEvent &oe, const wstring &cmpName, bool onlyCmp, const set<int> &classes, const set<int> &ctrls, bool allowDeletion);
+
+    enum class SynchType {
+      All,
+      OnlyCmp,
+      CmpAndClass,
+      Entries,
+    };
+
+    bool synchronize(oEvent &oe, const wstring &cmpName, SynchType whatSynch, 
+                     const set<int> &classes, const set<int> &ctrls, const set<int> &trueRadio, bool allowDeletion);
     bool synchronize(oEvent &oe) {
       set<int> dmy;
-      return synchronize(oe, L"", true, dmy, dmy, false);
+      return synchronize(oe, L"", SynchType::OnlyCmp, dmy, dmy, dmy, false);
     }
     void getCompleteXML(xmlbuffer &xml);
     void getDiffXML(xmlbuffer &xml);
@@ -262,5 +277,5 @@ protected:
     void commitComplete();
 
     InfoCompetition(int id);
-    virtual ~InfoCompetition() {}
+    virtual ~InfoCompetition() = default;
 };

@@ -1174,7 +1174,7 @@ void ListEditor::editListPost(gdioutput &gdi, const MetaListPost &mlp, int id) {
   gdi.registerEvent("SearchRunner", editListCB).setKeyCommand(KC_FIND);
   gdi.registerEvent("SearchRunnerBack", editListCB).setKeyCommand(KC_FINDBACK);
 
-  gdi.addInput("SearchText", getSearchString(), 26, editListCB, L"",
+  gdi.addInput("SearchText", getSearchString(), 20, editListCB, L"",
                L"Sök symbol.").isEdit(false)
               .setBgColor(colorLightCyan).ignore(true);
   

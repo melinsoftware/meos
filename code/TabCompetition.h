@@ -57,6 +57,8 @@ class TabCompetition :
   wstring defaultPwd;
   wstring defaultPort;
 
+  bool meosIdSelected = false;
+
   void copyrightLine(gdioutput &gdi) const;
   void loadAboutPage(gdioutput &gdi) const;
 
@@ -133,7 +135,7 @@ class TabCompetition :
   void selectExportSplitOptions(gdioutput& gdi);
 
   void showSelectId(std::pair<bool, bool>& priSecondId, gdioutput& gdi);
-  pair<string, string> TabCompetition::getPreferredIdTypes(gdioutput& gdi);
+  tuple<string, string, bool> TabCompetition::getPreferredIdTypes(gdioutput& gdi);
 
   void saveExtraFields(gdioutput& gdi, oEvent::ExtraFieldContext type);
 

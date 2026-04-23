@@ -1054,7 +1054,7 @@ void oClub::updateFromDB()
   pClub pc = oe->runnerDB->getClub(Id);
 
   if (pc && !pc->sameClub(*this))
-    pc = 0;
+    pc = nullptr;
 
   if (pc==0)
     pc = oe->runnerDB->getClub(name);
@@ -1078,19 +1078,16 @@ void oEvent::updateClubsFromDB()
   }
 }
 
-bool oClub::sameClub(const oClub &c)
-{
+bool oClub::sameClub(const oClub &c) const {
   return _wcsicmp(name.c_str(), c.name.c_str())==0;
 }
 
-void oClub::remove()
-{
+void oClub::remove() {
   if (oe)
     oe->removeClub(Id);
 }
 
-bool oClub::canRemove() const
-{
+bool oClub::canRemove() const {
   return !oe->isClubUsed(Id);
 }
 
@@ -1269,4 +1266,42 @@ int oClub::getStartGroup() const {
 
 void oClub::setStartGroup(int sg) {
   getDI().setInt("StartGroup", sg);
+}
+
+bool oClub::isBillable() const {
+  auto dci = getDCI();
+  if (dci.getString("Street").empty())
+    return false;
+
+  if (dci.getString("City").empty())
+    return false;
+
+  if (dci.getString("ZIP").empty())
+    return false;
+
+  return true;
+}
+
+int oClub::getDataAmount() const {
+  int data = 0;
+  auto dci = getDCI();
+  if (!dci.getString("Street").empty())
+    data += 2;
+
+  if (!dci.getString("City").empty())
+    data++;
+
+  if (!dci.getString("ZIP").empty())
+    data++;
+
+  if (!dci.getString("Phone").empty())
+    data++;
+
+  if (!dci.getString("EMail").empty())
+    data+= 2;
+
+  if (!dci.getString("Nationality").empty())
+    data++;
+
+  return data;
 }

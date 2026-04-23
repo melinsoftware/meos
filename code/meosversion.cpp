@@ -25,17 +25,17 @@
 
 //A
 int getMeosBuild() {
-  string revision("$Rev: 1568 $");
+  string revision("$Rev: 1594 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2026-02-19 07:40:47 +0100 (tor, 19 feb 2026) $");
+  wstring date(L"$Date: 2026-04-18 21:37:33 +0200 (lör, 18 apr 2026) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"Beta 1"; // No parantheses (...)
+  return L"RC 1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {

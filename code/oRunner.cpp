@@ -137,8 +137,10 @@ RunnerStatus oAbstractRunner::decodeStatus(const wstring &stat) {
   for (wchar_t &t : ustat) {
     t = toupper(t);
   }
+  int statNum = stat.empty() ? -1 : _wtoi(stat.c_str());
+
   for (RunnerStatus st : getAllRunnerStatus())
-    if (encodeStatus(st) == stat)
+    if (encodeStatus(st) == stat || statNum == int(st))
       return st;
 
   return StatusUnknown;
@@ -2380,7 +2382,8 @@ bool oRunner::operator<(const oRunner &c) const {
     else
       return Id < c.Id;
   }
-  else if (oe->CurrentSortOrder == ClassPoints) {
+  else if (oe->CurrentSortOrder == ClassPoints || oe->CurrentSortOrder == ClassTotalPoints) {
+    const bool total = oe->CurrentSortOrder == ClassTotalPoints;
     if (myClass != cClass)
       return myClass->tSortIndex < cClass->tSortIndex || (myClass->tSortIndex == cClass->tSortIndex && myClass->Id < cClass->Id);
     else if (tDuplicateLeg != c.tDuplicateLeg)
@@ -2388,12 +2391,19 @@ bool oRunner::operator<(const oRunner &c) const {
     else if (tStatus != c.tStatus)
       return RunnerStatusOrderMap[tStatus] < RunnerStatusOrderMap[c.tStatus];
     else {
-      if (tStatus == StatusOK) {
-        int myP = getRogainingPoints(true, false);
-        int otherP = c.getRogainingPoints(true, false);
+      bool ok = total ? getTotalStatus(false) == StatusOK : tStatus == StatusOK;
+      if (ok) {
+        int myP = getRogainingPoints(true, total);
+        int otherP = c.getRogainingPoints(true, total);
 
         if (myP != otherP)
           return myP > otherP;
+        if (total) {
+          int t = getTotalRunningTime(FinishTime, true, true);
+          int ct = c.getTotalRunningTime(c.FinishTime, true, true);
+          if (t != ct)
+            return t < ct;        
+        }
         int t = getRunningTime(true);
         int ct = c.getRunningTime(true);
         if (t != ct)

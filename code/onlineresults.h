@@ -33,10 +33,10 @@ protected:
   wstring url;
   wstring passwd;
   wstring prefix;
-  int cmpId;
+  wstring cmpId;
   set<int> classes;
   bool allClasses = false;
-
+  bool sendCompleteCard = false;
   set<int> controls;
 
   enum class DataType {

@@ -32,6 +32,7 @@
 #include "meos_util.h"
 #include "oDataContainer.h"
 #include "meosException.h"
+#include "localizer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -537,12 +538,21 @@ RunnerWDBEntry *RunnerDB::getRunnerByName(const wstring &name, int clubId,
 
   // Filter on club
   vector<int> ix2;
-  for (size_t k = 0;k<ix.size(); k++)
-    if (rdb[ix[k]].clubNo == clubId || rdb[ix[k]].clubNo==0)
+  for (size_t k = 0; k < ix.size(); k++) {
+    if (rdb[ix[k]].clubNo == clubId)
       ix2.push_back(ix[k]);
+  }
+
+  if (ix2.empty()) {
+    for (size_t k = 0; k < ix.size(); k++) {
+      if (rdb[ix[k]].clubNo == 0)
+        ix2.push_back(ix[k]);
+    }
+  }
+
 
   if (ix2.empty())
-    return 0;
+    return nullptr;
   else if (ix2.size() == 1)
     return (RunnerWDBEntry *)&rwdb[ix2[0]];
   else if (expectedBirthYear > 0) {
@@ -652,12 +662,8 @@ void RunnerDB::canonizeSplitName(const wstring &name, vector<wstring> &split)
 
 bool RunnerDB::getClub(int clubId, wstring &club) const
 {
-  //map<int,int>::const_iterator it = chash.find(clubId);
-
   int value;
   if (chash.lookup(clubId, value)) {
-  //if (it!=chash.end()) {
-  //  int i=it->second;
     club=cdb[value].getName();
     return true;
   }
@@ -672,24 +678,69 @@ oClub *RunnerDB::getClub(int clubId) const {
   return 0;
 }
 
-oClub *RunnerDB::getClub(const wstring &name) const
-{
+oClub *RunnerDB::getClub(const wstring &name) const {
   setupCNHash();
   vector<wstring> names;
   canonizeSplitName(name, names);
-  vector< vector<int> > ix(names.size());
+  vector<vector<int>> ix(names.size());
   set<int> iset;
 
+  auto  isTrivial = [](const wstring&name) {
+    if (name.length() <= 3)
+      return true;
+    if (_wcsicmp(name.c_str(), L"club") == 0)
+      return true;
+    if (_wcsicmp(name.c_str(), L"klubb") == 0)
+      return true;
+    if (_wcsicmp(name.c_str(), lang.tl("club").c_str()) == 0)
+      return true;
+
+    return false;
+  };
+
+  int numNonTrivial = 0;
+  for (int j = 0; j < names.size(); j++) {
+    if (!isTrivial(names[j]))
+      numNonTrivial++;
+  }
+
   for (size_t k = 0; k<names.size(); k++) {
-    multimap<wstring, int>::const_iterator it = cnhash.find(names[k]);
+    auto it = cnhash.find(names[k]);
 
     while (it != cnhash.end() && names[k] == it->first) {
-      ix[k].push_back(it->second);
+      bool add = true;
+      for (int i = 0; i < ix[k].size(); i++) {
+        if (cdb[ix[k][i]].sameClub(cdb[it->second])) {
+          // Two clubs with the same name. 
+          // Assume one is an accidental version of the first (bad data in db)
+          // Take the one with best score
+          int score1 = cdb[ix[k][i]].getDataAmount();
+          int score2 = cdb[it->second].getDataAmount();
+          if (score1 < score2)
+            ix[k][i] = it->second;
+
+          add = false;
+          break;
+        }
+      }
+
+      if (true)
+        ix[k].push_back(it->second);
       ++it;
     }
 
-    if (ix[k].size() == 1 && names[k].length()>3)
-      return pClub(&cdb[ix[k][0]]);
+    if (ix[k].size() == 1 && !isTrivial(names[k]) && numNonTrivial <= 1) {
+      pClub candidate = pClub(&cdb[ix[k][0]]);;
+      vector<wstring> foundNames;
+      canonizeSplitName(candidate->getName(), foundNames);
+      int numNonTrivialFound = 0;
+      for (int j = 0; j < foundNames.size(); j++) {
+        if (!isTrivial(foundNames[j]))
+          numNonTrivialFound++;
+      }
+      if (numNonTrivialFound <= 1)
+        return candidate;
+    }
 
     if (iset.empty())
       iset.insert(ix[k].begin(), ix[k].end());

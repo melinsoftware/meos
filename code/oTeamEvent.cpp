@@ -866,8 +866,8 @@ void oTeam::fillInSortData(SortOrder so, int leg, bool linearLeg, map<int, int> 
       tmpSortStatus = 1;
     return;
   }
-  else if (so == ClassPoints) {
-    bool totalResult = so == ClassTotalResult;
+  else if (so == ClassPoints || so == ClassTotalPoints) {
+    bool totalResult = so == ClassTotalPoints;
     setTmpTime(getRunningTime(true));
     tmpSortTime -= 7 * 24 * timeConstHour * getRogainingPoints(true, totalResult);
     tmpCachedStatus = getLegStatus(-1, true, totalResult);

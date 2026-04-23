@@ -560,7 +560,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
 
       wstring file = gdi.browseForOpen(ext, L"raw");
       if (!file.empty()) 
-        getSI(gdi).readRawData(file);
+        getSI().readRawData(file);
     }
     else if (bi.id == "AutoTie") {
       gEvent->setProperty("AutoTie", gdi.isChecked(bi.id));
@@ -574,8 +574,8 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
     else if (bi.id == "EditEntryFields") {
       TabCompetition& tc = dynamic_cast<TabCompetition&>(*gdi.getTabs().get(TCmpTab));
       tc.loadSettings(gdi);
-      gdi.selectItemByData("DataFields", int(oEvent::ExtraFieldContext::DirectEntry));
-      tc.showExtraFields(gdi, oEvent::ExtraFieldContext::DirectEntry);
+      gdi.selectItemByData("DataFields", int(oEvent::ExtraFieldContext::QuickEntry));
+      tc.showExtraFields(gdi, oEvent::ExtraFieldContext::QuickEntry);
     }
     else if (bi.id == "TieOK") {
       tieCard(gdi);
@@ -1970,8 +1970,7 @@ void TabSI::refillComPorts(gdioutput& gdi) {
   }
 }
 
-void TabSI::showReadPunches(gdioutput& gdi, vector<PunchInfo>& punches, set<string>& dates)
-{
+void TabSI::showReadPunches(gdioutput& gdi, vector<PunchInfo>& punches, set<string>& dates) {
   char bf[64];
   int yp = gdi.getCY();
   int xp = gdi.getCX();
@@ -2008,8 +2007,7 @@ void TabSI::showReadPunches(gdioutput& gdi, vector<PunchInfo>& punches, set<stri
   }
 }
 
-void TabSI::showReadCards(gdioutput& gdi, vector<SICard>& cards)
-{
+void TabSI::showReadCards(gdioutput& gdi, vector<SICard>& cards) {
   char bf[64];
   int yp = gdi.getCY();
   int xp = gdi.getCX();
@@ -2036,10 +2034,10 @@ void TabSI::showReadCards(gdioutput& gdi, vector<SICard>& cards)
   }
 }
 
-SportIdent& TabSI::getSI(const gdioutput& gdi) {
+extern HWND hWndMain;
+SportIdent& TabSI::getSI() {
   if (!gSI) {
-    HWND hWnd = gdi.getHWNDMain();
-    gSI = new SportIdent(hWnd, 0, true);
+    gSI = new SportIdent(hWndMain, 0, true);
   }
   return *gSI;
 }
@@ -2051,9 +2049,7 @@ bool TabSI::loadPage(gdioutput& gdi) {
   gdi.selectTab(tabId);
   oe->checkDB();
   gdi.setData("SIPageLoaded", 1);
-
-  if (!gSI) 
-    getSI(gdi);
+  getSI();
 
   if (firstLoadedAfterNew) {
     if (oe->getNumRunners() == 0)
@@ -2373,7 +2369,7 @@ void TabSI::showReadoutMode(gdioutput& gdi) {
   gdi.addButton("Import", "Importera från fil...", SportIdentCB);
   gdi.addButton("ReadoutWindow", "Öppna avläsningsfönster", SportIdentCB, "info:readoutwindow");
 
-  if (oe->empty() || !getSI(gdi).isAnyOpenUnkownUnit())
+  if (oe->empty() || !getSI().isAnyOpenUnkownUnit())
     gdi.dropLine(3);
   else {
     gdi.setRestorePoint("Mapping");
@@ -2388,7 +2384,7 @@ void TabSI::showReadoutMode(gdioutput& gdi) {
     
     gdi.setCX(cx);
     gdi.dropLine(1.1);
-    auto mappings = getSI(gdi).getSpecialMappings();
+    auto mappings = getSI().getSpecialMappings();
     wstring check, start, finish;
     auto add = [](int code, wstring& dst) {
       if (!dst.empty())
@@ -2921,7 +2917,7 @@ void TabSI::startInteractive(gdioutput& gdi, const SICard& sic, pRunner r, pRunn
 //    gdi.popX();
 //    gdi.dropLine();
     int cnt = TabRunner::addExtraFields(*oe, gdi, false, false, 
-                                        oEvent::ExtraFieldContext::DirectEntry, {oEvent::ExtraFields::StartTime});
+                                        oEvent::ExtraFieldContext::QuickEntry, {oEvent::ExtraFields::StartTime});
     TabRunner::loadExtraFields(gdi, db_r);
     /*auto setIf = [&gdi](const string& wg, const wstring& val) {
       if (gdi.hasWidget(wg))
@@ -3709,7 +3705,7 @@ void TabSI::generateEntryLine(gdioutput& gdi, pRunner r) {
   gdi.popX();
   gdi.dropLine(3.1);
 
-  int cnt = TabRunner::addExtraFields(*oe, gdi, true, true, oEvent::ExtraFieldContext::DirectEntry);
+  int cnt = TabRunner::addExtraFields(*oe, gdi, true, true, oEvent::ExtraFieldContext::QuickEntry);
   auto setIf = [&gdi](const string& wg, const wstring& val) {
     if (gdi.hasWidget(wg))
       gdi.setText(wg, val);
@@ -5478,11 +5474,11 @@ void TabSI::changeMapping(gdioutput& gdi) const {
 }
 
 void TabSI::fillMappings(gdioutput& gdi) const {
-  getSI(gdi).clearSpecialMappings(); // Synch with stored
+  getSI().clearSpecialMappings(); // Synch with stored
   gdi.clearList("Mappings");
   for (auto &[code, type] : oe->getPunchMapping()) {
     if (code > 0 && code < 1024)
-      getSI(gdi).addSpecialMapping(code, type); // Synch with stored
+      getSI().addSpecialMapping(code, type); // Synch with stored
     gdi.addItem("Mappings", itow(code) + L" \u21A6 " + oPunch::getType(type, nullptr), code);
   }
 }

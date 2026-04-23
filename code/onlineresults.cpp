@@ -29,6 +29,7 @@
 #include "gdioutput.h"
 
 #include "onlineresults.h"
+#include "onlineinput.h"
 #include "meos_util.h"
 
 #include "infoserver.h"
@@ -67,7 +68,7 @@ static int OnlineCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
 OnlineResults::OnlineResults() : AutoMachine("Onlineresultat", Machines::mOnlineResults), infoServer(nullptr), dataType(DataType::MOP20),
  zipFile(true), includeCourse(false),
  includeTotal(false), sendToURL(false), sendToFile(false),
- cmpId(0), exportCounter(1), bytesExported(0), lastSync(0) {
+ cmpId(L"0"), exportCounter(1), bytesExported(0), lastSync(0) {
 
 }
 
@@ -175,7 +176,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
   gdi.addInput("URL", url, 40, 0, L"", L"Till exempel X#http://www.results.org/online.php");
   gdi.dropLine(2.5);
   gdi.popX();
-  gdi.addInput("CmpID", itow(cmpId), 10, 0, L"Tävlingens ID-nummer:");
+  gdi.addInput("CmpID", cmpId, 10, 0, L"Tävlingens ID-nummer:");
   gdi.addInput("Password", passwd, 15, 0, L"Lösenord:").setPassword(true);
 
   enableURL(gdi, sendToURL);
@@ -217,7 +218,7 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
   vector<pControl> ctrl;
   oe.getControls(ctrl, true);
 
-  vector< pair<pControl, int> > ctrlP;
+  vector<pair<pControl, int>> ctrlP;
   for (size_t k = 0; k< ctrl.size(); k++) {
     for (int i = 0; i < ctrl[k]->getNumberDuplicates(); i++) {
       ctrlP.push_back(make_pair(ctrl[k], oControl::getCourseControlIdFromIdIndex(ctrl[k]->getId(), i)));
@@ -238,6 +239,8 @@ void OnlineResults::settings(gdioutput &gdi, oEvent &oe, State state) {
                     name, 0, controls.count(ctrlP[k].second) != 0);
   }
   gdi.dropLine();
+
+  gdi.addCheckbox("SendCard", "Skicka alla sträcktider efter brickavläsning", nullptr, sendCompleteCard);
 
   rc.top = gdi.getCY();
   rc.bottom = rc.top + 3;
@@ -290,7 +293,7 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
   sendToURL = gdi.isChecked("ToURL");
   sendToFile = gdi.isChecked("ToFile");
 
-  cmpId = gdi.getTextNo("CmpID");
+  cmpId = OnlineInput::sanitizeId(gdi.getText("CmpID"));
   passwd = gdi.getText("Password");
   prefix = px;
   exportScript = gdi.getText("ExportScript");
@@ -366,6 +369,8 @@ void OnlineResults::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
     }
   }
 
+  sendCompleteCard = gdi.isChecked("SendCard");
+
   if (doProcess) {
     process(gdi, &oe, SyncNone);
     interval = iv;
@@ -429,7 +434,21 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
     InfoCompetition& ic = getInfoServer();
     xmlbuffer xmlbuff;
     if (dataType == DataType::MOP10 || dataType == DataType::MOP20) {
-      if (ic.synchronize(*oe, getCompetitionName(*oe).first, false, classes, controls, dataType != DataType::MOP10)) {
+      set<int> useCtrlSet;
+      if (sendCompleteCard) {
+        vector<pControl> ctrl;
+        oe->getControls(ctrl, true);
+        for (size_t k = 0; k < ctrl.size(); k++) {
+          for (int i = 0; i < ctrl[k]->getNumberDuplicates(); i++) {
+            useCtrlSet.insert(oControl::getCourseControlIdFromIdIndex(ctrl[k]->getId(), i));
+          }
+        }
+      }
+      else
+        useCtrlSet = controls;
+
+      if (ic.synchronize(*oe, getCompetitionName(*oe).first, InfoCompetition::SynchType::All, 
+                         classes, useCtrlSet, controls, dataType != DataType::MOP10)) {
         lastSync = tick; // If error, avoid to quick retry
         ic.getDiffXML(xmlbuff);
       }
@@ -438,10 +457,10 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
       t = getTempFile();
       if (dataType == DataType::IOF2)
         oe->exportIOFSplits(oEvent::IOF20, t.c_str(), false, false,
-          classes, make_pair("", ""), getCompetitionName(*oe).first, -1, false, false, true, true, false, false);
+          classes, make_tuple("", "", true), getCompetitionName(*oe).first, -1, false, false, true, true, false, false);
       else if (dataType == DataType::IOF3)
         oe->exportIOFSplits(oEvent::IOF30, t.c_str(), false, false,
-          classes, make_pair("", ""), getCompetitionName(*oe).first, -1, true, false, true, true, false, false);
+          classes, make_tuple("", "", true), getCompetitionName(*oe).first, -1, true, false, true, true, false, false);
       else
         throw meosException("Internal error");
     }
@@ -486,11 +505,10 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         Download dwl;
         dwl.initInternet();
         ProgressWindow pw(nullptr, gdi.getScale());
-        vector<pair<wstring, wstring> > key;
-        pair<wstring, wstring> mk1(L"competition", itow(cmpId));
-        key.push_back(mk1);
-        pair<wstring, wstring> mk2(L"pwd", passwd);
-        key.push_back(mk2);
+        vector<pair<wstring, wstring>> key;
+        key.emplace_back(L"competition", OnlineInput::sanitizeId(cmpId));
+        if (!passwd.empty())
+          key.emplace_back(L"pwd", passwd);
 
         bool addedHeader = false;
         bool forceZIP = false;
@@ -526,13 +544,11 @@ void OnlineResults::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           if (!addedHeader) {
             if (wasZip) {
               forceZIP = true;
-              pair<wstring, wstring> mk3(L"Content-Type", L"application/zip");
-              key.push_back(mk3);
+              key.emplace_back(L"Content-Type", L"application/zip");
             }
             else {
               forceNoZip = true;
-              pair<wstring, wstring> mk3(L"Content-Type", L"text/plain");
-              key.push_back(mk3);
+              key.emplace_back(L"Content-Type", L"text/plain");
             }
             addedHeader = true;
           }
@@ -649,6 +665,7 @@ void OnlineResults::saveMachine(oEvent &oe, const wstring &guiInterval) {
   
   cnt.set("classes", classes);
   cnt.set("controls", controls);
+  cnt.set("card", sendCompleteCard);
 
   cnt.set("dt", int(dataType));
   cnt.set("zip", zipFile);
@@ -675,11 +692,11 @@ void OnlineResults::loadMachine(oEvent &oe, const wstring &name) {
   string pwProp = "@respwd" + gdioutput::narrow(getMachineName());
   passwd = gdioutput::fromUTF8(oe.getPropertyStringDecrypt(pwProp.c_str(), ""));
 
-  cmpId = cnt->getInt("cmp");
+  cmpId = cnt->getString("cmp");
 
   classes = cnt->getSetInt("classes");
   controls = cnt->getSetInt("controls");
-
+  sendCompleteCard = cnt->getInt("card") != 0;
   dataType = DataType(cnt->getInt("dt"));
   zipFile = cnt->getInt("zip") != 0;
   includeTotal = cnt->getInt("tot") != 0;

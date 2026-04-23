@@ -475,22 +475,30 @@ int oTeam::getLegRestingTime(int leg, bool useComputedRunnerTime) const {
     return 0;
 
   int rest = 0;
-  int R = min<int>(Runners.size(), leg+1);
+  int R = min<int>(Runners.size(), leg + 1);
   for (int k = 1; k < R; k++) {
-    if (Class->getStartType(k) == STPursuit && !Class->isParallel(k) &&
-        Runners[k] && Runners[k-1]) {
-         
-      int ft = getLegRunningTimeUnadjusted(k-1, false, useComputedRunnerTime) + tStartTime;
-      int st = Runners[k]->getStartTime();
+    if (!Class->isParallel(k) && Runners[k] && Runners[k - 1]) {
+      if (Class->getStartType(k) == STPursuit) {
+        int ft = getLegRunningTimeUnadjusted(k - 1, false, useComputedRunnerTime) + tStartTime;
+        int st = Runners[k]->getStartTime();
 
-      if (ft > 0 && st > 0)
-        rest += st - ft;      
+        if (ft > 0 && st > 0)
+          rest += st - ft;
+      }
+      else if (!preventRestart() && !Runners[k]->preventRestart()) {  
+        // Normal exchange (STChange etc): check if runner started in restart
+        int restartTime = Class->getRestartTime(k);
+        if (restartTime > 0 && Runners[k]->getStartTime() == restartTime) {
+          int finishPrevious = getLegRunningTimeUnadjusted(k - 1, false, useComputedRunnerTime) + tStartTime;
+          if (restartTime > finishPrevious)
+            rest += restartTime - finishPrevious; // Resting the time between rope and restart
+        }
+      }
     }
   }
   return rest;
 }
   
-
 int oTeam::getLegRunningTimeUnadjusted(int leg, bool multidayTotal, bool useComputedRunnerTime) const {
   leg = getLegToUse(leg);
 
@@ -510,7 +518,7 @@ int oTeam::getLegRunningTimeUnadjusted(int leg, bool multidayTotal, bool useComp
       switch(lt) {
         case LTNormal:
           if (Runners[leg]->prelStatusOK(useComputedRunnerTime, true, false)) {
-            int dt = leg>0 ? getLegRunningTimeUnadjusted(leg-1, false, useComputedRunnerTime)+Runners[leg]->getRunningTime(useComputedRunnerTime):0;
+            int dt = leg > 0 ? getLegRunningTimeUnadjusted(leg - 1, false, useComputedRunnerTime) + Runners[leg]->getRunningTime(useComputedRunnerTime) : 0;
             return addon + max(Runners[leg]->getFinishTimeAdjusted(true) - 
                     (tStartTime + getLegRestingTime(leg, useComputedRunnerTime)), dt);
           }

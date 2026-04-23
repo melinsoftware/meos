@@ -340,7 +340,7 @@ public:
   void generatePayModeWidget(gdioutput &gdi) const;
   static bool writePayMode(gdioutput &gdi, int amount, oRunner &r);
 
-  static SportIdent &getSI(const gdioutput &gdi);
+  static SportIdent &getSI();
   void printerSetup(gdioutput &gdi);
 
   void generateStartInfo(gdioutput &gdi, const oRunner &r, bool includeEconomy);

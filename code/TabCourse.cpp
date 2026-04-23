@@ -513,6 +513,86 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       pCourse crs = oe->getCourse(courseId);
       showMap(oe, gdi, crs);
     }
+    else if (bi.id == "LocateMap") {
+      locateMap(gdi);
+    }
+    else if (bi.id == "AddMap") {
+      gdi.clearPage(true);
+      gdi.addString("", boldLarge, "Importera kartbild");
+      gdi.popX();
+      addImportMapWidgets(gdi);
+
+      gdi.fillRight();
+      gdi.addButton("DoImportMap", "Importera", CourseCB).setDefault();
+      gdi.fillDown();
+      gdi.addButton("Cancel", "Avbryt", CourseCB).setCancel();
+      gdi.setInputFocus("MapFileName");
+    }
+    else if (bi.id == "DoImportMap") {
+      shared_ptr<MapData> md;
+      importMap(gdi, md, oe);
+      if (!md->isGeoReferenced()) {
+        try {
+          locateMap(gdi);
+          return 0;
+        }
+        catch (const meosException &) {
+          gdi.clearPage(false);
+        }
+      }
+      gdi.addString("", boldLarge, "Karta");
+      gdi.dropLine();
+      gdi.addButton("Cancel", "Stäng", CourseCB);
+      gdi.dropLine();
+
+      vector<tuple<oControl *, wstring, RenderCType>> crsRep;
+      int ypMap = gdi.getCY();
+      md->render(*oe, gdi, gdi.scaleLength(20), ypMap, crsRep, true);
+
+      gdi.refresh();
+    }
+    else if (bi.id == "CPoint") {
+      int no = bi.getExtraInt();
+      
+      class MH : public MouseHandler {
+        TabCourse *dst;
+        int number;
+      public:
+
+        MH(TabCourse *tc, int no) : dst(tc), number(no) {}
+
+        void mouseButton(gdioutput &gdi, 
+                         MouseHandler::MouseEvent event,
+                         int x, int y) const final {
+          dst->specifyControl(gdi, number, x, y);
+        }
+      };
+
+      gdi.setMouseHandler(make_shared<MH>(this, no));
+
+      gdi.setTextTranslate("info", L"Placera ut kontroll X genom att klicka på kartan.#" + itow(no), true);
+    }
+    else if (bi.id == "GeoReference") {
+      gdi.clearMouseHandler();
+      auto &renderMaps = *oe->getRenderMaps();
+      vector<array<double, 4>> cpt;
+      for (auto [id, pos] : relCoordControl) {
+        pControl c = oe->getControl(id);
+        if (c) {
+          double refLat = c->getDCI().getDouble("latcrd");
+          double refLong = c->getDCI().getDouble("longcrd");
+          // long, lat, x, y (rel)
+         
+          cpt.emplace_back(array<double, 4>({ refLong, refLat, pos.first, pos.second }));
+        }
+      }
+      if (cpt.size() == 2) {
+        renderMaps.geoReference(0, cpt);
+        loadPage(gdi);
+      }
+      else
+        throw meosException("Internal error");
+    }
     else if (bi.id == "DeleteAll") {
       if (!gdi.ask(L"Vill du ta bort alla banor från tävlingen?"))
         return 0;
@@ -790,6 +870,88 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   return 0;
 }
 
+void TabCourse::locateMap(gdioutput &gdi) {
+  vector<pControl> cList;
+  oe->getControls(cList, false);
+
+  double minLat = 1000;
+  pControl minC = nullptr;
+  for (pControl c : cList) {
+    if (oControl::isSpecialControl(c->getStatus()))
+      continue;
+
+    double latc = c->getDCI().getDouble("latcrd");
+    if (latc != 0.0 && latc < minLat) {
+      minLat = latc;
+      minC = c;
+    }
+  }
+
+  if (minC == nullptr) {
+    throw meosException("Kontroller med koordinater saknas.");
+  }
+  double refLat = minC->getDCI().getDouble("latcrd");
+  double refLong = minC->getDCI().getDouble("longcrd");
+  double bestD = 0;
+  pControl maxC = nullptr;
+
+  for (pControl c : cList) {
+    if (oControl::isSpecialControl(c->getStatus()))
+      continue;
+
+    double latc = c->getDCI().getDouble("latcrd");
+    double longc = c->getDCI().getDouble("longcrd");
+    if (latc == 0.0)
+      continue;
+
+    double d = std::abs(latc - refLat) * std::abs(longc - refLong);
+
+    if (d > bestD) {
+      bestD = d;
+      maxC = c;
+    }
+  }
+
+  if (maxC == nullptr) {
+    throw meosException("Kontroller med koordinater saknas.");
+  }
+
+  gdi.clearPage(false);
+  gdi.pushX();
+  gdi.addString("", boldLarge, "Passa in kartan mot kontroller");
+  gdi.dropLine(0.5);
+  gdi.addString("", 10, "info:geolocate");
+  gdi.fillRight();
+  gdi.dropLine(0.5);
+  gdi.addButton("CPoint", L"Kontroll X#" + minC->getName(), CourseCB).setAbsPos().setExtra(minC->getId());
+  gdi.addButton("CPoint", L"Kontroll X#" + maxC->getName(), CourseCB).setAbsPos().setExtra(maxC->getId());
+  gdi.addButton("GeoReference", "Spara inpassning", CourseCB).setAbsPos();
+  
+  gdi.addButton("AddMap", "Importera ny karta", CourseCB).setAbsPos();
+
+  gdi.addButton("Cancel", "Avbryt", CourseCB).setAbsPos();
+  relCoordControl.clear();
+
+  gdi.setInputStatus("GeoReference", false);
+
+  gdi.dropLine(3);
+  gdi.fillDown();
+  gdi.popX();
+  gdi.addString("info", 0, "Välj kontroll ovan och markera på kartan.");
+  auto &renderMaps = *oe->getRenderMaps();
+
+  vector<tuple<oControl *, wstring, RenderCType>> crsRep;
+  int ypMap = gdi.getCY();
+  mapRectangle.left = gdi.scaleLength(20);
+  mapRectangle.top = ypMap;
+
+  auto [xpmap, ymap_b] = renderMaps.render(*oe, gdi, mapRectangle.left, ypMap, crsRep, true);
+
+  mapRectangle.right = xpmap;
+  mapRectangle.bottom = ymap_b;
+  gdi.refresh();
+}
+
 bool TabCourse::loadPage(gdioutput &gdi) {
   oe->checkDB();
   gdi.selectTab(tabId);
@@ -860,8 +1022,13 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.addInput("NumberMaps", L"", 6, 0, L"Antal kartor:");
   
   gdi.dropLine(0.9);
-  if (oe->getRenderMaps())
+  if (oe->getRenderMaps()) {
     gdi.addButton("ShowMap", "Karta", CourseCB);
+    gdi.addButton("LocateMap", "Justera karta...", CourseCB);
+  }
+  else {
+    gdi.addButton("AddMap", "Lägg till karta...", CourseCB);
+  }
 
   gdi.dropLine(2.1);
   gdi.popX();
@@ -1185,28 +1352,7 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
   }
   
   if (gdi.isChecked("ImportMap")) {
-    const wstring &mapImg = gdi.getText("MapFileName");
-    if (!mapImg.empty()) {
-      uint64_t id = image.loadFromFile(mapImg, Image::ImageMethod::Default);
-
-      const wstring& worldFile = gdi.getText("WorldFileName");
-
-      if (id != 0) {
-        if (!readMapData)
-          readMapData = make_shared<MapData>();
-
-        readMapData->setImage(id);
-
-        if (!worldFile.empty())
-          readMapData->readWorld(worldFile);
-
-        if (!oe->getRenderMaps())
-          oe->getRenderMaps() = make_shared<MapDataContainer>();
-
-        oe->getRenderMaps()->add(readMapData);
-        oe->saveImage(id);
-      }
-    }
+    importMap(gdi, readMapData, oe);
   }
 
   gdi.addButton(gdi.getWidth()+20, 45,  gdi.scaleLength(baseButtonWidth),
@@ -1219,6 +1365,33 @@ void TabCourse::runCourseImport(gdioutput& gdi, const wstring &filename,
   gdi.setWindowTitle(oe->getTitleName());
   oe->updateTabs();
   gdi.refresh();
+}
+
+void TabCourse::importMap(gdioutput &gdi, shared_ptr<MapData> &readMapData, oEvent *oe) {
+  const wstring &mapImg = gdi.getText("MapFileName");
+  if (!mapImg.empty()) {
+    uint64_t id = image.loadFromFile(mapImg, Image::ImageMethod::Default);
+
+    const wstring &worldFile = gdi.getText("WorldFileName");
+
+    if (id != 0) {
+      if (!readMapData)
+        readMapData = make_shared<MapData>();
+
+      readMapData->setImage(id, true);
+
+      if (!worldFile.empty())
+        readMapData->readWorld(worldFile);
+
+      if (!oe->getRenderMaps())
+        oe->getRenderMaps() = make_shared<MapDataContainer>();
+      else
+        oe->getRenderMaps()->clear(); // We will only support one map for now
+
+      oe->getRenderMaps()->add(readMapData);
+      oe->saveImage(id);
+    }
+  }
 }
 
 void TabCourse::setupCourseImport(gdioutput& gdi, GUICALLBACK cb) {
@@ -1237,10 +1410,39 @@ void TabCourse::setupCourseImport(gdioutput& gdi, GUICALLBACK cb) {
 
   gdi.fillRight();
   gdi.popX();
-  gdi.addCheckbox("ImportMap", "Importera kartbild");
-  gdi.popX();
-  gdi.dropLine();
 
+  class HandleMap : public GuiHandler {
+  public:
+    void handle(gdioutput& gdi, BaseInfo& info, GuiEventType type) final {
+      bool status = gdi.isChecked("ImportMap");
+      gdi.setInputStatus("MapFileName", status);
+      gdi.setInputStatus("WorldFileName", status);
+      gdi.setInputStatus("BrowseMap", status);
+      gdi.setInputStatus("BrowseWorld", status);
+    }
+  };
+  auto h = make_shared<HandleMap>();
+  BaseInfo &imp = gdi.addCheckbox("ImportMap", "Importera kartbild", nullptr, false).setHandler(h);
+  gdi.popX();
+  
+  addImportMapWidgets(gdi);
+
+  h->handle(gdi, imp, GUI_BUTTON);
+
+  gdi.addCheckbox("AddClasses", "Lägg till klasser", 0, true);
+  gdi.addCheckbox("CreateClasses", "Skapa en klass för varje bana", 0, false);
+
+  gdi.dropLine();
+  gdi.fillRight();
+  gdi.addButton("DoImportCourse", "Importera", cb).setDefault();
+  gdi.fillDown();
+  gdi.addButton("Cancel", "Avbryt", cb).setCancel();
+  gdi.setInputFocus("FileName");
+  gdi.popX();
+}
+
+void TabCourse::addImportMapWidgets(gdioutput &gdi) {
+  gdi.dropLine();
   gdi.addInput("MapFileName", L"", 48, 0, L"Filnamn:");
   gdi.dropLine();
   gdi.fillDown();
@@ -1255,18 +1457,9 @@ void TabCourse::setupCourseImport(gdioutput& gdi, GUICALLBACK cb) {
 
   gdi.dropLine(0.5);
   gdi.popX();
-
   gdi.fillDown();
-  gdi.addCheckbox("AddClasses", "Lägg till klasser", 0, true);
-  gdi.addCheckbox("CreateClasses", "Skapa en klass för varje bana", 0, false);
-
-  gdi.dropLine();
-  gdi.fillRight();
-  gdi.addButton("DoImportCourse", "Importera", cb).setDefault();
-  gdi.fillDown();
-  gdi.addButton("Cancel", "Avbryt", cb).setCancel();
-  gdi.setInputFocus("FileName");
-  gdi.popX();
+  gdi.addString("", 10, "info:worldfile");
+  gdi.dropLine(0.5);
 }
 
 void TabCourse::fillCourseControls(gdioutput &gdi, const wstring &ctrl) {
@@ -1498,4 +1691,32 @@ void TabCourse::showMap(oEvent *oe, gdioutput& gdi, pCourse crs) {
   }
 
   mapWindow->refresh();
+}
+
+bool TabCourse::specifyControl(gdioutput &gdi, int controlId, int x, int y) {
+  //string crd = itos(x - mapRectangle.left) + "," + itos(y - mapRectangle.top);
+  //gdi.addStringUT(y, x, 0, crd);
+  wstring label = itow(controlId);
+  string tag = itos(controlId);
+  auto mr = gdi.getMapRenderer();
+  if (mr) {
+    int dx = x - mapRectangle.left;
+    int dy = y - mapRectangle.top;
+    double relX = dx / double(mapRectangle.right - mapRectangle.left);
+    double relY = dy / double(mapRectangle.bottom - mapRectangle.top);
+    if (relX > 0 && relX < 1 && relY > 0 && relY < 1) {
+      mr->addNamedControl(tag, relX, relY, label);
+      bool wasOK = relCoordControl.size() > 1;
+      relCoordControl[controlId] = make_pair(relX, relY);
+      bool isOK = relCoordControl.size() > 1;
+      gdi.setInputStatus("GeoReference", isOK);
+      gdi.refreshFast();
+      if (!wasOK && isOK) 
+        gdi.setTextTranslate("info", L"Du kan justera kontrollplaceringarna genom att välja kontrollen igen. Spara när du är nöjd.", true);
+
+      return true;
+    }
+  }
+
+  return false;
 }

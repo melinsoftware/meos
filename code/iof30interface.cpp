@@ -3912,6 +3912,9 @@ void IOF30Interface::writePerson(xmlparser &xml, const oRunner &r) {
     else if (r.getMainRunner()->getExtIdentifier2() != 0)
       xml.write("Id", externalIdTypes[1], r.getMainRunner()->getExtIdentifierString2());
   }
+  if (includeMeOSId) {
+    xml.write("Id", "type", L"MeOS", itow(r.getId()));
+  }
 
   xml.startTag("Name");
   xml.write("Family", r.getFamilyName());
@@ -4926,9 +4929,10 @@ void IOF30Interface::getIdTypes(vector<string> &types) {
   types.insert(types.begin(), idProviders.begin(), idProviders.end());
 }
 
-void IOF30Interface::setPreferredIdType(const pair<string, string> &type) {
+void IOF30Interface::setPreferredIdType(const pair<string, string> &type, bool includeMeOS) {
   preferredIdProvider = type;
   externalIdTypes.clear();
+  includeMeOSId = includeMeOS;
   if (!type.first.empty() || !type.second.empty()) {
     string stype = "type";
     if (!type.first.empty())

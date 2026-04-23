@@ -290,8 +290,7 @@ void gdioutput::scaleSize(double scale_, bool allowSmallScale, ScaleOperation op
   }
 }
 
-void gdioutput::initCommon(double _scale, const wstring &font)
-{
+void gdioutput::initCommon(double _scale, const wstring &font) {
   guiMeasure.reset();
   dbErrorState = false;
   currentFontSet = 0;
@@ -299,12 +298,14 @@ void gdioutput::initCommon(double _scale, const wstring &font)
   currentFont = font;
   deleteFonts();
   enableTables();
-  lineHeight = int(scale*14);
-
+  
   Background=CreateSolidBrush(GetSysColor(COLOR_WINDOW));
 
   fontHeightCache.clear();
   fonts[currentFont].init(scale, currentFont, L"");
+  
+  lineHeight = getFontHeight(0, currentFont) + scaleLength(0.2);
+
   updateTabFont();
 }
 
@@ -1391,7 +1392,7 @@ ButtonInfo& gdioutput::addButton(int x, int y, int width, int height,
   bi.text = ttext;
   bi.id = id;
   bi.callBack = cb;
-  bi.AbsPos = absPos;
+  bi.absPos = absPos;
 
   if (tooltip.length() > 0)
     addToolTip(id, tooltip, bi.hWnd);
@@ -1430,7 +1431,7 @@ ButtonInfo& gdioutput::addImageButton(int x, int y, int width, int height,
   bi.width = width;
   bi.id = id;
   bi.callBack = cb;
-  bi.AbsPos = absPos;
+  bi.absPos = absPos;
 
   image.loadImage(imgId, Image::ImageMethod::Default); 
   HBITMAP bm = image.getVersion(imgId, width - 5, height - 5);
@@ -1551,7 +1552,7 @@ ButtonInfo& gdioutput::addCheckbox(int x, int y, const string& id, const wstring
   bi.text = ttext;
   bi.id = id;
   bi.callBack = cb;
-  bi.AbsPos = AbsPos;
+  bi.absPos = AbsPos;
   bi.originalState = Checked;
   bi.isEdit(true);
   BI.push_back(bi);
@@ -1561,14 +1562,13 @@ ButtonInfo& gdioutput::addCheckbox(int x, int y, const string& id, const wstring
   return BI.back();
 }
 
-bool gdioutput::isChecked(const string &id)
-{
+bool gdioutput::isChecked(const string &id) {
   list<ButtonInfo>::iterator it;
-  for(it=BI.begin(); it != BI.end(); ++it)
-    if (it->id==id)
-      return SendMessage(it->hWnd, BM_GETCHECK, 0, 0)==BST_CHECKED;
-
-  return false;
+  for (it = BI.begin(); it != BI.end(); ++it) {
+    if (it->id == id)
+      return SendMessage(it->hWnd, BM_GETCHECK, 0, 0) == BST_CHECKED;
+  }
+  return false; // Also if CB does not exist
 }
 
 void gdioutput::check(const string &id, bool state, bool keepOriginalState){
@@ -2780,6 +2780,8 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
 
     list<InfoBox>::iterator it = IBox.begin();
 
+    if (mouseHandler)
+      SetCursor(LoadCursor(NULL, IDC_HAND)); // TODO: Control from hanlder?
 
     while (it != IBox.end()) {
       if (PtInRect(&it->textRect, pt) && (it->callBack || it->hasEventHandler())) {
@@ -2871,11 +2873,13 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
     }
 
     list<InfoBox>::iterator it = IBox.begin();
-
     POINT pt;
     pt.x = (signed short)LOWORD(lParam);
     pt.y = (signed short)HIWORD(lParam);
 
+    if (mouseHandler) 
+      mouseHandler->mouseButton(*this, MouseHandler::MouseEvent::LButtonDown, pt.x + OffsetX, pt.y + OffsetY);
+    
     list<TableInfo>::iterator tit;
 
     if (useTables) {
@@ -2919,6 +2923,9 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
     POINT pt;
     pt.x = (signed short)LOWORD(lParam);
     pt.y = (signed short)HIWORD(lParam);
+
+    if (mouseHandler)
+      mouseHandler->mouseButton(*this, MouseHandler::MouseEvent::LButtonDown, pt.x + OffsetX, pt.y + OffsetY);
 
     if (useTables) {
       for (tit = Tables.begin(); tit != Tables.end(); ++tit)
@@ -3374,6 +3381,7 @@ void gdioutput::doEscape()
 void gdioutput::clearPage(bool autoRefresh, bool keepToolbar) {
   maxTextBlockHeight = getLineHeight();
   animationData.reset();
+  mouseHandler.reset();
   renderMap.reset();
   lockUpDown = false;
   hasAnyTimer = false;
@@ -5126,7 +5134,7 @@ void gdioutput::updateToolTips() {
 
 void gdioutput::updateObjectPositions() {
   for (auto it = BI.begin(); it != BI.end(); ++it) {
-    if (!it->AbsPos)
+    if (!it->absPos)
       SetWindowPos(it->hWnd, 0, it->xp - OffsetX, it->yp - OffsetY, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOCOPYBITS);
   }
   for (auto it = II.begin(); it != II.end(); ++it)
@@ -6155,6 +6163,10 @@ void gdioutput::setMapRenderer(shared_ptr<MapDataRenderer>& rdr) {
   renderMap = rdr;
 }
 
+MapDataRenderer *gdioutput::getMapRenderer() const {
+  return renderMap.get();
+}
+
 RectangleInfo &gdioutput::getRectangle(const char *id) {
   for (list<RectangleInfo>::iterator it = Rectangles.begin(); it != Rectangles.end(); ++it) {
     return *it;
@@ -6940,6 +6952,11 @@ InputInfo &InputInfo::setPassword(bool pwd) {
     style &= ~ES_PASSWORD;
   SetWindowLong(hWnd, GWL_STYLE, style);
   SendMessage(hWnd, EM_SETPASSWORDCHAR, 183, 0);
+  return *this;
+}
+
+InputInfo& InputInfo::limitText(int limit) {
+  SendMessage(hWnd, EM_LIMITTEXT, limit, 0);
   return *this;
 }
 

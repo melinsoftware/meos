@@ -316,6 +316,7 @@
     <ClInclude Include="oTeam.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="pdfwriter.h" />
+    <ClInclude Include="permission.h" />
     <ClInclude Include="prefseditor.h" />
     <ClInclude Include="Printer.h" />
     <ClInclude Include="printresultservice.h" />

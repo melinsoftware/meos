@@ -1085,7 +1085,7 @@ void PunchMachine::status(gdioutput &gdi)
 void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   processProtected(gdi, ast, [&]() {
     SICard sic(ConvertedTimeStatus::Hour24);
-    SportIdent& si = TabSI::getSI(gdi);
+    SportIdent& si = TabSI::getSI();
 
     if (!fullRadio) {
       oe->generateTestCard(sic);

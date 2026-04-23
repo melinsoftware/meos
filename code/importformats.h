@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <tuple>
 /************************************************************************
     MeOS - Orienteering Software
     Copyright (C) 2009-2019 Melin Software HB
@@ -72,7 +73,7 @@ struct ExportSplitsData {
   bool unroll = false;
   bool includeSplits = true;
   bool withPartialResults = false;
-  pair<string, string> preferredIdTypes;
+  tuple<string, string, bool> preferredIdTypes;
 
   int legType = -1;
 };

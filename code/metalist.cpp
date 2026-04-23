@@ -2475,6 +2475,7 @@ void MetaList::initSymbols() {
     orderToSymbol[SortByEntryTime] = "EntryTime";
     orderToSymbol[SortByBib] = "Bibs";
     orderToSymbol[ClassPoints] = "ClassPoints";
+    orderToSymbol[ClassTotalPoints] = "ClassTotalPoints";
     orderToSymbol[ClassTotalResult] = "ClassTotalResult";
     orderToSymbol[ClassTeamLegResult] = "ClassTeamLegResult";
     orderToSymbol[CourseResult] = "CourseResult";

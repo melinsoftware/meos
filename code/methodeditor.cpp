@@ -139,7 +139,7 @@ void MethodEditor::show(gdioutput &gdi) {
     oe->getListContainer().getListsByResultModule(tag, listIx);
     
     string udtag = DynamicResult::undecorateTag(tag);
-    gdi.addInput("Tag", gdi.widen(udtag), 20, methodCB, L"Result module identifier:");
+    gdi.addInput("Tag", gdi.widen(udtag), 20, methodCB, L"Result module identifier:").limitText(24);
     if (!listIx.empty()) {
       gdi.disableInput("Tag");
       gdi.getBaseInfo("Tag").setExtra(1);

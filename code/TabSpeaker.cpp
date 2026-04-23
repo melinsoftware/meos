@@ -277,7 +277,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu) {
       return 0;
 
     vector<string> tags = getExtraWindows();
-    vector< multimap<string, wstring> > speakerSettings;
+    vector<multimap<string, wstring>> speakerSettings;
     
     for (size_t i = 0; i < tags.size(); i++) {
       if (tags[i] != "main" && tags[i].substr(0, 7) != "speaker")
@@ -286,7 +286,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu) {
       if (gdi) {
         TabBase *tb = gdi->getTabs().get(TabType::TSpeakerTab);
         if (tb) {
-          speakerSettings.push_back(multimap<string, wstring>());
+          speakerSettings.emplace_back();
           ((TabSpeaker *)tb)->getSettings(*gdi, speakerSettings.back());
         }
       }
@@ -1380,10 +1380,15 @@ SpeakerMonitor *TabSpeaker::getSpeakerMonitor() {
 void TabSpeaker::getSettings(gdioutput &gdi, multimap<string, wstring> &settings) {
   RECT rc;
   gdi.getWindowsPosition(rc);
-  settings.insert(make_pair("left", itow(int(rc.left))));
-  settings.insert(make_pair("right", itow(int(rc.right))));
-  settings.insert(make_pair("top", itow(int(rc.top))));
-  settings.insert(make_pair("bottom", itow(int(rc.bottom))));
+  settings.emplace("left", itow(rc.left));
+  settings.emplace("right", itow(rc.right));
+  settings.emplace("top", itow(rc.top));
+  settings.emplace("bottom", itow(rc.bottom));
+
+  if (lockedSettings)
+    settings.emplace("locked", L"true");
+
+  settings.emplace("limit", itow(classLimit));
 
   for (int clsId : classesToWatch) {
     pClass cls = oe->getClass(clsId);
@@ -1404,12 +1409,16 @@ void TabSpeaker::getSettings(gdioutput &gdi, multimap<string, wstring> &settings
     }
   }
 
-  if (classId == -1) {
-    settings.emplace("currentClass", L"@Events");
-  }
-  else if (classId == -2) {
+  if (currentView == SpeakerView::Report) {
     settings.emplace("currentClass", L"@Report");
   }
+  else if (classId == -1) {
+    settings.emplace("currentClass", L"@Events");
+    settings.emplace("watchLevel", itow(watchLevel));
+    settings.emplace("watchNumber", itow(watchNumber));
+  }
+  
+  settings.emplace("view", itow(int(currentView)));
 
   for (auto ctrl : controlsToWatch) {
     settings.emplace("control", itow(ctrl));
@@ -1437,7 +1446,8 @@ void TabSpeaker::importSettings(gdioutput &gdi, multimap<string, wstring> &setti
         classId = -1;
       }
       else if (s.second == L"@Report") {
-        classId = -2;
+        currentView = SpeakerView::Report;
+        classId = -1;
       }
       else {
         pClass cls = oe->getClass(s.second);
@@ -1461,6 +1471,19 @@ void TabSpeaker::importSettings(gdioutput &gdi, multimap<string, wstring> &setti
         controlsToWatch.insert(pc->getId());
       }
     }
+    else if (s.first == "watchLevel") {
+      int wl = _wtoi(s.second.c_str());
+      switch (wl) {
+      case oTimeLine::Priority::PMedium:
+      case oTimeLine::Priority::PLow:
+      case oTimeLine::Priority::PHigh:
+      case oTimeLine::Priority::PTop:
+        watchLevel = oTimeLine::Priority(wl);
+      }
+    }
+    else if (s.first == "watchNumber") {
+      watchNumber = _wtoi(s.second.c_str());
+    }
   }
 
   int previousControl = deducePreviousControl(classId, leg, ctrl);
@@ -1468,6 +1491,22 @@ void TabSpeaker::importSettings(gdioutput &gdi, multimap<string, wstring> &setti
     selectedControl[classId].setLeg(total != 0, leg);
     selectedControl[classId].setControl(ctrl, previousControl);
   }
+
+  if (auto res = settings.find("locked"); res != settings.end()) {
+    lockedSettings = res->second == L"true";
+  }
+
+  if (auto res = settings.find("limit"); res != settings.end()) {
+    classLimit = _wtoi(res->second.c_str());
+  }
+
+  if (auto res = settings.find("view"); res != settings.end()) {
+    int view = _wtoi(res->second.c_str());
+    if (view < 0 || view > 5)
+      view = 0;
+    currentView = SpeakerView(view); 
+  }
+
 
   RECT rc;
   if (settings.find("left") == settings.end() ||
@@ -1516,7 +1555,7 @@ void TabSpeaker::loadSettings(vector< multimap<string, wstring> > &settings) {
   }
 }
 
-void TabSpeaker::saveSettings(const vector< multimap<string, wstring> > &settings) {
+void TabSpeaker::saveSettings(const vector<multimap<string, wstring>> &settings) {
   xmlparser d;
   d.openOutput(getSpeakerSettingsFile().c_str(), false);
   d.startTag("Speaker");

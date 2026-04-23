@@ -674,7 +674,7 @@ vector<InputInfo *> oDataContainer::buildDataFields(gdioutput &gdi, const vector
       out.push_back(&gdi.addInput(Id, L"", 10, 0, gdi.widen(di.Description) + L":"));
     }
     else if (di.Type==oDTString){
-      out.push_back(&gdi.addInput(Id, L"", min(di.Size+2, maxFieldSize), 0, gdi.widen(di.Description) + L":"));
+      out.push_back(&gdi.addInput(Id, L"", min(di.Size+2, maxFieldSize), 0, gdi.widen(di.Description) + L":").limitText(di.Size));
     }
     else if (di.Type==oDTStringDynamic){
       out.push_back(&gdi.addInput(Id, L"", maxFieldSize, 0, gdi.widen(di.Description) + L":"));

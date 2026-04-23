@@ -168,6 +168,7 @@ class IOF30Interface {
   set<string> idProviders;
   pair<string, string> preferredIdProvider;
   vector<vector<pair<string, wstring>>> externalIdTypes;
+  bool includeMeOSId = false;
 
   void readEvent(gdioutput &gdi, const xmlobject &xo,
                  map<int, vector<LegInfo> > &teamClassConfig);
@@ -338,7 +339,7 @@ public:
                                string &dateOut, string &timeOut);
 
   void getIdTypes(vector<string> &types);
-  void setPreferredIdType(const pair<string, string>&type);
+  void setPreferredIdType(const pair<string, string>&type, bool includeMeOS);
 
   void readEventList(gdioutput &gdi, xmlobject &xo);
 

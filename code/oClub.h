@@ -176,7 +176,16 @@ public:
                        map<int, int> &paidPerMode);
 
   wstring getInfo() const;
-  bool sameClub(const oClub &c);
+  
+  // Check same name
+  bool sameClub(const oClub &c) const;
+
+  // True of the club has an adress
+  bool isBillable() const;
+
+  // Return number of stored data field (address, phone, mail etc) 
+  // Use to determine which version is best in case of duplicated club data etc
+  int getDataAmount() const;
 
   const wstring &getName() const {return name;}
 

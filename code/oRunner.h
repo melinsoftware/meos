@@ -77,6 +77,7 @@ enum SortOrder {
   ClassFinishTime,
   ClassStartTimeClub,
   ClassPoints,
+  ClassTotalPoints,
   ClassLiveResult,
   ClassKnockoutTotalResult,
   SortByName,
@@ -106,6 +107,7 @@ static bool orderByClass(SortOrder so) {
   case ClassFinishTime:
   case ClassStartTimeClub:
   case ClassPoints:
+  case ClassTotalPoints:
   case ClassLiveResult:
   case ClassKnockoutTotalResult:
     return true;

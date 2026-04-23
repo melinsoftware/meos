@@ -22,11 +22,6 @@
 
 #include "stdafx.h"
 
-#include "resource.h"
-
-#include <commctrl.h>
-#include <commdlg.h>
-
 #include "oEvent.h"
 #include "xmlparser.h"
 #include "gdioutput.h"
@@ -52,16 +47,14 @@
 #include "testmeos.h"
 #include "importformats.h"
 #include "HTMLWriter.h"
-#include "metalist.h"
+
 #include "MeosSQL.h"
 
 #include <Shellapi.h>
 #include <algorithm>
 #include <cassert>
-#include <cmath>
+
 #include <io.h>
-#include "generalresult.h"
-#include "image.h"
 
 void Setup(bool overwrite, bool overWriteall);
 void exportSetup();
@@ -1142,7 +1135,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       wstring startlist = getTempFile();
       bool eventorUTC = oe->getPropertyInt("UseEventorUTC", 0) != 0;
       oe->exportIOFStartlist(oEvent::IOF30, startlist.c_str(), eventorUTC, 
-                             set<int>(), make_pair("",""), false, false, true, true);
+                             set<int>(), make_tuple("","", false), false, false, true, true);
       vector<wstring> fileList;
       fileList.push_back(startlist);
 
@@ -1235,7 +1228,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       set<int> classes;
       bool eventorUTC = oe->getPropertyInt("UseEventorUTC", 0) != 0;
       oe->exportIOFSplits(oEvent::IOF30, resultlist.c_str(), false,
-                          eventorUTC, classes, make_pair("", ""), L"", - 1, false, false, true,
+                          eventorUTC, classes, make_tuple("", "", false), L"", - 1, false, false, true,
                           false, true, true);
       vector<wstring> fileList;
       fileList.push_back(resultlist);
@@ -4073,26 +4066,31 @@ void TabCompetition::showSelectId(std::pair<bool, bool>& priSecondId, gdioutput&
 
     gdi.fillDown();
   }
+  gdi.addCheckbox("MeOSId", "Inkludera MeOS interna Id", nullptr, meosIdSelected);
 }
 
-pair<string, string> TabCompetition::getPreferredIdTypes(gdioutput& gdi) {
-  pair<string, string> preferredIdTypes;
+tuple<string, string, bool> TabCompetition::getPreferredIdTypes(gdioutput& gdi) {
+  tuple<string, string, bool> preferredIdTypes;
 
   if (gdi.hasWidget("PrimaryId")) {
     if (gdi.isChecked("PrimaryId")) {
       wstring pt = gdi.getText("PrimaryType");
-      preferredIdTypes.first = gdioutput::narrow(pt);
-      if (preferredIdTypes.first.empty())
-        preferredIdTypes.first = "PRIMARY";
+      string& first = get<0>(preferredIdTypes);
+      first = gdioutput::narrow(pt);
+      if (first.empty())
+        first = "PRIMARY";
     }
 
     if (gdi.isChecked("SecondaryId")) {
       wstring st = gdi.getText("SecondaryType");
-      preferredIdTypes.second = gdioutput::narrow(st);
-      if (preferredIdTypes.second.empty())
-        preferredIdTypes.second = "SECONDARY";
+      string& second = get<0>(preferredIdTypes);
+      second = gdioutput::narrow(st);
+      if (second.empty())
+        second = "SECONDARY";
     }
   }
+  meosIdSelected = get<2>(preferredIdTypes) = gdi.isChecked("MeOSId");
+
   return preferredIdTypes;
 }
 
@@ -4116,6 +4114,10 @@ void TabCompetition::setExportOptionsStatus(gdioutput &gdi, int format) {
 
   if (gdi.hasWidget("IncludeRaceNumber")) {
     gdi.setInputStatus("IncludeRaceNumber", format == ImportFormats::IOF30); // Enable on IOF-XML
+  }
+
+  if (gdi.hasWidget("MeOSId")) {
+    gdi.setInputStatus("MeOSId", format == ImportFormats::IOF30); // Enable on IOF-XML
   }
 
   if (gdi.hasWidget("PrimaryId")) {
@@ -4433,7 +4435,7 @@ void TabCompetition::showExtraFields(gdioutput& gdi, oEvent::ExtraFieldContext t
   gdi.dropLine(2.5);
   gdi.popX();
 
-  if (type == oEvent::ExtraFieldContext::DirectEntry) {
+  if (type == oEvent::ExtraFieldContext::QuickEntry) {
     gdi.addCheckbox("StartTime", L"Starttid", nullptr, ef.count(oEvent::ExtraFields::StartTime));
     gdi.addCheckbox("Bib", L"Nummerlapp", nullptr, ef.count(oEvent::ExtraFields::Bib));
   }
@@ -4441,11 +4443,11 @@ void TabCompetition::showExtraFields(gdioutput& gdi, oEvent::ExtraFieldContext t
   if (type != oEvent::ExtraFieldContext::Class)
     gdi.addCheckbox("Nationality", L"Nationalitet", nullptr, ef.count(oEvent::ExtraFields::Nationality));
 
-  if (type == oEvent::ExtraFieldContext::DirectEntry) {
+  if (type == oEvent::ExtraFieldContext::QuickEntry) {
     gdi.dropLine(2.5);
     gdi.popX();
   }
-  if (type == oEvent::ExtraFieldContext::Runner || type == oEvent::ExtraFieldContext::DirectEntry) {
+  if (type == oEvent::ExtraFieldContext::Runner || type == oEvent::ExtraFieldContext::QuickEntry) {
     gdi.addCheckbox("Sex", L"Kön", nullptr, ef.count(oEvent::ExtraFields::Sex));
     gdi.addCheckbox("BirthDate", L"Födelsedatum", nullptr, ef.count(oEvent::ExtraFields::BirthDate));
     gdi.addCheckbox("Rank", L"Ranking", nullptr, ef.count(oEvent::ExtraFields::Rank));

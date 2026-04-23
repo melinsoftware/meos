@@ -858,8 +858,11 @@ void oEvent::loadGeneralResults(bool forceReload, bool loadFromDisc) const {
         dr.load(res2[k]);
         string tag = DynamicResult::undecorateTag(dr.getTag());
         int iter = 1;
-        while (tags.count(tag)) 
-          tag = dr.getTag() + + "_v" + itos(++iter);
+        while (tags.count(tag)) {
+          tag = dr.getTag() + +"_v" + itos(++iter);
+          if (tag.length() > 24)
+            tag = tag.substr(tag.length() - 24);
+        }
         if (iter > 1)
           dr.setTag(tag);
 

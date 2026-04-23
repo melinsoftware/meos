@@ -241,6 +241,9 @@ public:
   int getLength() const {return length;}
   wstring getLengthS() const;
 
+  int getClimb() const;
+  bool setClimb(int climb);
+
   void setName(const wstring &n);
   void setLength(int len);
 
