@@ -286,7 +286,7 @@ private:
   void renderReadCard(gdioutput &gdi, int maxNumber);
 
 
-  pCourse getRenderCourse(gdioutput& gdi) const;
+  pair<pCourse, pClass> getRenderCourse(gdioutput& gdi) const;
 
 protected:
   void clearCompetitionData() final;

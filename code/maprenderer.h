@@ -17,6 +17,7 @@ enum class RenderCType {
   CourseControl,
   CorrectControl,
   WrongControl,
+  NotMappableError,
 };
 
 class MapData : public std::enable_shared_from_this<MapData> {
@@ -30,6 +31,10 @@ class MapData : public std::enable_shared_from_this<MapData> {
   double lngCenter;
   vector<double> world;
   mutable bool isUTM = true;
+
+  mutable set<double> usedScale;
+
+  double scaleToUse(double sIn) const;
 public:
 
   void getDimensions(int& h, int& w) const;
@@ -42,6 +47,7 @@ public:
   }
 
   int metersToPixels(int meter) const;
+  double metersToPixels(double meter) const;
 
   bool mapCoordinate(double lng, double lat, int& x, int& y) const;
 
@@ -57,7 +63,9 @@ public:
   pair<int, int> render(oEvent &oe, gdioutput& gdi, int xp, int yp,
                         const vector<tuple<oControl *, 
                         wstring, RenderCType>> &ctrl,
-                        bool fullMap) const;
+                        bool fullMap,
+                        int maxWidth, 
+                        int maxHeight) const;
   
   void geoReference(const vector<array<double, 4>> &cpt);
   bool isGeoReferenced() const {
@@ -85,7 +93,7 @@ public:
   /** Start render a map at specified position (xp, yp). Returns lower right corner coordinates */
   pair<int, int> render(oEvent& oe, gdioutput& gdi, int xp, int yp, 
                         const vector<tuple<oControl*, wstring, RenderCType>> &ctrl,
-                        bool fullMap = false) const;
+                        bool fullMap = false, int maxWidth = -1, int maxHeight = -1) const;
 
   void clear();
 
@@ -132,6 +140,7 @@ public:
     return controls.size() - 1;
   }
   double getScale() const { return scale; }
+  void scaleScale(const gdioutput &gdi, double s);
   void addNamedControl(const string &tag, double relX, double relY, const wstring &label);
   void removeNamedControl(const string &tag);
 

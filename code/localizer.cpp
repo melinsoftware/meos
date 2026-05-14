@@ -147,6 +147,13 @@ const wstring &Localizer::LocalizerInternal::tl(const wstring &str) const {
   return *ret;
 }
 
+bool Localizer::LocalizerInternal::has(const string &str) const {
+  wstring strw(str.begin(), str.end());
+  bool found;
+  impl->translate(strw, found);
+  return found;
+}
+
 const wstring &LocalizerImpl::translate(const wstring &str, bool &found) {
   found = false;
   static int i = 0;
@@ -570,4 +577,8 @@ const wstring Localizer::tl(const wstring &str, bool cap) const {
     ::capitalizeWords(w);
 
   return w;
+}
+
+bool Localizer::has(const string &str) const {
+  return linternal->has(str);
 }

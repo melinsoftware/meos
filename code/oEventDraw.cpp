@@ -221,6 +221,12 @@ namespace {
 
     sort(sizeClub.rbegin(), sizeClub.rend());
 
+    set<int> largeClubs;
+    for (int i = 0; i < 3 && i < sizeClub.size(); i++) {
+      if (sizeClub[i].first > 3)
+        largeClubs.insert(sizeClub[i].second);
+    }
+
     int targetGroupSize = max<int>(runners.size() / 20, sizeClub.front().first);
 
     vector<vector<pRunner>> groups(1);
@@ -335,7 +341,92 @@ namespace {
       runners.push_back(groups[groupToUse].back());
       groups[groupToUse].pop_back();
     }
+
+    // Post adjustments
+
+    // Extra randomization
+    int nExtraSwap = runners.size() * 2;
+
+    std::random_device device;  // a seed source for the random number engine
+    std::mt19937 generator(device()); // mersenne_twister_engine seeded with rd()
+    std::uniform_int_distribution<> distrib(0, runners.size()-1);
+
+    auto compatible = [](int c1, int c2) {
+      return c1 <= 0 || c2 <= 0 || c1 != c2;
+    };
+
+    for (int i = 0; i < nExtraSwap; i++) {
+      int a = distrib(generator);
+      int b = distrib(generator);
+      if (a == b)
+        continue;
+
+      int ac = runners[a]->getClubId();
+      int bc = runners[b]->getClubId();
+
+      if (ac != bc && (largeClubs.count(ac) || largeClubs.count(bc)))
+        continue; // Don't move large clubs which are carefully distributed
+
+      int aNbhd[2] = { -1, -1 };
+      int bNbhd[2] = { -1, -1 };
+
+      if (a > 0)
+        aNbhd[0] = runners[a - 1]->getClubId();
+      if (a + 1 < runners.size())
+        aNbhd[1] = runners[a + 1]->getClubId();
+
+      if (b > 0)
+        bNbhd[0] = runners[b - 1]->getClubId();
+      if (b + 1 < runners.size())
+        bNbhd[1] = runners[b + 1]->getClubId();
+
+      
+      if (compatible(aNbhd[0], bc) && compatible(aNbhd[1], bc) && compatible(bNbhd[0], ac) && compatible(bNbhd[1], ac)) {
+        swap(runners[a], runners[b]);
+      }
+    }
+
+    // Ensure there are no adjacent competitors from the same club
+
+    int noResolve = -1;
+    int maxIter = runners.size() * 2;
+    for (int i = 1; i < runners.size(); i++) {
+      if (--maxIter < 0)
+        break;
+      if (runners[i - 1]->getClubId() == runners[i]->getClubId()) {
+        int cid = runners[i]->getClubId();
+        if (cid == noResolve)
+          continue; // Already know we cannot resolve this club
+        int resolveIx = -1;
+        for (int j = 1; j < runners.size(); j++) {
+          if (runners[j - 1]->getClubId() != cid && runners[j]->getClubId() != cid) {
+            resolveIx = j;
+          }
+        }
+
+        if (resolveIx == -1) {
+          noResolve = cid;
+          continue;
+        }
+
+        pRunner toMove = runners[i];
+        for (int j = i + 1; j < runners.size(); j++) {
+          runners[j - 1] = runners[j];
+        }
+
+        if (resolveIx > i)
+          resolveIx--;
+
+        for (int j = runners.size() - 1; j > resolveIx; j--) {
+          runners[j] = runners[j - 1];
+        }
+
+        runners[resolveIx] = toMove;
+        i--;
+      }
+    }
   }
+
 }
 
 

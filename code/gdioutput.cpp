@@ -6123,6 +6123,15 @@ RectangleInfo &RectangleInfo::changeDimension(gdioutput &gdi, int dx, int dy) {
   return *this;
 }
 
+RectangleInfo &gdioutput::addRectangle(int left, int top, int right, int bottom, 
+                                       GDICOLOR color,
+                                       bool drawBorder, 
+                                       bool addFirst) {
+  RECT rc = { left, top, right, bottom };
+  return addRectangle(rc, color, drawBorder, addFirst);
+}
+
+
 RectangleInfo &gdioutput::addRectangle(const RECT &rc, GDICOLOR color, bool drawBorder, bool addFirst) {
   RectangleInfo ri;
 

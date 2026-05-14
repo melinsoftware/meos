@@ -287,6 +287,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   lang.get().addLangResource(L"українська", L"112");
   lang.get().addLangResource(L"Português", L"113");
   lang.get().addLangResource(L"български", L"114");
+  lang.get().addLangResource(L"Català", L"115");
 
   if (fileExists(L"extra.lng")) {
     lang.get().addLangResource(L"Extraspråk", L"extra.lng");

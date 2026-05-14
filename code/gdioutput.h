@@ -490,8 +490,11 @@ public:
   /** Get map decoration renderer*/
   MapDataRenderer *getMapRenderer() const;
 
-  RectangleInfo& addRectangle(const RECT& rc, GDICOLOR Color = GDICOLOR(-1),
-    bool DrawBorder = true, bool addFirst = false);
+  RectangleInfo &addRectangle(const RECT &rc, GDICOLOR color = GDICOLOR(-1),
+                              bool drawBorder = true, bool addFirst = false);
+
+  RectangleInfo &addRectangle(int left, int top, int right, int bottom, GDICOLOR Color = GDICOLOR(-1),
+                              bool drawBorder = true, bool addFirst = false);
 
   RectangleInfo& getRectangle(const char* id);
 

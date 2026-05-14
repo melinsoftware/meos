@@ -503,6 +503,10 @@ HBITMAP Image::Bmp::getVersion(int &width, int &height) {
 }
 
 HBITMAP Image::Bmp::resample(int w, int h) {
+  double limit = min<double>(6e9, numeric_limits<size_t>::max() / 2);
+  if (w <= 0 || h <= 0 || double(h) * double(w) * 9 * 16 > limit)
+    throw std::exception("Error in image handling");
+
   // initialize return value
   HBITMAP hbmp = NULL;
 

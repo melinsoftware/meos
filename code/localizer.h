@@ -48,7 +48,9 @@ class Localizer {
 
     /** Translate string */
     const wstring &tl(const wstring &str) const;
-
+    
+    // Return if translation exists
+    bool has(const string &str) const;
     void set(Localizer &li);
 
     /** Get database with given names */
@@ -68,6 +70,8 @@ public:
   const wstring &tl(const wstring &str) const {return linternal->tl(str);}
   
   const wstring tl(const wstring &str, bool cap) const;
+
+  bool has(const string &str) const;
 
   void init() {linternal = new LocalizerInternal();}
   void unload() {delete linternal; linternal = 0;}

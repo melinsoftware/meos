@@ -333,8 +333,14 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu) {
     if (ctw.empty())
       throw meosException("Välj minst en klass");
 
-    if (bu.id == "OKNew")
+    if (bu.id == "OKNew") {
       tgt = createSpeakerWindow(gdi, false);
+      if (gdi.hasWidget("LoadWindows")) {
+        gdi.setTextTranslate("LoadWindows", L"Spara", true);
+        ButtonInfo &lw = dynamic_cast<ButtonInfo &>(gdi.getBaseInfo("LoadWindows"));
+        lw.id = "SaveWindows";
+      }
+    }
     else
       currentView = SpeakerView::Default;
     tgt.second->classesToWatch.swap(ctw);
@@ -1200,7 +1206,7 @@ void TabSpeaker::showSettings(gdioutput &gdi) {
   gdi.addCheckbox("ShortNames", "Use initials in names", 0, oe->getPropertyInt("SpeakerShortNames", false) != 0);
   gdi.dropLine(0.5);
 
-  gdi.addSelection("Limit", 150, 200, nullptr, L"Beränsa antal per klass:");
+  gdi.addSelection("Limit", 150, 200, nullptr, L"Begränsa antal per klass:");
   vector<pair<wstring, size_t>> limit;
   limit.emplace_back(lang.tl("Ingen begränsning"), 0);
   limit.emplace_back(L"5", 5);

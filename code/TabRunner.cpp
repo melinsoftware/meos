@@ -1117,7 +1117,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
       if (gdi.ask(L"Vill du verkligen ta bort löparen?")) {
         if (oe->isRunnerUsed(runnerId))
-          gdi.alert("Löparen ingår i ett lag och kan inte tas bort.");
+          gdi.alert("Deltagaren ingår i ett lag och kan inte tas bort.");
         else {
           pRunner r = oe->getRunner(runnerId, 0);
           if (r)

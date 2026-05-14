@@ -619,9 +619,8 @@ void oEvent::generatePreReport(gdioutput& gdi) {
     }
 
     gdi.dropLine();
-    showHeader("Deltagare med samma bana och samma starttid X.", cntDupCtr);
+    showHeader("Deltagare med samma bana och samma starttid X.", cntDupCrs);
 
-    //gdi.addString("", 1, "Deltagare med samma bana och samma starttid X.#" + itos(cntDupCrs));
     int crsId = -1;
     int xc = gdi.getCX();
     for (auto& dup : counterCourseStartTimeR) {
@@ -637,7 +636,6 @@ void oEvent::generatePreReport(gdioutput& gdi) {
 
     gdi.dropLine();
     showHeader("Deltagare med samma första kontroll och samma starttid X.", cntDupCtr);
-    //gdi.addString("", 1, "Deltagare med samma första kontroll och samma starttid X.#" + itos(cntDupCtr));
     int ctrlId = -1;
     for (auto& dup : counterFirstControlStartTimeR) {
       if (ctrlId != dup.first.first) {

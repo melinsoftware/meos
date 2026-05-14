@@ -23,19 +23,19 @@
 #include <vector>
 #include "meos_util.h"
 
-//A
+//AB
 int getMeosBuild() {
-  string revision("$Rev: 1594 $");
+  string revision("$Rev: 1608 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2026-04-18 21:37:33 +0200 (lör, 18 apr 2026) $");
+  wstring date(L"$Date: 2026-05-14 11:08:05 +0200 (tor, 14 maj 2026) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"RC 1"; // No parantheses (...)
+  return L""; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -117,7 +117,6 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"Milen Marinov");
   supp.emplace_back(L"Miroslav Kollar, KOB Kysak");
   developSupp.emplace_back(L"FIF Hillerød Orientering");
-  supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Stein Östby, Malmö OK");
   supp.emplace_back(L"Eric Teutsch (o-store.ca)");
   supp.emplace_back(L"Sportegyesület Hód-Mentor");
@@ -137,7 +136,6 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"TV Jahn Wolfsburg");
   developSupp.emplace_back(L"Malmö OK");
   supp.emplace_back(L"Söderhamns OK");
-  supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Enebybergs IF");
   supp.emplace_back(L"IK Vikings OK");
   supp.emplace_back(L"Naturfreunde Wien Orienteering");
@@ -161,6 +159,9 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"Ligue PACA");
   supp.emplace_back(L"Nässjö OK");
   supp.emplace_back(L"Tormestorps IF");
+  supp.emplace_back(L"Järla Orientering");
+  supp.emplace_back(L"Gunnar Svanberg, Järfälla OK");
+  supp.emplace_back(L"IFK Linköpings OS");
 
   reverse(supp.begin(), supp.end());
 }

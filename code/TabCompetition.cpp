@@ -206,20 +206,38 @@ int restoreCB(gdioutput *gdi, GuiEventType type, BaseInfo *data) {
   return tc.restoreCB(*gdi, type, data);
 }
 
+void ListIpAddresses(vector<string> &ip);
+
 void TabCompetition::loadConnectionPage(gdioutput &gdi)
 {
   gdi.clearPage(false);
   showConnectionPage=true;
   gdi.addString("", boldLarge, "Anslutningar");
-
+  gdi.dropLine();
   if (oe->getServerName().empty()) {
-    gdi.addString("", 10, "help:52726");
+    if (lang.has("info:connect") || !lang.has("help:52726"))
+      gdi.addString("", 10, "info:connect");
+    else
+      gdi.addString("", 10, "help:52726"); // Legacy info
+
     gdi.pushX();
     gdi.dropLine();
     defaultServer = oe->getPropertyString("Server", defaultServer);
     defaultName = oe->getPropertyString("UserName", defaultName);
     defaultPort = oe->getPropertyString("Port", defaultPort);
     wstring client = oe->getPropertyString("Client", oe->getClientName());
+
+    vector<string> adr;
+    ListIpAddresses(adr);
+
+    if (adr.size() > 0) {
+      gdi.dropLine();
+      gdi.addString("", 1, "Den här datorns adresser:");
+      for (string &ip : adr) {
+        gdi.addString("link", 0, "#" + ip);
+      }
+      gdi.dropLine();
+    }
 
     gdi.fillRight();
     gdi.addInput("Server", defaultServer, 16, 0, L"MySQL Server / IP-adress:", L"IP-adress eller namn på en MySQL-server");
@@ -1399,7 +1417,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
         gdi.addString("", 10, "help:ocad13091");
         gdi.fillRight();
         gdi.dropLine();
-        gdi.addInput("FileName", L"", 48, 0, L"Filnamn (OCAD banfil):");
+        gdi.addInput("FileName", L"", 48, 0, L"Filnamn (banfil):");
         gdi.dropLine();
         gdi.fillDown();
         gdi.addButton("BrowseCourse", "Bläddra...", CompetitionCB);
@@ -1536,6 +1554,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
           gdi.addString("", 1, "Skapar ny tävling");
           oe->newCompetition(L"New");
           oe->loadDefaults();
+          oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
 
           bool importHiredCard = true;
           if (importHiredCard)
@@ -1564,6 +1583,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
         if (!preferredIdType.second.empty())
           oe->setRunnerIdTypes(preferredIdType);
         
+        oe->updateClubsFromDB();
         removeTempFile(tEntry);
 
         if (!course.empty()) {
@@ -1975,12 +1995,8 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       }
       return 0;
     }
-    else if (bi.id=="BrowseCourse") {
-      vector< pair<wstring, wstring> > ext;
-      ext.push_back(make_pair(L"Banor, OCAD semikolonseparerat", L"*.csv;*.txt"));
-      ext.push_back(make_pair(L"Banor, IOF (xml)", L"*.xml"));
-
-      wstring file = gdi.browseForOpen(ext, L"csv");
+    else if (bi.id=="BrowseCourse") {      
+      wstring file = TabCourse::browseForCourse(gdi);
       if (file.length()>0)
         gdi.setText("FileName", file);
     }
@@ -2412,7 +2428,7 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
 
   gdi.addStringUT(1, makeDash(L"Copyright © 2007-2026 Melin Software HB"));
   gdi.dropLine();
-  gdi.addStringUT(10, "The database used is MySQL, Copyright (c) 2008-2024 Oracle, Inc."
+  gdi.addStringUT(10, "The database used is MySQL, Copyright (c) 2008-2026 Oracle, Inc."
     "\n\nGerman Translation by Erik Nilsson-Simkovics"
     "\n\nDanish Translation by Michael Leth Jess and Chris Bagge"
     "\n\nRussian Translation by Paul A. Kazakov and Albert Salihov"
@@ -2421,6 +2437,7 @@ void TabCompetition::loadAboutPage(gdioutput &gdi) const
     "\n\nMore French translations and documentation by Titouan Savart"
     "\n\nCzech Translation by Marek Kustka"
     "\n\nSpanish Translation by Manuel Pedre"
+    "\n\nCatalan and Spanish Translation by Edgar Aguilera"
     "\n\nUkranian Translation by Oleg Rozhko"
     "\n\nPortuguese Translation by Bruno Santos"
     "\n\nBulgarian Translation by Kostadin Novakov"
@@ -2666,7 +2683,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
     rc.left = gdi.getCX() - gdi.scaleLength(30);
 
     int bw = gdi.scaleLength(baseButtonWidth+40);
-    gdi.addString("", 1, "Importera tävlingsdata");
+    gdi.addString("", 1, L"#" + lang.tl(L"Importera tävlingsdata", true));
     gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "Entries", "Anmälningar",
                   CompetitionCB, "",  false, false);
     gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "FreeImport", "Fri anmälningsimport",
@@ -2675,7 +2692,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
                   CompetitionCB, "", false, false);
 
     gdi.dropLine();
-    gdi.addString("", 1, "Exportera tävlingsdata");
+    gdi.addString("", 1, L"#" + lang.tl(L"Exportera tävlingsdata", true));
     gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "Startlist", "Startlista",
                   CompetitionCB, "Exportera startlista på fil", false, false);
     gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "Splits", "Resultat && sträcktider",

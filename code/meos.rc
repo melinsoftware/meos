@@ -194,8 +194,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,0,0,1
- PRODUCTVERSION 4,0,0,1
+ FILEVERSION 5,0,0,1
+ PRODUCTVERSION 5,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -212,12 +212,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Melin Software HB"
             VALUE "FileDescription", "meos"
-            VALUE "FileVersion", "4.1.0.1"
+            VALUE "FileVersion", "5.0.0.1"
             VALUE "InternalName", "meos"
             VALUE "LegalCopyright", "Copyright © 2007-2026"
             VALUE "OriginalFilename", "MeOS.exe"
             VALUE "ProductName", "  meos"
-            VALUE "ProductVersion", "4.1.0.1"
+            VALUE "ProductVersion", "5.0.0.1"
         END
     END
     BLOCK "VarFileInfo"

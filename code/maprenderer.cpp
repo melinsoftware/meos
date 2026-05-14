@@ -125,9 +125,10 @@ void MapData::render(gdioutput& gdi, int xp, int yp) const {
 
 pair<int, int>  MapData::render(oEvent& oe, gdioutput& gdi, int xp, int yp, 
                                 const vector<tuple<oControl*, wstring, RenderCType>>& ctrlList,
-                                bool fullMap) const {
+                                bool fullMap, int maxWidth, int maxHeight) const {
   shared_ptr<const MapData> md = shared_from_this();
 
+  
   int margin = metersToPixels(100);
   auto rdr = make_shared<MapDataRenderer>(gdi, xp, yp, 75.0/double(margin), md);
 
@@ -152,6 +153,9 @@ pair<int, int>  MapData::render(oEvent& oe, gdioutput& gdi, int xp, int yp,
         ymin = min(ymin, yc);
         ymax = max(ymax, yc);
       }
+      else {
+        rdr->addControl(RenderCType::NotMappableError, 0, 0, label);        
+      }
     }
   }
 
@@ -171,19 +175,60 @@ pair<int, int>  MapData::render(oEvent& oe, gdioutput& gdi, int xp, int yp,
   int wm = xmax - xmin + 2 * margin;
   int hm = ymax - ymin + 2 * margin;
 
-  gdi.addImage("", yp, xp, 0, itow(imageId), gdi.scaleLength(wm*rdr->getScale()), gdi.scaleLength(hm*rdr->getScale()), xmin-margin, ymin-margin, wm, hm);
+  int renderW = gdi.scaleLength(wm * rdr->getScale());
+  int renderH = gdi.scaleLength(hm * rdr->getScale());
+
+  double sx = maxWidth > 0 ? double(maxWidth) / double(renderW) : 1.0;
+  double sy = maxHeight> 0 ? double(maxHeight) / double(renderH) : 1.0;
+
+
+  if (min(sx, sy) < 1.0) {
+    
+    // Snap to resonable nearby scale
+    double s = scaleToUse(min(sx, sy));
+    
+    rdr->scaleScale(gdi, s);
+    renderH = int(renderH * s);
+    renderW = int(renderW * s);
+  }
+
+  gdi.addImage("", yp, xp, 0, itow(imageId), renderW, renderH, xmin-margin, ymin-margin, wm, hm);
   RECT rc;
   rc.left = xp - 1;
   rc.top = yp - 1;
-  rc.right = xp + gdi.scaleLength(wm * rdr->getScale()) + 1;
-  rc.bottom = yp + gdi.scaleLength(hm * rdr->getScale()) + 1;
+  rc.right = xp + renderW + 1;
+  rc.bottom = yp + renderH + 1;
   gdi.addRectangle(rc, GDICOLOR::colorTransparent, true);
 
   rdr->setView(xmin - margin, xmax + margin, ymin - margin, ymax + margin);
 
   gdi.setMapRenderer(rdr);
   gdi.refreshFast();
-  return make_pair(xp + gdi.scaleLength(wm * rdr->getScale()), yp + gdi.scaleLength(hm * rdr->getScale()));
+  return make_pair(xp + renderW, yp + renderH);
+}
+
+double MapData::scaleToUse(double sIn) const {
+  if (sIn > 0.99 && sIn < 1.2)
+    return 1.0;
+
+  if (sIn < 1) {
+    double s = 1.0;
+    for (int i = 0; i < 100; i++) {
+      s *= 0.8;
+      if (sIn > s)
+        return s;
+    }
+  }
+  else {
+    double s = 1.2;
+    for (int i = 0; i < 100; i++) {
+      double sOld = s;
+      s *= 1.25;
+      if (sIn < s)
+        return sOld;
+    }
+  }
+  return sIn;
 }
 
 void MapData::setImage(uint64_t imgId, bool clearWorld) {
@@ -238,9 +283,11 @@ pair<double, double> MapData::mapPoint(double x, double y) const {
 pair<int, int> MapDataContainer::render(oEvent& oe, gdioutput& gdi, 
                                         int xp, int yp,
                                         const vector<tuple<oControl*, wstring, RenderCType>> &ctrl,
-                                        bool fullMap) const {
+                                        bool fullMap,
+                                        int maxWidth,
+                                        int maxHeight) const {
   if (!maps.empty())
-    return maps[0]->render(oe, gdi, xp, yp, ctrl, fullMap);
+    return maps[0]->render(oe, gdi, xp, yp, ctrl, fullMap, maxWidth, maxHeight);
   else
     return make_pair(-1, -1);
 }
@@ -366,6 +413,12 @@ void MapDataRenderer::renderDecoration(HDC hDC, gdioutput& gdi) const {
     int cx = x + gdi.scaleLength((c.x - xmin)*scale) - gdi.getOffsetX();
     int cy = y + gdi.scaleLength((c.y - ymin)*scale) - gdi.getOffsetY();
 
+    if (c.type == RenderCType::NotMappableError) {
+      cx = -1;
+      cy = -1;
+      lastcx = -1;
+      lastcy = -1;
+    }
     if (c.type == RenderCType::Finish) {
       Ellipse(hDC, cx - rad - rf, cy - rad - rf, cx + rad + rf, cy + rad + rf);
       Ellipse(hDC, cx - rad + rf, cy - rad + rf, cx + rad - rf, cy + rad - rf);
@@ -437,13 +490,23 @@ void MapDataRenderer::renderDecoration(HDC hDC, gdioutput& gdi) const {
 }
 
 MapDataRenderer::MapDataRenderer(const gdioutput &gdi, int x, int y, double scale, const shared_ptr<const MapData>& src) :
- x(x), y(y), scale(scale), data(src) {
-  int w = gdi.scaleLength(max(2.0, scale * src->metersToPixels(3)));
-  hPen = CreatePen(PS_SOLID, w, RGB(250, 50, 215));
+ x(x), y(y), scale(scale), data(src), hPen(nullptr) {
+  scaleScale(gdi, 1.0);
 }
 
 MapDataRenderer::~MapDataRenderer() {
   DeleteObject(hPen);
+}
+
+void MapDataRenderer::scaleScale(const gdioutput &gdi, double s) { 
+  if (hPen) {
+    DeleteObject(hPen);
+    hPen = nullptr;
+  }
+
+  scale *= s; 
+  int w = std::max(2, gdi.scaleLength(scale * data->metersToPixels(3.0)));
+  hPen = CreatePen(PS_SOLID, w, RGB(250, 50, 215));
 }
 
 void MapDataRenderer::setView(int xmin, int xmax, int ymin, int ymax) {
@@ -475,9 +538,13 @@ void MapDataRenderer::removeNamedControl(const string &tag) {
 }
 
 int MapData::metersToPixels(int meter) const {
+  return (int)metersToPixels(double(meter));
+}
+
+double MapData::metersToPixels(double meter) const {
   if (world.size() == 6) {
     if (isUTM) {
-      int px = (2.0 * meter) / (std::abs(world[0]) + std::abs(world[3])); // XX
+      double px = (2.0 * meter) / (std::abs(world[0]) + std::abs(world[3])); // XX
       return px;
     }
     else {
@@ -487,7 +554,7 @@ int MapData::metersToPixels(int meter) const {
       utm::LatLonToUTMXY(world[5], world[4], zone, xx, yy);
       utm::LatLonToUTMXY(world[5] + world[3], world[4] + world[0], zone, xxPix, yyPix);
 
-      int px = (2.0 * meter) / (std::abs(xx-xxPix) + std::abs(yy-yyPix)); // XX
+      double px = (2.0 * meter) / (std::abs(xx-xxPix) + std::abs(yy-yyPix)); // XX
       return px;
     }
   }
@@ -548,9 +615,9 @@ bool MapData::mapCoordinate(double lng, double lat, int& x, int& y) const {
     if (ok) {
       x = min(w, int(round(w * relX)));
       y = min(h, int(round(h * relY)));
+      isUTM = true;
     }
     else {
-      isUTM = false;
       double c1x = F;
       double c1y = C;
 
@@ -579,6 +646,7 @@ bool MapData::mapCoordinate(double lng, double lat, int& x, int& y) const {
         ok = false;
 
       if (ok) {
+        isUTM = false;
         x = min(w, int(round(w * relX)));
         y = min(h, int(round(h * relY)));
       }

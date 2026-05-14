@@ -4627,8 +4627,8 @@ bool TabClass::loadPage(gdioutput &gdi)
     func.emplace_back("StartGroups", "Startgrupper", true);
 
   RECT funRect;
-  funRect.right = gdi.getCX() - 7;
-  funRect.top = gdi.getCY() - 2;
+  funRect.right = gdi.getCX() - gdi.scaleLength(7);
+  funRect.top = gdi.getCY() - gdi.scaleLength(2);
   funRect.left = 0;
 
   gdi.dropLine(0.5);

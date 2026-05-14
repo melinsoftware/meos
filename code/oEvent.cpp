@@ -3569,10 +3569,14 @@ void oEvent::generateInForestList(gdioutput& gdi, GUICALLBACK cb, GUICALLBACK cb
         }
       }
 
-      wstring ps;
+      wstring ps;      
       for (auto& p : pl) {
         if (!ps.empty())
           ps += L", ";
+        if (ps.length() > 30) {
+          ps += L"...";
+          break;
+        }
         ps += p->getType(nullptr) + L" " + p->getTime(true, SubSecond::Off);
       }
       gdi.addStringUT(y, x + dx[2], 0, ps);
@@ -4221,10 +4225,11 @@ void oEvent::clear()
   checkDB();
 
   if (hasDBConnection())
-    sqlConnection->checkConnection(0);
+    sqlConnection->checkConnection(nullptr);
 
   isConnectedToServer = false;
   hasPendingDBConnection = false;
+  gdibase.setDBErrorState(false);
 
   destroyExtraWindows();
 

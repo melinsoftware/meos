@@ -87,8 +87,9 @@ public:
   static void importMap(gdioutput &gdi,
                         shared_ptr<MapData> &readMapData, 
                         oEvent *oe);
+  static wstring browseForCourse(gdioutput &gdi);
 
-  static void showMap(oEvent* oe, gdioutput& gdi, pCourse crs);
+  static void showMap(oEvent* oe, gdioutput& gdi, pCourse crs, const wstring &title, double zoomLevel);
   static void setupCourseImport(gdioutput& gdi, GUICALLBACK cb);
   friend int CourseCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 };

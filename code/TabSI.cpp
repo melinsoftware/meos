@@ -1283,9 +1283,9 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       updateEntryInfo(gdi);
     }
     else if (bi.id == "ShowMap") {
-      pCourse crs = getRenderCourse(gdi);
+      auto [crs, cls] = getRenderCourse(gdi);
       if (crs)
-        TabCourse::showMap(oe, gdi, crs);
+        TabCourse::showMap(oe, gdi, crs, cls->getName(), 0.0);
     }
     else if (bi.id == "ManualOK") {
       if (runnerMatchedId == -1)
@@ -6260,13 +6260,13 @@ void TabSI::generateTestCard(SICard &sic, const vector<int> &testControls, int c
   }
 }
 
-pCourse TabSI::getRenderCourse(gdioutput& gdi) const {
+pair<pCourse, pClass> TabSI::getRenderCourse(gdioutput& gdi) const {
   ListBoxInfo lbi;
   if (!gdi.getSelectedItem("Class", lbi))
-    return nullptr;
+    return pair(nullptr, nullptr);
 
-  pClass clz = oe->getClass(lbi.data);
-  if (!clz)
-    return nullptr;
-  return clz->getCourse(false);
+  pClass cls = oe->getClass(lbi.data);
+  if (!cls)
+    return pair(nullptr, nullptr);
+  return make_pair(cls->getCourse(false), cls);
 }

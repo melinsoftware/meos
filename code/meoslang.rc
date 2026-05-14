@@ -10,6 +10,7 @@
 #define IDR_3012                        112
 #define IDR_3013                        113
 #define IDR_3014                        114
+#define IDR_3015                        115
 #define SND_OK                          50
 #define SND_LEADER                      51
 #define SND_NOTOK                       52
@@ -26,6 +27,7 @@ IDR_3011                300     DISCARDABLE     "spanish.lng"
 IDR_3012                300     DISCARDABLE     "ukrainian.lng"
 IDR_3013                300     DISCARDABLE     "portuguese.lng"
 IDR_3014                300     DISCARDABLE     "bulgarian.lng"
+IDR_3015                300     DISCARDABLE     "catalan.lng"
 /////////////////////////////////////////////////////////////////////////////
 
 SND_OK                WAVE     DISCARDABLE     "./sound/ok.wav"
