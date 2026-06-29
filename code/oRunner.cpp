@@ -6965,7 +6965,7 @@ int oRunner::getRogainingPointsGross(bool computed) const {
   if (computed) {
     int cmp = getRogainingPoints(computed, false);
     if (cmp > 0)
-      return cmp + tReduction; // This formula only holds when something remains. If tRediction > collected points, the result is wrong
+      return cmp + tReduction; // This formula only holds when something remains. If tReduction > collected points, the result is wrong
     else
       return tRogainingPointsGross;
   }

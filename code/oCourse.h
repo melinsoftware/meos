@@ -187,6 +187,11 @@ public:
   /// Return true if the course has rogaining
   bool hasRogaining() const;
 
+  /// EST20260629 START Issue #114
+  /// Return type of rogaining (time or points)
+  int getRogainingType() const;
+  /// EST20260629 END
+
   // Get the control number as "printed on map". Do not count
   // rogaining controls
   const wstring &getControlOrdinal(int controlIndex) const;

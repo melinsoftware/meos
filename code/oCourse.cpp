@@ -938,6 +938,18 @@ bool oCourse::hasRogaining() const {
   cachedHasRogaining = r ? 2 : 1;
   return r;
 }
+// EST20260629 START Issue #114
+
+// returns 1 if Rogaining type is time limit, 2 if point limit, else 0
+
+int oCourse::getRogainingType() const {
+    if (getMaximumRogainingTime() > 0)
+        return 1;
+    else if (getMinimumRogainingPoints() > 0)
+        return 2;
+    return 0;
+}
+// EST20260629 END
 
 void oCourse::clearCache() const {
   cachedHasRogaining = 0;
