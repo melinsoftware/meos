@@ -1790,7 +1790,7 @@ wstring oTeam::getLegStartTimeCompact(int leg) const
 {
   int s=getLegStartTime(leg);
   if (s>0)
-    if (oe->useStartSeconds())
+    if (oe->useStartSeconds(getClassId(true), leg))
       return oe->getAbsTime(s);
     else
       return oe->getAbsTimeHM(s);
@@ -2125,7 +2125,7 @@ void oTeam::addTableRow(Table &table) const {
   table.set(row++, it, TID_START, getStartTimeS(), true);
   table.set(row++, it, TID_FINISH, getFinishTimeS(false, SubSecond::Auto), true);
   table.set(row++, it, TID_STATUS, getStatusS(false, true), true, cellSelection);
-  table.set(row++, it, TID_RUNNINGTIME, getRunningTimeS(true, SubSecond::Auto), false);
+  table.set(row++, it, TID_RUNNINGTIME, getRunningTimeS(true, SubSecond::AutoIncludeHour), false);
   int rp = getRogainingPoints(true, false);
   table.set(row++, it, TID_POINTS, oe->formatScore(rp), false);
 
@@ -2146,7 +2146,7 @@ void oTeam::addTableRow(Table &table) const {
 
   row = oe->oTeamData->fillTableCol(it, table, true);
 
-  table.set(row++, it, TID_INPUTTIME, getInputTimeS(), true);
+  table.set(row++, it, TID_INPUTTIME, getInputTimeS(true), true);
   table.set(row++, it, TID_INPUTSTATUS, getInputStatusS(), true, cellSelection);
   table.set(row++, it, TID_INPUTPOINTS, oe->formatScore(inputPoints), true);
   table.set(row++, it, TID_INPUTPLACE, itow(inputPlace), true);
@@ -2290,7 +2290,7 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
     case TID_INPUTTIME:
       setInputTime(input);
       synchronize(true);
-      output = getInputTimeS();
+      output = getInputTimeS(true);
       break;
 
     case TID_INPUTPOINTS:

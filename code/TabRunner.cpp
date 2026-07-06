@@ -321,7 +321,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
     else
       gdi.setText("PlaceIn", makeDash(L"-"));
 
-    gdi.setText("TimeIn", r->getInputTimeS());
+    gdi.setText("TimeIn", r->getInputTimeS(false));
     if (gdi.hasWidget("PointIn"))
       gdi.setText("PointIn", oe->formatScore(r->getInputPoints()));
   }

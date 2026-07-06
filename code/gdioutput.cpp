@@ -726,11 +726,15 @@ void gdioutput::draw(HDC hDC, RECT& rc, RECT& drawArea) {
 void gdioutput::renderRectangle(HDC hDC, RECT *clipRegion, const RectangleInfo &ri) {
   if (ri.drawBorder) {
     SelectObject(hDC, GetStockObject(DC_PEN));
-    SetDCPenColor(hDC, RGB(40,40,60));
+    if (ri.borderColor == -1)
+      SetDCPenColor(hDC, RGB(40,40,60));
+    else
+      SetDCPenColor(hDC, ri.borderColor);
   }
-  else
+  else {
     SelectObject(hDC, GetStockObject(NULL_PEN));
-  
+  }
+
   if (ri.color == colorTransparent) 
     SelectObject(hDC, GetStockObject(NULL_BRUSH));
   else {
@@ -745,8 +749,9 @@ void gdioutput::renderRectangle(HDC hDC, RECT *clipRegion, const RectangleInfo &
   else {
     Rectangle(hDC, rect_rc.left, rect_rc.top, rect_rc.right, rect_rc.bottom);
   }
-  if (ri.color == colorTransparent)
+  if (ri.color == colorTransparent) {
     SelectObject(hDC, GetStockObject(DC_BRUSH));
+  }
 }
 
 void gdioutput::updateStringPosCache() {
@@ -2877,9 +2882,16 @@ LRESULT gdioutput::ProcessMsgWrp(UINT iMessage, LPARAM lParam, WPARAM wParam)
     pt.x = (signed short)LOWORD(lParam);
     pt.y = (signed short)HIWORD(lParam);
 
-    if (mouseHandler) 
-      mouseHandler->mouseButton(*this, MouseHandler::MouseEvent::LButtonDown, pt.x + OffsetX, pt.y + OffsetY);
-    
+    if (mouseHandler) {
+      int x = pt.x + OffsetX;
+      int y = pt.y + OffsetY;
+
+      if (getRecorder().recording()) {
+        string cmd = "leftclick(" + itos(int(x/scale)) + ", " + itos(int(y / scale)) + "); // Mouse left click";
+        getRecorder().record(cmd);
+      }
+      mouseHandler->mouseButton(*this, MouseHandler::MouseEvent::LButtonDown, x, y);
+    }
     list<TableInfo>::iterator tit;
 
     if (useTables) {
@@ -5440,10 +5452,10 @@ wstring gdioutput::getTimerText(const TextInfo &tit, uint64_t T) {
       swprintf_s(bf, 16, L"%d", t);
   }
   else if ((tit.format & timeWithTenth) && rt < timeConstSecPerHour) {
-    swprintf_s(bf, 16, L"%02d:%02d.%d", t/ timeConstSecPerMin, t%timeConstSecPerMin, tenth);
+    swprintf_s(bf, 16, L"%d:%02d.%d", t/ timeConstSecPerMin, t%timeConstSecPerMin, tenth);
   }
   else if (rt>=timeConstSecPerHour  || (tit.format&fullTimeHMS))
-    swprintf_s(bf, 16, L"%02d:%02d:%02d", t/ timeConstSecPerHour, (t/ timeConstSecPerMin)% timeConstSecPerMin, t%timeConstSecPerMin);
+    swprintf_s(bf, 16, L"%d:%02d:%02d", t/ timeConstSecPerHour, (t/ timeConstSecPerMin)% timeConstSecPerMin, t%timeConstSecPerMin);
   else
     swprintf_s(bf, 16, L"%d:%02d", (t/ timeConstMinPerHour), t%timeConstMinPerHour);
 
@@ -6126,13 +6138,14 @@ RectangleInfo &RectangleInfo::changeDimension(gdioutput &gdi, int dx, int dy) {
 RectangleInfo &gdioutput::addRectangle(int left, int top, int right, int bottom, 
                                        GDICOLOR color,
                                        bool drawBorder, 
-                                       bool addFirst) {
+                                       bool addFirst,
+                                       GDICOLOR colorBorder) {
   RECT rc = { left, top, right, bottom };
-  return addRectangle(rc, color, drawBorder, addFirst);
+  return addRectangle(rc, color, drawBorder, addFirst, colorBorder);
 }
 
 
-RectangleInfo &gdioutput::addRectangle(const RECT &rc, GDICOLOR color, bool drawBorder, bool addFirst) {
+RectangleInfo &gdioutput::addRectangle(const RECT &rc, GDICOLOR color, bool drawBorder, bool addFirst, GDICOLOR colorBorder) {
   RectangleInfo ri;
 
   ri.rc.left = min<int>(rc.left, rc.right);
@@ -6149,6 +6162,7 @@ RectangleInfo &gdioutput::addRectangle(const RECT &rc, GDICOLOR color, bool draw
 
   ri.color2 = ri.color;
   ri.drawBorder = drawBorder;
+  ri.borderColor = (DWORD)colorBorder;
 
   if (hWndTarget && !manualUpdate) {
     HDC hDC=GetDC(hWndTarget);
@@ -7907,6 +7921,13 @@ void gdioutput::dbInput(const string &id, const string &text) {
   }
 
   throw meosException("Unknown input " + id + ".");
+}
+
+void gdioutput::dbLeftClick(int x, int y) {
+  if (!mouseHandler)
+    throw std::exception("No mouse handler");
+
+  mouseHandler->mouseButton(*this, MouseHandler::MouseEvent::LButtonDown, int(x * scale), int(y * scale));
 }
 
 void gdioutput::dbCheck(const string &id, bool state) {

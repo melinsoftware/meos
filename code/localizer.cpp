@@ -176,10 +176,10 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found) {
 
   if (str[0]==',' || str[0]==' ' || str[0]=='.'
        || str[0]==':'  || str[0]==';' || str[0]=='<' || str[0]=='>' 
-       || str[0]=='-' || str[0]==0x96 || str[0]=='×' || isDigit(str[0])) {
+       || str[0]=='-' || str[0]==0x96 || str[0]=='×' || isDigit(str[0]) || str[0] == '(') {
     unsigned k=1;
     while(str[k] && (str[k]==' ' || str[k]=='.' || str[k]==':' || str[k]=='<' || str[k]=='>'
-           || str[k]=='-' || str[k]==0x96 || str[k] == '×' || isDigit(str[k])))
+           || str[k]=='-' || str[k]==0x96 || str[k] == '×' || isDigit(str[k]) || str[k] == '('))
       k++;
 
     if (k<str.length()) {
@@ -239,7 +239,7 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found) {
   wchar_t last = str[len-1];
   if (last != ':' && last != '.' && last != ' ' && last != ',' &&
       last != ';' && last != '<' && last != '>' && last != '-' &&
-      last != 0x96 && last != 215 && !isDigit(last)) {
+      last != 0x96 && last != 215 && !isDigit(last) && last != ')') {
 #ifdef _DEBUG
     if (str.length()>1)
       addUnknown(str);
@@ -256,7 +256,8 @@ const wstring &LocalizerImpl::translate(const wstring &str, bool &found) {
   while(pos>0) {
     wchar_t last = str[pos];
     if (last != ':' && last != ' ' && last != ',' && last != '.' &&
-        last != ';' && last != '<' && last != '>' && last != '-' && last != 0x96 && last != 215 && !isDigit(last))
+        last != ';' && last != '<' && last != '>' && last != '-' && 
+        last != 0x96 && last != 215 && !isDigit(last) && last != ')')
       break;
 
     pos = str.find_last_not_of(last, pos);
@@ -515,7 +516,7 @@ void LocalizerImpl::loadTable(const vector<string> &raw, const wstring &language
     string key = s.substr(0, spos);
     string value = s.substr(epos);
 
-    if (value.empty())
+    if (value.empty() || key.empty())
       throw std::exception("Bad file format.");
 
     if (value.size() > 1 && value[0] == 'Â') {
@@ -542,8 +543,14 @@ void LocalizerImpl::loadTable(const vector<string> &raw, const wstring &language
 
       table[okey] = output;
     }
-    else
-      table[fromUTF(key)] = fromUTF(value);
+    else {
+      const wstring &wkey = fromUTF(key);
+      const wstring &wvalue = fromUTF(value);
+      if (wkey.front() != '(' || wkey.back() != ')' || wvalue.front() != '(' || wvalue.back() != ')')
+        table[wkey] = wvalue;
+      else
+        table[wkey.substr(1, wkey.length() - 2)] = wvalue.substr(1, wvalue.length() - 2);
+    }
   }
 }
 
@@ -570,12 +577,14 @@ const wstring &Localizer::tl(const string &str) const {
   return linternal->tl(key);
 }
 
-
-const wstring Localizer::tl(const wstring &str, bool cap) const {
-  wstring w = linternal->tl(str);
-  if (capitalizeWords())
-    ::capitalizeWords(w);
-
+const wstring &Localizer::tl(const wstring &str, bool cap) const {
+  const wstring &w = linternal->tl(str);
+  if (cap && capitalizeWords()) {
+    wstring &wres = StringCache::getInstance().wget();
+    wres = w;
+    ::capitalizeWords(wres);
+    return wres;
+  }
   return w;
 }
 

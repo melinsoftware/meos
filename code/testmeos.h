@@ -114,6 +114,8 @@ public:
   void press(const char *btn, int extra) const;
   void press(const char *btn, const char *extra) const;
 
+  void leftclick(int x, int y) const;
+
   string selectString(const char *btn, const char *data) const;
   string select(const char *btn, size_t data) const;
   void input(const char *id, const char *data) const;

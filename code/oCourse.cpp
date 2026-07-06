@@ -939,6 +939,17 @@ bool oCourse::hasRogaining() const {
   return r;
 }
 
+int oCourse::getMaxRogainingPoints() const {
+  if (maxRGPoints.needsUpdate(*oe)) {
+    int ps = 0;
+    for (pControl pc : controls) {
+      ps += max(pc->getRogainingPoints(), 0);
+    }
+    maxRGPoints.update(*oe, ps);
+  }
+  return maxRGPoints.get();
+}
+
 void oCourse::clearCache() const {
   cachedHasRogaining = 0;
   cachedControlOrdinal.clear();

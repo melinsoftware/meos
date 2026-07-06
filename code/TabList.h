@@ -92,7 +92,7 @@ private:
   void changeListSettingsTarget(gdioutput &oldWindow, gdioutput &newWindow);
   void leavingList(const string &wnd);
 
-  pair<gdioutput *, TabList *> makeOwnWindow(gdioutput &gdi, bool forNewList);
+  pair<gdioutput *, TabList *> makeOwnWindow(gdioutput &gdi, bool forNewList, const oListInfo &lst);
 
   /** Set animation mode*/
   void setAnimationMode(gdioutput &gdi);
@@ -128,7 +128,7 @@ public:
   // Clear up competition specific settings
   void clearCompetitionData();
   static void makeClassSelection(gdioutput &gdi);
-  static void makeFromTo(gdioutput &gdi);
+  static void makeFromTo(oEvent& oe, gdioutput &gdi, bool showFrom = true, bool showTo = true, bool disable = true);
   static void enableFromTo(oEvent &oe, gdioutput &gdi, bool from, bool to);
   void liveResult(gdioutput &gdi, oListInfo &currentList);
 
@@ -166,7 +166,7 @@ public:
   TabType getType() const {return TListTab;}
 
 
-  gdioutput *showList(gdioutput& gdi, const oListInfo& listInfo, ListUpdater *listUpdater);
+  gdioutput *showList(gdioutput& gdi, const oListInfo& listInfo, ListUpdater *listUpdater, bool hideToolButtons);
 
   TabList(oEvent *oe);
   ~TabList(void);

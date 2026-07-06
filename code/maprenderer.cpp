@@ -549,7 +549,11 @@ double MapData::metersToPixels(double meter) const {
     }
     else {
       double xx, yy, xxPix, yyPix;
-      int zone = utm::LatLonToUTMXY(latCenter, lngCenter, 0, xx, yy);
+
+      double lac = world[5];
+      double lnc = world[4];
+      
+      int zone = utm::LatLonToUTMXY(lac, lnc, 0, xx, yy);
 
       utm::LatLonToUTMXY(world[5], world[4], zone, xx, yy);
       utm::LatLonToUTMXY(world[5] + world[3], world[4] + world[0], zone, xxPix, yyPix);
@@ -565,8 +569,11 @@ double MapData::metersToPixels(double meter) const {
 bool MapData::mapCoordinate(double lng, double lat, int& x, int& y) const {
   x = -1, y = -1;
 
+  double lac = lat;
+  double lnc = lng;
+
   double xx, yy;
-  int zone = utm::LatLonToUTMXY(latCenter, lngCenter, 0, xx, yy);
+  int zone = utm::LatLonToUTMXY(lac, lnc, 0, xx, yy);
 
   if (world.size() == 6) {
     const double &offX = world[4];

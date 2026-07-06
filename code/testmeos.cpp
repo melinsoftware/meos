@@ -278,6 +278,11 @@ void TestMeOS::press(const char *btn, const char *extra) const {
   mainMessageLoop(0, 50);
 }
 
+void TestMeOS::leftclick(int x, int y) const {
+  gdi_main->dbLeftClick(x, y);
+  mainMessageLoop(0, 50);
+}
+
 string TestMeOS::selectString(const char *id, const char *data) const {
   int d = gdi_main->getItemDataByName(id, data);
   if (d == -1)

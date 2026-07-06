@@ -631,6 +631,9 @@ static void setFixedWidth(const gdioutput &gdi,
 
 void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par, oListInfo &li) const {
   const MetaList &mList = *this;
+
+  init(li);
+
   PositionVer2 pos;
   const bool large = par.useLargeSize;
   li.lp = par;
@@ -945,16 +948,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
     }
   }
 
-  pClass sampleClass = 0;
+  pClass sampleClass = par.getSampleClass(oe);
 
-  if (!par.selection.empty())
-    sampleClass = oe->getClass(*par.selection.begin());
-  if (!sampleClass) {
-    vector<pClass> cls;
-    oe->getClasses(cls, false);
-    if (!cls.empty())
-      sampleClass = cls[0];
-  }
   pair<int, bool> parLegNumber = par.getLegInfo(sampleClass);
   bool capitalizeTitle = lang.capitalizeWords();
   resultToIndex.clear();
@@ -987,7 +982,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
           font = mp.font;
 
         oPrintPost &added = li.addHead(oPrintPost(mp.type, text, font|mp.textAdjust,
-                                       pos.get(label), dy + head_dy, mp.leg == -1 ? parLegNumber : make_pair(mp.leg, true))).
+                                       pos.get(label), dy + head_dy, 
+                                       mp.leg == -1 ? parLegNumber : make_pair(mp.leg, true), mp.leg != -1)).
                                        setFontFace(fontFaces[MLHead].font,
                                           fontFaces[MLHead].scale);
 
@@ -1046,7 +1042,8 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
         capitalizeWords(text);
 
       oPrintPost &added = li.addSubHead(oPrintPost(mp.type, text, font|mp.textAdjust,
-                                        pos.get(label, s_factor), dy + subhead_dy, cline[k].leg == -1 ? parLegNumber : make_pair(cline[k].leg, true))).
+                                        pos.get(label, s_factor), dy + subhead_dy, 
+                                        cline[k].leg == -1 ? parLegNumber : make_pair(cline[k].leg, true), cline[k].leg != -1)).
                                         setFontFace(fontFaces[MLSubHead].font,
                                                     fontFaces[MLSubHead].scale);
 
@@ -1108,7 +1105,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
       bool dmy;
       oPrintPost &added = li.addListPost(oPrintPost(mp.type, encode(mp.type, mp.text, dmy), font|mp.textAdjust,
                                          pos.get(label, s_factor),
-                                         dy + list_dy, cline[k].leg == -1 ? parLegNumber : make_pair(cline[k].leg, true))).
+                                         dy + list_dy, cline[k].leg == -1 ? parLegNumber : make_pair(cline[k].leg, true), cline[k].leg != -1)).
                                          setFontFace(fontFaces[MLList].font,
                                                      fontFaces[MLList].scale);
 
@@ -1168,7 +1165,7 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
 
       bool dmy;
       oPrintPost &added = li.addSubListPost(oPrintPost(mp.type, encode(mp.type, mp.text, dmy), font|mp.textAdjust,
-                                            xp, dy+sublist_dy, mp.leg == -1 ? parLegNumber : make_pair(mp.leg, true))).
+                                            xp, dy+sublist_dy, mp.leg == -1 ? parLegNumber : make_pair(mp.leg, true), mp.leg != -1)).
                                             setFontFace(fontFaces[MLSubList].font,
                                                         fontFaces[MLSubList].scale);
 
@@ -1210,9 +1207,6 @@ void MetaList::interpret(oEvent *oe, const gdioutput &gdi, const oListParam &par
     li.setSubFilter(*it);
   }
   li.setResultModule(resultModule);
-  li.supportFrom = supportFromControl;
-  li.supportTo = supportToControl;
-  li.resType = getResultType();
   if (!resultModule.empty() || li.calcResults || li.calcCourseClassResults 
       || li.calcTotalResults || li.calcCourseResults)
     hasResults_ = true;
@@ -1703,7 +1697,7 @@ void MetaList::load(const xmlobject &xDef) {
           || mp.type == lRunnerTempTimeStatus || mp.type == lRunnerTimeAfter ||
           mp.type == lRunnerTime || mp.type == lRunnerTimeStatus || mp.type == lRunnerTimeAfter
           || mp.type == lRunnerTimePlaceFixed || mp.type == lRunnerStageTime || mp.type == lRunnerStagePlace
-           || mp.type == lRunnerStageTimeStatus) {
+           || mp.type == lRunnerStageTimeStatus || mp.type == lRunnerStageTimeAfter) {
           hasResults_ = true;
           break;
         }
@@ -2211,6 +2205,7 @@ void MetaList::initSymbols() {
     typeToSymbol[lClassTotalMaps] = L"ClassTotalMaps";
     typeToSymbol[lClassNumEntries] = L"ClassNumEntries";
     typeToSymbol[lCourseLength] = L"CourseLength";
+    typeToSymbol[lRogainingMaxPoints] = L"RogainingMaxPoints";
     typeToSymbol[lCourseName] = L"CourseName";
     typeToSymbol[lCourseNumber] = L"CourseNumber";
     typeToSymbol[lCourseClimb] = L"CourseClimb";
@@ -2271,6 +2266,8 @@ void MetaList::initSymbols() {
     typeToSymbol[lRunnerStagePlace] = L"RunnerStagePlace";
     typeToSymbol[lRunnerStagePoints] = L"RunnerStagePoints";
     typeToSymbol[lRunnerStageNumber] = L"RunnerStageNumber";
+    typeToSymbol[lRunnerStageTimeAfter] = L"RunnerStageTimeAfter";
+    typeToSymbol[lStageNumber] = L"StageNumber";
 
     typeToSymbol[lRunnerUMMasterPoint] = L"RunnerUMMasterPoint";
     typeToSymbol[lRunnerTimePlaceFixed] = L"RunnerTimePlaceFixed";
@@ -2406,6 +2403,8 @@ void MetaList::initSymbols() {
     typeToSymbol[lControlMistakeQuotient] = L"ControlMistakeQuotient";
     typeToSymbol[lControlRunnersLeft] = L"ControlRunnersLeft";
     typeToSymbol[lControlCodes] = L"ControlCodes";
+    typeToSymbol[lControlTo] = L"ControlTo";
+    typeToSymbol[lControlFrom] = L"ControlFrom";
 
     typeToSymbol[lRogainingLeg] = L"RogainingLeg";
     typeToSymbol[lRogainingLegFrom] = L"RogainingLegFrom";
@@ -2881,14 +2880,7 @@ void MetaListContainer::setupListInfo(int firstIndex,
     if (!resultsOnly || ml.hasResults()) {
       oListInfo &li = listMap[listIx];
       li.Name = ml.getLocalizedListName();
-      li.listType = ml.getListType();
-      li.supportClasses = ml.supportClasses();
-      li.supportLegs = (ml.getListType() == oListInfo::EBaseTypeTeam) && ml.supportLegSelection();
-      li.supportParameter = !ml.getResultModule().empty();
-      li.supportLarge = true;
-      li.supportFrom = ml.supportFrom();
-      li.supportTo = ml.supportTo();
-      li.resType = ml.getResultType();
+      ml.init(li);
     }
   }
 }
@@ -3401,6 +3393,17 @@ const wstring& MetaList::getLocalizedListName() const {
     return listName;
   else
     return lang.tl(listName);
+}
+
+void MetaList::init(oListInfo &li) const {
+  li.listType = getListType();
+  li.supportClasses = supportClasses();
+  li.supportLegs = (getListType() == oListInfo::EBaseTypeTeam) && supportLegSelection();
+  li.supportParameter = !getResultModule().empty();
+  li.supportLarge = true;
+  li.supportFrom = supportFrom();
+  li.supportTo = supportTo();
+  li.resType = getResultType();
 }
 
 oListInfo::EBaseType MetaList::getListType() const {

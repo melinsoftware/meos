@@ -732,18 +732,16 @@ void oEvent::getClasses(vector<pClass> &classes, bool sync) const {
   sort(classes.begin(), classes.end(), clsSortFunction);
 }
 
-
-pClass oEvent::getBestClassMatch(const wstring &cname) const {
-  return getClass(cname);
-}
-
-pClass oEvent::getClass(const wstring &cname) const
-{
-  for (oClassList::const_iterator it=Classes.begin(); it != Classes.end(); ++it) {
-    if (!it->isRemoved() && compareClassName(cname, it->Name))
-      return pClass(&*it);
+pClass oEvent::getClass(const wstring &cname) const {
+  for (auto &c : Classes) {
+    if (!c.isRemoved() && cname ==c.Name)
+      return pClass(&c);
   }
-  return 0;
+  for (auto &c : Classes) {
+    if (!c.isRemoved() && compareClassName(cname, c.Name))
+      return pClass(&c);
+  }
+  return nullptr;
 }
 
 pClass oEvent::getClass(int Id) const {
@@ -5681,4 +5679,34 @@ bool oClass::isSingleStageOnly() const {
 
 void oClass::setSingleStageOnly(bool singleStageOnly) {
   getDI().setInt("NoTotalResult", singleStageOnly);
+}
+
+int oClass::getStageLeader(int stage) const {
+  if (stageLeaderTime.needsUpdate(*oe)) {
+    stageLeaderTime.update(*oe, vector<int>());
+  }
+
+  auto& current = stageLeaderTime.get();
+  if (stage >= current.size() || current[stage] == -1) {
+    vector<int> newLeader = current;
+    newLeader.resize(stage + 1, -1);
+    vector<pRunner> rl;
+    oe->getRunners(Id, -1, rl, false);
+    int bt = numeric_limits<int>::max();
+
+    for (pRunner r : rl) {
+      int time, d;
+      if (r->getStageResult(stage, time, d, d) == StatusOK) {
+        if (time > 0) {
+          bt = min(bt, time);
+        }
+      }
+    }
+    newLeader[stage] = bt;
+    stageLeaderTime.update(*oe, newLeader);
+    return bt;
+  }
+  else {
+    return current[stage];
+  }
 }

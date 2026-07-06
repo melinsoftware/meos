@@ -71,7 +71,7 @@
 extern Image image;
 
 //Version of database
-int oEvent::dbVersion = 100;
+int oEvent::dbVersion = 101;
 
 oEvent::oEvent(gdioutput &gdi) : oBase(nullptr), gdibase(gdi) {
   readOnly = false;
@@ -3232,7 +3232,6 @@ void oEvent::generateInForestList(gdioutput& gdi, GUICALLBACK cb, GUICALLBACK cb
   //Lazy setup: tie runners and persons
   oFreePunch::rehashPunches(*oe, 0, 0);
   updateComputerTime(false);
-  calcUseStartSeconds();
   const int ct = getComputerTime();
 
   DWORD filter = 0;
@@ -3384,7 +3383,7 @@ void oEvent::generateInForestList(gdioutput& gdi, GUICALLBACK cb, GUICALLBACK cb
     }
     else if (!checkTime.empty()) {
       timerTemplate = L"@X\u00b9";
-      if (!useStartSeconds()) {
+      if (!useStartSeconds(it->getClassId(true), it->getLegNumber())) {
         int pos = checkTime.find_last_of(':');
         sStart = checkTime.substr(0, pos) + L"\u00b9";
       }
@@ -3614,7 +3613,8 @@ void oEvent::generateInForestList(gdioutput& gdi, GUICALLBACK cb, GUICALLBACK cb
 
 void oEvent::generateMinuteStartlist(gdioutput &gdi) {
   sortRunners(SortByStartTime);
-
+  gdi.addInfoBox("MinuteSL", L"Minutstartlistan är uppdelad efter start och startblock, som anges per klass",
+                 L"Minutstartlista", BoxStyle::Header, 20000);
   int dx[4]={0, gdi.scaleLength(70), gdi.scaleLength(340), gdi.scaleLength(510)};
   int y=gdi.getCY();
   int x=gdi.getCX();
@@ -4324,6 +4324,9 @@ void oEvent::clear()
   currentNameMode = (NameMode) getPropertyInt("NameMode", FirstLast);
 
   hasWarnedModifiedExtId = false;
+
+  tUseStartSecondsLeg.reset();
+  scoreFactor.reset();
 
   useSubsecondsVersion = -1; 
 }
@@ -5612,17 +5615,46 @@ void oEvent::assignCardInteractive(gdioutput& gdi, GUICALLBACK cb, SortOrder& or
   gdi.refresh();
 }
 
-void oEvent::calcUseStartSeconds()
-{
-  tUseStartSeconds = false;
-  oRunnerList::iterator it;
-  for (it = Runners.begin(); it != Runners.end(); ++it) {
-    if (it->getStartTime() > 0 &&
-      (it->getStartTime() + ZeroTime) % timeConstMinute != 0) {
-      tUseStartSeconds = true;
-      return;
+bool oEvent::useStartSeconds(int classId, int leg) const {
+  if (tUseStartSecondsLeg.needsUpdate(*this)) {
+    bool anySecond = false;
+    map<pair<int, int>, bool> useStartSeconds;
+    
+    for (auto &r : Runners) {
+      if (r.isRemoved())
+        continue;
+      int leg = r.getLegNumber();
+      if (leg < 0)
+        leg = 0;
+   
+      auto &s = useStartSeconds[make_pair(r.getClassId(true), leg)];
+      if (!s) {
+        if (r.getStartTime() > 0 &&
+            (r.getStartTime() + ZeroTime) % timeConstMinute != 0) {
+          s = true;
+
+          if (!anySecond) {
+            useStartSeconds[make_pair(0, 0)] = true;
+            anySecond = true;
+          }
+        }
+      }
     }
+
+    tUseStartSecondsLeg.update(*this, useStartSeconds);
   }
+
+  auto &useStartSeconds = tUseStartSecondsLeg.get();
+  auto res = useStartSeconds.find(make_pair(classId, leg));
+
+  if (res != useStartSeconds.end())
+    return res->second;
+  
+  res = useStartSeconds.find(make_pair(0, 0));
+  if (res != useStartSeconds.end())
+    return res->second;
+  else
+    return false;
 }
 
 const wstring &oEvent::formatStatus(RunnerStatus status, bool forPrint)

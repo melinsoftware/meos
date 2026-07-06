@@ -982,18 +982,12 @@ void RestServer::getData(oEvent &oe, const string &what, const multimap<string, 
     }
   }
   else if (what == "status") {
-    InfoMeosStatus iStatus;
-    if (oe.empty()) {
-      iStatus.setEventNameId(L"");	// no event
-      iStatus.setOnDatabase(false);
-      iStatus.setEventId(0);
-    }
-    else {
+    InfoMeosStatus iStatus;    
+    if (!oe.empty()) {
       iStatus.setEventNameId(oe.getNameId(0));	// id of event
       iStatus.setOnDatabase(oe.isClient());	// onDatabase
       iStatus.setEventId(oe.getId());
     }
-
     iStatus.serialize(out, false);
     okRequest = true;
   }

@@ -106,7 +106,7 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo) {
   oRunnerList::iterator it;
   lastResultCalcSplitResult = controlIdFrom != oPunch::PunchStart || controlIdTo != oPunch::PunchFinish;
 
-  for (it=Runners.begin(); it!=Runners.end(); ++it) {
+  for (it = Runners.begin(); it != Runners.end(); ++it) {
     int st = 0;
     if (controlIdFrom > 0 && controlIdFrom != oPunch::PunchStart) {
       RunnerStatus stat;
@@ -118,7 +118,7 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo) {
       }
     }
     if (controlIdTo == 0 || controlIdTo == oPunch::PunchFinish) {
-      it->tempRT = max(0, it->FinishTime - (st + it->tStartTime) );
+      it->tempRT = max(0, it->FinishTime - (st + it->tStartTime));
       if (it->tempRT > 0)
         it->tempRT += it->getTimeAdjustment(false);
       it->tempStatus = it->tStatus;
@@ -126,39 +126,40 @@ void oEvent::calculateSplitResults(int controlIdFrom, int controlIdTo) {
     else {
       int ft = 0;
       it->getSplitTime(controlIdTo, it->tempStatus, ft);
-      if (it->tempStatus==StatusOK && it->tStatus > StatusOK)
-        it->tempStatus=it->tStatus;
+      if (it->tempStatus == StatusOK && it->tStatus > StatusOK)
+        it->tempStatus = it->tStatus;
 
       it->tempRT = max(0, ft - st);
     }
   }
 
   Runners.sort(oRunner::sortSplit);
-  int cClassId=-1;
-  int cPlace=0;
-  int vPlace=0;
-  int cTime=0;
+  int cClassId = -1;
+  int cPlace = 0;
+  int vPlace = 0;
+  int cTime = 0;
   int key = resultKey(controlIdFrom, controlIdTo);
 
-  for (it=Runners.begin(); it != Runners.end(); ++it){
-    if (it->getClassId(true)!=cClassId){
-      cClassId=it->getClassId(true);
-      cPlace=0;
-      vPlace=0;
-      cTime=0;
-      it->Class->tLegLeaderTime=9999999;
+  for (it = Runners.begin(); it != Runners.end(); ++it) {
+    if (it->getClassId(true) != cClassId) {
+      cClassId = it->getClassId(true);
+      cPlace = 0;
+      vPlace = 0;
+      cTime = 0;
+      if (it->Class)
+        it->Class->tLegLeaderTime = 9999999;
     }
 
-    if (it->tempStatus==StatusOK) {
+    if (it->tempStatus == StatusOK) {
       cPlace++;
 
       if (it->Class)
-        it->Class->tLegLeaderTime=min(it->tempRT, it->Class->tLegLeaderTime);
+        it->Class->tLegLeaderTime = min(it->tempRT, it->Class->tLegLeaderTime);
 
-      if (it->tempRT>cTime)
-        vPlace=cPlace;
+      if (it->tempRT > cTime)
+        vPlace = cPlace;
 
-      cTime=it->tempRT;
+      cTime = it->tempRT;
       it->tPlace.update(*this, key, vPlace, false);
     }
     else

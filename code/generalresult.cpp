@@ -1067,6 +1067,11 @@ void DynamicResult::declareSymbols(DynamicMethods m, bool clear) const {
 
   parser.declareSymbol("MaxTime", "Maximum allowed running time", false);
 
+  parser.declareSymbol("RGTimeLimit", "Rogaining time limit", false);
+  parser.declareSymbol("RGMaxPoints", "Maximum number of rogaining points", false);
+  parser.declareSymbol("RGPointLimit", "Rogaining time limit", false);
+  parser.declareSymbol("RGReduction", "Rogaining point reduction per minute", false);
+
   parser.declareSymbol("StatusUnknown", "Status code for an unknown result", false);
   parser.declareSymbol("StatusOK", "Status code for a valid result", false);
   parser.declareSymbol("StatusMP", "Status code for a missing punch", false);
@@ -1205,15 +1210,32 @@ void DynamicResult::prepareCommon(oAbstractRunner &runner, bool classResult) con
   parser.addSymbol("DataB", runner.getDCI().getInt("DataB"));
 
   pClass cls = runner.getClassRef(true);
+  pCourse crs = nullptr;
   if (cls) {
     parser.addSymbol("ClassDataA", cls->getDCI().getInt("DataA"));
     parser.addSymbol("ClassDataB", cls->getDCI().getInt("DataB"));
+
+    parser.addSymbol("MaxTime", cls->getMaximumRunnerTime()); // Already globally set
+    crs = cls->getCourse();
   }
   else {
     parser.addSymbol("ClassDataA", 0);
     parser.addSymbol("ClassDataB", 0);
-  }
 
+      }
+
+  if (crs) {
+    parser.addSymbol("RGTimeLimit", crs->getMaximumRogainingTime() / timeConstSecond);
+    parser.addSymbol("RGMaxPoints", crs->getMaxRogainingPoints());
+    parser.addSymbol("RGPointLimit", crs->getMinimumRogainingPoints());
+    parser.addSymbol("RGReduction", crs->getRogainingPointsPerMinute());
+  }
+  else {
+    parser.addSymbol("RGTimeLimit", 0);
+    parser.addSymbol("RGMaxPoints", 0);
+    parser.addSymbol("RGPointLimit", 0);
+    parser.addSymbol("RGReduction", 0);
+  }
   vector<RunnerStatus> inst;
   vector<int> times;
   vector<int> points;

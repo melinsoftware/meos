@@ -523,6 +523,12 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.addButton("Cancel", "Avbryt", CourseCB).setCancel();
       gdi.setInputFocus("MapFileName");
     }
+    else if (bi.id == "RemoveMap") {
+      if (gdi.ask(L"Vill du ta bort kartan?")) {
+        oe->getRenderMaps().reset();
+        loadPage(gdi);
+      }
+    }
     else if (bi.id == "DoImportMap") {
       shared_ptr<MapData> md;
       importMap(gdi, md, oe);
@@ -924,6 +930,7 @@ void TabCourse::locateMap(gdioutput &gdi) {
   gdi.addButton("GeoReference", "Spara inpassning", CourseCB).setAbsPos();
   
   gdi.addButton("AddMap", "Importera ny karta", CourseCB).setAbsPos();
+  gdi.addButton("RemoveMap", "Ta bort karta", CourseCB).setAbsPos();
 
   gdi.addButton("Cancel", "Avbryt", CourseCB).setAbsPos();
   relCoordControl.clear();
@@ -1275,7 +1282,7 @@ void TabCourse::runCourseImport(gdioutput &gdi, const wstring &filename,
 
     for (size_t k = 0; k < crs.size(); k++) {
       pClass bestClass;
-      if (hasMissing && (bestClass = oe->getBestClassMatch(crs[k]->getName())) != 0) {
+      if (hasMissing && (bestClass = oe->getClass(crs[k]->getName())) != nullptr) {
         vector<pCourse> usedCrs;
         bestClass->getCourses(-1, usedCrs);
         if (usedCrs.empty()) {
@@ -1665,7 +1672,7 @@ void TabCourse::showMap(oEvent *oe, gdioutput& gdi, pCourse crs, const wstring &
     created = true;
   }
   else {
-    if (zoomLevel == .0) {
+    if (zoomLevel == 0 && mapWindow->hasData("mapscale")) {
       double ms = mapWindow->getDataInt("mapscale");
       zoomLevel = double(ms) / fixedPrec;
     }
@@ -1755,8 +1762,6 @@ void TabCourse::showMap(oEvent *oe, gdioutput& gdi, pCourse crs, const wstring &
 }
 
 bool TabCourse::specifyControl(gdioutput &gdi, int controlId, int x, int y) {
-  //string crd = itos(x - mapRectangle.left) + "," + itos(y - mapRectangle.top);
-  //gdi.addStringUT(y, x, 0, crd);
   wstring label = itow(controlId);
   string tag = itos(controlId);
   auto mr = gdi.getMapRenderer();

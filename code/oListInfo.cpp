@@ -126,8 +126,8 @@ oPrintPost::oPrintPost() : type(lString), dx(0), dy(0), format(0) {
 
 oPrintPost::oPrintPost(EPostType type, const wstring& text,
                        int format, int dx, int dy,
-                       pair<int, bool> index) : type(type), text(text),
-                                                format(format), dx(dx), dy(dy) {
+                       pair<int, bool> index, bool fixedLeg) : type(type), text(text),
+                                                format(format), dx(dx), dy(dy), fixedLeg(fixedLeg) {
   legIndex = index.first;
   linearLegIndex = index.second;
 }
@@ -412,6 +412,7 @@ int oListInfo::getMaxCharWidth(oEvent &oe,
     case lRunnerGeneralTimeAfter:
     case lPunchTotalTimeAfter:
     case lPunchTeamTotalTimeAfter:
+    case lRunnerStageTimeAfter:
       extra = L"+10:00";
       break;
     case lTeamRogainingPointOvertime:
@@ -433,7 +434,7 @@ int oListInfo::getMaxCharWidth(oEvent &oe,
     case lRunnerTimeStatus:
     case lRunnerStageTime:
     case lRunnerStageTimeStatus:
-    case lRunnerStageStatus:
+    case lRunnerStageStatus:    
     case lRunnerTimePlaceFixed:
     case lPunchLostTime:
     case lPunchTimeSinceLast:
@@ -992,6 +993,13 @@ const wstring &oEvent::formatSpecialStringAux(const oPrintPost &pp, const oListP
       }
     break;
 
+    case lRogainingMaxPoints:
+      if (pc) {
+        int mp = pc->getMaxRogainingPoints();
+        if (mp > 0)
+          wsptr = &oe->formatScore(mp);
+      }
+      break;
     case lTeamCourseName:
     case lCourseName:
     case lRunnerCourse:
@@ -1274,6 +1282,16 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
   int textOffset = 0;
   auto type = pp.type;
 
+  if (type == lRunnerTimeStatus || type == lRunnerTimeAfter) {
+    bool isTemp = pp.resultModuleIndex == -1 && (par.useControlIdResultFrom > 0 || par.useControlIdResultTo > 0);
+    if (isTemp) {
+      if (type == lRunnerTimeStatus)
+        type = lRunnerTempTimeStatus;
+      else
+        type = lRunnerTempTimeAfter;
+    }
+  }
+
   auto noTimingRunner = [&]() {
     return (pc ? pc->getNoTiming() : false) || (r ? (r->getStatusComputed(true) == StatusNoTiming || r->noTiming()) : false);
   };
@@ -1344,7 +1362,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         if (pc->hasFreeStart() || pc->hasRequestStart())
           wsptr = &lang.tl("Fri starttid");
         else if (first > 0 && first == last) {
-          if (oe->useStartSeconds())
+          if (oe->useStartSeconds(pc->getId(), legIndex))
             wsptr = &oe->getAbsTime(first);
           else
             wsptr = &oe->getAbsTimeHM(first);
@@ -1369,6 +1387,8 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         swprintf_s(wbf, L"%d", max(0, total - dns - finished));
       }
       break;
+
+    case lRogainingMaxPoints:
     case lCourseLength:
     case lCourseName:
     case lRunnerCourse:
@@ -1391,6 +1411,27 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       }
       break;
 
+    case lControlFrom:
+    case lControlTo: {
+      int target = type == lControlTo ? par.useControlIdResultTo : par.useControlIdResultFrom;
+      auto [cid, cix] = oControl::getIdIndexFromCourseControlId(target);
+      pControl ctrl = getControl(cid);
+      const wstring *cname;
+      if (ctrl && ctrl->hasName())
+        cname = &ctrl->getName();
+      else if (cid == 0 && type == lControlTo)
+        cname = &lang.tl(L"målet", true);
+      else if (cid == 0)
+        cname = &lang.tl(L"starten", true);
+      else
+        cname = &lang.tl("Kontroll X#" + itos(cid));
+      if (cix > 0)
+        swprintf_s(wbf, L"%s\u2013%d", cname->c_str(), cix + 1);
+      else
+        wsptr = cname;
+
+      break;
+    }
     case lTeamLegName: 
       if (pc) {
         if (legIndex < pc->getNumStages())
@@ -1840,6 +1881,11 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         swprintf_s(wbf, L"%d", pp.legIndex + 1);
       break;
 
+    case lStageNumber:
+      if (getStageNumber() >= 0)
+        swprintf_s(wbf, L"%d", getStageNumber());
+      break;
+
     case lRunnerStageTimeStatus:
       if (invalidClass)
         wsptr = &lang.tl("Struken");
@@ -1863,6 +1909,14 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
         RunnerStatus st = r->getStageResult(pp.legIndex, time, d, d);
         if (time > 0 && !noTimingRunner())
           wcscpy_s(wbf, formatTime(time).c_str());
+      }
+      break;
+
+    case lRunnerStageTimeAfter:
+      if (!invalidClass && r && !noTimingRunner()) {
+        int after = r->getStageTimeAfter(pp.legIndex);
+        if (after > 0)
+          swprintf_s(wbf, L"+%s", formatTimeMS(after, false, mode).c_str());        
       }
       break;
 
@@ -3176,7 +3230,6 @@ void oEvent::generateList(gdioutput &gdi, bool reEvaluate, const oListInfo &li, 
   if (reEvaluate)
     reEvaluateAll(set<int>(), false);
 
-  oe->calcUseStartSeconds();
   oe->calculateNumRemainingMaps(false);
   oe->updateComputerTime(false);
   oe->setGeneralResultContext(&li.lp);
@@ -3554,7 +3607,8 @@ void oEvent::generateListInternal(gdioutput &gdi, const oListInfo &li, bool form
 
     if (li.sortOrder != Custom && !calculatedSplitResults)
       sortRunners(li.sortOrder, rlist);
-
+    else if (calculatedSplitResults)
+      sort(rlist.begin(), rlist.end(), oRunner::sortSplitPtr);
     gResult = li.applyResultModule(*this, rlist);
   }
 
@@ -4311,14 +4365,14 @@ void oEvent::getListTypes(map<EStdListType, oListInfo> &listMap, int filterResul
       li.supportLegs = false;
       listMap[EStdTeamStartList]=li;
     }
-    {
+    /* {
       oListInfo li;
       li.Name=lang.tl(L"Startlista, stafett (sträcka)");
       li.listType=li.EBaseTypeTeam;
       li.supportClasses = true;
       li.supportLegs = true;
       listMap[EStdTeamStartListLeg]=li;
-    }
+    }*/
     {
       oListInfo li;
       li.Name=lang.tl(L"Bantilldelning, stafett");
@@ -5183,7 +5237,7 @@ void oEvent::generateListInfoAux(const gdioutput& target, oListParam &par, oList
       li.sortOrder = ClassStartTime;
       break;
     }
-    case EStdTeamStartListLeg: {
+    case unused_EStdTeamStartListLeg: {
       if (li.lp.getLegNumberCoded() == 1000)
         throw std::exception("Ogiltigt val av sträcka");
 
@@ -5647,6 +5701,22 @@ void oListInfo::setupLinks() const {
   setupLinks(subListPost);
 }
 
+void oListInfo::updateParamLegNumber(pair<int, bool> legIndex) {
+  auto &update = [&legIndex](list<oPrintPost> &pp) {
+    for (auto &p : pp)
+      p.updateParamLeg(legIndex);
+  };
+
+  update(head);
+  update(subHead);
+  update(listPost);
+  update(subListPost);
+
+
+
+}
+
+
 void oListInfo::shrinkSize() {
 
   auto& scale = [](int& format) -> double {
@@ -5801,6 +5871,20 @@ void oListInfo::shrinkSize() {
 oListInfo::ResultType oListInfo::getResultType() const {
   return resType;
 }
+
+pClass oListParam::getSampleClass(const oEvent *oe) const {
+  pClass sampleClass = nullptr;
+  if (!selection.empty())
+    sampleClass = oe->getClass(*selection.begin());
+  if (!sampleClass) {
+    vector<pClass> cls;
+    oe->getClasses(cls, false);
+    if (!cls.empty())
+      sampleClass = cls[0];
+  }
+  return sampleClass;
+}
+
 
 bool oListParam::matchLegNumber(const pClass cls, int leg)  const {
   if (cls == 0 || legNumber == -1 || leg < 0)

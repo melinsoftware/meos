@@ -794,7 +794,7 @@ const wstring &oAbstractRunner::getStartTimeS() const {
 
 const wstring &oAbstractRunner::getStartTimeCompact() const {
   if (tStartTime>0) {
-    if (oe->useStartSeconds())
+    if (oe->useStartSeconds(getClassId(true), getLegNumber()))
       return oe->getAbsTime(tStartTime);
     else
       return oe->getAbsTimeHM(tStartTime);
@@ -1633,7 +1633,7 @@ bool oRunner::evaluateCard(bool doApply, vector<pair<int, pControl>>& missingPun
 
   if (finishPunchCode != oPunch::PunchFinish) {
     while (backIter != Card->punches.rend()) {
-      if (backIter->type == finishPunchCode)
+      if (backIter->type == finishPunchCode && (backIter->tIndex != -1 || backIter->tRogainingIndex != -1))
         break;
       ++backIter;
     }
@@ -2074,8 +2074,7 @@ int oRunner::getRaceRunningTime(bool computedTime, int leg, bool allowUpdate) co
   return 0;
 }
 
-bool oRunner::sortSplit(const oRunner &a, const oRunner &b)
-{
+bool oRunner::sortSplit(const oRunner &a, const oRunner &b) {
   int acid=a.getClassId(true);
   int bcid=b.getClassId(true);
   if (acid!=bcid)
@@ -4102,7 +4101,7 @@ void oRunner::addTableRow(Table &table) const
   table.set(row++, it, TID_START, getStartTimeS(), true);
   table.set(row++, it, TID_FINISH, getFinishTimeS(false, SubSecond::Auto), true);
   table.set(row++, it, TID_STATUS, getStatusS(false, true), true, cellSelection);
-  table.set(row++, it, TID_RUNNINGTIME, getRunningTimeS(true, SubSecond::Auto), false);
+  table.set(row++, it, TID_RUNNINGTIME, getRunningTimeS(true, SubSecond::AutoIncludeHour), false);
   int rp = getRogainingPoints(true, false);
   table.set(row++, it, TID_POINTS, oe->formatScore(rp), false);
 
@@ -4129,13 +4128,13 @@ void oRunner::addTableRow(Table &table) const
         rawPoints = _wtoi(spvec[k + 2].c_str());
         place = _wtoi(spvec[k + 3].c_str());
       }
-      table.set(row++, it, 200 + j, formatTime(rawTime));
+      table.set(row++, it, 200 + j, formatTime(rawTime, SubSecond::AutoIncludeHour));
       table.set(row++, it, 300 + j, oEvent::formatStatus(RunnerStatus(rawStat), false), true, cellSelection);
       table.set(row++, it, 400 + j, oe->formatScore(rawPoints));
       table.set(row++, it, 500 + j, place > 0 ? itow(place) : _EmptyWString);
     }
   }
-  table.set(row++, it, TID_INPUTTIME, getInputTimeS(), true);
+  table.set(row++, it, TID_INPUTTIME, getInputTimeS(true), true);
   table.set(row++, it, TID_INPUTSTATUS, getInputStatusS(), true, cellSelection);
   table.set(row++, it, TID_INPUTPOINTS, oe->formatScore(inputPoints), true);
   table.set(row++, it, TID_INPUTPLACE, itow(inputPlace), true);
@@ -4320,7 +4319,7 @@ pair<int, bool> oRunner::inputData(int id, const wstring &input,
     case TID_INPUTTIME:
       setInputTime(input);
       synchronize(true);
-      output = getInputTimeS();
+      output = getInputTimeS(true);
       break;
 
     case TID_INPUTPOINTS:
@@ -6575,18 +6574,21 @@ RunnerStatus oRunner::getTotalStatus(bool allowUpdate) const {
     return StatusDNS;
   int leg = getParResultLeg();
 
-  if (tInTeam == 0 || leg == 0)
+  if (tInTeam == nullptr)
     return max(stm, inputStatus);
+  else if (leg == 0) {
+    return tInTeam->getLegStatus(leg, true, true);
+  }
   else {
     RunnerStatus st = tInTeam->getLegStatus(leg-1, true, true);
 
     if (leg + 1 == tInTeam->getNumRunners())
       st = max(st, tInTeam->getStatusComputed(allowUpdate));
 
-    if (st == StatusOK || st == StatusUnknown)
+    if (st == StatusUnknown)
       return stm;
     else
-      return max(max(stm, st), inputStatus);
+      return max(stm, st);
   }
 }
 
@@ -6612,9 +6614,9 @@ void oAbstractRunner::setInputTime(const wstring &time) {
   }
 }
 
-wstring oAbstractRunner::getInputTimeS() const {
+wstring oAbstractRunner::getInputTimeS(bool useFullHour) const {
   if (inputTime > 0)
-    return formatTime(inputTime);
+    return formatTime(inputTime, useFullHour ? SubSecond::AutoIncludeHour: SubSecond::Auto);
   else
     return makeDash(L"-");
 }
@@ -7160,7 +7162,7 @@ void oAbstractRunner::getInputResults(vector<RunnerStatus> &st,
   }
 }
 
-RunnerStatus  oAbstractRunner::getStageResult(int stage, int &time, int &point, int &place) const {  
+RunnerStatus oAbstractRunner::getStageResult(int stage, int &time, int &point, int &place) const {  
   vector<RunnerStatus> st;
   vector<int> times;
   vector<int> points;
@@ -7176,6 +7178,18 @@ RunnerStatus  oAbstractRunner::getStageResult(int stage, int &time, int &point, 
   point = points[stage];
   place = places[stage];
   return st[stage];
+}
+
+int oAbstractRunner::getStageTimeAfter(int stage) const {
+  if (!Class)
+    return -1;
+
+  int time, d;
+  if (getStageResult(stage, time, d, d) == StatusOK) {
+    int lead = Class->getStageLeader(stage);
+    return time - lead;
+  }
+  return -1;
 }
 
 

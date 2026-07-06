@@ -25,17 +25,17 @@
 
 //AB
 int getMeosBuild() {
-  string revision("$Rev: 1608 $");
+  string revision("$Rev: 1633 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2026-05-14 11:08:05 +0200 (tor, 14 maj 2026) $");
+  wstring date(L"$Date: 2026-07-06 14:20:02 +0200 (mån, 06 jul 2026) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L""; // No parantheses (...)
+  return L"U1"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -82,7 +82,6 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   developSupp.emplace_back(L"Orienteering Queensland Inc.");
   supp.emplace_back(L"Eksjö SOK");
   supp.emplace_back(L"Kolding OK");
-  developSupp.emplace_back(L"Alfta-Ösa OK");
   supp.emplace_back(L"Erik Almséus, IFK Hedemora OK");
   supp.emplace_back(L"IK Gandvik, Skara");
   supp.emplace_back(L"Mats Kågeson");
@@ -162,6 +161,8 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"Järla Orientering");
   supp.emplace_back(L"Gunnar Svanberg, Järfälla OK");
   supp.emplace_back(L"IFK Linköpings OS");
+  developSupp.emplace_back(L"Alfta-Ösa OK");
+  developSupp.emplace_back(L"OK Vilse 87");
 
   reverse(supp.begin(), supp.end());
 }

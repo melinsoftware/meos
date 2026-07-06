@@ -389,6 +389,8 @@ protected:
   
   DataRevisionCache<map<pair<int, int>, RogainingStat>> rogainingStatistics;
 
+  DataRevisionCache<vector<int>> stageLeaderTime;
+
   static string getCountTypeKey(int leg, CountKeyType type, bool countVacant);
 
   void configureInstance(int instance, bool allowCreation) const;
@@ -416,6 +418,8 @@ public:
 
   bool hasFlag(TransferFlags flag) const;
   void setFlag(TransferFlags flag, bool state);
+
+  int getStageLeader(int stage) const;
 
   /** The master class in a qualification/final scheme. */
   const pClass getParentClass() const { return parentClass; }

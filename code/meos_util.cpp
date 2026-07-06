@@ -677,23 +677,36 @@ const wstring &formatTimeMS(int m, bool force2digit, SubSecond mode) {
 
 const wstring &formatTime(int rt, SubSecond mode) {
   wstring &res = StringCache::getInstance().wget();
+  bool includeFullHour = false;
+  if (mode == SubSecond::AutoIncludeHour) {
+    includeFullHour = true;
+    mode = SubSecond::Auto;
+  }
+
+
   if (rt>0 && rt<timeConstHour*999) {
     wchar_t bf[40];
     if (mode == SubSecond::Off || (mode == SubSecond::Auto && rt % timeUnitsPerSecond == 0)) {
-      if (rt >= timeConstHour && MeOSUtil::useHourFormat)
+      if (includeFullHour)
+        swprintf_s(bf, L"%02d:%02d:%02d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60);
+      else if (rt >= timeConstHour && MeOSUtil::useHourFormat)
         swprintf_s(bf, L"%d:%02d:%02d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60);
       else
         swprintf_s(bf, L"%d:%02d", (rt / timeConstMinute), (rt / timeConstSecond) % 60);
     }
     else {
       if (timeUnitsPerSecond == 10) {
-        if (rt >= timeConstHour && MeOSUtil::useHourFormat)
+        if (includeFullHour)
+          swprintf_s(bf, L"%02d:%02d:%02d.%d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt % timeConstSecond);
+        else if (rt >= timeConstHour && MeOSUtil::useHourFormat)
           swprintf_s(bf, L"%d:%02d:%02d.%d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt % timeConstSecond);
         else
           swprintf_s(bf, L"%d:%02d.%d", (rt / timeConstMinute), (rt / timeConstSecond) % 60, rt % timeConstSecond);
       }
       else {
-        if (rt >= timeConstHour && MeOSUtil::useHourFormat)
+        if (includeFullHour)
+          swprintf_s(bf, L"%02d:%02d:%02d.%02d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt % timeConstSecond);
+        else if (rt >= timeConstHour && MeOSUtil::useHourFormat)
           swprintf_s(bf, L"%d:%02d:%02d.%02d", rt / timeConstHour, (rt / timeConstMinute) % 60, (rt / timeConstSecond) % 60, rt % timeConstSecond);
         else
           swprintf_s(bf, L"%d:%02d.%02d", (rt / timeConstMinute), (rt / timeConstSecond) % 60, rt % timeConstSecond);

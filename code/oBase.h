@@ -208,6 +208,7 @@ class DataRevisionCache {
   mutable T data;
   mutable unsigned long revision = -1;
 public:
+  void reset() { revision = -1; }
   void update(const oEvent &oe, const T &value) const;
   void update(const oEvent &oe, T &&value) const;
 

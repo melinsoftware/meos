@@ -129,7 +129,9 @@ enum EPostType {
   lRunnerStageTimeStatus,
   lRunnerStagePlace,
   lRunnerStagePoints,
+  lRunnerStageTimeAfter,
   lRunnerStageNumber,
+  lStageNumber,
 
   lRunnerUMMasterPoint,
   lRunnerTimePlaceFixed,
@@ -241,12 +243,15 @@ enum EPostType {
   lControlMistakeQuotient,
   lControlRunnersLeft,
   lControlCodes,
+  lControlTo,
+  lControlFrom,
 
   lRogainingLeg,
   lRogainingLegFrom,
   lRogainingLegTo,
   lRogainingLegBestTime,
   lRogainingLegNumCompetitors,
+  lRogainingMaxPoints,
 
   lNumEntries,
   lNumStarts,
@@ -273,7 +278,7 @@ enum EStdListType {
   unused_EStdTeamResultListLeg,//EStdTeamResultListLeg,
   EStdTeamResultList,
   EStdTeamStartList,
-  EStdTeamStartListLeg,
+  unused_EStdTeamStartListLeg,
   EStdIndMultiStartListLeg,
   EStdIndMultiResultListLeg,
   EStdIndMultiResultListAll,
@@ -349,7 +354,8 @@ struct oPrintPost {
   oPrintPost();
   oPrintPost(EPostType type, const wstring &format,
              int style, int dx, int dy, 
-             pair<int, bool> legIndex = make_pair(0, true));
+             pair<int, bool> legIndex = make_pair(0, true),
+             bool fixedLeg = false);
   oPrintPost(const wstring& image,
              int style, int dx, int dy,
              int width, int height);
@@ -371,6 +377,15 @@ struct oPrintPost {
   mutable int xlimit = 0;
   int legIndex;
   bool linearLegIndex;
+  bool fixedLeg = false; // Specified explicitly in MetaList. Otherwise soft (form parameters)
+
+  void updateParamLeg(pair<int, bool> &par) {
+    if (!fixedLeg) {
+      legIndex = par.first;
+      linearLegIndex = par.second;
+    }
+  }
+
   gdiFonts getFont() const {return gdiFonts(format & 0xFF);}
   oPrintPost &setFontFace(const wstring &font, int factor) {
     fontFace = encodeFont(font, factor);
@@ -522,6 +537,8 @@ struct oListParam {
       legNumber = code;
   }
 
+  pClass getSampleClass(const oEvent *oe) const;
+
   bool matchLegNumber(const pClass cls, int leg) const;
   int getLegNumber(const pClass cls) const;
   pair<int, bool> getLegInfo(const pClass cls) const;
@@ -593,6 +610,8 @@ public:
   const wstring &getName() const {return Name;}
 
   void shrinkSize();
+
+  void updateParamLegNumber(pair<int, bool> legIndex);
 
 protected:
   wstring Name;
@@ -666,6 +685,11 @@ public:
   void replaceType(EPostType find, EPostType replace, bool onlyFirst);
 
   PunchMode needPunchCheck() const {return needPunches;}
+  
+  void setUpdateCheck(PunchMode np) {
+    needPunches = np;
+  }
+
   void setCallback(GUICALLBACK cb);
   int getLegNumberCoded() const {return lp.getLegNumberCoded();}
 

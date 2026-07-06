@@ -86,7 +86,6 @@ InfoClass::InfoClass(int id) : InfoBase(id) {
 }
 
 InfoMeosStatus::InfoMeosStatus() : InfoBase(0) {
-  eventId = 0;
 }
 
 InfoOrganization::InfoOrganization(int id) : InfoBase(id) {

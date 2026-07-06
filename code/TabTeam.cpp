@@ -195,7 +195,7 @@ void TabTeam::selectTeam(gdioutput &gdi, pTeam t)
       else
         gdi.setText("PlaceIn", makeDash(L"-"));
 
-      gdi.setText("TimeIn", t->getInputTimeS());
+      gdi.setText("TimeIn", t->getInputTimeS(false));
       if (gdi.hasWidget("PointIn"))
         gdi.setText("PointIn", oe->formatScore(t->getInputPoints()));
     }

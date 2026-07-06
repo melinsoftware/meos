@@ -79,6 +79,7 @@ protected:
 
   DataRevisionCache<int> bestTime;
 
+  DataRevisionCache<int> maxRGPoints;
   /** Get internal data buffers for DI */
   oDataContainer &getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const;
 
@@ -180,6 +181,9 @@ public:
   // Rogaining: point lost per minute over maximal time
   int getRogainingPointsPerMinute() const;
   void setRogainingPointsPerMinute(int t);
+
+  // Get max number of points you can get
+  int getMaxRogainingPoints() const;
 
   // Calculate point reduction given a over time (in seconds)
   int calculateReduction(int overTime) const;

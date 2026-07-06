@@ -418,7 +418,7 @@ protected:
   map<string, wstring> eventProperties;
   map<string, wstring> savedProperties;
   
-  bool tUseStartSeconds = false;
+  DataRevisionCache<map<pair<int, int>, bool>> tUseStartSecondsLeg;
 
   DataRevisionCache<int> scoreFactor;
 
@@ -751,8 +751,7 @@ public:
 
   static const wstring &formatStatus(RunnerStatus status, bool forPrint);
 
-  inline bool useStartSeconds() const {return tUseStartSeconds;}
-  void calcUseStartSeconds();
+  bool useStartSeconds(int classId, int leg) const;
 
   void assignCardInteractive(gdioutput &gdi, GUICALLBACK cb, SortOrder& orderRunners);
 
@@ -1363,7 +1362,6 @@ public:
   pClass getClassCreate(int id, const wstring &createName, set<wstring> &exactNames);
   pClass getClass(const wstring &name) const;
   void getClasses(vector<pClass> &classes, bool sync) const;
-  pClass getBestClassMatch(const wstring &name) const;
   bool getClassesFromBirthYear(int year, PersonSex sex, vector<int> &classes) const;
   pClass getClass(int Id) const;
   

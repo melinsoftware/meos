@@ -401,7 +401,7 @@ void PrintResultMachine::handle(gdioutput& gdi, BaseInfo& info, GuiEventType typ
   if (type == GuiEventType::GUI_BUTTON) {
     if (info.id == "Edit") {
       TabList *tl = dynamic_cast<TabList *>(gdi.getTabs().get(TabType::TListTab));
-      gdioutput *gdiList = tl->showList(gdi, listInfo, this);
+      gdioutput *gdiList = tl->showList(gdi, listInfo, this, false);
       gdiListSettings = gdiList->getTag();
       gdi.disableInput("Edit");
       mainGdi = &gdi;

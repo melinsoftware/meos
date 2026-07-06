@@ -308,7 +308,8 @@ public:
   static constexpr bool isAllStageType(EPostType type) {
     return type == lRunnerStagePlace || type == lRunnerStageStatus ||
       type == lRunnerStageTime || type == lRunnerStageTimeStatus ||
-      type == lRunnerStagePoints || type == lRunnerStageNumber;
+      type == lRunnerStagePoints || type == lRunnerStageNumber ||
+      type == lRunnerStageTimeAfter;
   }
 
   static constexpr bool isAllLegType(EPostType type) {
@@ -379,6 +380,8 @@ public:
   const wstring &getListName() const {return listName;}
   
   const wstring& getLocalizedListName() const;
+
+  void init(oListInfo &li) const;
 
   oListInfo::EBaseType getListType() const;
 

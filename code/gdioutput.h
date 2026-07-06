@@ -337,6 +337,7 @@ public:
   string dbSelect(const string& id, int data);
   void dbInput(const string& id, const string& test);
   void dbCheck(const string& id, bool state);
+  void dbLeftClick(int x, int y);
   string dbClick(const string& id, int extra);
   void dbDblClick(const string& id, int data);
 
@@ -491,10 +492,10 @@ public:
   MapDataRenderer *getMapRenderer() const;
 
   RectangleInfo &addRectangle(const RECT &rc, GDICOLOR color = GDICOLOR(-1),
-                              bool drawBorder = true, bool addFirst = false);
+                              bool drawBorder = true, bool addFirst = false, GDICOLOR colorBorder = GDICOLOR(-1));
 
   RectangleInfo &addRectangle(int left, int top, int right, int bottom, GDICOLOR Color = GDICOLOR(-1),
-                              bool drawBorder = true, bool addFirst = false);
+                              bool drawBorder = true, bool addFirst = false, GDICOLOR colorBorder = GDICOLOR(-1));
 
   RectangleInfo& getRectangle(const char* id);
 
@@ -592,6 +593,8 @@ public:
   void refreshSmartFromSnapshot(bool allowMoveOffset);
 
   void dropLine(double lines = 1) { CurrentY += int(lineHeight * lines); MaxY = max(MaxY, CurrentY); }
+  void dropRight(double lines = 1) { CurrentX += int(lineHeight * lines); MaxX = max(MaxX, CurrentX); }
+
   int getCX() const { return CurrentX; }
   int getCY() const { return CurrentY; }
   int getWidth() const { return MaxX; }

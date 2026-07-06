@@ -102,6 +102,11 @@ static bool compareSpkSPList(const oSpeakerObject& a, const oSpeakerObject& b, i
     startTime = true;
   }
 
+  if (a.finishStatus > 1 && b.finishStatus <= 1)
+    return false;
+  else if (b.finishStatus > 1 && a.finishStatus <= 1)
+    return true;
+
   // A runner without any result is after
   if (a.compareResultIndex == -1 && b.compareResultIndex != -1)
     return false;
@@ -171,6 +176,11 @@ static bool compareSpkSPList(const oSpeakerObject& a, const oSpeakerObject& b, i
 }
 
 static bool compareSpkSPListPart(const oSpeakerObject& a, const oSpeakerObject& b, int ix) {
+  if (a.finishStatus > 1 && b.finishStatus <= 1)
+    return false;
+  else if (b.finishStatus > 1 && a.finishStatus <= 1)
+    return true;
+
   if (ix == -1) {
     if (a.compareResultIndex == -1 && b.compareResultIndex == -1) {
       // No result comparison
@@ -549,7 +559,7 @@ int MovePriorityCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
 int renderRowSpeakerList(const oSpeakerObject& r, const oSpeakerObject* next_r,
                          const vector<int> &leaderTimes, int type,
                          vector<vector<SpeakerString>>& rows,
-                         bool shortName, bool useSubSecond) {
+                         bool shortName, bool useSubSecond, bool hasBib) {
   rows.emplace_back();
   int firstControlColumn = 0; // Return value
   bool twoRowsFormat = true;
@@ -560,14 +570,9 @@ int renderRowSpeakerList(const oSpeakerObject& r, const oSpeakerObject* next_r,
     else
       rows[0].emplace_back();
   }
-
   wstring names;
   for (size_t k = 0; k < r.names.size(); k++) {
-    if (names.empty()) {
-      if (!r.bib.empty())
-        names += r.bib + L": ";
-    }
-    else {
+    if (!names.empty()) {
       names += L"/";
     }
     if (!shortName) {
@@ -623,10 +628,23 @@ int renderRowSpeakerList(const oSpeakerObject& r, const oSpeakerObject* next_r,
   int nameIx = 0;
   int clubTeamIx = 0;
 
+  bool isTeam = r.owner->getTeam();
+  if (isTeam && r.owner->getClassRef(false)) {
+    ClassType ct = r.owner->getClassRef(true)->getClassType();
+    isTeam = ct != ClassType::oClassIndividual && ct != ClassType::oClassKnockout;
+  }
+
+  if (hasBib) {
+    rows[0].emplace_back(normalText, r.bib);
+  }
+
   if (r.size() > 1 && twoRowsFormat) {
     rows.emplace_back();
-    rows[1].resize(rows[0].size());
-    nameIx = 1;
+    rows[1].resize(rows[0].size()); 
+    if (isTeam)
+      nameIx = 1; // Team first, then name
+    else
+      clubTeamIx = 1; // Name first, then club
   }
 
   if (r.finishStatus <= 1 || r.finishStatus == r[0].status || r.size()>1)
@@ -821,7 +839,7 @@ int renderRowSpeakerList(const oSpeakerObject& r, const oSpeakerObject* next_r,
         if (r.finishStatus == StatusOK || r.finishStatus == StatusUnknown)
           rows[0].emplace_back(textRight, L"\u2013"); // Punch missing, but OK anyway
         else if (!didReportBad) { // Only report here
-          rows[0].emplace_back(textRight, oEvent::formatStatus(r[0].status, true));
+          rows[0].emplace_back(textRight, oEvent::formatStatus(r[j].status, true));
           rows[0].back().color = colorDarkRed;
           didReportBad = true;
         }
@@ -1026,6 +1044,9 @@ void oEvent::speakerList(gdioutput& gdi,
     oTeamList::iterator it = Teams.begin();
     while (it != Teams.end()) {
       if (it->getClassId(true) == classId && !it->skip()) {
+        auto s = it->getStatus();
+        if (s == StatusCANCEL || s == StatusNotCompeting) // Allow DNS for incomplete teams
+          continue;
         oSpeakerObject& so = speakerList.emplace_back();
         it->fillSpeakerObject(leg, previousControlId, controlId, totalResults, so);
         if (!so.owner)
@@ -1047,6 +1068,9 @@ void oEvent::speakerList(gdioutput& gdi,
         if (qfBaseClass && it.getLegNumber() > 0)
           continue;
 
+        auto s = it.getStatus();
+        if (s == StatusCANCEL || s == StatusNotCompeting)
+          continue;
         oSpeakerObject& so = speakerList.emplace_back();
         it.fillSpeakerObject(leg, previousControlId, controlId, totalResults, so);
         if (!so.owner)
@@ -1109,7 +1133,7 @@ void oEvent::speakerList(gdioutput& gdi,
     }
     vector<oSpeakerObject*> sortSelection;
     for (int ix = 0; ix <= controlId.size(); ix++) {
-      OutputDebugString((L"\n**** Sorting: " + itow(ix - 1) + L"\n").c_str());
+      //OutputDebugString((L"\n**** Sorting: " + itow(ix - 1) + L"\n").c_str());
       sortSelection.clear();
       for (auto& so : speakerList) {
         if (so.compareResultIndex == ix - 1)
@@ -1122,11 +1146,11 @@ void oEvent::speakerList(gdioutput& gdi,
         return compareSpkSPList(*a, *b, compareIx);
       });
 
-      for (auto& ss : sortSelection) {
-        OutputDebugString((ss->names[0] + L"\n").c_str());
-      }
+      //for (auto& ss : sortSelection) {
+      //  OutputDebugString((ss->names[0] + L"\n").c_str());
+      //}
 
-      OutputDebugString((L"\n**** Merging: " + itow(ix - 1) + L"\n").c_str());
+      //OutputDebugString((L"\n**** Merging: " + itow(ix - 1) + L"\n").c_str());
 
       // Merge with sorted list
       auto sit = sortedList.begin();
@@ -1144,7 +1168,7 @@ void oEvent::speakerList(gdioutput& gdi,
           sit = sortedList.end();
         }
         else {
-          OutputDebugString((ss->names[0] + L" < " + (*sit)->names[0] + L"\n").c_str());
+          //OutputDebugString((ss->names[0] + L" < " + (*sit)->names[0] + L"\n").c_str());
           sortedList.insert(sit, ss);
         }
       }   
@@ -1218,6 +1242,15 @@ void oEvent::speakerList(gdioutput& gdi,
 
   int firstColumn = -1;
 
+  // Determine if bibs are needed
+  bool classHasBib = false;
+  for (auto &r : sortedList) {
+    if (!r->bib.empty()) {
+      classHasBib = true;
+      break;
+    }
+  }
+
   auto sit = sortedList.begin();
   int count = 0;
   int lastPlace = 0;
@@ -1246,7 +1279,7 @@ void oEvent::speakerList(gdioutput& gdi,
 
     firstColumn = renderRowSpeakerList(*so, next, leaderTime,
                                        type, textLines, 
-                                       shortNames, useSS);
+                                       shortNames, useSS, classHasBib);
 
     for (auto& row : textLines)
       maxRow = max(maxRow, row.size());
@@ -1271,6 +1304,12 @@ void oEvent::speakerList(gdioutput& gdi,
       }
       textLines[0][ix].str = cn;
       textLines[0][ix].format = boldText;
+      if (colsPerResult > 1) {
+        if (textLines[0].size() <= ix + 1)
+          textLines[0].emplace_back(); 
+        textLines[0][ix + 1].str = L" "; // Needed to ensure enough width
+      }
+
     }
   }
 
@@ -1281,6 +1320,14 @@ void oEvent::speakerList(gdioutput& gdi,
   TextInfo ti;
 
   HDC hDC = GetDC(gdi.getHWNDTarget());
+
+  ti.xp = 0;
+  ti.yp = 0;
+  ti.format = 0;
+  ti.text = L"59:59 (8)";
+  gdi.calcStringSize(ti, hDC);
+  int maxSCOL = ti.textRect.right + s7;
+
   for (size_t k = 0; k < toRender.size(); k++) {
     const auto& rows = toRender[k].second;
     for (auto& row : rows) {
@@ -1291,7 +1338,10 @@ void oEvent::speakerList(gdioutput& gdi,
           ti.format = 0;
           ti.text = row[j].str;
           gdi.calcStringSize(ti, hDC);
-          dx_new[j] = max(s28, max<int>(dx_new[j], ti.textRect.right + s7));
+          if (j > 0)
+            dx_new[j] = max(maxSCOL, max<int>(dx_new[j], ti.textRect.right + s7));
+          else
+            dx_new[j] = max(s28, max<int>(dx_new[j], ti.textRect.right + s7));
         }
         else if (row[j].hasTimer) {
           dx_new[j] = max<int>(dx_new[j], s60);
@@ -1332,6 +1382,7 @@ void oEvent::speakerList(gdioutput& gdi,
     renderRowSpeakerList(gdi, 0, nullptr, x, y, lh, toRender.back().second, dx);
     y += (lh * 3) / 2;
 
+    GDICOLOR bColor = GDICOLOR(RGB(150, 170, 150));
     int topY = y;
     int marginY = gdi.scaleLength(4);
     int count = 0;
@@ -1345,9 +1396,9 @@ void oEvent::speakerList(gdioutput& gdi,
           rc.left = x;
           rc.right = x + dx.back();
           if (high)
-            gdi.addRectangle(rc, colorYellow);
+            gdi.addRectangle(rc, colorYellow, true, false, bColor);
           else
-            gdi.addRectangle(rc, colorLightGreen);
+            gdi.addRectangle(rc, colorLightGreen, true, false, bColor);
         }
         count++;
         renderRowSpeakerList(gdi, 2, so, x, y, lh, rows, dx);
@@ -1362,13 +1413,13 @@ void oEvent::speakerList(gdioutput& gdi,
     rc.right = x + dx.back();
     rc.top = topY - marginY/2;
     rc.bottom = bottomY;
-    gdi.addRectangle(rc, GDICOLOR::colorTransparent, true);
+    gdi.addRectangle(rc, GDICOLOR::colorTransparent, true, false, GDICOLOR::colorBlack);
 
     for (int c = 0; c < numResult; c++) {
       int ix = firstColumn + c * colsPerResult;
       rc.left = x + dx[ix] - marginY / 2;
       rc.right = x + dx[ix] - marginY / 2;
-      gdi.addRectangle(rc, GDICOLOR::colorTransparent, true);
+      gdi.addRectangle(rc, GDICOLOR::colorTransparent, true, false,  bColor);
     }
   }
 
@@ -1404,15 +1455,13 @@ void oEvent::updateComputerTime(bool considerDate) {
   }
 }
 
-void oEvent::clearPrewarningSounds()
-{
+void oEvent::clearPrewarningSounds() {
   oFreePunchList::reverse_iterator it;
   for (it=punches.rbegin(); it!=punches.rend(); ++it)
     it->hasBeenPlayed=true;
 }
 
-void oEvent::tryPrewarningSounds(const wstring &basedir, int number)
-{
+void oEvent::tryPrewarningSounds(const wstring &basedir, int number) {
   wchar_t wave[20];
   swprintf_s(wave, L"%d.wav", number);
 
@@ -1424,8 +1473,7 @@ void oEvent::tryPrewarningSounds(const wstring &basedir, int number)
   PlaySound(file.c_str(), 0, SND_SYNC|SND_FILENAME );
 }
 
-void oEvent::playPrewarningSounds(const wstring &basedir, set<int> &controls)
-{
+void oEvent::playPrewarningSounds(const wstring &basedir, set<int> &controls) {
   oFreePunchList::reverse_iterator it;
   for (it=punches.rbegin(); it!=punches.rend() && !it->hasBeenPlayed; ++it) {
 
@@ -2244,7 +2292,7 @@ int oEvent::getTimeLineEvents(const set<int> &classes, vector<oTimeLine> &events
       eval = true;
   }
   if (eval) {
-    OutputDebugStringA("SetupTimeLine\n");
+    //OutputDebugStringA("SetupTimeLine\n");
     nextTimeLineEvent = setupTimeLineEvents(currentTime);
   }
 //  else

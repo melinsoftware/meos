@@ -319,7 +319,7 @@ public:
   
   // Time
   void setInputTime(const wstring &time);
-  wstring getInputTimeS() const;
+  wstring getInputTimeS(bool useFullHour) const;
   int getInputTime() const {return inputTime;}
 
   // Status
@@ -415,7 +415,7 @@ public:
   virtual int getRogainingPointsGross(bool computed) const = 0;
   
   virtual const wstring &getStartTimeS() const;
-  virtual const wstring &getStartTimeCompact() const;
+  const wstring &getStartTimeCompact() const;
   const wstring &getFinishTimeS(bool adjusted, SubSecond mode) const;
 
   const wstring &getTotalRunningTimeS(SubSecond mode) const;
@@ -436,7 +436,9 @@ public:
   
   virtual const pair<wstring, int> getRaceInfo() = 0;
 
-
+  virtual int getLegNumber() const {
+    return 0;
+  }
   wstring getPlaceS() const;
   wstring getPrintPlaceS(bool withDot) const;
 
@@ -495,6 +497,9 @@ public:
   virtual RunnerStatus getTotalStatus(bool allowUpdate = true) const;
 
   RunnerStatus getStageResult(int stage, int &time, int &point, int &place) const;
+  
+  int getStageTimeAfter(int stage) const; // Time after (in class) on specific stage (currently only for oRunner)
+
   // Get results from all previous stages
   void getInputResults(vector<RunnerStatus> &st, vector<int> &times, vector<int> &points, vector<int> &places) const;
   // Add current result to input result. Only use when transferring to next stage. ThisStageNumber is zero indexed.
@@ -925,7 +930,7 @@ public:
   // Set wheather the card number should be transferred to the next stage
   void setTransferCardNoNextStage(bool state);
 
-  int getLegNumber() const {return tLeg;}
+  int getLegNumber() const final {return tLeg;}
   int getSpeakerPriority() const;
 
   RunnerStatus getTempStatus() const { return tempStatus; }
@@ -1208,5 +1213,7 @@ public:
   friend class RunnerDB;
   friend class oListInfo;
   static bool sortSplit(const oRunner &a, const oRunner &b);
-
+  static bool sortSplitPtr(const oRunner *a, const oRunner *b) {
+    return sortSplit(*a, *b);
+  }
 };

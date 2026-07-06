@@ -75,7 +75,8 @@ wstring getLocalTimeFileName();
 enum class SubSecond {
   Off,
   On,
-  Auto
+  Auto,
+  AutoIncludeHour
 };
 
 int parseRelativeTime(const char *data);

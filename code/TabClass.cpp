@@ -2719,7 +2719,7 @@ int TabClass::classCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
           par.listCode = oe->getListContainer().getType("patrolstart");
         }
         else if (leg >= 0) {
-          par.listCode = EStdTeamStartListLeg;
+          par.listCode = oe->getListContainer().getType("startrelayleg");
           par.setLegNumberCoded(leg);
         }
         else {

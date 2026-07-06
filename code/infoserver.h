@@ -136,8 +136,8 @@ class InfoClass : public InfoBase {
 class InfoMeosStatus : public InfoBase {
   protected:
     wstring eventNameId; // event Name Id, actual name of the database, can also be matched in oevent table of meosmain
-    bool onDatabase; // true if currently on database
-    int eventId; // numeric event id, used for UDP DirectSocket filtering
+    bool onDatabase = false; // true if currently on database
+    int eventId = 0; // numeric event id, used for UDP DirectSocket filtering
   public:
     void serialize(xmlbuffer &xml, bool diffOnly) const;
     InfoMeosStatus();

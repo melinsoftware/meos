@@ -54,18 +54,7 @@ void AutoTask::autoSave() {
       if (oe.getNumRunners() > 500)
         gdi.setWaitCursor(true);
 
-      uint64_t tic = GetTickCount64();
       oe.save();
-      uint64_t toc = GetTickCount64();
-
-      if (toc > tic) {
-        int timeToSave = toc - tic;
-        int interval = max(autoSaveTimeBase, timeToSave * 10);
-        if (abs(interval - autoSaveTime) > 4000) {
-          autoSaveTime = interval;
-          resetSaveTimer();
-        }
-      }
     }
     catch (meosException &ex) {
       msg = ex.wwhat();

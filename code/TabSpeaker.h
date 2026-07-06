@@ -126,6 +126,8 @@ private:
   static void saveSettings(const vector< multimap<string, wstring> > &settings);
   static wstring getSpeakerSettingsFile();
 
+  static void enableSettingsOK(gdioutput &gdi, bool enable);
+
   static void addEventsButton(gdioutput& gdi, int xp, int yp, int bw);
 public:
   void showReport(gdioutput& gdi);

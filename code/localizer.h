@@ -69,7 +69,7 @@ public:
   const wstring &tl(const string &str) const;
   const wstring &tl(const wstring &str) const {return linternal->tl(str);}
   
-  const wstring tl(const wstring &str, bool cap) const;
+  const wstring &tl(const wstring &str, bool cap) const;
 
   bool has(const string &str) const;
 

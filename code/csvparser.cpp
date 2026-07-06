@@ -81,8 +81,13 @@ csvparser::CSV csvparser::iscsv(const wstring &file) {
     fin.getline(bf, 2048);
     isCSVType = strlen(bf) >= 3;
   }
-
+  bf[2047] = 0;
   fin.close();
+
+  string rawIn = bf;
+
+  if (rawIn.find("<?xml") != string::npos)
+    return CSV::NoCSV;
 
   vector<char *> sp;
   split(bf, sp);
@@ -671,15 +676,15 @@ bool csvparser::importOCAD_CSV(oEvent &event, const wstring &file, bool addClass
           pc->setLegLengths(legLengths);
 
         if (!Class.empty() && addClasses) {
-          pClass cls = event.getBestClassMatch(Class);
+          pClass cls = event.getClass(Class);
           if (!cls)
             cls = event.addClass(Class);
 
-          if (cls->getNumStages()==0) {
+          if (cls->getNumStages() == 0) {
             cls->setCourse(pc);
           }
           else {
-            for (size_t i = 0; i<cls->getNumStages(); i++)
+            for (size_t i = 0; i < cls->getNumStages(); i++)
               cls->addStageCourse(i, pc->getId(), -1);
           }
 
