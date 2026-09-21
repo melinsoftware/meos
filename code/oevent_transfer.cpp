@@ -292,9 +292,9 @@ void oEvent::merge(oEvent &src, oEvent *base, bool allowRemove, int &numAdd, int
         bool merged = false;
         auto mc = crd.find(c.Id);
         if (mc != crd.end()) {
-          auto p1 = c.getNumPunches() > 0 ? c.getPunchByIndex(c.getNumPunches() - 1)->getTimeInt() : 0;
+          auto p1 = c.getNumPunches() > 0 ? c.getPunchByIndex(nullptr, c.getNumPunches() - 1)->getTimeInt() : 0;
           auto c2 = mc->second;
-          auto p2 = c2->getNumPunches() > 0 ? c2->getPunchByIndex(c2->getNumPunches() - 1)->getTimeInt() : 0;
+          auto p2 = c2->getNumPunches() > 0 ? c2->getPunchByIndex(nullptr, c2->getNumPunches() - 1)->getTimeInt() : 0;
           if (p1 == p2)
             mergeItem(mc->second, c, baseObj), merged = true;
         }
@@ -672,7 +672,7 @@ wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
       r.Class = ce.getClass(it->getClassId(false));
 
       if (cloneCourses)
-        r.Course = ce.getCourse(it->getCourseId());
+        r.coursePtr = ce.getCourse(it->getCourseId());
 
       pRunner pr = ce.addRunner(r, false);
 
@@ -684,9 +684,13 @@ wstring oEvent::cloneCompetition(bool cloneRunners, bool cloneTimes,
       }
 
       if (cloneResult) {
-        if (it->Card) {
-          pr->Card = ce.addCard(*it->Card);
-          pr->Card->tOwner = pr;
+        if (it->cardPtr) {
+          pr->cardPtr = ce.addCard(*it->cardPtr);
+          pr->cardPtr->tOwner = pr;
+        }
+        if (it->cardPtr2) {
+          pr->cardPtr2 = ce.addCard(*it->cardPtr2);
+          pr->cardPtr2->tOwner = pr;
         }
         pr->FinishTime = it->FinishTime;
         pr->status = it->status;
@@ -1425,10 +1429,16 @@ void oRunner::merge(const oBase &input, const oBase *baseIn) {
     setCourseId(src.getCourseId());
   
   if ((base == nullptr && src.getCardId() != 0) || (base != nullptr && base->getCardId() != src.getCardId()))
-    setCard(src.getCardId());
+    setCard(src.getCardId(), Card::Primary);
+
+  if ((base == nullptr && src.getCardId2() != 0) || (base != nullptr && base->getCardId2() != src.getCardId2()))
+    setCard(src.getCardId(), Card::Secondary);
 
   if (base == nullptr || base->getCardNo() != src.getCardNo())
     setCardNo(src.getCardNo(), false);
+
+  if (base == nullptr || base->getCardNo2() != src.getCardNo2())
+    setCardNo2(src.getCardNo2(), false);
 
   if (getDI().merge(input, base))
     updateChanged();

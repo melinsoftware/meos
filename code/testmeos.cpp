@@ -31,7 +31,6 @@
 #include "localizer.h"
 #include "oEvent.h"
 #include "TabSI.h"
-#include "SportIdent.h"
 #include "metalist.h"
 #include "Table.h"
 #include "generalresult.h"
@@ -141,7 +140,7 @@ void TestMeOS::runProtected(bool protect) const {
   TabSI *tsi = dynamic_cast<TabSI*>(gdi_main->getTabs().get(TabType::TSITab));
   tsi->setMode(TabSI::SIMode::ModeReadOut);
   tsi->clearQueue();
-  tsi->getSI().resetPunchMap();
+  CardManager::instance().resetPunchMap();
 
   OutputDebugString((L"Running test" + gdi_main->widen(test) + L"\n").c_str());
   try {
@@ -399,7 +398,7 @@ void TestMeOS::insertCard(int cardNo, const char *ser) const {
   SICard sic(ConvertedTimeStatus::Unknown);
   sic.CardNumber = cardNo;
   sic.deserializePunches(ser);
-  TabSI::getSI().addCard(sic);
+  CardManager::instance().addCard(sic);
   mainMessageLoop(0, 100);
 }
 

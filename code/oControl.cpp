@@ -860,7 +860,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillControlStatus(vector< pair<ws
   out.emplace_back(lang.tl(L"OK"), size_t(oControl::ControlStatus::StatusOK));
   out.emplace_back(lang.tl(L"Multipel"), size_t(oControl::ControlStatus::StatusMultiple));
 
-  if (getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining)) {
+  if (getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Rogaining)) {
     out.emplace_back(lang.tl(L"Rogaining"), size_t(oControl::ControlStatus::StatusRogaining));
     out.emplace_back(lang.tl(L"Rogaining Obligatorisk"), size_t(oControl::ControlStatus::StatusRogainingRequired));
   }

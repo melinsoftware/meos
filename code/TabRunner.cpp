@@ -118,6 +118,9 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
     //Don't clear club and class
 
     gdi.setText("CardNo", L"");
+    if (gdi.hasWidget("CardNo2"))
+      gdi.setText("CardNo2", L"");
+
     gdi.setText("warnoldcard", L"", true);
     gdi.removeToolTip("warncard");
 
@@ -276,11 +279,18 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
   updateNumShort(gdi, r->getCourse(false), r);
 
   int cno = r->getCardNo();
-  gdi.setText("CardNo", cno > 0 ? itow(cno) : L"");
+  gdi.setTextZeroBlank("CardNo", cno);
+  gdi.check("RentCard", r->isRentalCard(Card::Primary));
 
-  warnDuplicateCard(gdi, cno, r);
+  int cno2 = 0;
+  if (gdi.hasWidget("CardNo2")) {
+    cno2 = r->getCardNo2();
+    gdi.setTextZeroBlank("CardNo2", cno2);
+    gdi.check("RentCard2", r->isRentalCard(Card::Secondary));
+  }
 
-  gdi.check("RentCard", r->isRentalCard());
+  warnDuplicateCard(gdi, cno, cno2, *r);
+
   bool hasFee = gdi.hasWidget("Fee");
 
   if (hasFee)
@@ -291,7 +301,10 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
 
   gdi.setInputStatus("RClass", canEditClass);
   gdi.enableInput("CardNo");
+  gdi.enableInput("CardNo2", true);
+
   gdi.enableInput("RentCard");
+  gdi.enableInput("RentCard2", true);
   if (hasFee)
     gdi.setInputStatus("Fee", parent == r);
 
@@ -326,19 +339,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
       gdi.setText("PointIn", oe->formatScore(r->getInputPoints()));
   }
 
-  pCard pc = r->getCard();
-
-  pCourse pcourse = r->getCourse(true);
-
-  if (pc) {
-    gdi.setTabStops("Punches", 70);
-    pc->fillPunches(gdi, "Punches", pcourse);
-    updateCardStatus(pc, gdi);
-  }
-  else {
-    gdi.clearList("Punches");
-    gdi.setText("CardStatus", L"", true);
-  }
+  auto pcourse = updateCard(gdi, *r);
   if (pcourse) {
     pcourse->synchronize();
     gdi.setTabStops("Course", 50);
@@ -569,6 +570,9 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
     throw std::exception("Alla deltagare måste ha ett namn.");
 
   int cardNo = gdi.getTextNo("CardNo");
+  int cardNo2 = 0;
+  if (gdi.hasWidget("CardNo2"))
+    cardNo2 = gdi.getTextNo("CardNo2");
 
   ListBoxInfo lbi;
   gdi.getSelectedItem("Club", lbi);
@@ -599,7 +603,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
   const wstring year;
   pRunner r;
   bool cardNoChanged = false;
-  if (runnerId==0) {
+  if (runnerId == 0) {
     cardNoChanged = true;
     r = oe->addRunner(name, clubId, classId, cardNo, year, true);
     r->setCardNo(0, false, false); // Reset to get auto card match
@@ -622,15 +626,18 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
       }
     }
 
-    cardNoChanged = r->getCardNo() != cardNo;
+    cardNoChanged = r->getCardNo() != cardNo || r->getCardNo2() != cardNo2;
     if (!r->matchName(name) || (r->getClubId() != clubId && clubId != 0))
       r->updateFromDB(name, clubId, classId, cardNo, r->getBirthYear(), false);
   }
 
-  if (cardNoChanged && cardNo>0) {
-    pRunner warnCardDupl = warnDuplicateCard(cardNo, r);
+  if (cardNoChanged && (cardNo>0 || cardNo2>0)) {
+    auto [warnCardDupl, warnCardDupl2] = warnDuplicateCard(cardNo, cardNo2, *r);
     if (warnCardDupl) {
       gdi.alert(L"Varning: Brickan X används redan av Y.#" + itow(cardNo) + L"#" + warnCardDupl->getCompleteIdentification(oRunner::IDType::OnlyThis));
+    }
+    else if (warnCardDupl2) {
+      gdi.alert(L"Varning: Brickan X används redan av Y.#" + itow(cardNo2) + L"#" + warnCardDupl2->getCompleteIdentification(oRunner::IDType::OnlyThis));
     }
   }
 
@@ -644,16 +651,31 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
     }
 
     bool noSetStatus = false;
+    int askedUnpair = -1;
     if (cardNo > 0 && r->getCard() &&
       r->getCard()->getCardNo() != cardNo && r->getCardNo() != cardNo) {
       if (gdi.ask(L"Vill du koppla isär X från inläst bricka Y?#" + r->getName() +
         L"#" + r->getCard()->getCardNoString())) {
-
-        unpairCard(r);
+        askedUnpair = 1; // Do not ask twice
+        unpairCard(r, false);
         gdi.setText("Finish", makeDash(L"-"));
         gdi.setText("Start", r->getStartTimeS());
 
         noSetStatus = true;
+      }
+      else {
+        askedUnpair = 2; // Do not ask twice
+      }
+         
+    }
+
+    if (cardNo2 > 0 && r->getCard2() &&
+        r->getCard2()->getCardNo() != cardNo2 && r->getCardNo2() != cardNo2 && askedUnpair != 2) {
+      if (askedUnpair == 1 || 
+          gdi.ask(L"Vill du koppla isär X från inläst bricka Y?#" + r->getName() +
+                  L"#" + r->getCard2()->getCardNoString())) {
+
+        unpairCard(r, true);
       }
     }
 
@@ -666,8 +688,16 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
     if (r->getCardNo() != cardNo) {
       r->setCardNo(cardNo, true);
     }
-    r->setRentalCard(gdi.isChecked("RentCard"));
+
+    if (r->getCardNo2() != cardNo2) {
+      r->setCardNo2(cardNo2, true);
+    }
+
+    r->setRentalCard(Card::Primary, gdi.isChecked("RentCard"));
     
+    if (gdi.hasWidget("RentCard2"))
+      r->setRentalCard(Card::Secondary, gdi.isChecked("RentCard2"));
+
     if (gdi.hasWidget("Fee"))
       r->getDI().setInt("Fee", oe->interpretCurrency(gdi.getText("Fee")));
 
@@ -768,7 +798,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
 
     if (r->getCard() && r->useCoursePool() && r->getCourseId() == 0) {
       SICard card(ConvertedTimeStatus::Unknown);
-      r->getCard()->getSICard(card);
+      r->getCard()->getDeviceCard(r->getCard2(), card);
       pClass vcls = r->getClassRef(true);
       pCourse crs = vcls->selectCourseFromPool(vcls->getId() == classId ? r->getLegNumber() : 0, card);
       if (crs)
@@ -874,7 +904,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
         int newCardId=card->getId();
 
-        int oldCardId=r->setCard(newCardId);
+        int oldCardId=r->setCard(newCardId, Card::Primary);
         gdi.restore("CardTable");
         Table &t=gdi.getTable();
         t.reloadRow(newCardId);
@@ -918,9 +948,12 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       int cid = bi.getExtraInt();
       pCard c = oe->getCard(cid);
 
-      if (c->getOwner())
-        unpairCard(c->getOwner());
-
+      if (c->getOwner()) {
+        if (c->getOwner()->getCard() == c)
+          unpairCard(c->getOwner(), false);
+        else if (c->getOwner()->getCard2() == c)
+          unpairCard(c->getOwner(), true);
+      }
       gdi.restore("CardTable");
       Table &t=gdi.getTable();
       t.reloadRow(c->getId());
@@ -1299,16 +1332,14 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
       if (!card) return 0;
 
-      card->deletePunch(card->getPunchByIndex(lbi.data));
+      card->deletePunch(r->getCard2(), lbi.data);
       card->synchronize();
       //Update runner
       vector<pair<int, pControl>> mp;
       r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
       r->synchronize();
-      card->fillPunches(gdi, "Punches", r->getCourse(true));
-
+      updateCard(gdi, *r);
       updateStatus(gdi, r);
-      updateCardStatus(card, gdi);
     }
   }
   else if (type == GUI_INPUTCHANGE) {
@@ -1375,12 +1406,16 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   else if (type == GUI_INPUT) {
     InputInfo ii=*(InputInfo *)data;
 
-    if (ii.id=="CardNo") {
+    if (ii.id=="CardNo" || ii.id == "CardNo2") {
       int cardNo = gdi.getTextNo("CardNo");
+      int cardNo2 = 0;
+      if (gdi.hasWidget("CardNo2"))
+        cardNo2 = gdi.getTextNo("CardNo2");
+
       if (runnerId) {
         pRunner r = oe->getRunner(runnerId, 0);
         if (r) {
-          warnDuplicateCard(gdi, cardNo, r);
+          warnDuplicateCard(gdi, cardNo, cardNo2, *r);
 
           if (ii.changedInput() && oe->hasHiredCardData()) {
             gdi.check("RentCard", oe->isHiredCard(cardNo));
@@ -1677,7 +1712,7 @@ void TabRunner::showCardsList(gdioutput& gdi) {
 
   if (selectCard) {
     gdi.disableTables();
-    showCardDetails(gdi, selectCard, true);
+    showCardDetails(gdi, *selectCard, true);
   }
   else {
     gdi.refresh();
@@ -1756,7 +1791,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     r->getDI().setInt("EntryTime", getLocalAbsTime());
     r->addClassDefaultFee(false);
     
-    r->setRentalCard(gdi.isChecked("RentCard"));
+    r->setRentalCard(Card::Primary, gdi.isChecked("RentCard"));
     int cardFee = r->getRentalCardFee(true);
     fee = r->getDCI().getInt("Fee");
     
@@ -1791,7 +1826,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     }
   }
   else if (type==GUI_POSTCLEAR) {
-    // Clear out SI-link
+    // Clear out CardDevice-link
     TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
     tsi.setCardNumberField("");
 
@@ -2406,7 +2441,6 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi,
 
     if (crs && r->runnerHasResult() && crs->getMaximumRogainingTime() > 0) {
       pCard crd = r->getCard();
-      int nc = crs->getNumControls();
       vector<int> delta;
       vector<int> place;
       vector<int> after;
@@ -2420,15 +2454,15 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi,
       r->getLegTimeAfterAcc(afterAcc);
       r->getLegPlacesAcc(placeAcc);
       
-      vector<pPunch> punches;
-      crd->getPunches(punches);
+      auto punches = r->getCardPunches();
       int index = 0;
       int counter = 0;
       int prevPunch = crs->getStartPunchType();
       const int startTime = r->getStartTime();
       int prevTime = startTime;
 
-      for (pPunch p : punches) {
+      for (oPunch &pp : punches) {
+        auto p = &pp;
         if (p->getTypeCode() < 30 && !p->isFinish(crs->getFinishPunchType()))
           continue;
         
@@ -2735,7 +2769,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     gdi.addInput("CardNo", tsi.storedInfo.storedCardNo, 8, VacancyCB, L"Bricka:");
     tsi.setCardNumberField("CardNo");
     
-    //Remember to clear SI-link when page is cleared.
+    //Remember to clear CardDevice-link when page is cleared.
     gdi.setPostClearCb("vac", VacancyCB);
     gdi.setOnClearCb("vac", VacancyCB);
 
@@ -2743,7 +2777,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     gdi.addCheckbox("RentCard", "Hyrd", 0, tsi.storedInfo.rentState);
     gdi.dropLine(-1.2);
 
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
       gdi.addCombo("Club", 220, 300, RunnerCB, L"Klubb:");
       oe->fillClubs(gdi, "Club");
       gdi.setText("Club", tsi.storedInfo.storedClub);
@@ -2751,7 +2785,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
 
     gdi.addInput("Name", tsi.storedInfo.storedName, 16, RunnerCB, L"Namn:");
 
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy)) {
       if (!tsi.storedInfo.storedFee.empty())
         lastFee = tsi.storedInfo.storedFee;
 
@@ -2830,7 +2864,7 @@ void TabRunner::showInForestList(gdioutput &gdi)
   addToolbar(gdi);
   gdi.dropLine();
   gdi.setRestorePoint("Help");
-  gdi.addString("", 10, "help:425188");
+  gdi.addString("", 10, "help:dns");
   gdi.dropLine();
 
   gdi.addString("", fontMediumPlus, "Visa kvar-i-skogen");
@@ -2852,7 +2886,7 @@ void TabRunner::showInForestList(gdioutput &gdi)
   gdi.fillRight();
   gdi.addButton("Import", "Importera stämplingar...", SportIdentCB).setExtra(1);
   
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
     vector<pRunner> rr;
     oe->getRunners(0, 0, rr, false);
     bool hasVac = false;
@@ -2967,32 +3001,32 @@ void TabRunner::cellAction(gdioutput &gdi, DWORD id, oBase *obj)
     gdi.disableTables();
     pCard c=dynamic_cast<pCard>(obj);
     if (c)
-      showCardDetails(gdi, c, false);
+      showCardDetails(gdi, *c, false);
   }
 }
 
-void TabRunner::showCardDetails(gdioutput &gdi, pCard c, bool autoSelect) {
+void TabRunner::showCardDetails(gdioutput &gdi, const oCard &c, bool autoSelect) {
   gdi.setRestorePoint("CardTable");
   int orgx = gdi.getCX();
   gdi.dropLine(1);
   gdi.setCY(cardModeStartY);
   gdi.scrollTo(orgx, cardModeStartY);
   if (!autoSelect) {
-    gdi.addString("", fontMediumPlus, "Para ihop bricka X med en deltagare#" + itos(c->getCardNo()));
+    gdi.addString("", fontMediumPlus, "Para ihop bricka X med en deltagare#" + itos(c.getCardNo()));
     gdi.dropLine(0.5);
   }
   else {
-    gdi.addString("", fontLarge, "Ändra innehavare av bricka X#" + itos(c->getCardNo()));
+    gdi.addString("", fontLarge, "Ändra innehavare av bricka X#" + itos(c.getCardNo()));
   }
 
-  wstring name = c->getOwner() ? c->getOwner()->getName() : makeDash(L"-");
+  wstring name = c.getOwner() ? c.getOwner()->getName() : makeDash(L"-");
   gdi.addString("", 0, L"Nuvarande innehavare: X.#" + name);
 
   gdi.dropLine(1);
   gdi.pushX();
   gdi.fillRight();
   gdi.addListBox("Card", 150, 300, 0, L"Vald bricka:");
-  c->fillPunches(gdi, "Card", 0);
+  c.fillPunches(nullptr, gdi, "Card", nullptr);
   gdi.disableInput("Card");
 
   gdi.pushX();
@@ -3003,8 +3037,8 @@ void TabRunner::showCardDetails(gdioutput &gdi, pCard c, bool autoSelect) {
   gdi.addListBox("Runners", 350, 300, 0, L"Deltagare:");
   gdi.setTabStops("Runners", 200, 300);
   oe->fillRunners(gdi, "Runners", true, oEvent::RunnerFilterShowAll);
-  if (c->getOwner())
-    gdi.selectItemByData("Runners", c->getOwner()->getId());
+  if (c.getOwner())
+    gdi.selectItemByData("Runners", c.getOwner()->getId());
 
   gdi.popX();
   gdi.fillRight();
@@ -3013,8 +3047,8 @@ void TabRunner::showCardDetails(gdioutput &gdi, pCard c, bool autoSelect) {
 
   gdi.popX();
   gdi.dropLine(3);
-  gdi.addButton("Pair", "Para ihop", RunnerCB).setExtra(c->getId());
-  gdi.addButton("Unpair", "Sätt som oparad", RunnerCB).setExtra(c->getId());
+  gdi.addButton("Pair", "Para ihop", RunnerCB).setExtra(c.getId());
+  gdi.addButton("Unpair", "Sätt som oparad", RunnerCB).setExtra(c.getId());
   if (autoSelect)
     gdi.addButton("Cancel", "Visa alla brickor", RunnerCB);
   else
@@ -3111,7 +3145,7 @@ int TabRunner::punchesCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       if (bi.getDataInt() >= 0) {
         pCard card = r->getCard();
         if (!card) return 0;
-        pPunch punch = card->getPunchByIndex(bi.data);
+        pPunch punch = card->getPunchByIndex(r->getCard2(), bi.data);
         if (!punch)
           throw meosException("Punch not found.");
 
@@ -3161,7 +3195,7 @@ int TabRunner::punchesCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
       card->setCardNo(r->getCardNo());
       vector<pair<int, pControl>> mp;
-      r->addCard(card, mp);
+      r->addCard(*card, Card::Primary, mp);
     }
 
     if (bi.id == "AddC") {
@@ -3197,9 +3231,8 @@ int TabRunner::punchesCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       r->synchronizeAll(true);
       r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
       r->hasManuallyUpdatedTimeStatus();
-      card->fillPunches(gdi, "Punches", pc);
+      updateCard(gdi, *r);
       updateStatus(gdi, r);
-      updateCardStatus(card, gdi);
     }
     else if (bi.id == "AddAllC") {
       vector<pair<int, pControl>> mp;
@@ -3218,10 +3251,9 @@ int TabRunner::punchesCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       card->synchronize();
       r->synchronizeAll(true);
       r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
-      card->fillPunches(gdi, "Punches", r->getCourse(true));
+      updateCard(gdi, *r);
       r->hasManuallyUpdatedTimeStatus();
       updateStatus(gdi, r);
-      updateCardStatus(card, gdi);
     }
     else if (bi.id == "SaveC") {
       if (!savePunchTime(r, gdi))
@@ -3235,7 +3267,7 @@ int TabRunner::punchesCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       r->synchronize();
       r->evaluateCard(true, mp, 0, oBase::ChangeType::Quiet);
       r->hasManuallyUpdatedTimeStatus();
-      card->fillPunches(gdi, "Punches", r->getCourse(true));
+      updateCard(gdi, *r);
       updateStatus(gdi, r);
       gdi.selectItemByData("Punches", lbi.data);
     }
@@ -3252,12 +3284,15 @@ bool TabRunner::savePunchTime(pRunner r, gdioutput &gdi) {
   if (!gdi.getSelectedItem("Punches", lbi) || lbi.getDataInt() < 0)
     return 0;
 
-  pPunch pp = card->getPunchByIndex(lbi.data);
+  pPunch pp = card->getPunchByIndex(r->getCard2(), lbi.data);
 
   if (!pp)
     return false;
     
-  card->setPunchTime(pp, gdi.getText("PTime"));
+  if (const wstring &ptime = gdi.getText("PTime"); !card->setPunchTime(pp, ptime)) {
+    if (r->getCard2())
+      r->getCard2()->setPunchTime(pp, ptime);
+  }
 
   updatePunchStatus(pp, (InputInfo*)&gdi.getBaseInfo("PTime"), gdi);
   updateCardStatus(card, gdi);
@@ -3333,7 +3368,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
   gdi.setInputFocus("Runners");
   fillRunnerList(gdi);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
     gdi.fillRight();
     gdi.addButton("Move", "Klassbyte", RunnerCB);
     gdi.addButton("NoStart", "Återbud", RunnerCB);
@@ -3353,7 +3388,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(3);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
     gdi.fillDown();
     gdi.addCombo("Club", 220, 300, RunnerCB, L"Klubb:");
     oe->fillClubs(gdi, "Club");
@@ -3371,7 +3406,7 @@ bool TabRunner::loadPage(gdioutput &gdi)
   }
 
   gdi.fillRight();
-  bool hasEco = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy);
+  bool hasEco = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy);
   gdi.addSelection("RClass", hasEco ? 130 : 170, 300, RunnerCB, L"Klass:");
   oe->fillClasses(gdi, "RClass", {make_pair(lang.tl("Ingen klass"), 0)}, oEvent::extraNone, oEvent::filterNone);
   
@@ -3441,12 +3476,23 @@ bool TabRunner::loadPage(gdioutput &gdi)
 
   gdi.dropLine(2);
   gdi.popX();
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::DualCards)) {
+    gdi.addInput("CardNo2", L"", 8, RunnerCB, L"Bricka 2:");
+    gdi.dropLine(1.2);
+    gdi.addCheckbox("RentCard2", "Hyrd", 0, false);
+    gdi.dropLine(.4);
+    gdi.addImage("warnoldcard2", gdi.getCY() - gdi.getLineHeight() / 2, gdi.getCX(),
+                 0, L"", gdi.scaleLength(16), gdi.scaleLength(16));
+
+    gdi.dropLine(2);
+    gdi.popX();
+  }
 
   gdi.addInput("Start", L"", 8, 0, L"Starttid:");
   gdi.addInput("Finish", L"", 8, 0, L"Måltid:");
 
-  const bool timeAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::TimeAdjust);
-  const bool pointAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::PointAdjust);
+  const bool timeAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::TimeAdjust);
+  const bool pointAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::PointAdjust);
 
   if (timeAdjust || pointAdjust) {
     gdi.dropLine(3);
@@ -3826,7 +3872,7 @@ void TabRunner::addToolbar(gdioutput &gdi) {
   gdi.check("TableMode", currentMode == Mode::Table);
   dx += button_w;
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::InForest)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::InForest)) {
     gdi.addButton(dx, 2, button_w, "InForest",
               "Kvar-i-skogen", RunnerCB, "", false, true).fixedCorner();
     gdi.check("InForest", currentMode == Mode::InForest);
@@ -3838,7 +3884,7 @@ void TabRunner::addToolbar(gdioutput &gdi) {
   gdi.check("Cards", currentMode == Mode::Cards);
   dx += button_w;
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
     gdi.addButton(dx, 2 ,button_w, "Vacancy",
               "Vakanser", RunnerCB, "", false, true).fixedCorner();
     gdi.check("Vacancy", currentMode == Mode::Vacancy);
@@ -3896,25 +3942,38 @@ bool TabRunner::canSetFinish(pRunner r) const {
   return true;
 }
 
-pRunner TabRunner::warnDuplicateCard(int cno, pRunner r)  {
-  pRunner warnCardDupl = 0;
+pair<pRunner, pRunner> TabRunner::warnDuplicateCard(int cno, int cno2, const oRunner &r)  {
+  pRunner warnCardDupl = nullptr;
+  pRunner warnCardDupl2 = nullptr;
 
-  if (!r->getCard() && cno != 0) {
+  auto oe = r.getEvent();
+  if (!r.getCard() && cno != 0) {
     vector<pRunner> allR;
     oe->getRunnersByCardNo(cno, false, oEvent::CardLookupProperty::Any, allR);
     for (size_t k = 0; k < allR.size(); k++) {
-      if (!r->canShareCard(allR[k], cno)) {
+      if (!r.canShareCard(allR[k], cno)) {
         warnCardDupl = allR[k];
         break;
       }
     }
   }
-  return warnCardDupl;
+
+  if (!r.getCard2() && cno2 != 0) {
+    vector<pRunner> allR;
+    oe->getRunnersByCardNo(cno2, false, oEvent::CardLookupProperty::Any, allR);
+    for (size_t k = 0; k < allR.size(); k++) {
+      if (!r.canShareCard(allR[k], cno2)) {
+        warnCardDupl2 = allR[k];
+        break;
+      }
+    }
+  }
+  return make_pair(warnCardDupl, warnCardDupl2);
 }
 
-void TabRunner::warnDuplicateCard(gdioutput &gdi, int cno, pRunner r) {
-  pRunner warnCardDupl = warnDuplicateCard(cno, r);
-
+void TabRunner::warnDuplicateCard(gdioutput &gdi, int cno, int cno2, const oRunner &r) {
+  auto [warnCardDupl, warnCardDupl2] = warnDuplicateCard(cno, cno2, r);
+  auto oe = r.getEvent();
   if (oe->deprecateOldCards() && cno > 0 && oe->getCardSystem().isDeprecated(cno)) {
     auto *bi = gdi.setImage("warnoldcard", IDI_MEOSWARN, true);    
     if (bi) {
@@ -3938,6 +3997,21 @@ void TabRunner::warnDuplicateCard(gdioutput &gdi, int cno, pRunner r) {
       cardNo.setBgColor(colorDefault);
       gdi.updateToolTip("CardNo", L"");
       cardNo.refresh();
+    }
+  }
+  if (gdi.hasWidget("CardNo2")) {
+    InputInfo &cardNo2 = dynamic_cast<InputInfo &>(gdi.getBaseInfo("CardNo2"));
+    if (warnCardDupl2) {
+      cardNo2.setBgColor(colorLightRed);
+      gdi.updateToolTip("CardNo2", L"Brickan används av X.#" + warnCardDupl2->getCompleteIdentification(oRunner::IDType::OnlyThis));
+      cardNo2.refresh();
+    }
+    else {
+      if (cardNo2.getBgColor() != colorDefault) {
+        cardNo2.setBgColor(colorDefault);
+        gdi.updateToolTip("CardNo2", L"");
+        cardNo2.refresh();
+      }
     }
   }
 }
@@ -4438,20 +4512,44 @@ void TabRunner::getAutoCompleteUnpairedCards(gdioutput & gdi,
   }
 }
 
-void TabRunner::unpairCard(pRunner r) {
+void TabRunner::unpairCard(pRunner r, bool secondaryCard) {
   int ptype = oPunch::SpecialPunch::PunchStart;
   if (pCourse crs = r->getCourse(false); crs) {
     if (crs->useFirstAsStart() && crs->getControl(0))
       ptype = crs->getControl(0)->getFirstNumber();
   }
 
-  r->setStatus(StatusUnknown, true, oBase::ChangeType::Update, false);
-  int st = r->getCard()->getStartTime(ptype);
+  if (!secondaryCard) {
+    r->setStatus(StatusUnknown, true, oBase::ChangeType::Update, false);
+    int st = r->getCard()->getStartTime(ptype);
 
-  r->setCard(0);
-  r->setFinishTime(0);
-  if (st == r->getStartTime())
-    r->restoreDefaultStartTime(true);
-
+    r->setCard(0, Card::Primary);
+    r->setFinishTime(0);
+    if (st == r->getStartTime())
+      r->restoreDefaultStartTime(true);
+  }
+  else {
+    r->setCard(0, Card::Secondary);
+  }
   r->synchronize(true);
+}
+
+pCourse TabRunner::updateCard(gdioutput &gdi, oRunner &r) {
+  pCard pc = r.getCard();
+  pCourse pcourse = r.getCourse(true);
+
+  if (pcourse)
+    pcourse->synchronize();
+
+  if (pc) {
+    gdi.setTabStops("Punches", 70);
+    pc->fillPunches(r.getCard2(), gdi, "Punches", pcourse);
+    updateCardStatus(pc, gdi);
+  }
+  else {
+    gdi.clearList("Punches");
+    gdi.setText("CardStatus", L"", true);
+  }
+
+  return pcourse;
 }

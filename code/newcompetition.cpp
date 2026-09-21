@@ -118,8 +118,8 @@ int TabCompetition::newGuideCB(gdioutput &gdi, GuiEventType type, BaseInfo* data
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
       oe->getMeOSFeatures().clear(*oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Clubs, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Clubs, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
      
       createNewCmp(gdi, true);
     }
@@ -135,68 +135,68 @@ int TabCompetition::newGuideCB(gdioutput &gdi, GuiEventType type, BaseInfo* data
     else if (bi.id == "FIndividual") {
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::EditClub, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Network, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Vacancy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::InForest, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Speaker, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Economy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::EditClub, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Network, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Vacancy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::InForest, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::DrawStartList, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Bib, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
 
       createNewCmp(gdi, true);
     }
     else if (bi.id == "FNoCourses" || bi.id == "FNoCoursesRelay") {
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::EditClub, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Network, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Vacancy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::NoCourses, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Speaker, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Economy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::EditClub, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Network, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Vacancy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::DrawStartList, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Bib, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::NoCourses, true, *oe);
 
       if (bi.id == "FNoCoursesRelay")
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *oe);
 
       createNewCmp(gdi, true);
     }
     else if (bi.id == "FForked") {
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::EditClub, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Network, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Vacancy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::InForest, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Speaker, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Economy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::EditClub, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Network, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Vacancy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::InForest, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::DrawStartList, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Bib, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::ForkedIndividual, true, *oe);
 
       createNewCmp(gdi, true);
     }
     else if (bi.id == "FTeam") {
       if (gdi.hasWidget("Name"))
         createCompetition(gdi);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::EditClub, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Network, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Vacancy, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::InForest, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
-      oe->getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Speaker, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Economy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::EditClub, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Network, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Vacancy, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::InForest, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::DrawStartList, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Bib, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
+      oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *oe);
 
       if (oe->hasMultiRunner())
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::MultipleRaces, true, *oe);
 
       createNewCmp(gdi, true);
     }

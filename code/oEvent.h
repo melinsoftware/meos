@@ -78,6 +78,7 @@ class MeosSQL;
 class MachineContainer;
 class MapDataContainer;
 class MapData;
+struct DeviceCard;
 
 struct oCounter {
   int level1;
@@ -497,6 +498,10 @@ protected:
 public:
   /** Mark as main event.*/
   void setMainEvent() { isMainEvent = true; }
+
+  /** Get/set timing system tag for the event */
+  string getTimingSystem() const;
+  void setTimingSystem(const string &system);
 
   /** Get adjustment for a specific unit*/
   int getUnitAdjustment(oPunch::SpecialPunch type, int unit) const;
@@ -943,6 +948,8 @@ protected:
   mutable multimap<int, oAbstractRunner*> bibStartNoToRunnerTeam;
 
   mutable shared_ptr<std::unordered_multimap<int, pRunner>> cardToRunnerHash;
+  mutable int generatedCardToRunnerHashSize = 0;
+
   vector<pRunner> getCardToRunner(int cardNo) const;
 
   mutable shared_ptr<map<int, vector<pRunner>>> classIdToRunnerHash;
@@ -1043,18 +1050,18 @@ public:
 
   /** Returns the first start in a class (use classId = 0 for global) */
   int getFirstStart(int classId, bool considerStartPunches) const;
-  void convertTimes(pRunner runner, SICard &sic) const;
+  void convertTimes(pRunner runner, DeviceCard &sic) const;
 
   pCard getCard(int Id) const;
   pCard getCardByNumber(int cno) const;
-  bool isCardRead(const SICard &card) const;
+  bool isCardRead(const DeviceCard &card) const;
   void getCards(vector<pCard> &cards, bool synchronize, bool onlyUnpaired);
   int getNumCards() const { return Cards.size(); }
   /** Try to find the class that best matches the card.
       Negative return = missing controls
       Positve return = extra controls
       Zero = exact match */
-  int findBestClass(const SICard &card, vector<pClass> &classes) const;
+  int findBestClass(const DeviceCard &card, vector<pClass> &classes) const;
   wstring getCurrentTimeS() const;
 
   void reEvaluateCourse(int courseId, bool doSync);
@@ -1163,8 +1170,8 @@ public:
   /** Set the automatic bib gap between classes. */
   void setBibClassGap(int numStages);
 
-  bool openRunnerDatabase(const wchar_t *file);
-  bool saveRunnerDatabase(const wchar_t *file, bool onlyLocal);
+  bool openRunnerDatabase(const wstring &file, bool fromServerCache);
+  bool saveRunnerDatabase(const wstring &file, bool onlyLocal);
   
   void calculateResults(const set<int> &classes, ResultType result, bool includePreliminary = false) const;
   
@@ -1449,7 +1456,7 @@ protected:
   pClass getXMLClass(const xmlobject &xentry);
   pClub getClubCreate(int clubId);
 
-  bool addXMLCompetitorDB(const xmlobject &xentry, int ClubId);
+  bool addXMLCompetitorDB(const xmlobject &xentry, int clubId, const string &timingSystem);
   bool addOECSVCompetitorDB(const vector<wstring> &row);
   pRunner addXMLPerson(const xmlobject &person);
   pRunner addXMLStart(const xmlobject &xstart, pClass cls);
@@ -1481,7 +1488,7 @@ public:
 
   /** Do some operation and disable (global) reevaluate/update */
   template<typename OP>
-  void noReevaluateOperation(OP& operation) {
+  void noReevaluateOperation(const OP& operation) {
     bool origState = disableRecalculate;
     disableRecalculate = true;
     try {
@@ -1576,7 +1583,7 @@ public:
                           bool onlyWithClub,
                           bool clear);
 
-  void generateTestCard(SICard &sic) const;
+  void generateTestCard(DeviceCard &sic) const;
   pClass generateTestClass(int nlegs, int nrunners,
                            wchar_t *name, const wstring &start);
   pCourse generateTestCourse(int nCtrl);

@@ -31,33 +31,35 @@
 MeOSFeatures::MeOSFeatures(void)
 {
   addHead("General");
-  add(DrawStartList, L"SL", "Prepare start lists");
-  add(Bib, L"BB", "Bibs");
-  add(Clubs, L"CL", "Clubs");
-  add(EditClub, L"CC", "Edit Clubs").require(Clubs);
+  add(Feature::DrawStartList, L"SL", "Prepare start lists");
+  add(Feature::Bib, L"BB", "Bibs");
+  add(Feature::Clubs, L"CL", "Clubs");
+  add(Feature::EditClub, L"CC", "Edit Clubs").require(Feature::Clubs);
 
-  add(InForest, L"RF", "Track runners in forest");
-  add(Network, L"NW", "Several MeOS Clients in a network");
+  add(Feature::InForest, L"RF", "Track runners in forest");
+  add(Feature::Network, L"NW", "Several MeOS Clients in a network");
 
   addHead("MeOS Features");
-  add(Speaker, L"SP", "Använd speakerstöd");
-  add(SeveralStages, L"ST", "Several stages");
-  add(Economy, L"EC", "Economy and fees").require(EditClub).require(Clubs);
-  add(Vacancy, L"VA", "Vacancies and entry cancellations").require(DrawStartList);
-  add(TimeAdjust, L"TA", "Manual time penalties and adjustments");
-  add(RunnerDb, L"RD", "Club and runner database").require(Clubs);
+  add(Feature::Speaker, L"SP", "Använd speakerstöd");
+  add(Feature::SeveralStages, L"ST", "Several stages");
+  add(Feature::Economy, L"EC", "Economy and fees").require(Feature::EditClub).require(Feature::Clubs);
+  add(Feature::Vacancy, L"VA", "Vacancies and entry cancellations").require(Feature::DrawStartList);
+  add(Feature::TimeAdjust, L"TA", "Manual time penalties and adjustments");
+  add(Feature::RunnerDb, L"RD", "Club and runner database").require(Feature::Clubs);
+  add(Feature::DualCards, L"DC", "Använd extra stämplingsbricka");
+
   addHead("Teams and forking");
-  add(ForkedIndividual, L"FO", "Forked individual courses");
-  add(Patrol, L"PT", "Patrols");
-  add(Relay, L"RL", "Relays");
-  add(MultipleRaces, L"MR", "Several races for a runner").require(Relay);
+  add(Feature::ForkedIndividual, L"FO", "Forked individual courses");
+  add(Feature::Patrol, L"PT", "Patrols");
+  add(Feature::Relay, L"RL", "Relays");
+  add(Feature::MultipleRaces, L"MR", "Several races for a runner").require(Feature::Relay);
 
   addHead("Rogaining");
-  add(Rogaining, L"RO", "Rogaining");
-  add(PointAdjust, L"PA", "Manual point reductions and adjustments").require(Rogaining);
+  add(Feature::Rogaining, L"RO", "Rogaining");
+  add(Feature::PointAdjust, L"PA", "Manual point reductions and adjustments").require(Feature::Rogaining);
 
   addHead("Timekeeping");
-  add(NoCourses, L"NC", "Without courses");
+  add(Feature::NoCourses, L"NC", "Without courses");
 }
 
 MeOSFeatures::FeatureDescriptor &MeOSFeatures::add(Feature feat, const wchar_t *code, const char *descr) {
@@ -72,12 +74,12 @@ MeOSFeatures::FeatureDescriptor &MeOSFeatures::add(Feature feat, const wchar_t *
 }
 
 MeOSFeatures::FeatureDescriptor &MeOSFeatures::addHead(const char *descr) {
-  desc.push_back(FeatureDescriptor(_Head, L"-", descr));
+  desc.push_back(FeatureDescriptor(Feature::_Head, L"-", descr));
   return desc.back();
 }
 
 bool MeOSFeatures::isHead(int featureIx) const {
-  return getFeature(featureIx) == _Head;
+  return getFeature(featureIx) == Feature::_Head;
 }
 
 const string &MeOSFeatures::getHead(int featureIx) const {
@@ -92,12 +94,9 @@ MeOSFeatures::FeatureDescriptor::FeatureDescriptor(Feature featIn,
                                                    wstring codeIn,
                                                    string descIn) :
   feat(featIn), code(codeIn), desc(descIn)
-{
-}
+{}
 
-MeOSFeatures::~MeOSFeatures(void)
-{
-}
+MeOSFeatures::~MeOSFeatures() = default;
 
 bool MeOSFeatures::hasFeature(Feature f) const {
   return features.count(f) != 0;
@@ -128,7 +127,7 @@ bool MeOSFeatures::isRequired(Feature f, const oEvent &oe) const {
   if (isRequiredInternal(f))
     return true;
 
-  if (f == Rogaining && oe.hasRogaining() && hasFeature(Rogaining))
+  if (f == Feature::Rogaining && oe.hasRogaining() && hasFeature(Feature::Rogaining))
     return true;
 
   return false;
@@ -201,50 +200,50 @@ void MeOSFeatures::deserialize(const wstring &input, oEvent &oe) {
 
 void MeOSFeatures::loadDefaults(oEvent &oe) {
   if (oe.getDCI().getInt("UseEconomy") != 0) {
-    features.insert(Economy);
-    features.insert(EditClub);
+    features.insert(Feature::Economy);
+    features.insert(Feature::EditClub);
   }
 
   if (oe.getDCI().getInt("UseSpeaker") != 0)
-    features.insert(Speaker);
+    features.insert(Feature::Speaker);
 
   if (oe.hasRogaining())
-    features.insert(Rogaining);
+    features.insert(Feature::Rogaining);
 
   if (oe.getDCI().getInt("SkipRunnerDb") == 0 )
-    features.insert(RunnerDb);
+    features.insert(Feature::RunnerDb);
 
   ClassConfigInfo cnf;
   oe.getClassConfigurationInfo(cnf);
   if (cnf.hasPatrol())
-    features.insert(Patrol);
+    features.insert(Feature::Patrol);
 
   if (cnf.hasRelay())
-    features.insert(Relay);
+    features.insert(Feature::Relay);
 
   if (cnf.raceNStart.size() > 0) {
-    features.insert(Relay);
-    features.insert(MultipleRaces);
+    features.insert(Feature::Relay);
+    features.insert(Feature::MultipleRaces);
   }
   
   if (cnf.isMultiStageEvent())
-    features.insert(SeveralStages);
+    features.insert(Feature::SeveralStages);
 
-  features.insert(Clubs);
-  features.insert(Network);
-  features.insert(ForkedIndividual);
+  features.insert(Feature::Clubs);
+  features.insert(Feature::Network);
+  features.insert(Feature::ForkedIndividual);
 
-  features.insert(Vacancy);
-  features.insert(InForest);
-  features.insert(DrawStartList);
-  features.insert(Bib);
+  features.insert(Feature::Vacancy);
+  features.insert(Feature::InForest);
+  features.insert(Feature::DrawStartList);
+  features.insert(Feature::Bib);
 }
 
 void MeOSFeatures::useAll(oEvent &oe) {
   for (size_t k = 0; k < desc.size(); k++) {
-    if (desc[k].feat == NoCourses)
+    if (desc[k].feat == Feature::NoCourses)
       continue;
-    if (desc[k].feat != _Head)
+    if (desc[k].feat != Feature::_Head)
       features.insert(desc[k].feat);
   }
   oe.getDI().setString("Features", serialize());

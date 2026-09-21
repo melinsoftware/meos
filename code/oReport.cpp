@@ -35,7 +35,6 @@
 #include "oDataContainer.h"
 
 #include "random.h"
-#include "SportIdent.h"
 
 #include "oFreeImport.h"
 
@@ -527,7 +526,7 @@ void oEvent::generatePreReport(gdioutput& gdi) {
     showReport(no_course, "Löpare utan bana: X");
   }
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
     gdi.dropLine();
     showReport(no_club, "Löpare utan klubb: X");
   }
@@ -536,10 +535,10 @@ void oEvent::generatePreReport(gdioutput& gdi) {
   showReport(no_start, "Löpare utan starttid: X");
 
   gdi.dropLine();
-  showReport(no_card, "Löpare utan SI-bricka: X");
+  showReport(no_card, "Löpare utan bricka: X");
 
   gdi.dropLine();
-  showReport(si_duplicate, "SI-dubbletter: X");
+  showReport(si_duplicate, "Dubbelanvända brickor: X");
 
 
   if (oe->deprecateOldCards()) {
@@ -789,7 +788,7 @@ void oEvent::generatePreReport(gdioutput& gdi) {
       for (unsigned i = 0; i < pc->getNumStages(); i++) {
         pRunner r = t_it->getRunner(i);
         if (r) {
-          gdi.addStringUT(0, r->getName() + L" SI: " + itow(r->getCardNo()));
+          gdi.addStringUT(0, r->getName() + L" (" + itow(r->getCardNo()) + L")");
 
           pCourse pcourse = r->getCourse(true);
 

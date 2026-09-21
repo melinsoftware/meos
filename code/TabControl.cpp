@@ -665,14 +665,14 @@ bool TabControl::loadPage(gdioutput &gdi)
 
   gdi.popX();
   gdi.dropLine(0.5);
-  gdi.addString("", 10, "help:9373");
+  gdi.addString("", 10, "help:codenumber");
 
   gdi.fillRight();
 
   gdi.dropLine(0.5);
   gdi.addInput("Code", L"", 16, 0, L"Stämpelkod(er):");
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Rogaining)) {
     gdi.addInput("Point", L"", 6, 0, L"Rogaining-poäng:");
   }
   gdi.popX();
@@ -699,7 +699,7 @@ bool TabControl::loadPage(gdioutput &gdi)
   gdi.addString("Info", 0, "").setColor(colorGreen);
 
   gdi.dropLine(1.5);
-  gdi.addString("", 10, "help:89064");
+  gdi.addString("", 10, "help:controls");
 
   selectControl(gdi, oe->getControl(controlId, false, true));
 

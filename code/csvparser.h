@@ -33,7 +33,7 @@
 using std::list;
 using std::vector;
 class oEvent;
-struct SICard;
+struct DeviceCard;
 class  ImportFormats;
 
 class CSVLineWrapper;
@@ -71,13 +71,13 @@ protected:
   string ErrorMessage;
 
   // Returns true if a SI-manager line is identified
-  bool checkSimanLine(const oEvent &oe, const CSVLineWrapper &sp, SICard &cards);
+  bool checkSimanLine(const oEvent &oe, const CSVLineWrapper &sp, DeviceCard &cards);
 
   // Check and setup header for SIConfig import
   void checkSIConfigHeader(const CSVLineWrapper &sp);
 
   // Return true if SIConfig line was detected 
-  bool checkSIConfigLine(const oEvent &oe, const CSVLineWrapper &sp, SICard &card);
+  bool checkSIConfigLine(const oEvent &oe, const CSVLineWrapper &sp, DeviceCard &card);
 
   enum SIConfigFields {
     sicSIID,
@@ -133,7 +133,7 @@ public:
                      vector<PunchInfo> &punches);
 
   bool importCards(const oEvent &oe, const wstring &file,
-                   vector<SICard> &punches);
+                   vector<DeviceCard> &punches);
 
   int importRanking(oEvent &oe, const wstring &file, vector<wstring> & problems);
 

@@ -63,6 +63,7 @@ IOF30Interface::IOF30Interface(oEvent *oe, bool forceSplitFee, bool useEventorQu
   cachedStageNumber = -1;
   splitLateFee = forceSplitFee || oe->getPropertyInt("SplitLateFees", false) == 1;
   preferShortName = oe->getPropertyBool("PreferShortClubName", true);
+  baseCardFee = oe->getBaseCardFee();
 }
 
 void IOF30Interface::readCourseData(gdioutput &gdi, const xmlobject &xo, bool updateClass,
@@ -1015,6 +1016,8 @@ void IOF30Interface::readCompetitorList(gdioutput &gdi, const xmlobject &xo,
 
   xmlList xl;
   xo.getObjects(xl);
+
+  timingSystem = oe.getRunnerDatabase().getCurrentCardType();
 
   unordered_multimap<size_t, int> duplicateCheck;
   for (auto &it : xl) {
@@ -2546,7 +2549,7 @@ pRunner IOF30Interface::readPersonResult(gdioutput &gdi, pClass pc, xmlobject &x
         }
 
         vector<pair<int, pControl>> mp;
-        rRace->addCard(card, mp);
+        rRace->addCard(*card, Card::Primary, mp);
       }
     }
   }
@@ -2892,25 +2895,34 @@ void IOF30Interface::writeAssignedFee(xmlparser &xml, const oAbstractRunner &tr,
 void IOF30Interface::writeRentalCardService(xmlparser &xml, int cardFee, bool paid) const {
   xml.startTag("ServiceRequest"); {
 
+    int number = 1;
+    int numCard = cardFee / baseCardFee;
+    if (numCard * baseCardFee == cardFee) {
+      cardFee = baseCardFee;
+      number = numCard;
+    }
+
     xml.startTag("Service", "type", "RentalCard"); {
       xml.write("Name", L"Card Rental");
     }
     xml.endTag();
 
-    xml.write("RequestedQuantity", L"1");
+    xml.write("RequestedQuantity", itow(number));
 
-    xml.startTag("AssignedFee"); {
-      xml.startTag("Fee"); {
-        xml.write("Name", L"Card Rental Fee");
-        writeAmount(xml, "Amount", cardFee);
+    for (int i = 0; i < number; i++) {
+      xml.startTag("AssignedFee"); {
+        xml.startTag("Fee"); {
+          xml.write("Name", L"Card Rental Fee");
+          writeAmount(xml, "Amount", cardFee);
+        }
+        xml.endTag();
+
+        if (paid) {
+          writeAmount(xml, "PaidAmount", cardFee);
+        }
       }
       xml.endTag();
-
-      if (paid) {
-        writeAmount(xml, "PaidAmount", cardFee);
-      }
     }
-    xml.endTag();
   }
   xml.endTag();
 }
@@ -3768,6 +3780,8 @@ void IOF30Interface::writeResult(xmlparser &xml, const oRunner &rPerson, const o
 
   if (rPerson.getCardNo() > 0)
     xml.write("ControlCard", rPerson.getCardNo());
+  if (rPerson.getCardNo2() > 0)
+    xml.write("ControlCard", rPerson.getCardNo2());
 
   writeFees(xml, rPerson);
 
@@ -4252,6 +4266,8 @@ void IOF30Interface::writeStart(xmlparser &xml, const oRunner &r,
 
   if (r.getCardNo() > 0)
     xml.write("ControlCard", r.getCardNo());
+  if (r.getCardNo2() > 0)
+    xml.write("ControlCard", r.getCardNo2());
 
   writeFees(xml, r);
 
@@ -4313,7 +4329,7 @@ bool IOF30Interface::readXMLCompetitorDB(const xmlobject &xCompetitor,
     xmlobject &card = cards[k];
     if (card) {
       xmlattrib pSystem = card.getAttrib("punchingSystem");
-      if (!pSystem || _stricmp(pSystem.getPtr(), "SI") == 0) {
+      if (!pSystem || _stricmp(pSystem.getPtr(), timingSystem.c_str()) == 0) {
         cardno = card.getObjectInt(0);
         break;
       }
@@ -4428,9 +4444,8 @@ void IOF30Interface::writeXMLCompetitorDB(xmlparser &xml, const RunnerDB &db,
   xml.endTag(); // Person
 
   if (rde.dbe().cardNo > 0) {
-    xml.write("ControlCard", "punchingSystem", L"SI", itow(rde.dbe().cardNo));
+    xml.write("ControlCard", "punchingSystem", timingSystemW.c_str(), itow(rde.dbe().cardNo));
   }
-
 
   if (rde.dbe().clubNo > 0) {
     pClub clb = db.getClub(rde.dbe().clubNo);
@@ -4901,6 +4916,9 @@ void IOF30Interface::writeRunnerDB(const RunnerDB &db, xmlparser &xml) const {
   xml.startTag("CompetitorList", props);
 
   const vector<RunnerWDBEntry> &rdb = db.getRunnerDB();
+  timingSystem = db.getCurrentCardType();
+  timingSystemW = gdioutput::widen(timingSystem);
+
   for (size_t k = 0; k < rdb.size(); k++) {
     if (!rdb[k].isRemoved())
       writeXMLCompetitorDB(xml, db, rdb[k]);

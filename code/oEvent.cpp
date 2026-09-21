@@ -34,9 +34,6 @@
 #include "oDataContainer.h"
 #include "MetaList.h"
 #include "cardsystem.h"
-
-#include "SportIdent.h"
-
 #include "meosException.h"
 #include "oFreeImport.h"
 #include "TabBase.h"
@@ -212,6 +209,8 @@ oEvent::oEvent(gdioutput &gdi) : oBase(nullptr), gdibase(gdi) {
   oEventData->addVariableString("ExtraFields", "Extra fields");
   oEventData->addVariableString("ControlMap", "Kontrollmappning");
   oEventData->addVariableInt("OldCards", oDataContainer::oIS8U, "Brickversionsvarning");
+  oEventData->addVariableString("Timing", 16, "Timingsystem");
+
   oEventData->initData(this, dataSize);
 
   oClubData=new oDataContainer(oClub::dataSize);
@@ -242,6 +241,7 @@ oEvent::oEvent(gdioutput &gdi) : oBase(nullptr), gdibase(gdi) {
   oRunnerData=new oDataContainer(oRunner::dataSize);
   oRunnerData->addVariableCurrency("Fee", "Anm. avgift").dataNotifier = make_shared<FeeChangedNf>();
   oRunnerData->addVariableCurrency("CardFee", "Brickhyra");
+  oRunnerData->addVariableCurrency("CardFee2", "Brickhyra");
   oRunnerData->addVariableCurrency("Paid", "Betalat").dataNotifier = make_shared<PaymentChangedNf>();
   oRunnerData->addVariableInt("PayMode", oDataContainer::oIS8U, "Betalsätt", make_shared<PayMethodFormatter>());
   oRunnerData->addVariableCurrency("Taxable", "Skattad avgift");
@@ -462,6 +462,8 @@ void oEvent::initProperties() {
 
   setProperty("Interactive", getPropertyString("Interactive", L"1"));
   setProperty("Database", getPropertyString("Database", L"1"));
+
+  setProperty("TimingSystem", getPropertyString("TimingSystem", L"SI"));
 
   // Setup some defaults
   getPropertyInt("SplitLateFees", false);
@@ -684,7 +686,7 @@ bool oEvent::writeRunners(xmlparser &xml, ProgressWindow &pw)
   int k=0;
   for (it=Runners.begin(); it != Runners.end(); ++it) {
     if (!it->tDuplicateLeg) //Duplicates is written by the ruling runner.
-      it->Write(xml);
+      it->write(xml);
     if (++k%300 == 200)
       pw.setSubProgress( (1000*k)/ Runners.size());
   }
@@ -719,7 +721,7 @@ bool oEvent::writeCards(xmlparser &xml)
 
   for (it=Cards.begin(); it != Cards.end(); ++it) {
     if (it->getOwner() == 0)
-      it->Write(xml);
+      it->write(xml, false);
   }
 
   xml.endTag();
@@ -1267,11 +1269,12 @@ void oEvent::clearData(bool runnerTeam, bool courses) {
     }
 
     for (auto& r : Runners)
-      r.Course = nullptr;
+      r.coursePtr = nullptr;
   }
 
   for (auto& r : Runners) {
-    r.Card = nullptr;
+    r.cardPtr = nullptr;
+    r.cardPtr2 = nullptr;
     r.setFinishTime(0);
     r.setStatus(StatusUnknown, true, oBase::ChangeType::Update, false);
   }
@@ -1422,20 +1425,26 @@ bool oEvent::open(const xmlparser &xml, const wstring &fileArg) {
 
   //Get runners
   xo=xml.getObject("RunnerList");
-  if (xo){
+  if (xo) {
     xmlList xl;
     xo.getObjects(xl);
 
     xmlList::const_iterator it;
 
-    for(it=xl.begin(); it != xl.end(); ++it){
-      if (it->is("Runner")){
+    for (it = xl.begin(); it != xl.end(); ++it) {
+      if (it->is("Runner")) {
         oRunner r(this, 0);
-        r.Set(*it);
-        if (r.Id>0)
+        r.set(*it);
+        if (r.Id > 0)
           addRunner(r, false);
-        else if (r.Card)
-          r.Card->tOwner=0;
+        else {
+          // No id. Clear
+          if (r.cardPtr)
+            r.cardPtr->tOwner = nullptr;
+
+          if (r.cardPtr2)
+            r.cardPtr2->tOwner = nullptr;
+        }
       }
     }
   }
@@ -1500,11 +1509,11 @@ bool oEvent::open(const xmlparser &xml, const wstring &fileArg) {
     xo.getObjects(xl);
     xmlList::const_iterator it;
 
-    for(it=xl.begin(); it != xl.end(); ++it){
-      if (it->is("Card")){
+    for (it = xl.begin(); it != xl.end(); ++it) {
+      if (it->is("Card")) {
         oCard c(this);
-        c.Set(*it);
-        assert(c.Id>=0);
+        c.set(*it);
+        assert(c.Id >= 0);
         addCard(c);
       }
     }
@@ -1625,27 +1634,13 @@ bool oEvent::open(const xmlparser &xml, const wstring &fileArg) {
   return true;
 }
 
-bool oEvent::openRunnerDatabase(const wchar_t* filename)
-{
-  wchar_t file[260];
-  getUserFile(file, filename);
+bool oEvent::openRunnerDatabase(const wstring &filename, bool fromDB) {
+  auto file = getUserFile(filename);
 
-  wchar_t fclub[260];
-  wchar_t fwclub[260];
-  wchar_t frunner[260];
-  wchar_t fwrunner[260];
-
-  wcscpy_s(fclub, file);
-  wcscat_s(fclub, L".clubs");
-
-  wcscpy_s(fwclub, file);
-  wcscat_s(fwclub, L".wclubs");
-
-  wcscpy_s(frunner, file);
-  wcscat_s(frunner, L".persons");
-
-  wcscpy_s(fwrunner, file);
-  wcscat_s(fwrunner, L".wpersons");
+  wstring fclub = file + L".clubs";
+  wstring fwclub = file + L".wclubs";
+  wstring frunner = file + L".persons";
+  wstring fwrunner = file + L".wpersons";
 
   try {
     if ((fileExists(fwclub) || fileExists(fclub)) && (fileExists(frunner) || fileExists(fwrunner)) ) {
@@ -1655,9 +1650,9 @@ bool oEvent::openRunnerDatabase(const wchar_t* filename)
         runnerDB->loadClubs(fclub);
 
       if (fileExists(fwrunner))
-        runnerDB->loadRunners(fwrunner);
+        runnerDB->loadRunners(fwrunner, fromDB);
       else
-        runnerDB->loadRunners(frunner);
+        runnerDB->loadRunners(frunner, fromDB);
     }
   }
   catch (meosException &ex) {
@@ -1741,18 +1736,10 @@ pRunner oEvent::dbLookUpByName(const wstring &name, int clubId, int classId, int
   return 0;
 }
 
-bool oEvent::saveRunnerDatabase(const wchar_t *filename, bool onlyLocal)
-{
-  wchar_t file[260];
-  getUserFile(file, filename);
-
-  wchar_t fclub[260];
-  wchar_t frunner[260];
-  wcscpy_s(fclub, file);
-  wcscat_s(fclub, L".wclubs");
-
-  wcscpy_s(frunner, file);
-  wcscat_s(frunner, L".wpersons");
+bool oEvent::saveRunnerDatabase(const wstring &filename, bool onlyLocal) {
+  auto file = getUserFile(filename);
+  wstring fclub = file + L".wclubs";
+  wstring frunner = file + L".wpersons";
 
   if (!onlyLocal || !runnerDB->isFromServer()) {
     runnerDB->saveClubs(fclub);
@@ -1766,7 +1753,7 @@ void oEvent::updateRunnerDatabase()
   if (Name == L"!TESTTÄVLING")
     return;
 
-  if (useRunnerDb()) {
+  if (useRunnerDb() && getRunnerDatabase().matchingCardSystem()) {
     map<int, int> clubIdMap;
     for (auto it = Runners.begin(); it != Runners.end(); ++it) {
       if (it->isRemoved())
@@ -1774,8 +1761,8 @@ void oEvent::updateRunnerDatabase()
       if (it->hasFlag(oAbstractRunner::TransferFlags::FlagNoDatabase))
         continue;
 
-      if (it->Card && it->Card->cardNo == it->cardNumber &&
-          it->getDI().getInt("CardFee") == 0 && it->Card->getNumPunches() > 5)
+      if (it->cardPtr && it->cardPtr->cardNo == it->cardNumber &&
+          it->getDI().getInt("CardFee") == 0 && it->cardPtr->getNumPunches() > 5)
           updateRunnerDatabase(&*it, clubIdMap);
     }
     runnerDB->refreshTables();
@@ -1806,8 +1793,7 @@ void oEvent::updateRunnerDatabase()
   }
 }
 
-void oEvent::updateRunnerDatabase(pRunner r, map<int, int> &clubIdMap)
-{
+void oEvent::updateRunnerDatabase(pRunner r, map<int, int> &clubIdMap) {
   if (!r->cardNumber)
     return;
   runnerDB->updateAdd(*r, clubIdMap);
@@ -1951,7 +1937,7 @@ pRunner oEvent::addRunner(const wstring &name, int clubId, int classId,
 pRunner oEvent::addRunner(const wstring &pname, const wstring &pclub, int classId,
                           int cardNo, const wstring &birthDate, bool autoAdd)
 {
-  if (!pclub.empty() || getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+  if (!pclub.empty() || getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
     
     int clubId = 0;
     if (pclub.empty())
@@ -2013,10 +1999,13 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
     }
   }
 
-  //cardToRunnerHash.reset();
-  if (cardToRunnerHash && r.getCardNo() != 0) {
-    cardToRunnerHash->emplace(r.getCardNo(), pr);
+  if (cardToRunnerHash) {
+    if (r.getCardNo() != 0) 
+      cardToRunnerHash->emplace(r.getCardNo(), pr);
+    if (r.getCardNo2() != 0) 
+     cardToRunnerHash->emplace(r.getCardNo2(), pr);
   } 
+
   if (classIdToRunnerHash && r.getClassId(false)) {
     (*classIdToRunnerHash)[r.getClassId(true)].push_back(pr);
   }
@@ -2028,8 +2017,12 @@ pRunner oEvent::addRunner(const oRunner &r, bool updateStartNo) {
     nextFreeStartNo = max(nextFreeStartNo, pr->StartNo);
   }
 
-  if (pr->Card)
-    pr->Card->tOwner = pr;
+  if (pr->cardPtr)
+    pr->cardPtr->tOwner = pr;
+  
+  if (pr->cardPtr2)
+    pr->cardPtr2->tOwner = pr;
+
 
   if (hasDBConnection()) {
     if (!pr->existInDB() && !pr->isImplicitlyCreated())
@@ -2840,8 +2833,7 @@ int oEvent::getRelativeTime(const wstring &m) const {
   else return -1;
 }
 
-void oEvent::removeRunner(const vector<int> &ids)
-{
+void oEvent::removeRunner(const vector<int> &ids) {
   cardToRunnerHash.reset();
   classIdToRunnerHash.reset();
   oRunnerList::iterator it;
@@ -2892,9 +2884,13 @@ void oEvent::removeRunner(const vector<int> &ids)
         sqlRemove(&cr);
       toRemove.erase(cr.getId());
       runnerById.erase(cr.getId());
-      if (cr.Card) {
-        assert( cr.Card->tOwner == &cr );
-        cr.Card->tOwner = nullptr;
+      if (cr.cardPtr) {
+        assert( cr.cardPtr->tOwner == &cr );
+        cr.cardPtr->tOwner = nullptr;
+      }
+      if (cr.cardPtr2) {
+        assert(cr.cardPtr2->tOwner == &cr);
+        cr.cardPtr2->tOwner = nullptr;
       }
       // Reset team runner (this should not happen)
       if (it->tInTeam) {
@@ -3006,8 +3002,11 @@ void oEvent::removeCard(int Id) {
   for (auto it = Cards.begin(); it != Cards.end(); ++it) {
     if (it->getOwner() == 0 && it->Id == Id) {
       if (it->tOwner) {
-        if (it->tOwner->Card == &*it)
-          it->tOwner->Card = nullptr;
+        if (it->tOwner->cardPtr == &*it)
+          it->tOwner->cardPtr = nullptr;
+
+        if (it->tOwner->cardPtr2 == &*it)
+          it->tOwner->cardPtr2 = nullptr;
       }
       if (hasDBConnection())
         sqlRemove(&*it);
@@ -3157,7 +3156,7 @@ void oEvent::generateVacancyList(gdioutput &gdi, GUICALLBACK cb)
   sortRunners(ClassStartTime);
   oRunnerList::iterator it;
 
-  // BIB, START, NAME, CLUB, SI
+  // BIB, START, NAME, CLUB, CARD
   int dx[5]={0, 0, gdi.scaleLength(70), gdi.scaleLength(150)};
 
   bool withbib=hasBib(true, false);
@@ -3540,7 +3539,7 @@ void oEvent::generateInForestList(gdioutput& gdi, GUICALLBACK cb, GUICALLBACK cb
     gdi.addString("", y, x, 1, "Okända brickor med registreringar");
 
     bool useRunnerDB = false;
-    if (getMeOSFeatures().hasFeature(MeOSFeatures::RunnerDb)) {
+    if (getMeOSFeatures().hasFeature(MeOSFeatures::Feature::RunnerDb)) {
       useRunnerDB = true;
       y += lh;
       gdi.addString("", y, x, gdiFonts::fontSmall, "Namn/klubb från löpardatabasen");
@@ -4355,8 +4354,10 @@ bool oEvent::deleteCompetition()
   else return false;
 }
 
-void oEvent::newCompetition(const wstring &name)
-{
+void oEvent::newCompetition(const wstring &name) {
+  if (runnerDB->isFromServer() || runnerDB->isEmpty())
+    openRunnerDatabase(L"database", false);
+
   openFileLock->unlockFile();
   clear();
 
@@ -4861,6 +4862,9 @@ void oEvent::convertTimes(pRunner runner, SICard &sic) const
   }
 
   for (unsigned k = 0; k < sic.nPunch; k++){
+    if (sic.Punch[k].Time == -1)
+      continue;
+
     if (sic.Punch[k].Code!=-1){
       if (sic.Punch[k].Time<unsigned(ZeroTime))
         sic.Punch[k].Time+=(24*timeConstHour);
@@ -4893,13 +4897,13 @@ int oEvent::getFirstStart(int classId, bool considerStartPunches) const {
     if (r.tStartTime > minTime || r.tStatus == StatusNotCompeting || r.tStartTime <= 0)
       continue;
 
-    if (!considerStartPunches && r.Card && r.tUseStartPunch) {
+    if (!considerStartPunches && r.cardPtr && r.tUseStartPunch) {
       int startCode = oPunch::SpecialPunch::PunchStart;
       if (auto c = r.getCourse(false); c && c->useFirstAsStart() && c->getControl(0)) {
         startCode = c->getControl(0)->getFirstNumber();
       }
       bool skip = false;
-      for (auto p : r.Card->punches) {
+      for (auto p : r.cardPtr->punches) {
         if (p.getTypeCode() == startCode) {
           skip = true;
           break;
@@ -5770,7 +5774,7 @@ void oEvent::generateTestCard(SICard &sic) const {
   oRunner *parRunner = nullptr;
   int cardNo = 0;
   for (auto &it : Runners) {
-    if (it.Card)
+    if (it.cardPtr)
       continue;
     cardNo = it.getCardNo();
 
@@ -5883,7 +5887,7 @@ void oEvent::generateTestCard(SICard &sic) const {
 
       for (int k = 0; k <= pc->nControls() + 1; k++) {
         if (parRunner && parRunner->getCard()) {
-          auto p = parRunner->getCard()->getPunchByIndex(k);
+          auto p = parRunner->getCard()->getPunchByIndex(nullptr, k);
           if (p && p->getTypeCode() > 30) {
             sic.Punch[sic.nPunch].Code = p->getTypeCode();
             sic.Punch[sic.nPunch].Time = s + p->getTimeInt() - parRunner->getStartTime() + (distr(rnd) % 8 - 4) * timeConstSecond;
@@ -6376,10 +6380,13 @@ void oEvent::applyEventFees(bool updateClassFromEvent,
       if (it->skip())
         continue;
 
-      if (it->getDI().getInt("CardFee") != 0) {
+      if (it->getDI().getInt("CardFee") != 0) 
         it->getDI().setInt("CardFee", cf);
-        it->synchronize(true);
-      }
+
+      if (it->getDI().getInt("CardFee2") != 0) 
+        it->getDI().setInt("CardFee2", cf);
+      
+      it->synchronize(true);
     }
   }
 }
@@ -6405,9 +6412,9 @@ void oEvent::updateTabs(bool force, bool hide) const
   if (hide || isKiosk())
     hideTabs();
   else
-    createTabs(force, empty(), !hasTeam, !getMeOSFeatures().hasFeature(MeOSFeatures::Speaker),
-               !(getMeOSFeatures().hasFeature(MeOSFeatures::Economy)
-               || getMeOSFeatures().hasFeature(MeOSFeatures::EditClub)),
+    createTabs(force, empty(), !hasTeam, !getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Speaker),
+               !(getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy)
+               || getMeOSFeatures().hasFeature(MeOSFeatures::Feature::EditClub)),
                !hasLists, !hasRunner, skipCourses, Controls.empty() && !skipCourses);
 }
 
@@ -6418,7 +6425,7 @@ void oEvent::updateTabs(bool force) const
 #endif
 
 bool oEvent::useRunnerDb() const {
-  return getMeOSFeatures().hasFeature(MeOSFeatures::RunnerDb);
+  return getMeOSFeatures().hasFeature(MeOSFeatures::Feature::RunnerDb);
 }
 
 int oEvent::getBaseCardFee() const {
@@ -6887,16 +6894,16 @@ void oEvent::checkNecessaryFeatures() {
   }
 
   if (hasForkedIndividual)
-    oe->getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *this);
+    oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::ForkedIndividual, true, *this);
 
   if (hasRelay)
-    oe->getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+    oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *this);
 
   if (hasPatrol)
-    oe->getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+    oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Patrol, true, *this);
 
   if (hasMultiRace)
-    oe->getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *this);
+    oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::MultipleRaces, true, *this);
 
   oe->synchronize(true);
 }
@@ -6919,7 +6926,7 @@ bool oEvent::supportSubSeconds() const {
 }
 
 void oEvent::supportSubSeconds(bool use) {
-  TabSI::getSI().setSubSecondMode(use);
+  CardManager::instance().setSubSecondMode(use);
   getDI().setInt("SubSeconds", use ? 1 : 0);
 }
 
@@ -7439,4 +7446,20 @@ void oEvent::definePunchMapping(int code, oPunch::SpecialPunch value) {
   synchronize(true);
 
   setProperty("ControlMap", data);
+}
+
+string oEvent::getTimingSystem() const {
+  string out;
+  const wstring &raw = getDCI().getString("Timing");
+  if (raw.empty())
+    out = "SI";
+  else
+    out = string(raw.begin(), raw.end());
+
+  return out;
+}
+
+void oEvent::setTimingSystem(const string &system) {
+  wstring wsystem(system.begin(), system.end());
+  getDI().setString("Timing", wsystem);
 }

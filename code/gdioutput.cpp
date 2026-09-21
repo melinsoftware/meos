@@ -3934,13 +3934,11 @@ wstring gdioutput::getDelayedAlert() {
   return out;
 }
 
-void gdioutput::alert(const string &msg) const
-{
+void gdioutput::alert(const string &msg) const {
   alert(widen(msg));
 }
 
-void gdioutput::alert(const wstring &msg) const
-{
+void gdioutput::alert(const wstring &msg) const {
   if (isTestMode) {
     if (!cmdAnswers.empty()) {
       string ans = cmdAnswers.front();

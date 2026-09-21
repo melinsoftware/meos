@@ -2527,10 +2527,10 @@ void TabList::settingsResultList(gdioutput &gdi)
 
   lists.push_back(make_pair(lang.tl(L"Individuell"), 1));
   
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Patrol)) 
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Patrol)) 
     lists.push_back(make_pair(lang.tl(L"Patrull"), 2));
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Relay)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Relay)) {
     lists.push_back(make_pair(lang.tl(L"Stafett - total"), 3));
     lists.push_back(make_pair(lang.tl(L"Stafett - sammanställning"), 4));
     
@@ -2688,7 +2688,7 @@ bool TabList::loadPage(gdioutput &gdi)
     if (cnf.hasIndividual()) {
       gdi.addButton("StartIndividual", "Individuell", ListsCB);
       checkWidth(gdi);
-      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs))
+      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs))
         gdi.addButton("StartClub", "Klubbstartlista", ListsCB);
     }
     if (cnf.hasPatrol()) {
@@ -2752,7 +2752,7 @@ bool TabList::loadPage(gdioutput &gdi)
       gdi.addButton("Result:latestresult", "Latest Results", ListsCB).setExtra(AddAllClasses);
       checkWidth(gdi);
 
-      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
         gdi.addButton("ResultClub", "Klubbresultat", ListsCB);
         checkWidth(gdi);
       }
@@ -2933,7 +2933,7 @@ bool TabList::loadPage(gdioutput &gdi)
   gdi.addButton("PreReport", "Kör kontroll inför tävlingen...", ListsCB);
   checkWidth(gdi);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy) && cnf.hasIndividual()) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy) && cnf.hasIndividual()) {
     gdi.addButton("GenLst:unexpectedfee", "Unexpected Fee", ListsCB);
     checkWidth(gdi);
   }
@@ -3473,7 +3473,7 @@ void TabList::getPublicLists(oEvent &oe, vector<oListParam> &lists) {
       lists.push_back(oListParam());
       getStartIndividual(lists.back(), cnf);
 
-      if (oe.getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+      if (oe.getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
         lists.push_back(oListParam());
         getStartClub(lists.back());
       }
@@ -3495,7 +3495,7 @@ void TabList::getPublicLists(oEvent &oe, vector<oListParam> &lists) {
     if (cnf.hasIndividual()) {
       lists.push_back(oListParam());
       getResultIndividual(lists.back(), cnf);
-      if (oe.getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+      if (oe.getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
         lists.push_back(oListParam());
         getResultClub(lists.back(), cnf);
       }
@@ -3561,7 +3561,7 @@ ListEditor *TabList::getListEditorPtr() const {
 }
 
 gdioutput* TabList::showList(gdioutput& gdi, const oListInfo& listInfo, ListUpdater* listUpdater, bool hideToolButtons) {
-  auto &[gdiT, listT] = makeOwnWindow(gdi, true, listInfo);
+  auto [gdiT, listT] = makeOwnWindow(gdi, true, listInfo);
   listT->currentList = listInfo;
   listT->listUpdater = listUpdater;
   listT->hideButtons = hideToolButtons;

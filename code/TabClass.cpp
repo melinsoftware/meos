@@ -2636,7 +2636,7 @@ int TabClass::classCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.dropLine(2.4);
       gdi.popX();
 
-      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+      if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
         bool bibToVacant = oe->getDCI().getInt("NoVacantBib") == 0;
         gdi.addCheckbox("VacantBib", "Tilldela nummerlapp till vakanter", nullptr, bibToVacant);
         gdi.dropLine(2.5);
@@ -3713,7 +3713,7 @@ void TabClass::selectClass(gdioutput &gdi, int cid)
   if (pc->getBlock()>0)
     gdi.selectItemByData("StartBlock", pc->getBlock());
   else
-    gdi.selectItemByData("StartBlock", -1);
+    gdi.selectItemByData("StartBlock", 0);
 
   if (gdi.hasWidget("Status")) {
     vector< pair<wstring, size_t> > out;
@@ -3866,8 +3866,8 @@ void TabClass::legSetup(gdioutput &gdi) {
   gdi.addSelection("Predefined", 150, 200, MultiCB, L"Fördefinierade tävlingsformer:").ignore(true);
   oe->fillPredefinedCmp(gdi, "Predefined");
   if (storedPredefined == oEvent::PredefinedTypes(-1)) {
-    bool hasPatrol = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Patrol);
-    bool hasRelay = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Relay);
+    bool hasPatrol = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Patrol);
+    bool hasRelay = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Relay);
     if (hasRelay)
       storedPredefined = oEvent::PRelay;
     else if (hasPatrol)
@@ -3905,8 +3905,8 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
   bool isQF = (pc && pc->isQualificationFinalClass());
   bool simpleView = nLeg==1 || isQF;
 
-  bool showGuide = (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Relay) ||
-                   oe->getMeOSFeatures().hasFeature(MeOSFeatures::Patrol)) && nLeg==0 && !isQF;
+  bool showGuide = (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Relay) ||
+                   oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Patrol)) && nLeg==0 && !isQF;
 
   if (nLeg == 0 && !showGuide) {
     if (pc) {
@@ -3996,8 +3996,8 @@ void TabClass::multiCourse(gdioutput &gdi, int nLeg) {
       legs.push_back( make_pair(bf, j) );
     }
 
-    bool multipleRaces = oe->getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces);
-    bool hasRelay = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Relay);
+    bool multipleRaces = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::MultipleRaces);
+    bool hasRelay = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Relay);
 
     for (int k=0;k<nLeg;k++) {
       char legno[10];
@@ -4180,7 +4180,7 @@ void TabClass::save(gdioutput &gdi, bool skipReload)
     bool withDirect = gdi.isChecked("DirectResult");
 
     if (withDirect && !pc->hasDirectResult() && !hasWarnedDirect &&
-        !oe->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
+        !oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::NoCourses)) {
       if (gdi.ask(L"warning:direct_result"))
         hasWarnedDirect = true;
       else
@@ -4467,9 +4467,15 @@ bool TabClass::loadPage(gdioutput &gdi)
 
     gdi.addSelection("StartBlock", 80, 300, 0, L"Startblock:");
 
-    for (int k = 1; k <= 100; k++) {
-      gdi.addItem("StartBlock", itow(k), k);
+    vector<pair<wstring, size_t>> sb;
+    sb.reserve(51);
+    for (int k = 0; k <= 50; k++) {
+      if (k > 0)
+        sb.emplace_back(itow(k), k);
+      else
+        sb.emplace_back(makeDash(L"-"), k);
     }
+    gdi.setItems("StartBlock", sb);
 
     gdi.popX();
     gdi.dropLine(3);
@@ -4506,7 +4512,7 @@ bool TabClass::loadPage(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(3.5);
   gdi.addCheckbox("AllowQuickEntry", "Tillåt direktanmälan", 0);
-  if (showAdvanced || !oe->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
+  if (showAdvanced || !oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::NoCourses)) {
     gdi.addCheckbox("NoTiming", "Utan tidtagning", 0);
   }
 
@@ -4526,7 +4532,7 @@ bool TabClass::loadPage(gdioutput &gdi)
     gdi.popX();
   }
 
-  if (showAdvanced || oe->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
+  if (showAdvanced || oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::NoCourses)) {
     gdi.addCheckbox("DirectResult", "Resultat vid målstämpling", 0, false,
                     "help:DirectResult");
   }
@@ -4556,13 +4562,13 @@ bool TabClass::loadPage(gdioutput &gdi)
     }
   }
   vector<ButtonData> func;
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::DrawStartList))
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::DrawStartList))
     func.emplace_back("Draw", "Lotta / starttider...", false);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Bib))
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Bib))
     func.emplace_back("Bibs", "Nummerlappar...", false);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::DrawStartList))
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::DrawStartList))
     func.emplace_back("DrawMode", "Lotta flera klasser", true);
   
   if (showAdvanced)
@@ -4604,7 +4610,7 @@ bool TabClass::loadPage(gdioutput &gdi)
   }
   func.emplace_back("Duplicate", "Duplicera", false);
 
-  if (showAdvanced && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+  if (showAdvanced && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
     vector<pRunner> rr;
     oe->getRunners(0, 0, rr, false);
     bool hasVac = false;
@@ -4620,7 +4626,7 @@ bool TabClass::loadPage(gdioutput &gdi)
 
   func.emplace_back("QuickSettings", "Snabbinställningar", true);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces))
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::MultipleRaces))
     func.emplace_back("QualificationFinal", "Kval/final-schema", false);
 
   if (showAdvanced || oe->getStartGroups(true).size() > 0) 
@@ -4695,9 +4701,9 @@ bool TabClass::loadPage(gdioutput &gdi)
 bool TabClass::showMulti(bool singleOnly) const {
   const MeOSFeatures &mf = oe->getMeOSFeatures();
   if (!singleOnly)
-    return mf.hasFeature(MeOSFeatures::Relay) || mf.hasFeature(MeOSFeatures::Patrol) || mf.hasFeature(MeOSFeatures::ForkedIndividual);
+    return mf.hasFeature(MeOSFeatures::Feature::Relay) || mf.hasFeature(MeOSFeatures::Feature::Patrol) || mf.hasFeature(MeOSFeatures::Feature::ForkedIndividual);
   else
-    return mf.hasFeature(MeOSFeatures::Relay) || mf.hasFeature(MeOSFeatures::Patrol) ||  mf.hasFeature(MeOSFeatures::MultipleRaces);
+    return mf.hasFeature(MeOSFeatures::Feature::Relay) || mf.hasFeature(MeOSFeatures::Feature::Patrol) ||  mf.hasFeature(MeOSFeatures::Feature::MultipleRaces);
 }
 
 static int classSettingsCB(gdioutput *gdi, GuiEventType type, BaseInfo* data) {
@@ -4800,7 +4806,7 @@ void TabClass::prepareForDrawing(gdioutput &gdi) {
 
   RECT rc;
   bool setRC = false;
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Bib)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Bib)) {
     setRC = true;
     rc.top = gdi.getCY();
     rc.left = gdi.getCX() - margin;
@@ -4814,7 +4820,7 @@ void TabClass::prepareForDrawing(gdioutput &gdi) {
     gdi.dropLine(-0.2);
     gdi.addInput("BibGap", itow(oe->getBibClassGap()), 5);
     
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
       bool bibToVacant = oe->getDCI().getInt("NoVacantBib") == 0;
       gdi.dropLine(0.2);
       gdi.setCX(gdi.getCX() + gdi.scaleLength(15));
@@ -4985,7 +4991,7 @@ void TabClass::drawDialog(gdioutput &gdi, oEvent::DrawMethod method, const oClas
     gdi.addInput("Bib", L"", 10, 0, L"", L"Mata in första nummerlappsnummer, eller blankt för att ta bort nummerlappar");
     gdi.setInputStatus("Bib", lastHandleBibs);
 
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Vacancy)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Vacancy)) {
       gdi.dropLine(2);
       gdi.popX();
       gdi.setCX(gdi.getCX() + gdi.scaleLength(20));
@@ -5531,7 +5537,7 @@ int TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
   int g = gdi.scaleLength(535);
 
   int ek1 = 0, ekextra = 0;
-  bool useEco = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy);
+  bool useEco = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy);
   bool useEcaExtraLate = false;
   gdi.setOnClearCb("quick_settings", cb);
   RECT rcLate;
@@ -5590,7 +5596,7 @@ int TabClass::getClassSettingsTable(gdioutput &gdi, GUICALLBACK cb) {
   gdi.addString("", yp, c, 1, "Index");
   gdi.addString("", yp, d, 1, "Bana");
   
-  const bool useBibs = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Bib);
+  const bool useBibs = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Bib);
   const bool useTeam = oe->hasTeam();
 
   vector<pair<wstring, size_t>> bibOptions;

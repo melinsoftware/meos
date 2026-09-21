@@ -43,7 +43,7 @@ typedef oRunner *pRunner;
 class oControl;
 typedef oControl* pControl;
 
-struct SICard;
+struct DeviceCard;
 class Table;
 
 class oCard : public oBase {
@@ -68,9 +68,24 @@ protected:
 
   mutable string punchString;
 
+  /** Raw merge of punches (type/time) */
+  vector<pPunch> merge(const oCard &secondaryCard) const;
+
+  bool deletePunch(pPunch p);
+
+  pPunch findPunch(int type, int time) const;
+
 public:
   /** Get start time from a punch (or -1)*/
   int getStartTime(int ptype) const;
+
+  /** Construct a common punch list from a secondary card*/
+  void constructUnitedPL(const oCard &secondaryCard, oPunchList &pl) const;
+  
+  vector<pPunch> getPunchList(oCard *secondaryCard);
+
+  vector<const oPunch *> getPunchList(const oCard *secondaryCard) const;
+
 
   int getStartPunchCode() const;
   int getFinishPunchCode() const;
@@ -111,7 +126,8 @@ public:
 
   /// Returns the split time from the last used punch
   /// to the current punch, as indicated by evaluateCard
-  int getSplitTime(int startTime, const pPunch punch) const;
+  int getSplitTime(int startTime, const oPunch *punch) const;
+  static int getSplitTime(const oPunchList &punches, int startTime, const oPunch *punch);
 
   pRunner getOwner() const;
   int getNumPunches() const {return punches.size();}
@@ -120,15 +136,14 @@ public:
   int getNumControlPunches(int startPunchType, int finishPunchType) const;
   
   bool setPunchTime(const pPunch punch, const wstring &time);
-  bool isCardRead(const SICard &card) const;
-  void setReadId(const SICard &card);
-  // Get SI-Card from oCard (just punches)
-  void getSICard(SICard &card) const;
+  bool isCardRead(const DeviceCard &card) const;
+  void setReadId(const DeviceCard &card);
+  // Get DeviceCard from oCard (just punches)
+  void getDeviceCard(const pCard secondaryCard, DeviceCard &card) const;
 
-  void deletePunch(pPunch pp);
-  void insertPunchAfter(int pos, int type, int time);
-
-  bool fillPunches(gdioutput &gdi, const string &name, oCourse *crs);
+  void deletePunch(pCard card2, int mergedPunchIndex);
+  
+  bool fillPunches(const oCard *card2, gdioutput &gdi, const string &name, const oCourse *crs) const;
 
   /** Get a (candidate) incorrect punch for the specified missing control on the course */
   pair<int, pControl> getWrongPunch(const oCourse &crs, const oControl &ctrl);
@@ -151,9 +166,11 @@ public:
   void addPunch(int type, int time, int matchControlId, int unit, PunchOrigin origin);
   oPunch *getPunchByType(int type) const;
 
+  void insert(const oPunch &position, const oPunch toInsert);
+
   //Get punch by (matched) control punch id.
   oPunch *getPunchById(int courseControlId) const;
-  oPunch *getPunchByIndex(int ix) const;
+  oPunch *getPunchByIndex(const oCard *card2, int ix) const;
 
   // Get all punches
   void getPunches(vector<pPunch> &punches) const;
@@ -172,8 +189,8 @@ public:
   void merge(const oBase &input, const oBase *base) final;
   pair<int, int> getCardHash() const;
 
-  void Set(const xmlobject &xo);
-  bool Write(xmlparser &xml);
+  void set(const xmlobject &xo);
+  bool write(xmlparser &xml, bool secondary);
 
   oCard(oEvent *poe);
   oCard(oEvent *poe, int id);

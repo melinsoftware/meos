@@ -1016,7 +1016,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
     gdi.addButton("AddMap", "Lägg till karta...", CourseCB);
   }
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::DrawStartList)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::DrawStartList)) {
     gdi.addButton("DrawCourse", "Lotta starttider..", CourseCB);
     gdi.disableInput("DrawCourse");
     gdi.popX();
@@ -1105,7 +1105,7 @@ bool TabCourse::loadPage(gdioutput &gdi) {
   gdi.dropLine(2.5);
   gdi.popX();
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Rogaining)) {
     RECT rc;
     rc.top = gdi.getCY() -5;
     rc.left = gdi.getCX();

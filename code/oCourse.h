@@ -37,8 +37,7 @@ class oCard;
 
 class gdioutput;
 class oDataInterface;
-
-struct SICard;
+struct DeviceCard;
 
 class oCourse : public oBase
 {
@@ -138,7 +137,7 @@ public:
   int getNumUsedMaps(bool noVacant) const;
 
   //Get a loop course adapted to a card.
-  pCourse getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &numShorten) const;
+  pCourse getAdapetedCourse(const oCard &card, const oCard *card2, oCourse &tmpCourse, int &numShorten) const;
 
   // Returns true if this course is adapted to specific punches
   bool isAdapted() const;
@@ -208,7 +207,7 @@ public:
       Positive return = extra controls
       Negative return = missing controls
       Zero return = exact match */
-  int distance(const SICard &card) const;
+  int distance(const DeviceCard &card) const;
   int distance(const oCard &card) const;
   int distance(int *punches, int numPunches) const;
 

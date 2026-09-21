@@ -43,7 +43,7 @@ private:
 
   void cellAction(gdioutput &gdi, DWORD id, oBase *obj);
 
-  void showCardDetails(gdioutput &gdi, pCard c, bool autoSelect);
+  void showCardDetails(gdioutput &gdi, const oCard &c, bool autoSelect);
 
   void selectRunner(gdioutput &gdi, pRunner r);
 
@@ -124,6 +124,7 @@ private:
                          bool includeSplits, int numResults,
                          RECT &rc);
 
+  pCourse updateCard(gdioutput &dst, oRunner &r);
 
   void showVacancyList(gdioutput &gdi, const string &method="", int classId=0);
   void showCardsList(gdioutput &gdi);
@@ -131,8 +132,8 @@ private:
   bool canSetStart(pRunner r) const;
   bool canSetFinish(pRunner r) const;
 
-  void warnDuplicateCard(gdioutput &gdi, int cno, pRunner r);
-  pRunner warnDuplicateCard(int cno, pRunner r);
+  static void warnDuplicateCard(gdioutput &gdi, int cno, int cno2, const oRunner &r);
+  static pair<pRunner, pRunner> warnDuplicateCard(int cno, int cno2, const oRunner &r);
 
   int numShorteningLevels() const;
 
@@ -141,7 +142,7 @@ private:
   static void autoGrowCourse(gdioutput &gdi);
 
   void loadEconomy(gdioutput &gdi, oRunner &r, gdioutput *gdiMain, TabRunner *mainTab);
-  static void unpairCard(pRunner r);
+  static void unpairCard(pRunner r, bool secondaryCard);
 
   class EconomyHandler : public GuiHandler {
     int runnerId;

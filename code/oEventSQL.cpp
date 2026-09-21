@@ -528,7 +528,8 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci) {
 
   isConnectedToServer = false;
 
-  openRunnerDatabase(currentNameId.c_str());
+  // Open cached runner database
+  openRunnerDatabase(currentNameId.c_str(), true);
 
   int ret = sqlConnection->syncRead(false, this);
   if (ret == 0) {
@@ -819,7 +820,7 @@ int oEvent::checkChanged(vector<wstring> &out) const
       it!=oe->punches.end(); ++it)
     if (it->isChanged()) {
       changed++;
-      swprintf_s(bf, L"Punch SI=%d, %d", it->CardNo, it->type);
+      swprintf_s(bf, L"Punch card=%d, %d", it->CardNo, it->type);
       out.push_back(bf);
       it->synchronize();
     }

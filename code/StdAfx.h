@@ -53,6 +53,9 @@ using std::deque;
 using std::tuple;
 
 bool getUserFile(wchar_t *fileNamePath, const wchar_t *fileName);
+wstring getUserFile(const wchar_t *fileName);
+wstring getUserFile(const wstring &fileName);
+
 bool getDesktopFile(wchar_t *fileNamePath, const wchar_t *fileName, const wchar_t *subFolder = 0);
 wstring getMeOSFile(const wchar_t *fileName);
 

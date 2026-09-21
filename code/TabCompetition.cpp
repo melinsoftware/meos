@@ -26,7 +26,6 @@
 #include "xmlparser.h"
 #include "gdioutput.h"
 #include "csvparser.h"
-#include "SportIdent.h"
 #include "meos_util.h"
 #include "TabCompetition.h"
 #include "TabCourse.h"
@@ -47,6 +46,7 @@
 #include "testmeos.h"
 #include "importformats.h"
 #include "HTMLWriter.h"
+#include "resource.h"
 
 #include "MeosSQL.h"
 
@@ -75,11 +75,8 @@ TabCompetition::TabCompetition(oEvent *poe):TabBase(poe)
   lastChangeClassType = oEvent::ChangeClassVacant;
 }
 
-TabCompetition::~TabCompetition(void)
-{
-}
+TabCompetition::~TabCompetition(void) = default;
 
-extern SportIdent *gSI;
 extern HINSTANCE hInst;
 extern HWND hWndMain;
 
@@ -861,7 +858,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       if (id>0) {
         oe->save();
         openCompetition(gdi, id);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::SeveralStages, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::SeveralStages, true, *oe);
         if (openPost) {
           oe->getDI().setString("PreEvent", nameId);
           if (theNumber > 1) {
@@ -1554,7 +1551,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
           gdi.addString("", 1, "Skapar ny tävling");
           oe->newCompetition(L"New");
           oe->loadDefaults();
-          oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
+          oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
 
           bool importHiredCard = true;
           if (importHiredCard)
@@ -1643,19 +1640,19 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       gdi.addString("", 1, "Klart").setColor(colorGreen);
 
       if (id > 0) {
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::Speaker, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::Economy, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::EditClub, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::Network, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::Vacancy, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::InForest, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::DrawStartList, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::Bib, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::RunnerDb, true, *oe);
-        oe->getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Speaker, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Economy, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::EditClub, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Network, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Vacancy, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::InForest, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::DrawStartList, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Bib, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::RunnerDb, true, *oe);
+        oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::ForkedIndividual, true, *oe);
 
         if (oe->hasTeam()) {
-          oe->getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *oe);
+          oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *oe);
         }
       }
       gdi.scrollToBottom();
@@ -1685,7 +1682,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
     else if (bi.id=="FreeImport") {
       gdi.clearPage(true);
       gdi.addString("", 2, "Fri anmälningsimport");
-      gdi.addString("", 10, "help:33940");
+      gdi.addString("", 10, "help:freeimport");
       gdi.dropLine(0.5);
       gdi.addInputBox("EntryText", 550, 280, entryText, 0, L"");
       gdi.dropLine(0.5);
@@ -1760,7 +1757,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
   
       fi.showEntries(gdi, entries);
       gdi.fillRight();
-      gdi.dropLine(1);
+      gdi.dropLine(2);
       gdi.addButton("DoFreeImport", "Spara anmälningar", CompetitionCB);
       gdi.addButton("FreeImport", "Ändra", CompetitionCB);
 
@@ -1963,24 +1960,24 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       loadPage(gdi);
       return 0;
     }
-    else if (bi.id=="OpenCmp") {
+    else if (bi.id == "OpenCmp") {
       ListBoxInfo lbi;
-      int id=0;
-      bool frontPage=true;
+      int id = 0;
+      bool frontPage = true;
       if (!gdi.getSelectedItem("CmpSel", lbi)) {
-        frontPage=false;
-        if ( gdi.getSelectedItem("ServerCmp", lbi) )
-          id=lbi.data;
-        else if ( gdi.getSelectedItem("LocalCmp", lbi) )
-          id=lbi.data;
+        frontPage = false;
+        if (gdi.getSelectedItem("ServerCmp", lbi))
+          id = lbi.data;
+        else if (gdi.getSelectedItem("LocalCmp", lbi))
+          id = lbi.data;
       }
-      else id=lbi.data;
+      else id = lbi.data;
 
-      if (id==0)
+      if (id == 0)
         throw meosException("Ingen tävling vald.");
 
       openCompetition(gdi, id);
-     
+
       if (frontPage)
         loadPage(gdi);
       else {
@@ -1991,7 +1988,11 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       }
 
       if (oe->isClient() && oe->getPropertyInt("UseDirectSocket", true) != 0) {
-          oe->getDirectSocket().startUDPSocketThread(gdi.getHWNDMain());
+        oe->getDirectSocket().startUDPSocketThread(gdi.getHWNDMain());
+      }
+
+      if (!oe->getRunnerDatabase().matchingCardSystem()) {
+        gdi.addInfoBox("nonmatchdb", L"#" + lang.tl(getTimingSystemWarning()), L"Löpardatabasen", BoxStyle::HeaderWarning, 20000);
       }
       return 0;
     }
@@ -2705,7 +2706,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
                     CompetitionCB, "Visa och hantera löpardatabasen", false, false);
     }
 
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::SeveralStages)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::SeveralStages)) {
       gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "MultiEvent", "Hantera flera etapper",
                     CompetitionCB, "", false, false);
     }
@@ -2714,7 +2715,7 @@ bool TabCompetition::loadPage(gdioutput &gdi)
     gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "Merge", "Slå ihop tävlingar",
                   CompetitionCB, "", false, false);
 
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Network)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Network)) {
       gdi.addButton(gdi.getCX(), gdi.getCY(), bw, "ConnectMySQL", "Databasanslutning",
                     CompetitionCB, "", false, false);
     }
@@ -3232,10 +3233,27 @@ void TabCompetition::loadMultiEvent(gdioutput &gdi) {
   gdi.refresh();
 }
 
+string TabCompetition::getTimingSystemWarning() {
+  return "Tidtagningssystemet (X) och brickorna i databasen (Y) är olika#" +
+    oe->getTimingSystem() + "#"
+    + oe->getRunnerDatabase().getCurrentCardType();
+}
+
 void TabCompetition::loadRunnerDB(gdioutput &gdi, int tableToShow, bool updateTableOnly) {
   if (!updateTableOnly) {
     gdi.clearPage(false);
     gdi.addString("", boldLarge, "Löpardatabasen");
+
+    if (!oe->getRunnerDatabase().matchingCardSystem()) {
+      gdi.fillRight();
+      gdi.dropLine(0.5);
+      gdi.addString("", textImage, itow(IDI_MEOSWARN));
+      gdi.dropLine(0.2);
+      gdi.fillDown();
+      gdi.addString("", 0, getTimingSystemWarning());
+      gdi.popX();
+      gdi.fillDown();
+    }
 
     gdi.setRestorePoint("DBHeader");
   }
@@ -3795,7 +3813,7 @@ FlowOperation importFilterGUI(oEvent *oe,
           filter.insert(stage);
           if (oe->getStageNumber() == 0) {
             oe->setStageNumber(stage);
-            oe->getMeOSFeatures().useFeature(MeOSFeatures::SeveralStages, true, *oe);
+            oe->getMeOSFeatures().useFeature(MeOSFeatures::Feature::SeveralStages, true, *oe);
           }
         }
       }
@@ -4337,7 +4355,7 @@ void TabCompetition::loadSettings(gdioutput &gdi) {
   gdi.fillRight();
   gdi.pushX();
   fields.push_back("MaxTime");
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Rogaining)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Rogaining)) {
     fields.push_back("DiffTime");
     fields.push_back("ScoreDecimal");
   }

@@ -25,17 +25,17 @@
 
 //AB
 int getMeosBuild() {
-  string revision("$Rev: 1677 $");
+  string revision("$Rev: 1682 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2026-09-12 09:12:27 +0200 (lör, 12 sep 2026) $");
+  wstring date(L"$Date: 2026-09-21 20:13:47 +0200 (mån, 21 sep 2026) $");
   return date.substr(7,10);
 }
 
 wstring getBuildType() {
-  return L"U3"; // No parantheses (...)
+  return L"SPECIAL"; // No parantheses (...)
 }
 
 wstring getMajorVersion() {
@@ -164,6 +164,6 @@ void getSupporters(vector<wstring>& supp, vector<wstring>& developSupp){
   supp.emplace_back(L"HEYRIES / ACA Aix en Provence");
   supp.emplace_back(L"Autidó");
   supp.emplace_back(L"Vallentuna-Össeby OL");
-  
+
   reverse(supp.begin(), supp.end());
 }

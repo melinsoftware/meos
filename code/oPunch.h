@@ -41,30 +41,32 @@ protected:
   bool isUsed = false; //Is used in the course...
 
   // Index into course (-1 if unused)
-  int tRogainingIndex;
+  int tRogainingIndex = -1;
 
   // Index into course (-1 if unused) for a rogaining control, even if it did not give any points
-  int anyRogainingMatchControlId;
+  int anyRogainingMatchControlId = -1;
   // Number of rogaining points given
-  int tRogainingPoints;
+  int tRogainingPoints = -1;
 
   //Adjustment of this punch, loaded from control. First is a fixed time adjustment (from control, "wrong time set")
   // second is dynamic adjustment (minimum time between controls etc)
   pair<int, int> tTimeAdjust;
 
-  int tCardIndex = -1; // Index into card
-  int tIndex; // Control match index in course
-  int tMatchControlId;
-  bool hasBeenPlayed;
+  int tIndex = -1; // Control match index in course
+  int tMatchControlId = -1;
+  bool hasBeenPlayed = false;
 
   /** Get internal data buffers for DI */
   oDataContainer& getDataBuffers(pvoid& data, pvoid& olddata, pvectorstr& strData) const;
   int getDISize() const final { return -1; }
 
   void changedObject();
-  mutable int previousPunchTime; /// Note that this is not valid in general
+  mutable int previousPunchTime = 0; /// Note that this is not valid in general
 
 public:
+
+  /** Clear transient data*/
+  void clear();
 
   const oControl *getRogainingControl(const oCourse &crs) const;
 
@@ -93,7 +95,7 @@ public:
   const wstring& getType(const oCourse* crs) const;
   static const wstring& getType(int type, const oCourse* crs);
   int getTypeCode() const { return type; }
-  wstring getString() const;
+  wstring getString(bool allUsed = false) const;
   wstring getSimpleString() const;
 
   wstring getTime(bool adjusted, SubSecond mode) const;

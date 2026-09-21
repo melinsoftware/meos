@@ -42,6 +42,12 @@ enum class DynamicRunnerStatus {
   StatusFinished
 };
 
+enum class Card {
+  Primary,
+  Secondary,
+  All,
+};
+
 /** Returns true for a status that might or might not indicate a result. */
 template<int dummy=0>
 bool isPossibleResultStatus(RunnerStatus st) {
@@ -123,8 +129,7 @@ class oTeam;
 typedef oTeam* pTeam;
 typedef const oTeam* cTeam;
 
-struct SICard;
-
+struct DeviceCard;
 
 class oAbstractRunner : public oBase {
 protected:
@@ -619,11 +624,16 @@ public:
   };
 
 protected:
-  pCourse Course;
+  pCourse coursePtr = nullptr;
 
-  int cardNumber;
-  pCard Card;
+  int cardNumber = 0;
+  pCard cardPtr = nullptr;
   bool cardWasSet = false;
+
+  int cardNumber2 = 0;
+  pCard cardPtr2 = nullptr;
+  bool cardWasSet2 = false;
+
 
   vector<pRunner> multiRunner;
   vector<int> multiRunnerId;
@@ -786,12 +796,14 @@ protected:
 
   /** Internal propagate club.*/
   void propagateClub();
-
-  bool isRentalCard(int card) const;
+  bool isRentalCard(Card target, int card) const;
 
   int tmpStartGroup = 0;
 
   int getBuiltinAdjustment() const override;
+
+  // Used for creating a mergerd result from several cards
+  oPunchList tmpPunchList;
 
 public:
 
@@ -799,7 +811,7 @@ public:
   oClass::RogainingAnalysis getRogainingAnalysis(int from, int to) const;
 
   bool runnerHasResult() const final {
-    if (Card == nullptr) {
+    if (cardPtr == nullptr) {
       if (pCourse crs = getCourse(false); crs != nullptr)
         return false; // A card is expected but not present
     }
@@ -840,7 +852,7 @@ public:
   
   /** Return true if the race is completed (or definitely never will be started), e.g., not in forest*/
   bool hasFinished() const {
-    if (Card != nullptr || FinishTime > 0)
+    if (cardPtr != nullptr || FinishTime > 0)
       return true;
     else if (tStatus == StatusUnknown)
       return false;
@@ -973,7 +985,7 @@ public:
   RunnerStatus getTotalStatus(bool allowUpdate = true) const override;
 
   // Return the runner in a multi-runner set matching the card, if course type is extra
-  pRunner getMatchedRunner(const SICard &sic) const;
+  pRunner getMatchedRunner(const DeviceCard &sic) const;
 
   int getRogainingPoints(bool computed, bool multidayTotal) const override;
   int getRogainingPointsGross(bool computed) const override;
@@ -1121,20 +1133,37 @@ public:
   int getNumShortening() const;
   void setNumShortening(int numShorten);
 
-  pCard getCard() const {return Card;}
-  int getCardId() const {if (Card) return Card->Id; else return 0;}
+  pCard getCard() const {return cardPtr;}
+  int getCardId() const {return cardPtr ? cardPtr->Id : 0;}
+
+  pCard getCard2() const { return cardPtr2; }
+  int getCardId2() const { return cardPtr2 ? cardPtr2->Id : 0; }
+
+  /** Common list of punches, possibly a merge from several cards*/
+  const oPunchList &getCardPunches() const;
 
   bool operator<(const oRunner &c) const;
   bool static CompareCardNumber(const oRunner &a, const oRunner &b) { return a.cardNumber < b.cardNumber; }
 
   bool evaluateCard(bool applyTeam, vector<pair<int, pControl>> &missingPunches, int addPunch, ChangeType changeType);
-  void addCard(pCard card, vector<pair<int, pControl>> &missingPunches);
+  
+  /** Sets the card to a given card. An existing card is marked as unpaired.
+   *  Also updates shortenings / course version run
+   *  CardNo is updated. Returns id of old card (or 0).
+   */
+  void addCard(oCard &newCard, Card target, vector<pair<int, pControl>> &missingPunches);
+
+  /** Sets the card to a given card. An existing card is marked as unpaired.
+      CardNo is updated. Returns id of old card (or 0).
+  */
+  int setCard(int cardId, Card target);
+
 
   /** Get split time for a controlId and optionally controlIndex on course (-1 means unknown, uses the first occurance on course)*/
   void getSplitTime(int courseControlId, RunnerStatus &stat, int &rt) const;
 
   //Returns only Id of a runner-specific course, not classcourse
-  int getCourseId() const {if (Course) return Course->Id; else return 0;}
+  int getCourseId() const {return coursePtr ? coursePtr->Id : 0;}
   void setCourseId(int id);
 
   bool useCoursePool() const {
@@ -1142,17 +1171,24 @@ public:
   }
 
   /** Return true if rental card*/
-  bool isRentalCard() const;
+  bool isRentalCard(Card target) const;
+
+  enum class CardFeeType {
+    PrimaryOnly, 
+    SecondaryOnly,
+    All
+  };
 
   /** Get the rental card fee.
      If forAllRunners is true, the total
-     fee is computed (for all multirunners)
+     fee is computed (for all multirunners,
+     and Card::All is the only supported option)
      otherwise only the fee for this runner's
      card is included. */
-  int getRentalCardFee(bool forAllRunners) const;
+  int getRentalCardFee(bool forAllRunners, Card feeType = Card::All) const;
 
   /** Set rental card status (does not update fee)*/
-  void setRentalCard(bool rental);
+  void setRentalCard(Card target, bool rental);
 
 
   /** Require payment before giving result */
@@ -1166,15 +1202,18 @@ public:
   /** Set flag to require payment before result is given */
   void setPayBeforeResult(bool flag);
 
-
   int getCardNo() const { return tParentRunner && cardNumber == 0 ? tParentRunner->cardNumber : cardNumber; }
+  int getCardNo2() const { return tParentRunner && cardNumber2 == 0 ? tParentRunner->cardNumber2 : cardNumber2; }
+
+  bool getCardNo(Card target) const {
+    return target==Card::Secondary ? getCardNo2() : getCardNo();
+  }
+
   void setCardNo(int card, bool matchCard, bool updateFromDatabase = false);
-  /** Sets the card to a given card. An existing card is marked as unpaired.
-      CardNo is updated. Returns id of old card (or 0).
-  */
-  int setCard(int cardId);
-  void Set(const xmlobject &xo);
-  bool Write(xmlparser &xml);
+  void setCardNo2(int card, bool matchCard, bool updateFromDatabase = false);
+
+  void set(const xmlobject &xo);
+  bool write(xmlparser &xml);
   
   oRunner(oEvent *poe);
   oRunner(oEvent *poe, int id);

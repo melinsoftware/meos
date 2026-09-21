@@ -667,8 +667,7 @@ void oEvent::importXML_EntryData(gdioutput &gdi, const wstring &file,
   removeRunner(toRemove);
 }
 
-bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
-{
+bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId, const string &timingSystem) {
   if (!xentry) return false;
 
   xmlobject person = xentry.getObject("Person");
@@ -692,7 +691,7 @@ bool oEvent::addXMLCompetitorDB(const xmlobject &xentry, int clubId)
     xmlobject &card = cards[k];
     if (card) {
       xmlobject psys = card.getObject("PunchingUnitType");
-      if (!psys || psys.getObjectString("value", tmp) == "SI") {
+      if (!psys || psys.getObjectString("value", tmp) == timingSystem) {
         cardno = card.getObjectInt("CCardId");
         break;
       }
@@ -1008,12 +1007,14 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
   wstring given = r->getGivenName();
   xmlList cards;
   xentry.getObjects("CCard", cards);
-  wstring tmp;
+  string timingSystem = getTimingSystem();
+
   for (size_t k= 0; k<cards.size(); k++) {
     xmlobject &card = cards[k];
     if (card) {
+      string tmp;
       xmlobject psys = card.getObject("PunchingUnitType");
-      if (!psys || psys.getObjectString("value", tmp) == L"SI") {
+      if (!psys || psys.getObjectString("value", tmp) == timingSystem) {
         int cardno = card.getObjectInt("CCardId");
         r->setCardNo(cardno, false);
         break;
@@ -1034,6 +1035,7 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
     r->updateChanged();
 
   xmlobject edate=xentry.getObject("EntryDate");
+  wstring tmp;
   if (edate) DI.setDate("EntryDate", edate.getObjectString("Date", tmp));
 
   r->addClassDefaultFee(false);
@@ -1152,6 +1154,7 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
 
   int cardno = xstrt.getObjectInt("CCardId");
 
+  string timingSystem = getTimingSystem();
   if (cardno == 0) {
     xmlList cards;
     xstrt.getObjects("CCard", cards);
@@ -1160,7 +1163,7 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
       xmlobject &card = cards[k];
       if (card) {
         xmlobject psys = card.getObject("PunchingUnitType");
-        if (!psys || psys.getObjectString("value", tmp) == "SI") {
+        if (!psys || psys.getObjectString("value", tmp) == timingSystem) {
           int cardno = card.getObjectInt("CCardId");
           r->setCardNo(cardno, false);
           break;
@@ -1248,9 +1251,8 @@ void oEvent::importOECSV_Data(const wstring &oecsvfile, bool clear) {
 }
 
 void oEvent::importXML_IOF_Data(const wstring &clubfile,
-                                const wstring &competitorfile, 
-                                bool onlyWithClub, bool clear)
-{
+                                const wstring &competitorfile,
+                                bool onlyWithClub, bool clear) {
   if (!clubfile.empty()) {
     xmlparser xml_club;
     xml_club.setProgress(gdibase.getHWNDTarget());
@@ -1258,12 +1260,12 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     if (clear && !competitorfile.empty())
       runnerDB->clearClubs();
 
-    gdibase.addString("",0,"Läser klubbar...");
+    gdibase.addString("", 0, "Läser klubbar...");
     gdibase.refresh();
 
     xml_club.read(clubfile);
 
-    gdibase.addString("",0,"Lägger till klubbar...");
+    gdibase.addString("", 0, "Lägger till klubbar...");
     gdibase.refresh();
 
     xmlobject xo = xml_club.getObject("ClubList");
@@ -1282,7 +1284,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
         xo.getObjects(xl);
 
       xmlList::const_iterator it;
-      for (it=xl.begin(); it != xl.end(); ++it)
+      for (it = xl.begin(); it != xl.end(); ++it)
         if (it->is("Club")) {
           if (addXMLClub(*it, true))
             clubCount++;
@@ -1295,21 +1297,22 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     xmlparser xml_cmp;
     xml_cmp.setProgress(gdibase.getHWNDTarget());
     gdibase.dropLine();
-    gdibase.addString("",0,"Läser löpare...");
+    gdibase.addString("", 0, "Läser löpare...");
     gdibase.refresh();
 
     xml_cmp.read(competitorfile);
 
     if (clear) {
       runnerDB->clearRunners();
+      runnerDB->setCurrentCardType(getTimingSystem());
     }
 
-    gdibase.addString("",0,"Lägger till löpare...");
+    gdibase.addString("", 0, "Lägger till löpare...");
     gdibase.refresh();
 
     int personCount = 0;
     int duplicateCount = 0;
-    xmlobject xo=xml_cmp.getObject("CompetitorList");
+    xmlobject xo = xml_cmp.getObject("CompetitorList");
 
     if (xo && xo.getAttrib("iofVersion")) {
       IOF30Interface reader(this, false, false);
@@ -1321,7 +1324,7 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
       if (idProviders.size() > 1) {
         pair<string, string> preferredIdProvider;
         set<int> dmy;
-        FlowOperation op = importFilterGUI(oe, gdibase, 
+        FlowOperation op = importFilterGUI(oe, gdibase,
                                            {}, idProviders,
                                            dmy, preferredIdProvider);
         if (op != FlowContinue)
@@ -1338,10 +1341,10 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
 
       xmlList::const_iterator it;
 
-      for (it=xl.begin(); it != xl.end(); ++it) {
-        if (it->is("Competitor")){
-          int ClubId=it->getObjectInt("ClubId");
-          if (addXMLCompetitorDB(*it, ClubId))
+      for (it = xl.begin(); it != xl.end(); ++it) {
+        if (it->is("Competitor")) {
+          int clubId = it->getObjectInt("ClubId");
+          if (addXMLCompetitorDB(*it, clubId, runnerDB->getCurrentCardType()))
             personCount++;
         }
       }
@@ -1381,7 +1384,6 @@ void oEvent::importXML_IOF_Data(const wstring &clubfile,
     gdibase.refresh();
   }
 }
-
 
 /*
  <Class lowAge="1" highAge="18" sex="K" actualForRanking="Y">

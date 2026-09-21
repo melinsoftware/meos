@@ -27,7 +27,6 @@
 #include "stdafx.h"
 #include "oCourse.h"
 #include "oEvent.h"
-#include "SportIdent.h"
 #include <limits>
 #include "Localizer.h"
 #include "meos_util.h"
@@ -38,6 +37,7 @@
 #include <algorithm>
 #include "xmlparser.h"
 #include "intkeymapimpl.hpp"
+#include "cardmanager.h"
 
 oCourse::oCourse(oEvent* poe) : oBase(poe) {
   getDI().initData();
@@ -413,7 +413,7 @@ vector<int> oCourse::getControlNumbers() const {
   return ret;
 }
 
-int oCourse::distance(const SICard& card) const {
+int oCourse::distance(const DeviceCard& card) const {
   if (card.nPunch >= 192)
     return -100;
 
@@ -1078,7 +1078,7 @@ void oCourse::setCommonControl(int ctrlId) {
   getDI().setInt("CControl", ctrlId);
 }
 
-pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &numShorten) const {
+pCourse oCourse::getAdapetedCourse(const oCard &card, const oCard *card2, oCourse &tmpCourse, int &numShorten) const {
   int cc = getCommonControl();
   if (cc == 0)
     return pCourse(this);
@@ -1093,7 +1093,10 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &n
   vector<vector<int>> punchSequence;
 
   vector<pPunch> punches;
-  card.getPunches(punches);
+  if (!card2)
+    card.getPunches(punches);
+  else
+    card.getPunchList(card2);
 
   punchSequence.push_back(vector<int>());
   for (size_t k = 0; k < punches.size(); k++) {
@@ -1121,9 +1124,9 @@ pCourse oCourse::getAdapetedCourse(const oCard &card, oCourse &tmpCourse, int &n
   vector<int> usedPunches(punchSequence.size());
   int assigned = 0;
   for (map<int, vector< pair<int,int> > >::iterator it = preferences.begin(); it != preferences.end(); ++it) {
-    vector< pair<int,int> > &bestMatches = it->second;
-    map<int, vector<int> > sortedBestMatches;
-    vector< pair<int, int> > sortKey(loopKeys.size());
+    vector<pair<int,int>> &bestMatches = it->second;
+    map<int, vector<int>> sortedBestMatches;
+    vector<pair<int, int>> sortKey(loopKeys.size());
     for (size_t j = 0; j < bestMatches.size(); j++) {
       int loopIndex = bestMatches[j].second;
       sortKey[loopIndex].second = loopIndex;

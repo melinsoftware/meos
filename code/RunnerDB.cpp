@@ -21,6 +21,11 @@
 ************************************************************************/
 
 #include "stdafx.h"
+
+#include <cctype>
+#include <algorithm> 
+#include <string_view>
+
 #include "RunnerDB.h"
 #include "xmlparser.h"
 #include "oRunner.h"
@@ -69,10 +74,7 @@ RunnerDB::RunnerDB(const RunnerDB &in) : oe(in.oe) {
   freeCIx = in.freeCIx;
 }
 
-RunnerDB::~RunnerDB(void)
-{
-  releaseTables();
-}
+RunnerDB::~RunnerDB() = default;
 
 bool RunnerDB::operator!=(const RunnerDB &in) const {
 return dataDate != in.dataDate ||
@@ -291,8 +293,11 @@ void RunnerWDBEntry::init(RunnerDB *p, size_t ixin) {
   
 RunnerWDBEntry *RunnerDB::addRunner(const wchar_t *name,
                                     __int64 extId,
-                                    int club, int card)
-{
+                                    int club, int card) {
+  if (rdb.empty()) {
+    // Auto set card type
+    setCurrentCardType(oe->getTimingSystem());
+  }
   assert(rdb.size() == rwdb.size());
   rdb.emplace_back();
   rwdb.emplace_back();
@@ -320,7 +325,6 @@ RunnerWDBEntry *RunnerDB::addRunner(const wchar_t *name,
   }
   return &e;
 }
-
 
 RunnerWDBEntry *RunnerDB::addRunner(const char *nameUTF,
                                     __int64 extId,
@@ -817,8 +821,7 @@ void RunnerDB::saveClubs(const wstring &file) {
   xml.closeOut();
 }
 
-string RunnerDB::getDataDate() const
-{
+string RunnerDB::getDataDate() const {
   char bf[128];
   if (dataTime<=0 && dataDate>0)
     sprintf_s(bf, "%04d-%02d-%02d", dataDate/10000,
@@ -837,10 +840,29 @@ string RunnerDB::getDataDate() const
   return bf;
 }
 
+void RunnerDB::setCurrentCardType(const string &ct) {
+  if (ct.length() > 14)
+    throw meosException("Invalid card type " + ct);
+
+  if (ct != cardType) {
+    runnerTable.reset();
+    cardType = ct;
+  }
+}
+
+bool RunnerDB::matchingCardSystem() const {
+  if (rdb.empty())
+    return true; // Nothing to match
+  auto eq = [](unsigned char a, unsigned char b) {
+    return (std::toupper(a) == std::toupper(b));
+  };
+  return std::ranges::equal(getCurrentCardType(), oe->getTimingSystem(), eq);
+}
+
 void RunnerDB::setDataDate(const string &date)
 {
    int d = convertDateYMD(date.substr(0, 10), false);
-   int t = date.length()>11 ? convertAbsoluteTimeHMS(date.substr(11), -1) : 0;
+   int t = date.length()>11 ? convertAbsoluteTimeHMS(date.substr(11), -1)/timeConstSecond : 0;
 
    if (d<=0)
      throw std::exception("Felaktigt datumformat");
@@ -852,19 +874,39 @@ void RunnerDB::setDataDate(const string &date)
      dataTime = 0;
 }
 
-void RunnerDB::saveRunners(const wstring &file)
-{
-  int f=-1;
-  _wsopen_s(&f, file.c_str(), _O_BINARY|_O_CREAT|_O_TRUNC|_O_WRONLY,
-            _SH_DENYWR, _S_IREAD|_S_IWRITE);
+void RunnerDB::saveRunners(const wstring &file) {
+  wstring fileMeta = file + L".meta";
+  int f = -1, fMeta = -1;
+  _wsopen_s(&f, file.c_str(), _O_BINARY | _O_CREAT | _O_TRUNC | _O_WRONLY,
+            _SH_DENYWR, _S_IREAD | _S_IWRITE);
 
-  if (f!=-1) {
-    int version = 5460004;
-    _write(f, &version, 4);
-    _write(f, &dataDate, 4);
-    _write(f, &dataTime, 4);
+  _wsopen_s(&fMeta, fileMeta.c_str(), _O_BINARY | _O_CREAT | _O_TRUNC | _O_WRONLY,
+            _SH_DENYWR, _S_IREAD | _S_IWRITE);
+
+  if (f != -1 && fMeta != -1) {
+    RunnerDBHeader header;
+    header.version = 5460004;
+    header.dataDate = dataDate;
+    header.dataTime = dataTime;
+    memcpy(header.cardType, cardType.c_str(), min(sizeof(header.cardType) - 1, cardType.length()));
+
+    header.cardType[sizeof(header.cardType) - 1] = 0;
+
+    _write(fMeta, &header, sizeof(header));
+
+    _close(fMeta);
+
+    // Compatible with MeOS <= 5.0
+    RunnerDBHeaderShort headerShort;
+    headerShort.version = 5460004;
+    headerShort.dataDate = dataDate;
+    headerShort.dataTime = dataTime;
+
+    _write(f, &headerShort, sizeof(headerShort));
+
     if (!rdb.empty())
-      _write(f, &rdb[0], rdb.size()*sizeof(RunnerDBEntry));
+      _write(f, rdb.data(), rdb.size() * sizeof(RunnerDBEntry));
+    
     _close(f);
   }
   else throw std::exception("Could not save runner database.");
@@ -925,21 +967,36 @@ void RunnerDB::loadClubs(const wstring &file)
   }
 }
 
-void RunnerDB::loadRunners(const wstring &file)
-{
-  wstring ex = L"Bad runner database. " + file;
-  int f=-1;
-  _wsopen_s(&f, file.c_str(), _O_BINARY|_O_RDONLY,
-            _SH_DENYWR, _S_IREAD|_S_IWRITE);
+namespace {
+  void safeRead(int fileHandle, void *data, unsigned int size) {
+    int r = _read(fileHandle, data, size);
+    if (size != r)
+      throw meosException("Error reading file");
+  }
+}
 
-  if (f!=-1) {
+void RunnerDB::loadRunners(const wstring &file, bool fromDB) {
+  wstring ex = L"Bad runner database. " + file;
+  int f = -1;
+  _wsopen_s(&f, file.c_str(), _O_BINARY | _O_RDONLY,
+            _SH_DENYWR, _S_IREAD | _S_IWRITE);
+
+  if (f != -1) {
     clearRunners();
-    loadedFromServer = false;
+    loadedFromServer = fromDB;
 
     int len = _filelength(f);
-    if ( (len%sizeof(RunnerDBEntryV1) != 0) && (len % sizeof(RunnerDBEntryV3) != 12) && (len % sizeof(RunnerDBEntry) != 12)) {
+    constexpr int v1Size = sizeof(RunnerDBEntryV1);
+    constexpr int v2Size = sizeof(RunnerDBEntryV2);
+    constexpr int v3Size = sizeof(RunnerDBEntryV3);
+    constexpr int vCurrentSize = sizeof(RunnerDBEntry);
+    constexpr int headerSize = sizeof(RunnerDBHeader);
+    bool withHeader = (len % vCurrentSize == headerSize);
+
+    if ((len % v1Size != 0) && (len % v3Size != 12) && (len % vCurrentSize != 12)
+        && !withHeader) {
       _close(f);
-      return;//Failed
+      return; //Failed
     }
     int nentry = 0;
 
@@ -947,28 +1004,68 @@ void RunnerDB::loadRunners(const wstring &file)
     version = 0;
     dataDate = 0;
     dataTime = 0;
+    RunnerDBHeader header;
 
-    if (len % sizeof(RunnerDBEntry) == 12 || len % sizeof(RunnerDBEntryV2) == 12 || len % sizeof(RunnerDBEntryV3) == 12) {
-      _read(f, &version, 4);
-      _read(f, &dataDate, 4);
-      _read(f, &dataTime, 4);
+    runnerTable.reset(); //Needed of card type is changed
+    cardType = "SI"; // Default in older versions
+    if (withHeader) {
+      safeRead(f, &header, sizeof(header));
+      if (header.version < 5460005) {
+        _lseek(f, 0, SEEK_SET);
+        withHeader = false;
+      }
+      else {
+        if (header.cardType[15]) {
+          _close(f);
+          return; //Invalid. Card type must be zero terminated
+        }
+        cardType = header.cardType;
+        version = header.version;
+        dataDate = header.dataDate;
+        dataTime = header.dataTime;
+      }
     }
 
-    if (version == 5460002 || version == 5460003 || version == 5460004) {
+    if (!withHeader && (len % vCurrentSize == 12 || len % v2Size == 12 || len % v3Size == 12)) {
+      safeRead(f, &version, 4);
+      safeRead(f, &dataDate, 4);
+      safeRead(f, &dataTime, 4);
+    }
+
+    if (!withHeader) {
+      // Look at meta file
+      int fMeta = -1;
+      wstring fileMeta = file + L".meta";
+      _wsopen_s(&fMeta, fileMeta.c_str(), _O_BINARY | _O_RDONLY,
+                _SH_DENYWR, _S_IREAD | _S_IWRITE);
+      if (fMeta != -1) {
+        if (_read(fMeta, &header, sizeof(header)) == sizeof(header)) {
+          if (!header.cardType[15] && header.cardType[0]) {
+            cardType = header.cardType;
+          }
+        }
+        _close(fMeta);
+      }
+    }
+
+    if (version == 5460002 || version == 5460003 || version == 5460004 || version == 5460005) {
 
       bool migrateV2 = false;
       bool migrateV3 = false;
 
       if (version == 5460002) {
         migrateV2 = true;
-        nentry = (len - 12) / sizeof(RunnerDBEntryV2);
+        nentry = (len - 12) / v2Size;
       }
       else if (version == 5460003) {
-        nentry = (len - 12) / sizeof(RunnerDBEntryV3);
+        nentry = (len - 12) / v3Size;
         migrateV3 = true;
       }
       else if (version == 5460004) {
-        nentry = (len - 12) / sizeof(RunnerDBEntry);
+        nentry = (len - 12) / vCurrentSize;
+      }
+      else if (version == 5460005) {
+        nentry = (len - headerSize) / vCurrentSize;
       }
 
       rdb.resize(nentry);
@@ -979,12 +1076,12 @@ void RunnerDB::loadRunners(const wstring &file)
       rwdb.resize(rdb.size());
 
       if (!migrateV2 && !migrateV3) {
-        _read(f, &rdb[0], len - 12);
+        safeRead(f, rdb.data(), rdb.size() * sizeof(vCurrentSize));
         _close(f);
       }
       else if (migrateV2) {
         vector<RunnerDBEntryV2> rdbV2(nentry);
-        _read(f, &rdbV2[0], len - 12);
+        safeRead(f, &rdbV2[0], len - 12);
         _close(f);
 
         for (int k = 0; k < nentry; k++) {
@@ -996,7 +1093,7 @@ void RunnerDB::loadRunners(const wstring &file)
       }
       else if (migrateV3) {
         vector<RunnerDBEntryV3> rdbV3(nentry);
-        _read(f, &rdbV3[0], len - 12);
+        safeRead(f, &rdbV3[0], len - 12);
         _close(f);
 
         for (int k = 0; k < nentry; k++) {
@@ -1013,24 +1110,24 @@ void RunnerDB::loadRunners(const wstring &file)
           throw meosException(ex);
       }
     }
-    else { //V1
+    else if ((len % v1Size) == 0) { //V1
       dataDate = 0;
       dataTime = 0;
 
-      nentry = len / sizeof(RunnerDBEntryV1);
+      nentry = len / v1Size;
 
       rdb.resize(nentry);
       if (rdb.empty()) {
-         _close(f);
+        _close(f);
         return;
       }
       vector<RunnerDBEntryV1> rdbV1(nentry);
       _lseek(f, 0, SEEK_SET);
-      _read(f, &rdbV1[0], len);
+      safeRead(f, &rdbV1[0], len);
       _close(f);
       rwdb.resize(rdb.size());
       RunnerDBEntryV2 tmp;
-      for (int k=0;k<nentry;k++) {
+      for (int k = 0; k < nentry; k++) {
         tmp.init(rdbV1[k]);
         rdb[k].init(tmp);
         rwdb[k].init(this, k);
@@ -1040,15 +1137,15 @@ void RunnerDB::loadRunners(const wstring &file)
     }
 
     int ncard = 0;
-    for (int k=0;k<nentry;k++)
-      if (rdb[k].cardNo>0)
+    for (int k = 0; k < nentry; k++)
+      if (rdb[k].cardNo > 0)
         ncard++;
 
     rhash.resize(ncard);
 
-    for (int k=0;k<nentry;k++) {
-      if (rdb[k].cardNo>0 && !rdb[k].isRemoved()) {
-        rhash[rdb[k].cardNo]=k;
+    for (int k = 0; k < nentry; k++) {
+      if (rdb[k].cardNo > 0 && !rdb[k].isRemoved()) {
+        rhash[rdb[k].cardNo] = k;
       }
     }
   }
@@ -1057,8 +1154,7 @@ void RunnerDB::loadRunners(const wstring &file)
 
 bool RunnerDB::check(const RunnerDBEntry &rde) const
 {
-  if (rde.cardNo<0 || rde.cardNo>99999999
-           || rde.name[baseNameLengthUTF-1]!=0 || rde.clubNo<0)
+  if (rde.cardNo<0 || rde.name[baseNameLengthUTF-1]!=0 || rde.clubNo<0)
     return false;
   return true;
 }
@@ -1209,7 +1305,7 @@ void RunnerDB::prepareLoadFromServer(int nrunner, int nclub) {
   rdb.reserve(nrunner);
 }
 
-void RunnerDB::fillClubs(vector< pair<wstring, size_t> > &out) const {
+void RunnerDB::fillClubs(vector<pair<wstring, size_t>> &out) const {
   out.reserve(cdb.size());
   for (size_t k = 0; k<cdb.size(); k++) {
     if (!cdb[k].isRemoved()) {
@@ -1304,7 +1400,8 @@ const shared_ptr<Table> &RunnerDB::getRunnerTB() {
     table->addColumn("Externt Id", 70, true, true);
     table->addColumn("Namn", 200, false);
     table->addColumn("Klubb", 200, false);
-    table->addColumn("SI", 70, true, true);
+    string ct = cardType.empty() ? "Bricka" : cardType;
+    table->addColumn(ct, 70, true, true);
     table->addColumn("Nationalitet", 70, false, true);
     table->addColumn("Kön", 50, false, true);
     table->addColumn("RunnerBirthDate", 70, true, true);
@@ -1322,25 +1419,7 @@ const shared_ptr<Table> &RunnerDB::getRunnerTB() {
 
   if (runnerTable->getNumDataRows() != nr)
     runnerTable->update();
-  else {
-    /*vector<pRunner> runners;
-    setupIdHash();
-    oe->getRunners(0, 0, runners, false);
-    for (pRunner r : runners) {
-      int64_t extId = r->getExtIdentifier();
-      if (extId != 0) {
-        int value;
-        if (idhash.lookup(extId, value)) {
-          try {
-            runnerTable->reloadRow(value + 1);
-          }
-          catch (const std::exception &) {
-            // Ignore any problems with the table.
-          }
-        }
-      }
-    }*/
-  }
+
   return runnerTable;
 }
 
@@ -1369,7 +1448,7 @@ void RunnerDB::refreshClubTableData(Table &table) {
 }
 
 void RunnerDB::refreshRunnerTableData(Table &table) {
-  oe->getDBRunnersInEvent(runnerInEvent); //XXX
+  oe->getDBRunnersInEvent(runnerInEvent);
   for (size_t k = 0; k<oRDB.size(); k++){
     if (!oRDB[k].isRemoved()) {
       TableRow *row = table.getRowById(oRDB[k].getIndex() + 1);

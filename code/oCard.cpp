@@ -35,7 +35,7 @@
 #include <algorithm>
 #include "xmlparser.h"
 
-#include "SportIdent.h"
+#include "cardmanager.h"
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -62,10 +62,13 @@ oCard::~oCard()
 
 }
 
-bool oCard::Write(xmlparser &xml)
-{
+bool oCard::write(xmlparser &xml, bool secondary) {
   if (Removed) return true;
-  xml.startTag("Card");
+  if (!secondary)
+    xml.startTag("Card");
+  else
+    xml.startTag("Card2");
+
   xml.write("CardNo", cardNo);
   xml.write("Punches", getPunchString());
   xml.write("ReadId", int(readId));
@@ -78,8 +81,7 @@ bool oCard::Write(xmlparser &xml)
   return true;
 }
 
-void oCard::Set(const xmlobject &xo)
-{
+void oCard::set(const xmlobject &xo) {
   xmlList xl;
   xo.getObjects(xl);
   xmlList::const_iterator it;
@@ -185,13 +187,12 @@ void oCard::importPunches(const string &s) {
   return;
 }
 
-bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
-  oPunchList::iterator it;
-  synchronize(true);
-  int ix = 0;
-  for (it = punches.begin(); it != punches.end(); ++it) {
-    it->tCardIndex = ix++;
-  }
+bool oCard::fillPunches(const oCard *card2, 
+                        gdioutput& gdi, 
+                        const string& name, 
+                        const oCourse* crs) const {
+  auto pList = getPunchList(card2);
+  bool considerAllUsed = tOwner == nullptr;
 
   gdi.clearList(name);
 
@@ -215,19 +216,20 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
   if (ctrl)
     punchRemain = ctrl->getNumMulti();
 
-  map<int, pair<int, pPunch > > rogainingIndex;
+  map<int, pair<int, const oPunch *>> rogainingIndex;
 
   if (crs) {
-    for (it = punches.begin(); it != punches.end(); ++it) {
-      if (it->tRogainingIndex >= 0) {
-        rogainingIndex[it->tRogainingIndex] = make_pair(it->tCardIndex, &*it);
+    for (int i = 0; i < pList.size(); i++) {
+      if (pList[i]->tRogainingIndex >= 0) {
+        rogainingIndex[pList[i]->tRogainingIndex] = make_pair(i, pList[i]);
       }
     }
   }
 
-  for (it = punches.begin(); it != punches.end(); ++it) {
+  for (int i = 0; i < pList.size(); i++) {
+    auto it = pList[i];
     if (!hasStart && !it->isStart()) {
-      if (it->isUsed) {
+      if (it->isUsed && crs) {
         if (showStart)
           gdi.addItem(name, lang.tl("Start") + L"\t\u2013", -1);
         hasStart = true;
@@ -244,7 +246,7 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
         while (ctrl && it->tMatchControlId != ctrl->getId()) {
           if (ctrl->isRogaining(hasRogaining)) {
             if (rogainingIndex.count(matchPunch) == 1)
-              gdi.addItem(name, rogainingIndex[matchPunch].second->getString(),
+              gdi.addItem(name, rogainingIndex[matchPunch].second->getString(considerAllUsed),
                 rogainingIndex[matchPunch].first);
             else
               gdi.addItem(name, L"\u2013\t\u2013", getUnmatchedPunchId(matchPunch));
@@ -268,7 +270,7 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
               // Check if we have reach finihs without adding rogaining punches
               while (ctrl && ctrl->isRogaining(hasRogaining)) {
                 if (rogainingIndex.count(matchPunch) == 1)
-                  gdi.addItem(name, rogainingIndex[matchPunch].second->getString(),
+                  gdi.addItem(name, rogainingIndex[matchPunch].second->getString(considerAllUsed),
                     rogainingIndex[matchPunch].first);
                 else
                   gdi.addItem(name, L"\u2013\t\u2013", getUnmatchedPunchId(matchPunch));
@@ -299,7 +301,7 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
           else
             tadj = L" -" + formatTime(-adj);
         }
-        gdi.addItem(name, it->getString() + tadj, it->tCardIndex);
+        gdi.addItem(name, it->getString(considerAllUsed) + tadj, i);
 
         if (!(it->isFinish() || it->isStart())) {
           punchRemain--;
@@ -310,7 +312,7 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
             // Match rogaining here
             while (ctrl && ctrl->isRogaining(hasRogaining)) {
               if (rogainingIndex.count(matchPunch) == 1)
-                gdi.addItem(name, rogainingIndex[matchPunch].second->getString(),
+                gdi.addItem(name, rogainingIndex[matchPunch].second->getString(considerAllUsed),
                   rogainingIndex[matchPunch].first);
               else
                 gdi.addItem(name, L"\u2013\t\u2013", getUnmatchedPunchId(matchPunch));
@@ -337,7 +339,7 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
         // Check if we have reach finihs without adding rogaining punches
         while (ctrl && ctrl->isRogaining(hasRogaining)) {
           if (rogainingIndex.count(matchPunch) == 1)
-            gdi.addItem(name, rogainingIndex[matchPunch].second->getString(),
+            gdi.addItem(name, rogainingIndex[matchPunch].second->getString(considerAllUsed),
               rogainingIndex[matchPunch].first);
           else
             gdi.addItem(name, L"\u2013\t\u2013", getUnmatchedPunchId(matchPunch));
@@ -358,17 +360,16 @@ bool oCard::fillPunches(gdioutput& gdi, const string& name, oCourse* crs) {
     k = 0;
     gdi.addItem(name, L"", -1);
     gdi.addItem(name, lang.tl("Extra stämplingar"), -1);
-    for (it = punches.begin(); it != punches.end(); ++it) {
-      if (!it->isUsed && !(it->isFinish() && showFinish) && !(it->isStart() && showStart))
-        gdi.addItem(name, it->getString(), it->tCardIndex);
+    for (int i = 0; i < pList.size(); i++) {
+      if (!pList[i]->isUsed && !(pList[i]->isFinish() && showFinish) && !(pList[i]->isStart() && showStart))
+        gdi.addItem(name, pList[i]->getString(considerAllUsed), i);
     }
   }
   return true;
 }
 
-
-void oCard::insertPunchAfter(int pos, int type, int time)
-{
+/*
+void oCard::insertPunchAfter(int pos, int type, int time) {
   if (pos==1023)
     return;
 
@@ -392,33 +393,58 @@ void oCard::insertPunchAfter(int pos, int type, int time)
   //Insert last
   punches.push_back(punch);
 }
+*/
+pPunch oCard::findPunch(int type, int time) const {
+  for (auto &pp : punches) {
+    if (type == pp.type && std::abs(pp.getTimeInt() - time) < 5 * timeConstSecond)
+      return pPunch(&pp);
+  }
+  return nullptr;
+}
 
-void oCard::deletePunch(pPunch pp)
-{
-  if (pp == 0)
+void oCard::deletePunch(pCard card2, int globalIndex) {
+  auto pList = getPunchList(card2);
+  pPunch pp;
+
+  if (globalIndex < pList.size() && pList[globalIndex])
+    pp = pList[globalIndex];
+  else
     throw std::exception("Punch not found");
-  int k=0;
-  oPunchList::iterator it;
 
-  for (it=punches.begin(); it != punches.end(); ++it) {
-    if (&*it == pp) {
-      punches.erase(it);
-      updateChanged();
-      return;
+  int type = pp->getTypeCode();
+  int time = pp->getTimeInt();
+
+  if (deletePunch(pp)){
+    if (card2) {
+      pp = card2->findPunch(type, time);
+      if (pp) 
+        card2->deletePunch(pp);
     }
-    k++;
+  }
+  else if (card2) {
+    card2->deletePunch(pp);
   }
 }
 
-wstring oCard::getInfo() const
-{
+bool oCard::deletePunch(pPunch p) {
+  for (auto it = punches.begin(); it != punches.end(); ++it) {
+    if (&*it == p) {
+      punches.erase(it);
+      updateChanged();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+wstring oCard::getInfo() const {
   wchar_t bf[128];
   swprintf_s(bf, lang.tl("Löparbricka %d").c_str(), cardNo);
   return bf;
 }
 
-oPunch *oCard::getPunch(const pPunch punch)
-{
+oPunch *oCard::getPunch(const pPunch punch) {
   int k=0;
   oPunchList::iterator it;
 
@@ -429,20 +455,16 @@ oPunch *oCard::getPunch(const pPunch punch)
   return 0;
 }
 
+oPunch *oCard::getPunchByType(int type) const {
+  for (auto &p : punches) {
+    if (p.type == type)
+      return pPunch(&p);
+  }
 
-oPunch *oCard::getPunchByType(int Type) const
-{
-  oPunchList::const_iterator it;
-
-  for (it=punches.begin(); it != punches.end(); ++it)
-    if (it->type==Type)
-      return pPunch(&*it);
-
-  return 0;
+  return nullptr;
 }
 
-oPunch *oCard::getPunchById(int courseControlId) const
-{
+oPunch *oCard::getPunchById(int courseControlId) const {
   pair<int, int> idix = oControl::getIdIndexFromCourseControlId(courseControlId);
   oPunchList::const_iterator it;
   pPunch res = 0;
@@ -454,52 +476,52 @@ oPunch *oCard::getPunchById(int courseControlId) const
       --idix.second; // Not this match, decrease count
     }
   }
-  return 0; // Punch not found
+  return nullptr; // Punch not found
 }
 
 
-oPunch *oCard::getPunchByIndex(int ix) const
-{
-  oPunchList::const_iterator it;
-  for (it=punches.begin(); it != punches.end(); ++it) {
-    if (0 == ix--)
-      return pPunch(&*it);
-  }
-  return 0;
+oPunch *oCard::getPunchByIndex(const oCard *card2, int ix) const {
+  auto pList = getPunchList(card2);
+  if (ix < pList.size())
+    return pPunch(pList[ix]);
+  return nullptr;
 }
 
-
-void oCard::setReadId(const SICard &card)
-{
+void oCard::setReadId(const DeviceCard &card) {
   updateChanged();
   readId=card.calculateHash();
 }
 
-bool oCard::isCardRead(const SICard &card) const
-{
+bool oCard::isCardRead(const DeviceCard &card) const {
   if (readId==card.calculateHash())
     return true;
   else return false;
 }
 
-void oCard::getSICard(SICard &card) const {
+void oCard::getDeviceCard(const pCard secondaryCard, DeviceCard &card) const {
   card.clear(0);
   card.CardNumber = cardNo;
   card.convertedTime = ConvertedTimeStatus::Done;
-  oPunchList::const_iterator it;
-  for (it = punches.begin(); it != punches.end(); ++it) {
-    if (it->type>30)
-      card.Punch[card.nPunch++].Code = it->type;
+  if (!secondaryCard) {
+    for (auto &p : punches) {
+      if (p.type >= 30)
+        card.Punch[card.nPunch++].Code = p.type;
+    }
+  }
+  else { 
+    auto pl = merge(*secondaryCard);
+    for (auto &p : pl) {
+      if (p->type >= 30)
+        card.Punch[card.nPunch++].Code = p->type;
+    }
   }
 }
-
 
 pRunner oCard::getOwner() const {
   return tOwner && !tOwner->isRemoved() ? tOwner : 0;
 }
 
-bool oCard::setPunchTime(const pPunch punch, const wstring& time)
-{
+bool oCard::setPunchTime(const pPunch punch, const wstring& time) {
   oPunch* op = getPunch(punch);
   if (!op) return false;
 
@@ -674,9 +696,12 @@ oDataContainer &oCard::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &s
   throw std::exception("Unsupported");
 }
 
-int oCard::getSplitTime(int startTime, const pPunch punch) const {
+int oCard::getSplitTime(int startTime, const oPunch *punch) const {
+  return getSplitTime(punches, startTime, punch);
+}
 
-  for (oPunchList::const_iterator it = punches.begin(); it != punches.end(); ++it) {
+int oCard::getSplitTime(const oPunchList & punches, int startTime, const oPunch * punch) {
+  for (auto it = punches.begin(); it != punches.end(); ++it) {
     if (&*it == punch) {
       int t = it->getAdjustedTime();
       if (t<=0)
@@ -693,9 +718,7 @@ int oCard::getSplitTime(int startTime, const pPunch punch) const {
   return -1;
 }
 
-
-wstring oCard::getRogainingSplit(int ix, int startTime) const
-{
+wstring oCard::getRogainingSplit(int ix, int startTime) const {
   oPunchList::const_iterator it;
   for (it = punches.begin(); it != punches.end(); ++it) {
     int t = it->getAdjustedTime();
@@ -975,4 +998,104 @@ bool oCard::unexpectedOrder(int startTime) const {
   }
 
   return false;
+}
+
+vector<pPunch> oCard::merge(const oCard &secondaryCard) const {
+  vector<pPunch> out;
+  out.reserve(punches.size() + 8);
+  auto &sPunches = secondaryCard.punches;
+  auto mainIt = punches.begin();
+  auto secondaryIt = sPunches.begin();
+
+  constexpr int timeLimit = timeConstSecond * 10;
+
+  while (mainIt != punches.end() && secondaryIt != sPunches.end()) {
+    if (mainIt->getTypeCode() == secondaryIt->getTypeCode() && 
+         std::abs(mainIt->getTimeInt() - secondaryIt->getTimeInt()) < timeLimit) {
+      out.push_back(pPunch(&(*mainIt)));
+      ++mainIt;
+      ++secondaryIt;
+    }
+    else if (mainIt->getTimeInt() < secondaryIt->getTimeInt()) {
+      out.push_back(pPunch(&(*mainIt)));
+      ++mainIt;
+    }
+    else {
+      out.push_back(pPunch(&(*secondaryIt)));
+      ++secondaryIt;
+    }
+  }
+
+  while (mainIt != punches.end()) {
+    out.push_back(pPunch(&(*mainIt)));
+    ++mainIt;
+  }
+
+  while (secondaryIt != sPunches.end()) {
+    out.push_back(pPunch(&(*secondaryIt)));
+    ++secondaryIt;
+  }
+
+  return out;
+}
+
+void oCard::constructUnitedPL(const oCard &secondaryCard, oPunchList &pl) const {
+  pl.clear();
+  auto united = merge(secondaryCard);
+  for (auto &u : united) 
+    pl.push_back(*u);
+}
+
+vector<pPunch> oCard::getPunchList(oCard *secondaryCard) {
+  vector<pPunch> out;
+  if (!secondaryCard) {
+    out.reserve(punches.size());
+    for (auto &p : punches)
+      out.push_back(&p);
+  }
+  else {
+    out = merge(*secondaryCard);
+  }
+
+  return out;
+}
+
+vector<const oPunch*> oCard::getPunchList(const oCard *secondaryCard) const{
+  vector<const oPunch *> out;
+  if (!secondaryCard) {
+    out.reserve(punches.size());
+    for (auto &p : punches)
+      out.push_back(&p);
+  }
+  else {
+    auto outX = merge(*secondaryCard);
+    out.reserve(outX.size());
+    for (auto p : outX) 
+      out.push_back(p);
+  }
+
+  return out;
+}
+
+
+void oCard::insert(const oPunch &position, const oPunch toInsert) {
+  // Insert by exact position
+  for (auto it = punches.begin(); it != punches.end(); ++it) {
+    if (&(*it) == &position) {
+      punches.insert(it, toInsert);
+      return;
+    }
+  }
+  // Insert by time (from secondary card)
+  for (auto it = punches.begin(); it != punches.end(); ++it) {
+    if (it->getTimeInt() > position.getTimeInt()) {
+      if (it != punches.begin())
+        --it;
+      punches.insert(it, toInsert);
+      return;
+    }
+  }
+
+  // Insert last
+  punches.push_back(toInsert); 
 }

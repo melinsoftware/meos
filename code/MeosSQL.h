@@ -217,6 +217,11 @@ public:
   // Upload runner database to server
   OpFailStatus uploadRunnerDB(oEvent *oe);
 
+  // Load runner database from server
+  OpFailStatus loadRunnerDB(oEvent *oe, int nRunnerDB, int nClubDB,
+                            ProgressWindow &pw,
+                            int pStart, int nSum);
+
   enum class OpenStatus {
     OK,
     NeedUpdate,

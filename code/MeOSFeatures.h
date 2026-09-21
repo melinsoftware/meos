@@ -27,10 +27,9 @@
 
 class oEvent;
 
-class MeOSFeatures
-{
+class MeOSFeatures {
 public:
-  enum Feature {
+  enum class Feature {
     _Head = -1,
     Speaker = 0,
     Economy,
@@ -51,6 +50,7 @@ public:
     Bib,
     RunnerDb,
     NoCourses,
+    DualCards,
   };
 
 private:
@@ -81,8 +81,8 @@ private:
   bool isRequiredInternal(Feature f) const;
 
 public:
-  MeOSFeatures(void);
-  ~MeOSFeatures(void);
+  MeOSFeatures();
+  ~MeOSFeatures();
 
   bool hasFeature(Feature f) const;
   void useFeature(Feature f, bool use, oEvent &oe);
@@ -98,7 +98,7 @@ public:
   const string &getDescription(Feature f) const;
   const wstring &getCode(Feature f) const;
 
-  bool withoutCourses(const oEvent &oe) const { return hasFeature(NoCourses) && oe.getNumCourses() == 0; }
+  bool withoutCourses(const oEvent &oe) const { return hasFeature(Feature::NoCourses) && oe.getNumCourses() == 0; }
   bool withCourses(const oEvent *oe) const { return !withoutCourses(*oe); }
 
   wstring serialize() const;

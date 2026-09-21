@@ -1236,37 +1236,42 @@ void oFreeImport::init(const oRunnerList &r, const oClubList &clb, const oClassL
 
 bool oFreeImport::isHeaderWord(const wstring &word) const {
   if (headerWords.empty()) {
-    headerWords.insert(canonizeName(L"namn"));
-    headerWords.insert(canonizeName(L"klass"));
-    headerWords.insert(canonizeName(L"ålder"));
-    headerWords.insert(canonizeName(L"anmälda"));
-    headerWords.insert(canonizeName(L"anmälningar"));
-    headerWords.insert(canonizeName(L"deltagare"));
-    headerWords.insert(canonizeName(L"löpare"));
-    headerWords.insert(canonizeName(L"bricka"));
-    headerWords.insert(canonizeName(L"starttid"));
-    headerWords.insert(canonizeName(L"nummer"));
-    headerWords.insert(canonizeName(L"startnummer"));
-    headerWords.insert(canonizeName(L"bricknummer"));
-    headerWords.insert(canonizeName(L"nummer"));
-    headerWords.insert(canonizeName(L"klubb"));
-    headerWords.insert(canonizeName(L"klassnamn"));
-    headerWords.insert(canonizeName(L"pinne"));
-    headerWords.insert(canonizeName(L"nummerlapp"));
-    headerWords.insert(canonizeName(L"SI"));
-    headerWords.insert(canonizeName(L"förening"));
-    headerWords.insert(canonizeName(L"rank"));
-    headerWords.insert(canonizeName(L"ranking"));
-    headerWords.insert(canonizeName(L"nr-lapp"));
-    headerWords.insert(canonizeName(L"tid"));
+    auto add = [this](const wchar_t *str, bool base) {
+      if (base)
+        headerWords.insert(canonizeName(lang.tlBase(str).c_str()));
+      else
+        headerWords.insert(canonizeName(lang.tl(str).c_str()));
+    };
 
-    headerWords.insert(canonizeName(L"name"));
-    headerWords.insert(canonizeName(L"age"));
-    headerWords.insert(canonizeName(L"class"));
-    headerWords.insert(canonizeName(L"start"));
-    headerWords.insert(canonizeName(L"time"));
-    headerWords.insert(canonizeName(L"club"));
-    headerWords.insert(canonizeName(L"card"));
+    auto addNoTl = [this](const wchar_t *str) {
+      headerWords.insert(canonizeName(str));
+    };
+
+    for (bool base : {false, true}) {
+      add(L"namn", base);
+      add(L"klass", base);
+      add(L"ålder", base);
+      add(L"anmälda", base);
+      add(L"anmälningar", base);
+      add(L"deltagare", base);
+      add(L"löpare", base);
+      add(L"bricka", base);
+      add(L"starttid", base);
+      add(L"nummer", base);
+      add(L"startnummer", base);
+      add(L"bricknummer", base);
+      add(L"nummer", base);
+      add(L"klubb", base);
+      add(L"klassnamn", base);
+      add(L"pinne[PunchingCard]", base);
+      add(L"nummerlapp", base);
+      addNoTl(L"si");
+      addNoTl(L"emit");
+      add(L"förening[Club]", base);
+      add(L"ranking", base);
+      add(L"nr-lapp", base);
+      add(L"tid", base);
+    }
   }
   return headerWords.count(canonizeName(word.c_str()))>0;
 }
@@ -1726,22 +1731,22 @@ void oFreeImport::extractEntries(wchar_t *str, vector<oEntryBlock> &entries)
   }
 }
 
-void oFreeImport::showEntries(gdioutput &gdi, const vector<oEntryBlock> &entries)
-{
-  gdi.setCX(20);
-  for (size_t k=0;k<entries.size();k++) {
+void oFreeImport::showEntries(gdioutput &gdi, const vector<oEntryBlock> &entries) {
+  for (size_t k = 0; k < entries.size(); k++) {
     gdi.pushX();
-    int x=gdi.getCX();
-    int y=gdi.getCY();
+    int x = gdi.getCX();
+    int y = gdi.getCY();
     gdi.addStringUT(y, x, 0, entries[k].eStartTime);
     vector<wstring> names = entries[k].getPersons();
-    for (size_t j=0;j<names.size();j++) {
-      gdi.addStringUT(y+gdi.getLineHeight()*j, x+50, 0, names[j]).setColor(colorRed);
+    for (size_t j = 0; j < names.size(); j++) {
+      gdi.addStringUT(y + gdi.getLineHeight() * j, x + gdi.scaleLength(50), 1, names[j]).setColor(colorDarkGreen);
       wstring clb = entries[k].getClub(j);
-      gdi.addStringUT(y+gdi.getLineHeight()*j, x+300, 0, clb);
+      gdi.addStringUT(y + gdi.getLineHeight() * j, x + gdi.scaleLength(300), 0, clb);
     }
-    gdi.addStringUT(y, x+500, 0, entries[k].eClass);
-    gdi.dropLine(0.1);
+    gdi.addStringUT(y, x + gdi.scaleLength(500), 0, entries[k].eClass);
+    if ((k % 5) == 4)
+      gdi.dropLine(0.8);
+
     gdi.popX();
   }
   gdi.refresh();

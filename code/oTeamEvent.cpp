@@ -74,7 +74,7 @@ const vector< pair<wstring, size_t> > &oEvent::fillTeams(vector< pair<wstring, s
   for (int i = 0; i < min(maxBib, 2); i++)
     rawDash  += L"-";
   rawDash += L" ";
-  wstring dashes = getMeOSFeatures().hasFeature(MeOSFeatures::Bib) ?  makeDash(rawDash) : _EmptyWString;
+  wstring dashes = getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Bib) ?  makeDash(rawDash) : _EmptyWString;
   
   for (it=Teams.begin(); it != Teams.end(); ++it) {
     if (!it->Removed) {
@@ -327,10 +327,10 @@ bool oTeam::matchTeam(int number, const wchar_t *s_lc) const
 
 void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
 {
-  bool hasPatrol = true;// getMeOSFeatures().hasFeature(MeOSFeatures::Patrol);
-  bool hasMulti = true;//getMeOSFeatures().hasFeature(MeOSFeatures::MultipleRaces);
-  bool hasRelay = true;//getMeOSFeatures().hasFeature(MeOSFeatures::Relay);
-  bool hasForked = true;//getMeOSFeatures().hasFeature(MeOSFeatures::ForkedIndividual);
+  bool hasPatrol = true;// getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Patrol);
+  bool hasMulti = true;//getMeOSFeatures().hasFeature(MeOSFeatures::Feature::MultipleRaces);
+  bool hasRelay = true;//getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Relay);
+  bool hasForked = true;//getMeOSFeatures().hasFeature(MeOSFeatures::Feature::ForkedIndividual);
 
   gdi.clearList(name);
   gdi.addItem(name, lang.tl("Endast en bana"), PNoMulti);
@@ -343,9 +343,9 @@ void oEvent::fillPredefinedCmp(gdioutput &gdi, const string &name) const
   if (hasMulti)
     gdi.addItem(name, lang.tl("Prolog + jaktstart"), PHunting);
   if (hasPatrol) {
-    gdi.addItem(name, lang.tl("Patrull, 2 SI-pinnar"), PPatrol);
+    gdi.addItem(name, lang.tl("Patrull, 2 stämplingsbrickor"), PPatrol);
     gdi.addItem(name, lang.tl("Par- eller singelklass"), PPatrolOptional);
-    gdi.addItem(name, lang.tl("Patrull, 1 SI-pinne"), PPatrolOneSI);
+    gdi.addItem(name, lang.tl("Patrull, 1 stämplingsbricka"), PPatrolOneSI);
   }
   if (hasRelay)
     gdi.addItem(name, lang.tl("Stafett"), PRelay);
@@ -452,7 +452,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       if (crs) {
         cls.addStageCourse(0, crsId, -1);
       }
-      getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::ForkedIndividual, true, *this);
       oe->synchronize(true);
       break;
 
@@ -469,7 +469,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.addStageCourse(0, crsId, -1);
       }
 
-      getMeOSFeatures().useFeature(MeOSFeatures::ForkedIndividual, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::ForkedIndividual, true, *this);
       oe->synchronize(true);
       break;
 
@@ -492,7 +492,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.addStageCourse(1, crsId, -1);
       }
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Patrol, true, *this);
       oe->synchronize(true);
       break;
 
@@ -515,7 +515,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.addStageCourse(1, crsId, -1);
       }
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Patrol, true, *this);
       oe->synchronize(true);
       break;
 
@@ -539,7 +539,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       }
 
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Patrol, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Patrol, true, *this);
       oe->synchronize(true);
       break;
 
@@ -559,7 +559,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         cls.setRopeTime(k, L"-");
       }
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *this);
       oe->synchronize(true);
       break;
 
@@ -583,8 +583,8 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       }
 
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
-      getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::MultipleRaces, true, *this);
       oe->synchronize(true);
       oe->synchronize(true);
       break;
@@ -602,7 +602,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
           cls.setLegRunner(k, 0);
       }
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::MultipleRaces, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::MultipleRaces, true, *this);
       oe->synchronize(true);
       break;
 
@@ -638,7 +638,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
         }
       }
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *this);
       oe->synchronize(true);
       break;
 
@@ -658,7 +658,7 @@ void oEvent::setupRelay(oClass &cls, PredefinedTypes type, int nleg, const wstri
       cls.setRopeTime(1, formatTimeHMS(t+ timeConstHour / 2));
       cls.setLegRunner(1, 0);
       cls.setCoursePool(false);
-      getMeOSFeatures().useFeature(MeOSFeatures::Relay, true, *this);
+      getMeOSFeatures().useFeature(MeOSFeatures::Feature::Relay, true, *this);
       oe->synchronize(true);
       break;
     }

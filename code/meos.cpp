@@ -33,7 +33,6 @@
 
 #include "gdioutput.h"
 #include "commctrl.h"
-#include "SportIdent.h"
 #include "TabBase.h"
 #include "TabCompetition.h"
 #include "TabAuto.h"
@@ -58,15 +57,19 @@
 #include "restserver.h"
 #include "autocomplete.h"
 #include "image.h"
+#include "carddevices.h"
+#include "cardmanager.h"
+
+#include "connector_interface.h"
 
 int defaultCodePage = 1252;
 
 Image image;
 gdioutput *gdi_main = nullptr;
 oEvent *gEvent = nullptr;
-SportIdent *gSI = nullptr;
 Localizer lang;
 AutoTask *autoTask = nullptr;
+
 #ifdef _DEBUG
   bool enableTests = true;
 #else
@@ -123,11 +126,20 @@ void dumpLeaks() {
   _CrtDumpMemoryLeaks();
 }
 
-void LoadPage(gdioutput &gdi, TabType type) {
+void LoadPage(gdioutput& gdi, TabType type) {
   gdi.setWaitCursor(true);
-  TabBase *t = gdi.getTabs().get(type);
-  if (t)
-    t->loadPage(gdi);
+  try {
+    TabBase* t = gdi.getTabs().get(type);
+    if (t)
+      t->loadPage(gdi);
+  }
+  catch (meosException& ex) {
+    gdi.alert(ex.wwhat());
+  }
+  catch (std::exception& ex) {
+    gdi.alert(ex.what());
+  }
+
   gdi.setWaitCursor(false);
 }
 
@@ -164,6 +176,26 @@ void mainMessageLoop(HACCEL hAccelTable, DWORD time) {
   }
 }
 
+
+int CALLBACK EnumFontFamExProc(ENUMLOGFONTEX* lpelfe, NEWTEXTMETRICEX* lpntme, DWORD FontType, LPARAM lParam) {
+  bool* found = (bool*)lParam;
+  *found = true;
+  return 0; // Stop iterating
+}
+
+bool isFontInstalled(LPCTSTR fontName) {
+  HDC hdc = GetDC(NULL);
+  LOGFONT lf = { 0 };
+  lf.lfCharSet = DEFAULT_CHARSET;
+  _tcscpy_s(lf.lfFaceName, fontName);
+
+  bool found = false;
+  EnumFontFamiliesEx(hdc, &lf, (FONTENUMPROC)EnumFontFamExProc, (LPARAM)&found, 0);
+  ReleaseDC(NULL, hdc);
+
+  return found;
+}
+
 INT_PTR CALLBACK splashDialogProc(
   _In_ HWND   hwndDlg,
   _In_ UINT   uMsg,
@@ -171,26 +203,26 @@ INT_PTR CALLBACK splashDialogProc(
   _In_ LPARAM lParam
 );
 
-int APIENTRY WinMain(HINSTANCE hInstance,
-  HINSTANCE hPrevInstance,
-  LPSTR     lpCmdLine,
-  int       nCmdShow)
-{
+
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+                      _In_opt_ HINSTANCE hPrevInstance,
+                      _In_ LPWSTR lpCmdLine,
+                      _In_ int nCmdShow) {
   hInst = hInstance; // Store instance handle in our global variable
   
   atexit(dumpLeaks);	//
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
-  if (strstr(lpCmdLine, "-s") != 0) {
+  if (wcsstr(lpCmdLine, L"-s") != 0) {
     Setup(true, false);
     exit(0);
   }
-  else if (strstr(lpCmdLine, "-test") != 0) {
+  else if (wcsstr(lpCmdLine, L"-test") != 0) {
     enableTests = true;
   }
 
   HWND hSplash = nullptr;
-  if (strstr(lpCmdLine, "-nosplash") == 0) {
+  if (wcsstr(lpCmdLine, L"-nosplash") == 0) {
     hSplash = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_SPLASH), nullptr, splashDialogProc);
     ShowWindow(hSplash, SW_SHOW);
     UpdateWindow(hSplash);
@@ -214,7 +246,26 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   RunnerStatusOrderMap[StatusNotCompeting] = 10;
 
   GetCurrentDirectory(MAX_PATH, programPath);
+  /*
+  auto si_connector = make_shared<DynamicConnection>(L"siconnector.dll");
 
+  auto si_units = si_connector->enumerateDevices();
+
+  si_connector->init(mconAddCard, mconAddPunch);
+  si_connector->openConnection(1, false, mconLogMessage);
+
+  wstring out = si_connector->monitorThread(1);
+
+  si_connector.reset();*/
+  /*
+  HMODULE hm = LoadLibraryEx(L"siconnector.dll", 0, 0);
+  FARPROC ff = GetProcAddress(hm, "test");
+
+  void (__cdecl *dlltest)(vector<wstring>&) = (void (*)(vector<wstring>&)) ff;
+
+  vector<wstring> x;
+  dlltest(x);
+  */
   GetModuleFileName(NULL, exePath, MAX_PATH);
   int lastDiv = -1;
   for (int i = 0; i < MAX_PATH; i++) {
@@ -242,7 +293,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   getUserFile(settings, L"meoswpref.xml");
   Parser::test();
 
-  int rInit = (GetTickCount() / 100);
+  int rInit = std::abs(int(GetTickCount64() / 100));
   InitRanom(rInit, rInit/379);
 
   tabList=new list<TabObject>;
@@ -383,7 +434,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     gdi_main->alert(ex.what());
   }
 
-  gEvent->openRunnerDatabase(L"database");
   wcscpy_s(szTitle, L"MeOS");
   wcscpy_s(szWindowClass, L"MeosMainClass");
   wcscpy_s(szWorkSpaceClass, L"MeosWorkSpace");
@@ -406,8 +456,14 @@ int APIENTRY WinMain(HINSTANCE hInstance,
     else
       defSize = 3;
   }
-  gdi_main->setFont(gEvent->getPropertyInt("TextSize", defSize),
-                    gEvent->getPropertyString("UIFont", L"Segoe UI"));
+
+  wstring font = gEvent->getPropertyString("UIFont", L"Segoe UI");
+  if (font.empty() || !isFontInstalled(font.c_str())) {
+    font = L"Segoe UI";
+    gEvent->setProperty("UIFont", font);
+  }
+
+  gdi_main->setFont(gEvent->getPropertyInt("TextSize", defSize), font);
 
   if (hSplash != nullptr) {
     DWORD startupToc = GetTickCount64() - splashStart;
@@ -950,8 +1006,6 @@ const string &getLastExtraWindow() {
     return gdi_extra.back()->getTag();
 }
 
-void InsertSICard(gdioutput &gdi, SICard &sic);
-
 void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
                 bool skipEconomy, bool skipLists,
                 bool skipRunners, bool skipCourses, bool skipControls)
@@ -1052,6 +1106,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_CREATE:
 
+      CardManager::init(hWnd);
+
       tabList->emplace_back(gdi_main->getTabs().get(TCmpTab), L"Tävling", 10);
       tabList->emplace_back(gdi_main->getTabs().get(TRunnerTab), L"Deltagare", 6);
       tabList->emplace_back(gdi_main->getTabs().get(TTeamTab), L"Lag(flera)", 7);
@@ -1067,7 +1123,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       tabList->emplace_back(gdi_main->getTabs().get(TControlTab), L"Kontroller", 2);
       tabList->emplace_back(gdi_main->getTabs().get(TClubTab), L"Klubbar", 8);
 
-      tabList->emplace_back(gdi_main->getTabs().get(TSITab), L"SportIdent", 9);
+      tabList->emplace_back(gdi_main->getTabs().get(TSITab), L"Brickor", 9);
 
       INITCOMMONCONTROLSEX ic;
 
@@ -1132,6 +1188,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DISPLAYCHANGE:
       if (gdi_main)
         gdi_main->updateMonitorConfiguration();
+      break;
+
+    case WM_DEVICECHANGE:
+      if (gdi_main && gdi_main->hasData("SIPageLoaded")) {
+        TabSI& tsi = dynamic_cast<TabSI&>(*gdi_main->getTabs().get(TSITab));
+        tsi.refillComPorts(*gdi_main);
+      }
+      // TODO: Refresh!
       break;
 
     case WM_TIMER:
@@ -1223,14 +1287,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_USER:
       //The card has been read and posted to a synchronized
       //queue by different thread. Read and process this card.
-      {
-        SICard sic(ConvertedTimeStatus::Unknown);
-        while (gSI && gSI->getCard(sic))
-          InsertSICard(*gdi_main, sic);
-        break;
-      }
+      
+      if (gdi_main)
+        CardManager::instance().processQueue(*gdi_main);
+      break;
     case WM_USER+1:
-      MessageBox(hWnd, lang.tl(L"Kommunikationen med en SI-enhet avbröts.").c_str(), L"SportIdent", MB_OK);
+      CardDevices::instance().showRunStatus(hWnd);
       break;
 
     case WM_USER + 3:
@@ -1288,8 +1350,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       break;
 
     case WM_DESTROY:
-      delete gSI;
-      gSI=0;
+      if (CardDevices::isLoaded())
+        CardDevices::instance().unload();
+      CardManager::init(nullptr);
 
       for (size_t k = 0; k < gdi_extra.size(); k++) {
         if (gdi_extra[k])
@@ -1440,48 +1503,14 @@ LRESULT CALLBACK WorkSpaceWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
       break;
 
     case WM_SIZE:
-      //SCROLLINFO si;
-      //si.cbSize=sizeof(si);
-      //si.fMask=SIF_PAGE|SIF_RANGE;
-
-      int nHeight;
-      nHeight = HIWORD(lParam);
-      int nWidth;
-      nWidth = LOWORD(lParam);
-      updateScrollInfo(hWnd, *gdi, nHeight, nWidth);
-      /*
-
-      int maxx, maxy;
-      gdi->clipOffset(nWidth, nHeight, maxx, maxy);
-
-      si.nMin=0;
-
-      if (maxy>0) {
-        si.nMax=maxy+nHeight;
-        si.nPos=gdi->GetOffsetY();
-        si.nPage=nHeight;
+      if (gdi) {
+        int nHeight;
+        nHeight = HIWORD(lParam);
+        int nWidth;
+        nWidth = LOWORD(lParam);
+        updateScrollInfo(hWnd, *gdi, nHeight, nWidth);
+        InvalidateRect(hWnd, NULL, true);
       }
-      else {
-        si.nMax=0;
-        si.nPos=0;
-        si.nPage=0;
-      }
-      SetScrollInfo(hWnd, SB_VERT, &si, true);
-
-      si.nMin=0;
-      if (maxx>0) {
-        si.nMax=maxx+nWidth;
-        si.nPos=gdi->GetOffsetX();
-        si.nPage=nWidth;
-      }
-      else {
-        si.nMax=0;
-        si.nPos=0;
-        si.nPage=0;
-      }
-      SetScrollInfo(hWnd, SB_HORZ, &si, true);
-      */
-      InvalidateRect(hWnd, NULL, true);
       break;
     case WM_KEYDOWN:
       //gdi->keyCommand(;
@@ -1846,6 +1875,15 @@ bool getUserFile(wchar_t* FileNamePath, const wchar_t* FileName) {
   return true;
 }
 
+wstring getUserFile(const wchar_t *fileName) {
+  wchar_t path[MAX_PATH] = {};
+  getUserFile(path, fileName);
+  return path;
+}
+
+wstring getUserFile(const wstring &in) {
+  return getUserFile(in.c_str());
+}
 
 bool getDesktopFile(wchar_t *fileNamePath, const wchar_t *fileName, const wchar_t *subFolder)
 {

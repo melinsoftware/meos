@@ -180,6 +180,15 @@ const wstring &Localizer::LocalizerInternal::tl(const wstring &str) const {
   return *ret;
 }
 
+const wstring &Localizer::LocalizerInternal::tlBase(const wstring &str) const {
+  bool found;
+  if (implBase) {
+    const wstring *ret = &implBase->translate(str, found);
+    return *ret;
+  }
+  return impl->translate(str, found);
+}
+
 bool Localizer::LocalizerInternal::has(const string &str) const {
   wstring strw(str.begin(), str.end());
   bool found;
@@ -189,10 +198,22 @@ bool Localizer::LocalizerInternal::has(const string &str) const {
 
 const wstring &LocalizerImpl::translate(const wstring &str, bool &found) {
   auto &res = translateAux(str, found);
+  if (!found && !str.empty() && toupperLocale(str[0]) != str[0]) {
+    wstring key2 = str;
+    key2[0] = toupperLocale(str[0]);
+    auto &res2 = translateAux(key2, found);
+    if (found) {
+      auto &out = getNewString();
+      out = res2;
+      if (!out.empty())
+        out[0] = tolower(out[0]);
+      return out;
+    }
+  }
 
   if (!found && !lastUnknown.empty())
     addUnknown(lastUnknown);
-
+  
   return res;
 }
 

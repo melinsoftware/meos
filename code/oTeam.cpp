@@ -1152,7 +1152,7 @@ void oTeam::apply(ChangeType changeType, pRunner source) {
       if (Class) {
         pClass pc = Class;
 
-        //Ignored runners need no SI-card (used by SI assign function)
+        //Ignored runners need no card (used by assign card functionality)
         if (legType == LTIgnore) {
           tr->tNeedNoCard = true;
           if (lastStatus != StatusUnknown) {
@@ -1188,10 +1188,10 @@ void oTeam::apply(ChangeType changeType, pRunner source) {
 
           case STTime: {
             bool prs = false;
-            if (tr && tr->Card && freeStart) {
+            if (tr && tr->cardPtr && freeStart) {
               pCourse crs = tr->getCourse(false);
               int startType = crs ? crs->getStartPunchType() : oPunch::PunchStart;
-              oPunch* pnc = tr->Card->getPunchByType(startType);
+              oPunch* pnc = tr->cardPtr->getPunchByType(startType);
               if (pnc && pnc->getAdjustedTime() > 0) {
                 prs = true;
                 lastStartTime = pnc->getAdjustedTime();

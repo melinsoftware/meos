@@ -33,7 +33,6 @@
 #include "gdiconstants.h"
 
 #include "csvparser.h"
-#include "SportIdent.h"
 #include "meos_util.h"
 #include <cassert>
 
@@ -660,7 +659,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.fillDown();
       gdi.dropLine();
       gdi.addString("", boldText, "Direktanmälan");
-      gdi.addString("", 0, "Du kan använda en SI-enhet för att läsa in bricknummer.");
+      gdi.addString("", 0, "Du kan använda en enhet (X) för att läsa in bricknummer.#" + oe->getTimingSystem());
       gdi.dropLine(0.2);
    
       int leg = bi.getExtraInt();
@@ -1210,7 +1209,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
             gdi.setText("DirName", r->getName())->setExtra(0);
             matched = true;
           }
-          else if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::RunnerDb)) {
+          else if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::RunnerDb)) {
             const RunnerWDBEntry *rdb = oe->getRunnerDatabase().getRunnerByCard(cno);
             if (rdb) {
               wstring name;
@@ -1279,7 +1278,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     return true;
   }
   else if (type==GUI_POSTCLEAR) {
-    // Clear out SI-link
+    // Clear out CardDevice-link
     TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
     tsi.setCardNumberField("");
     return true;
@@ -1483,12 +1482,12 @@ bool TabTeam::loadPage(gdioutput &gdi)
 
   gdi.fillRight();
   bool drop = false;
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Bib)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Bib)) {
     gdi.addInput("StartNo", L"", 4, 0, L"Nr:", L"Nummerlapp");
-    drop = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy);
+    drop = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy);
   }
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
     gdi.addCombo("Club", 180, 300, TeamCB, L"Klubb:");
     oe->fillClubs(gdi, "Club");
     drop = true;
@@ -1502,7 +1501,7 @@ bool TabTeam::loadPage(gdioutput &gdi)
   gdi.addSelection("RClass", 170, 300, TeamCB, L"Klass:");
   oe->fillClasses(gdi, "RClass", {make_pair(lang.tl("Ny klass"), 0)}, oEvent::extraNone, oEvent::filterOnlyMulti);
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy))
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy))
     gdi.addInput("Fee", L"", 5, 0, L"Avgift:");
 
   gdi.popX();
@@ -1515,8 +1514,8 @@ bool TabTeam::loadPage(gdioutput &gdi)
   gdi.addInput("Start", L"", 8, 0, L"Starttid:");
   gdi.addInput("Finish", L"", 8, 0, L"Måltid:");
 
-  const bool timeAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::TimeAdjust);
-  const bool pointAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::PointAdjust);
+  const bool timeAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::TimeAdjust);
+  const bool pointAdjust = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::PointAdjust);
 
   if (timeAdjust || pointAdjust) {
     gdi.dropLine(3);
@@ -1529,10 +1528,10 @@ bool TabTeam::loadPage(gdioutput &gdi)
     }
   }
 
-  /*if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::TimeAdjust)) {
+  /*if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::TimeAdjust)) {
     gdi.addInput("TimeAdjust", "", 5, 0, "Tidstillägg:");
   }
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::PointAdjust)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::PointAdjust)) {
     gdi.addInput("PointAdjust", "", 5, 0, "Poängavdrag:");
   }*/
 

@@ -1664,9 +1664,9 @@ int oEvent::computeMostCommonStartInterval() const {
         if (st == StartTypes::STChange || st == StartTypes::STPursuit)
           continue;
       }
-      if (r.Card) {
+      if (r.cardPtr) {
         bool hasStart = false;
-        for (auto& p : r.Card->punches) {
+        for (auto& p : r.getCardPunches()) {
           if (p.isStart()) {
             hasStart = true;
             break;

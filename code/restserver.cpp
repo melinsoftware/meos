@@ -409,7 +409,8 @@ void RestServer::computeInternal(oEvent &ref, shared_ptr<RestServer::EventReques
     };
 
     for (auto& [field, name] : fields) {
-      fn.emplace_back(makeUpper(oEvent::extraFieldName(field)), name);
+      string up = oEvent::extraFieldName(field);
+      fn.emplace_back(makeUpper(up), name);
     }
     auto &writer = HTMLWriter::getWriter(HTMLWriter::TemplateType::Page, "entryform", fn);
     writer.getPage(ref, rq->answer);
@@ -1496,7 +1497,7 @@ void RestServer::newEntry(oEvent &oe, const multimap<string, string> &param, str
       if (r) {
         int cf = 0;
         if (cardNo > 0 && oe.isHiredCard(cardNo)) {
-          r->setRentalCard(true);
+          r->setRentalCard(Card::Primary, true);
         }
         r->setFlag(oRunner::FlagAddedViaAPI, true);
         r->addClassDefaultFee(true);

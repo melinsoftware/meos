@@ -1089,7 +1089,7 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
   }
   // Add missing punches from card
   for (auto &r : Runners) {
-    if (r.isRemoved() || !r.Card || r.getClassId(false) == 0)
+    if (r.isRemoved() || !r.cardPtr || r.getClassId(false) == 0)
       continue;
     int clsId = r.getClassId(true);
     int leg = r.getLegNumber();
@@ -1107,7 +1107,7 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
 
     if (nRT < expectedCCid.size()) {
       pCourse crs = r.getCourse(true);
-      for (auto &p : r.Card->punches) {
+      for (auto &p : r.getCardPunches()) {
         if (p.tIndex >= 0 && p.tIndex < crs->getNumControls()) {
           int ccId = crs->getCourseControlId(p.tIndex);
           if (expectedCCid.count(ccId)) {

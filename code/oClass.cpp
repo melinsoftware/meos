@@ -37,10 +37,8 @@
 #include <algorithm>
 #include "inthashmap.h"
 #include "intkeymapimpl.hpp"
-#include "SportIdent.h"
-#include "MeOSFeatures.h"
+#include "cardmanager.h"
 #include "gdioutput.h"
-#include "gdistructures.h"
 #include "meosexception.h"
 #include "random.h"
 #include "qualification_final.h"
@@ -1585,7 +1583,7 @@ void oClass::getParallelCourseGroup(int leg, int startNo, vector< pair<int, pCou
   }
 }
 
-pCourse oClass::selectParallelCourse(const oRunner &r, const SICard &sic) {
+pCourse oClass::selectParallelCourse(const oRunner &r, const DeviceCard &sic) {
   synchronize();
   pCourse rc = 0; //Best match course
   vector< pair<int, pCourse> > group;
@@ -1598,10 +1596,10 @@ pCourse oClass::selectParallelCourse(const oRunner &r, const SICard &sic) {
         continue;
 
       tr->synchronize();
-      if (tr->Course) {
+      if (tr->coursePtr) {
         // The course is assigned. Remove from group
         for (size_t j = 0; j < group.size(); j++) {
-          if (group[j].second == tr->Course) {
+          if (group[j].second == tr->coursePtr) {
             group[j].second = 0;
             break;
           }
@@ -1653,11 +1651,11 @@ pCourse oClass::getCourse(int leg, unsigned fork, bool getSampleFromRunner) cons
   else {
     pCourse res = 0;
     for (oRunnerList::iterator it = oe->Runners.begin(); it != oe->Runners.end(); ++it) {
-      if (it->getClassRef(true) == this && it->Course) {
+      if (it->getClassRef(true) == this && it->coursePtr) {
         if (it->tLeg == leg)
-          return it->Course;
+          return it->coursePtr;
         else
-          res = it->Course; // Might find better candidate later
+          res = it->coursePtr; // Might find better candidate later
       }
     }
     return res;
@@ -1816,7 +1814,7 @@ void oClass::setCoursePool(bool p)
   }
 }
 
-pCourse oClass::selectCourseFromPool(int leg, const SICard &card) const {
+pCourse oClass::selectCourseFromPool(int leg, const DeviceCard &card) const {
   leg = mapLeg(leg);
 
   int Distance=-1000;
@@ -1891,7 +1889,7 @@ void oClass::updateChangedCoursePool() {
     }
   }
 
-  SICard card(ConvertedTimeStatus::Unknown);
+  DeviceCard card(ConvertedTimeStatus::Unknown);
   oRunnerList::iterator it;
   for (it = oe->Runners.begin(); it != oe->Runners.end(); ++it) {
     if (it->isRemoved() || it->getClassRef(true) != this)
@@ -1901,17 +1899,17 @@ void oClass::updateChangedCoursePool() {
       continue;
 
     if (!hasPool) {
-      if (it->Course) {
+      if (it->coursePtr) {
         it->setCourseId(0);
         it->synchronize();
       }
     }
     else {
-      bool correctCourse = crs[it->tLeg].count(it->Course) > 0;
-      if ((!correctCourse || (correctCourse && it->tStatus == StatusMP)) && it->Card) {
-        it->Card->getSICard(card);
+      bool correctCourse = crs[it->tLeg].count(it->coursePtr) > 0;
+      if ((!correctCourse || (correctCourse && it->tStatus == StatusMP)) && it->cardPtr) {
+        it->cardPtr->getDeviceCard(it->getCard2(), card);
         pCourse crs = selectCourseFromPool(it->tLeg, card);
-        if (crs != it->Course) {
+        if (crs != it->coursePtr) {
           it->setCourseId(crs->getId());
           it->synchronize();
         }

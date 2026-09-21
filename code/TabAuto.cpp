@@ -24,11 +24,11 @@
 
 #include "oEvent.h"
 #include "gdioutput.h"
-#include "SportIdent.h"
 #include "onlineresults.h"
 #include "onlineinput.h"
 #include "RestService.h"
 #include "printresultservice.h"
+#include "cardmanager.h"
 
 #include "TabAuto.h"
 #include "TabSI.h"
@@ -822,24 +822,23 @@ void PrewarningMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   });
 }
 
-void PrewarningMachine::status(gdioutput &gdi)
-{
+void PrewarningMachine::status(gdioutput &gdi) {
   AutoMachine::status(gdi);
-
-  string info="Förvarning på (SI-kod): ";
-  bool first=true;
+  string info;
 
   if (controls.empty())
-    info+="alla stämplingar";
+    info = "Förvarning på alla kontroller";
   else {
-    for (set<int>::iterator it=controlsSI.begin();it!=controlsSI.end();++it) {
-      char bf[32];
-      _itoa_s(*it, bf, 10);
+    bool first = true;
+    info = "Förvarning vid kontroll X#";
+    for (int cc : controlsSI) {
 
-      if (!first) info+=", ";
-      else       first=false;
+      if (!first)
+        info += ", ";
+      else
+        first = false;
 
-      info+=bf;
+      info += itos(cc);
     }
   }
   gdi.addString("", 0, info);
@@ -1085,12 +1084,11 @@ void PunchMachine::status(gdioutput &gdi)
 void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
   processProtected(gdi, ast, [&]() {
     SICard sic(ConvertedTimeStatus::Hour24);
-    SportIdent& si = TabSI::getSI();
-
+    
     if (!fullRadio) {
       oe->generateTestCard(sic);
       if (!sic.empty()) {
-        si.addCard(sic);
+        CardManager::instance().addCard(sic);
       }
       else gdi.addInfoBox("", L"Failed to generate card.", L"", BoxStyle::Header, interval * 2000);
     }
@@ -1113,7 +1111,7 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
           
           OutputDebugString((L"Punch " + itow(code) + L" for "  + itow(card) + L", FT: " + oe->getAbsTime(time) + L"\n").c_str());
 
-          si.addCard(sic);
+          CardManager::instance().addCard(sic);
           punchesTimeCodeCardNo.pop_back();
         }
         else {
@@ -1126,7 +1124,7 @@ void PunchMachine::process(gdioutput &gdi, oEvent *oe, AutoSyncType ast) {
         auto& [time, card] = cardsByTime.back();
         if (time <= now) {
           OutputDebugString((L"Card for " + itow(card->CardNumber) + L", FT: " + oe->getAbsTime(card->FinishPunch.Time) + L"\n").c_str());
-          si.addCard(*card);
+          CardManager::instance().addCard(*card);
           cardsByTime.pop_back();
         }
         else {

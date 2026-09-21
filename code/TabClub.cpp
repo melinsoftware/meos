@@ -31,7 +31,6 @@
 #include "xmlparser.h"
 #include "gdioutput.h"
 #include "csvparser.h"
-#include "SportIdent.h"
 #include <cassert>
 #include "meos_util.h"
 #include "Table.h"
@@ -637,12 +636,12 @@ bool TabClub::loadPage(gdioutput &gdi)
   oe->fillClubs(gdi, "Clubs");
   gdi.selectItemByData("Clubs", ClubId);
   gdi.addButton("Merge", "Ta bort / slå ihop...", ClubsCB);
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy))
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy))
     gdi.addButton("Invoice", "Faktura", ClubsCB);
   if (oe->useRunnerDb())
     gdi.addButton("Update", "Uppdatera", ClubsCB, "Uppdatera klubbens uppgifter med data från löpardatabasen/distriktsregistret");
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy)) {
     gdi.popX();
     gdi.dropLine(3);
 

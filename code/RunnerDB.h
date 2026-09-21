@@ -65,7 +65,6 @@ struct RunnerDBEntryV2 {
   __int64 extId;
 };
 
-
 struct RunnerDBEntryV3 {
   // Init from old struct
   RunnerDBEntryV3();
@@ -131,6 +130,20 @@ public:
   __int64 getExtId() const { return extId; }
 };
 
+struct RunnerDBHeaderShort {
+  int version = 0;
+  int dataDate = 0;
+  int dataTime = 0;
+};
+
+struct RunnerDBHeader {
+  int version = 0;
+  int dataDate = 0;
+  int dataTime = 0;
+  char cardType[16] = {};
+  char reserved[36] = {};
+};
+
 class RunnerDB;
 
 struct RunnerWDBEntry {
@@ -188,6 +201,7 @@ private:
   shared_ptr<Table> runnerTable;
   shared_ptr<Table> clubTable;
 
+  string cardType;
   static int cellEntryIndex;
 
   bool check(const RunnerDBEntry &rde) const;
@@ -317,6 +331,14 @@ public:
 
   void releaseTables();
 
+  const string &getCurrentCardType() const {
+    return cardType;
+  }
+
+  void setCurrentCardType(const string &ct);
+
+  bool matchingCardSystem() const;
+
   /** Get the date, YYYY-MM-DD HH:MM:SS when database was updated */
   string getDataDate() const;
   /** Set the date YYYY-MM-DD HH:MM:SS when database was updated */
@@ -325,6 +347,8 @@ public:
 
   /** Returns true if the database was loaded from server */
   bool isFromServer() const {return loadedFromServer;}
+
+  bool isEmpty() const { return rdb.empty() && cdb.empty(); }
 
   /** Prepare for loading runner from server*/
   void prepareLoadFromServer(int nrunner, int nclub);
@@ -359,7 +383,7 @@ public:
 
   void saveClubs(const wstring &file);
   void saveRunners(const wstring &file);
-  void loadRunners(const wstring &file);
+  void loadRunners(const wstring &file, bool fromDB);
   void loadClubs(const wstring &file);
 
   void updateAdd(const oRunner &r, map<int, int> &clubIdMap);

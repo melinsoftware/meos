@@ -465,6 +465,13 @@ void MeosSQL::upgradeDB(const string &db, oDataContainer const * dc) {
       sql = sql.substr(0, sql.length() - 2);
       query.execute(sql);
     }
+    if (db == "oRunner" && !eCol.count("Card2")) {
+      string sql = "ALTER TABLE " + db + " ";
+      sql += "ADD COLUMN " + C_INT("CardNo2");
+      sql += "ADD COLUMN " + C_INT("Card2");
+      sql = sql.substr(0, sql.length() - 2);
+      query.execute(sql); 
+    }
   }
   else if (db == "oCard") {
     if (!eCol.count("Voltage")) {
@@ -687,10 +694,10 @@ MeosSQL::OpenStatus MeosSQL::openDB(oEvent* oe, bool update) {
 
     query.reset();
     query << C_START("oRunner")
-    << C_STRING("Name") << C_INT("CardNo")
+    << C_STRING("Name") << C_INT("CardNo") << C_INT("CardNo2")
     << C_INT("Club") << C_INT("Class") << C_INT("Course") << C_INT("StartNo")
     << C_INT("StartTime") << C_INT("FinishTime")
-    << C_INT("Status") << C_INT("Card") << C_STRING("MultiR", 200)
+    << C_INT("Status") << C_INT("Card") << C_INT("Card2") << C_STRING("MultiR", 200)
     << C_INT("InputTime") << C_INT("InputStatus") << C_INT("InputPoints") << C_INT("InputPlace")
     << oe->oRunnerData->generateSQLDefinition() << C_END();
 
@@ -1051,8 +1058,7 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
   return retValue;
 }
 
-OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
-{
+OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe) {
   errorMessage.clear();
   if (CmpDataBase.empty())
     return opStatusFail;
@@ -1076,6 +1082,12 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe)
     // Reset databases
     con->query().exec("DELETE FROM dbClub");
     con->query().exec("DELETE FROM dbRunner");
+
+    string cardType = oe->runnerDB->getCurrentCardType();
+
+    auto qs = con->query();
+    qs << "ALTER TABLE `dbRunner` COMMENT = " << quote << cardType;
+    qs.execute();
 
     for (size_t k = 0; k<size; k++) {
       if (cdb[k].isRemoved())
@@ -1569,15 +1581,36 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
     alert(string(er.what())+" [SYNCREAD oEvent/Team]");
     return opStatusFail;
   }
+  
+  pStart += pPart;
+
+  if (nClubDB > 0 || nRunnerDB > 0)
+   loadRunnerDB(oe, nRunnerDB, nClubDB, pw, pStart, nSum);
+
+  processMissingObjects();
+
+  return retValue;
+}
+
+OpFailStatus MeosSQL::loadRunnerDB(oEvent *oe, int nRunnerDB, int nClubDB,
+                                   ProgressWindow &pw,
+                                   int pStart, int nSum) {
+  auto query = con->query();
+
+  auto cres = query.store("SELECT `TABLE_COMMENT` FROM `information_schema`.`TABLES` WHERE `TABLE_SCHEMA` = '" + CmpDataBase + "' AND `TABLE_NAME` = 'dbRunner' LIMIT 1");
+  string cardType;
+  if (!cres.empty()) {
+    cardType = cres.at(0)[0];
+  }
+  if (cardType.empty())
+    cardType = "SI"; // Default
 
   string dateTime;
+  int pPart = 0;
   try {
-    if (nClubDB == 0 && nRunnerDB == 0)
-      return retValue; // Not  modified
-
     ResultWrapper cnt;
     // Note dbRunner is stored after dbClub
-    if (nRunnerDB>0)
+    if (nRunnerDB > 0)
       cnt = query.store("SELECT DATE_FORMAT(MAX(Modified),'%Y-%m-%d %H:%i:%s') FROM dbRunner");
     else
       cnt = query.store("SELECT DATE_FORMAT(NOW(),'%Y-%m-%d %H:%i:%s')");
@@ -1585,10 +1618,9 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
     dateTime = cnt.at(0).at(0);
 
     oe->runnerDB->prepareLoadFromServer(nRunnerDB, nClubDB);
-
+    
     auto res = query.use("SELECT * FROM dbClub");
     int counter = 0;
-    pStart += pPart;
     pPart = (1000 * nClubDB) / nSum;
 
     if (res) {
@@ -1607,10 +1639,10 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
       }
     }
   }
-  catch (const EndOfResults& ) {
+  catch (const EndOfResults &) {
   }
-  catch (const Exception& er){
-    alert(string(er.what())+" [SYNCREAD dbClub]");
+  catch (const Exception &er) {
+    alert(string(er.what()) + " [SYNCREAD dbClub]");
     return opStatusFail;
   }
 
@@ -1631,14 +1663,14 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
         string nat = row["Nation"];
         string birth = row["BirthYear"];
         RunnerWDBEntry *db = oe->runnerDB->addRunner(name.c_str(), _atoi64(ext.c_str()),
-                               atoi(club.c_str()), atoi(card.c_str()));
+                                                     atoi(club.c_str()), atoi(card.c_str()));
         if (db) {
           RunnerDBEntry &dbn = db->dbe();
-          if (sex.length()==1)
+          if (sex.length() == 1)
             dbn.sex = sex[0];
           dbn.setBirthDate(atoi(birth.c_str()));
 
-          if (nat.length()==3) {
+          if (nat.length() == 3) {
             dbn.national[0] = nat[0];
             dbn.national[1] = nat[1];
             dbn.national[2] = nat[2];
@@ -1651,21 +1683,18 @@ OpFailStatus MeosSQL::SyncRead(oEvent *oe) {
       }
     }
   }
-  catch (const EndOfResults& ) {
+  catch (const EndOfResults &) {
   }
-  catch (const Exception& er) {
-    alert(string(er.what())+" [SYNCREAD dbRunner]");
+  catch (const Exception &er) {
+    alert(string(er.what()) + " [SYNCREAD dbRunner]");
     return opStatusFail;
   }
 
   oe->runnerDB->setDataDate(dateTime);
-  processMissingObjects();
-
-  return retValue;
+  return OpFailStatus::opStatusOK;
 }
 
-void MeosSQL::storeClub(const RowWrapper &row, oClub &c)
-{
+void MeosSQL::storeClub(const RowWrapper &row, oClub &c) {
   string n = row["Name"];
   
   c.sqlUpdated = row["Modified"];
@@ -1918,25 +1947,25 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
     oe->bibStartNoToRunnerTeam.clear(); // Clear quick map (lazy setup)
 
   if (int(row["Course"])!=0) {
-    r.Course = oe->getCourse(int(row["Course"]));
+    r.coursePtr = oe->getCourse(int(row["Course"]));
     set<int> controlIds;
-    if (!r.Course) {
+    if (!r.coursePtr) {
       oCourse oc(oe,  row["Course"]);
       oc.setImplicitlyCreated();
       if (allowSubRead)
         success = min(success, syncReadCourse(true, &oc, controlIds));
       if (!oc.isRemoved()) {
-        r.Course = oe->addCourse(oc);
-        addedFromDatabase(r.Course);
+        r.coursePtr = oe->addCourse(oc);
+        addedFromDatabase(r.coursePtr);
       }
     }
     else if (readCourseCard && allowSubRead)
-      success = min(success, syncReadCourse(false, r.Course, controlIds));
+      success = min(success, syncReadCourse(false, r.coursePtr, controlIds));
 
     if (readCourseCard)
       success = min(success, syncReadControls(oe, controlIds));
   }
-  else r.Course=0;
+  else r.coursePtr = nullptr;
 
   pClass oldClass = r.Class;
 
@@ -1982,38 +2011,43 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
   }
   else r.Club=0;
 
-  if (!r.cardWasSet) {
-    pCard oldCard = r.Card;
+  auto updateCard = [this, &row, &oe, &success, &allowSubRead, &readCourseCard, &r](const char *fieldName, pCard &cardPtr, bool &cardWasSet) {
+    if (!cardWasSet) {
+      pCard oldCard = cardPtr;
 
-    if (int(row["Card"]) != 0) {
-      r.Card = oe->getCard(int(row["Card"]));
+      if (int(row[fieldName]) != 0) {
+        cardPtr = oe->getCard(int(row[fieldName]));
 
-      if (!r.Card) {
-        oCard oc(oe, row["Card"]);
-        oc.setImplicitlyCreated();
-        if (allowSubRead)
-          success = min(success, syncRead(true, &oc));
-        if (!oc.isRemoved()) {
-          r.Card = oe->addCard(oc);
-          r.Card->changed = false;
+        if (!cardPtr) {
+          oCard oc(oe, row[fieldName]);
+          oc.setImplicitlyCreated();
+          if (allowSubRead)
+            success = min(success, syncRead(true, &oc));
+          if (!oc.isRemoved()) {
+            cardPtr = oe->addCard(oc);
+            cardPtr->changed = false;
+          }
+          else {
+            addedFromDatabase(cardPtr);
+          }
         }
-        else {
-          addedFromDatabase(r.Card);
-        }
+        else if (readCourseCard && allowSubRead)
+          success = min(success, syncRead(false, cardPtr));
       }
-      else if (readCourseCard && allowSubRead)
-        success = min(success, syncRead(false, r.Card));
+      else cardPtr = nullptr;
+
+      // Update card ownership
+      if (oldCard && oldCard != cardPtr && oldCard->tOwner == &r)
+        oldCard->tOwner = nullptr;
     }
-    else r.Card = nullptr;
 
-    // Update card ownership
-    if (oldCard && oldCard != r.Card && oldCard->tOwner == &r)
-      oldCard->tOwner = nullptr;
-  }
+    // This is updated by addRunner if this is a temporary copy.
+    if (cardPtr)
+      cardPtr->tOwner = &r;
+  };
 
-  // This is updated by addRunner if this is a temporary copy.
-  if (r.Card)
-    r.Card->tOwner = &r;
+  updateCard("Card", r.cardPtr, r.cardWasSet);
+  updateCard("Card2", r.cardPtr2, r.cardWasSet2);
 
   // This only loads indexes
   r.decodeMultiR(string(row["MultiR"]));
@@ -2232,14 +2266,17 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll) {
   if (!r || !con->connected())
     return opStatusFail;
 
-  if (r->Card && !r->Card->existInDB())
-    syncUpdate(r->Card, forceWriteAll);
+  if (r->cardPtr && !r->cardPtr->existInDB())
+    syncUpdate(r->cardPtr, forceWriteAll);
+
+  if (r->cardPtr2 && !r->cardPtr2->existInDB())
+    syncUpdate(r->cardPtr2, forceWriteAll);
 
   if (r->Class && !r->Class->existInDB())
     syncUpdate(r->Class, forceWriteAll);
 
-  if (r->Course && !r->Course->existInDB())
-    syncUpdate(r->Course, forceWriteAll);
+  if (r->coursePtr && !r->coursePtr->existInDB())
+    syncUpdate(r->coursePtr, forceWriteAll);
 
   if (r->Club && !r->Club->existInDB())
     syncUpdate(r->Club, forceWriteAll);
@@ -2254,6 +2291,7 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll) {
       << " Class=" << r->getClassId(false) << ", "
       << " Club=" << r->getClubId() << ", "
       << " Card=" << r->getCardId() << ", "
+      << " Card2=" << r->getCardId2() << ", "
       << " Status=" << r->status << ", "
       << " InputTime=" << r->inputTime << ", "
       << " InputStatus=" << r->inputStatus << ", "
@@ -2345,13 +2383,17 @@ OpFailStatus MeosSQL::syncRead(bool forceRead, oRunner *r, bool readClassClub, b
       }
     }
 
-    if (r->Card && readCourseCard)
-      syncRead(false, r->Card);
+    if (r->cardPtr && readCourseCard)
+      syncRead(false, r->cardPtr);
+
+    if (r->cardPtr2 && readCourseCard)
+      syncRead(false, r->cardPtr2);
+
     if (r->Class && readClassClub)
       syncRead(false, r->Class, readClassClub);
-    if (r->Course && readCourseCard) {
+    if (r->coursePtr && readCourseCard) {
       set<int> controlIds;
-      syncReadCourse(false, r->Course, controlIds);
+      syncReadCourse(false, r->coursePtr, controlIds);
       if (readClassClub)
         syncReadControls(r->oe, controlIds);
     }

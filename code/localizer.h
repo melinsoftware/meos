@@ -49,6 +49,10 @@ class Localizer {
     /** Translate string */
     const wstring &tl(const wstring &str) const;
     
+    /** Translate string to base langunage  */
+    const wstring &tlBase(const wstring &str) const;
+
+
     // Return if translation exists
     bool has(const string &str) const;
     void set(Localizer &li);
@@ -70,6 +74,9 @@ public:
   const wstring &tl(const wstring &str) const {return linternal->tl(str);}
   
   const wstring &tl(const wstring &str, bool cap) const;
+
+  /** Translate to base/fallback languange */
+  const wstring &tlBase(const wstring &str) const { return linternal->tlBase(str); }
 
   bool has(const string &str) const;
 

@@ -568,7 +568,7 @@ public:
   // Set whether to use a pool or not
   void setCoursePool(bool p);
   // Get the best matching course from a pool
-  pCourse selectCourseFromPool(int leg, const SICard &card) const;
+  pCourse selectCourseFromPool(int leg, const DeviceCard &card) const;
   // Update changed course pool
   void updateChangedCoursePool();
 
@@ -776,13 +776,13 @@ public:
 
   // Automatically setup forkings using the specified courses.
   // Returns <number of forkings created, number of courses used>
-  pair<int, int> autoForking(const vector< vector<int> > &inputCourses, int numToGenerateMax);
+  pair<int, int> autoForking(const vector<vector<int>> &inputCourses, int numToGenerateMax);
 
   bool hasUnorderedLegs() const;
   void setUnorderedLegs(bool order);
-  void getParallelCourseGroup(int leg, int startNo, vector< pair<int, pCourse> > &group) const;
+  void getParallelCourseGroup(int leg, int startNo, vector<pair<int, pCourse>> &group) const;
   // Returns 0 for no parallel selection (= normal mode)
-  pCourse selectParallelCourse(const oRunner &r, const SICard &sic);
+  pCourse selectParallelCourse(const oRunner &r, const DeviceCard &sic);
   void getParallelRange(int leg, int &parLegRangeMin, int &parLegRangeMax) const;
   void getParallelOptionalRange(int leg, int& parLegRangeMin, int& parLegRangeMax) const;
 

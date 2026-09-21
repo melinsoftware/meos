@@ -168,7 +168,13 @@ class IOF30Interface {
   set<string> idProviders;
   pair<string, string> preferredIdProvider;
   vector<vector<pair<string, wstring>>> externalIdTypes;
+  
+  mutable string timingSystem; // For reading
+  mutable wstring timingSystemW; // For writing
+
   bool includeMeOSId = false;
+
+  int baseCardFee = 113133;
 
   void readEvent(gdioutput &gdi, const xmlobject &xo,
                  map<int, vector<LegInfo> > &teamClassConfig);

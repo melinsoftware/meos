@@ -29,9 +29,9 @@
 #include <MMSystem.h>
 
 #include <algorithm>
+#include <random>
 
 #include "oEvent.h"
-#include "xmlparser.h"
 #include "gdioutput.h"
 #include "gdifonts.h"
 #include "gdiconstants.h"
@@ -53,15 +53,18 @@
 #include "autocomplete.h"
 #include "random.h"
 #include "cardsystem.h"
-#include <random>
+#include "carddevices.h"
+#include "cardmanager.h"
 
 constexpr bool addTestPort = false;
 void tabForceSync(gdioutput& gdi, pEvent oe);
 wstring getHiredCardDefault();
 
+
 TabSI::TabSI(oEvent* poe) :TabBase(poe), activeSIC(ConvertedTimeStatus::Unknown) {
   editCardData.tabSI = this;
   directEntryGUI.tabSI = this;
+  CardManager::instance().subscribe("tab", this);
 
   interactiveReadout = poe->getPropertyInt("Interactive", 1) != 0;
   useDatabase = poe->getPropertyInt("Database", 1) != 0;
@@ -119,11 +122,10 @@ void TabSI::logCard(gdioutput& gdi, const SICard& card) {
     logcounter = 0;
   }
 
-  vector<string> log = card.codeLogData(gdi, ++logcounter);
+  vector<string> log = card.codeLogData(++logcounter);
   logger->outputRow(log);
 }
 
-extern SportIdent* gSI;
 extern pEvent gEvent;
 
 int SportIdentCB(gdioutput* gdi, GuiEventType type, BaseInfo * data) {
@@ -150,7 +152,7 @@ string TabSI::typeFromSndType(SND s) {
 
 int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
   if (type == GUI_BUTTON) {
-    ButtonInfo bi = *(ButtonInfo*)data;
+    ButtonInfo bi = *(ButtonInfo *)data;
 
     if (bi.id == "LockFunction") {
       lockedFunction = true;
@@ -183,7 +185,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
     else if (bi.id == "RemoveMapping") {
       set<int> sel;
       gdi.getSelection("Mappings", sel);
-      for (auto code : sel) 
+      for (auto code : sel)
         oe->definePunchMapping(code, oPunch::SpecialPunch::PunchUnused);
       fillMappings(gdi);
       gdi.setInputStatus("LoadLastMapping", false);
@@ -218,7 +220,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       gdi.pushX();
       gdi.fillRight();
 
-      auto addSoundWidget = [&gdi, this](const wchar_t* name, SND type, const wstring& label) {
+      auto addSoundWidget = [&gdi, this](const wchar_t *name, SND type, const wstring &label) {
         int itype = int(type);
         string nname = gdioutput::narrow(name);
         wstring fn = oe->getPropertyString(nname.c_str(), L"");
@@ -312,7 +314,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         saver.outputRow(head);
         int count = 0;
         for (auto it = savedCards.begin(); it != savedCards.end(); ++it) {
-          vector<string> log = it->second.codeLogData(gdi, ++count);
+          vector<string> log = it->second.codeLogData(++count);
           saver.outputRow(log);
         }
       }
@@ -321,42 +323,83 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       createCompetitionFromCards(gdi);
     }
     else if (bi.id == "SIPassive") {
-      wstring port = gdi.getText("ComPortName");
-      if (gSI->openComListen(port.c_str(), gdi.getTextNo("BaudRate"))) {
-        gSI->startMonitorThread(port.c_str());
-        //loadPage(gdi);
-        gdi.restore("", false);
+      int deviceId = bi.getExtraInt();
+      int res = CardDevices::instance().openConnection(deviceId, true, gdi.getText("BaudRate"), gdi);
+      wstring port = CardDevices::instance().deviceName(deviceId);
+      gdi.restore("", false);
+
+      if (res == 1) {
         gdi.addString("", 1, L"Lyssnar på X.#" + port).setColor(colorDarkGreen);
-        if (!gdi.hasData("ShowControlMapping") && gSI->isAnyOpenUnkownUnit()) {
+        if (!gdi.hasData("ShowControlMapping") && CardDevices::instance().hasAnyOpenUnknownUnit()) {
           changeMapping(gdi);
         }
       }
       else
         gdi.addString("", 1, "FEL: Porten kunde inte öppnas").setColor(colorRed);
+
+      refillComPorts(gdi);
       gdi.dropLine();
       gdi.refresh();
     }
-    else if (bi.id == "CancelTCP")
-      gdi.restore("TCP");
-    else if (bi.id == "StartTCP") {
-      gSI->tcpAddPort(gdi.getTextNo("tcpPortNo"), 0);
-      gdi.restore("TCP");
-      gSI->startMonitorThread(L"TCP");
+    else if (bi.id == "Devices") {
+      showDevices(gdi);
+    }
+    else if (bi.id == "SelectDevice") {
+      if (auto sys = gdi.getSelectedItem("System"); sys.second) {
+        if (auto res = id2DeviceHelp.find(sys.first); res != id2DeviceHelp.end()) {
+          string system = res->second.first;
 
-      printSIInfo(gdi, L"TCP");
+          if (system != oe->getTimingSystem()) {
+            gdi.alert(L"info:changetimingsystem");
+          }
 
-      gdi.dropLine(0.5);
-      refillComPorts(gdi);
+          oe->setTimingSystem(system);
+          if (gdi.isChecked("Default"))
+            oe->setProperty("TimingSystem", gdi.widen(system));
 
-
-      if (!gdi.hasData("ShowControlMapping") && gSI->isAnyOpenUnkownUnit()) {
-        changeMapping(gdi);
+          loadPage(gdi);
+        }
       }
+    }
+    else if (bi.id == "InstallDevice") {
+      vector<pair<wstring, wstring>> ext;
+      ext.emplace_back(L"Device connector", L"*.dll");
+      wstring connector = gdi.browseForOpen(ext, L"dll");
 
+      if (connector.empty())
+        return 0;
+
+      if (!gdi.ask(L"help:trustconnector"))
+        return 0;
+
+      CardDevices::instance().installDevice(connector);
+      showDevices(gdi);
+    }
+    else if (bi.id == "CancelParamDevice")
+      gdi.restore("ParamDevice");
+    else if (bi.id == "StartParamDevice") {
+      int deviceId = bi.getExtraInt();
+      wstring port = CardDevices::instance().deviceName(deviceId);
+
+      gdi.addString("", 0, L"Startar X...#" + port);
+
+      int res = CardDevices::instance().openConnection(deviceId, false, gdi.getText("Parameter"), gdi);
+
+      gdi.restore("ParamDevice");
+
+      if (res == 1) {
+        printDeviceInfo(gdi, deviceId);
+        if (!gdi.hasData("ShowControlMapping") && CardDevices::instance().hasAnyOpenUnknownUnit())
+          changeMapping(gdi);
+      }
+      else {
+        gdi.addString("", 1, "Kunde inte ansluta till enheten.").setColor(colorRed);
+        gdi.dropLine();
+      }
+      refillComPorts(gdi);
       gdi.refresh();
     }
-    else if (bi.id == "StartSI") {
-      wchar_t bf[64];
+    else if (bi.id == "StartDevice") {
       ListBoxInfo lbi;
       if (gdi.getSelectedItem("ComPort", lbi)) {
 
@@ -365,41 +408,43 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
           loadPage(gdi);
           return 0;
         }
-        
-        swprintf_s(bf, 64, L"COM%d", lbi.getDataInt());
-        wstring port = bf;
 
-        if (lbi.text.substr(0, 3) == L"TCP")
-          port = L"TCP";
-        else if (lbi.text == L"TEST")
-          port = L"TEST";
-
-        if (gSI->isPortOpen(port)) {
-          gSI->closeCom(port.c_str());
-          gdi.addStringUT(0, lang.tl(L"Kopplar ifrån SportIdent på ") + port + lang.tl(L"... OK"));
+        if (CardDevices::instance().isConnected(lbi.data)) {
           gdi.popX();
           gdi.dropLine();
+
+          CardDevices::instance().closeConnection(lbi.data);
           refillComPorts(gdi);
         }
         else {
           gdi.fillDown();
-          if (port == L"TCP") {
-            gdi.setRestorePoint("TCP");
+          wstring device = CardDevices::instance().deviceName(lbi.data);
+
+          wstring parName, defaultPar, help;
+          if (CardDevices::instance().connection(lbi.data).needInputParameter(parName, defaultPar, help)) {
+            gdi.setRestorePoint("ParamDevice");
             gdi.dropLine();
             gdi.pushX();
             gdi.fillRight();
-            gdi.addInput("tcpPortNo", L"10000", 8, 0, L"Port för TCP:");
+            gdi.addInput("Parameter", defaultPar, 8, 0, parName + L":");
             gdi.dropLine();
-            gdi.addButton("StartTCP", "Starta", SportIdentCB);
-            gdi.addButton("CancelTCP", "Avbryt", SportIdentCB);
-            gdi.dropLine(2);
+            gdi.addButton("StartParamDevice", "Starta", SportIdentCB).setExtra(lbi.data);
+            gdi.addButton("CancelParamDevice", "Avbryt", SportIdentCB);
             gdi.popX();
+
             gdi.fillDown();
-            gdi.addString("", 10, "help:14070");
+            if (!help.empty()) {
+              gdi.dropLine(2);
+              gdi.addString("", 10, help);
+            }
+
             gdi.scrollToBottom();
             gdi.refresh();
             return 0;
           }
+          gdi.addString("", 0, L"Startar X...#" + device);
+
+          /*
           else if (port == L"TEST") {
             vector<pRunner> runners;
             oe->getRunners(0, 0, runners, false);
@@ -413,137 +458,104 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
                 gSI->addTestCard(r->getCardNo(), pl);
               }
             }
-          }
+          }*/
 
-          gdi.addStringUT(0, lang.tl(L"Startar SI på ") + port + L"...");
           gdi.refresh();
-          bool askListen = false;
+          int devStatus = CardDevices::instance().openConnection(lbi.data, false, L"", gdi);
 
-          if (gSI->openCom(port.c_str())) {
-            gSI->startMonitorThread(port.c_str());
-            gdi.addStringUT(0, lang.tl(L"SI på ") + port + L": " + lang.tl(L"OK"));
-            printSIInfo(gdi, port);
-
-            const SI_StationInfo* si = gSI->findStation(port);
-            if (si && !si->extended())
-              gdi.addString("", boldText, "warn:notextended").setColor(colorDarkRed);
+          if (devStatus == 0) {
+            gdi.addString("", 1, "Kunde inte ansluta till enheten.").setColor(colorRed);
+            gdi.dropLine();
+            gdi.refresh();
+            return 0;
           }
-          else {
-            //Retry...
-            Sleep(300);
-            if (gSI->openCom(port.c_str())) {
-              gSI->startMonitorThread(port.c_str());
-              gdi.addStringUT(0, lang.tl(L"SI på ") + port + L": " + lang.tl(L"OK"));
-              printSIInfo(gdi, port);
+          else if (devStatus == 1) {
+            printDeviceInfo(gdi, lbi.data);
 
-              const SI_StationInfo* si = gSI->findStation(port);
-              if (si && !si->extended())
-                gdi.addString("", boldText, "warn:notextended").setColor(colorDarkRed);
-            }
-            else {
-              gdi.setRestorePoint();
-              gdi.addStringUT(1, lang.tl(L"SI på ") + port + L": " + lang.tl(L"FEL, inget svar.")).setColor(colorRed);
-              gdi.dropLine();
-              gdi.refresh();
-
-              if (gdi.ask(L"help:9615")) {
-
-                gdi.pushX();
-                gdi.fillRight();
-                gdi.addInput("ComPortName", port, 10, 0, L"COM-Port:");
-                //gdi.addInput("BaudRate", "4800", 10, 0, "help:baudrate");
-                gdi.fillDown();
-                gdi.addCombo("BaudRate", 130, 100, 0, L"help:baudrate");
-                gdi.popX();
-                gdi.addItem("BaudRate", L"4800", 4800);
-                gdi.addItem("BaudRate", L"38400", 38400);
-                gdi.selectItemByData("BaudRate", 38400);
-
-
-                gdi.fillRight();
-                gdi.addButton("SIPassive", "Lyssna...", SportIdentCB).setDefault();
-                gdi.fillDown();
-                gdi.addButton("Cancel", "Avbryt", SportIdentCB).setCancel();
-                gdi.popX();
-                askListen = true;
-              }
+            if (!gdi.hasData("ShowControlMapping") && CardDevices::instance().hasAnyOpenUnknownUnit()) {
+              changeMapping(gdi);
             }
           }
+          else if (devStatus == 2) {
+            gdi.setRestorePoint();
+            gdi.addStringUT(1, device + L": " + lang.tl(L"FEL, inget svar.")).setColor(colorRed);
+            gdi.dropLine();
+            gdi.refresh();
+
+            if (gdi.ask(L"help:9615")) {
+              gdi.pushX();
+              gdi.fillDown();
+              gdi.addCombo("BaudRate", 130, 100, 0, L"help:baudrate");
+              gdi.popX();
+              gdi.addItem("BaudRate", L"4800", 4800);
+              gdi.addItem("BaudRate", L"38400", 38400);
+              gdi.selectItemByData("BaudRate", 38400);
+
+              gdi.fillRight();
+              gdi.addButton("SIPassive", "Lyssna...", SportIdentCB).setDefault().setExtra(lbi.data);
+              gdi.fillDown();
+              gdi.addButton("Cancel", "Avbryt", SportIdentCB).setCancel();
+              gdi.popX();
+            }
+          }
+
           gdi.popX();
           gdi.dropLine();
-
-          if (!askListen && !gdi.hasData("ShowControlMapping") && gSI->isAnyOpenUnkownUnit()) {
-            changeMapping(gdi);
-          }
-
           refillComPorts(gdi);
         }
+
         gdi.refresh();
       }
     }
     else if (bi.id == "SIInfo") {
-      wchar_t bf[64];
       ListBoxInfo lbi;
-      if (gdi.getSelectedItem("ComPort", lbi))
-      {
-        if (lbi.text.substr(0, 3) == L"TCP")
-          swprintf_s(bf, 64, L"TCP");
-        else
-          swprintf_s(bf, 64, L"COM%d", lbi.getDataInt());
-        gdi.fillDown();
-        gdi.addStringUT(0, lang.tl(L"Hämtar information om ") + wstring(bf) + L".");
-        printSIInfo(gdi, bf);
-        gdi.refresh();
+      if (gdi.getSelectedItem("ComPort", lbi)) {
+        if (lbi.data != 9999) {
+          gdi.fillDown();
+          gdi.addStringUT(0, lang.tl(L"Hämtar information om ") + lbi.text + L".");
+          printDeviceInfo(gdi, lbi.data);
+          gdi.refresh();
+        }
       }
     }
-    else if (bi.id == "AutoDetect")
-    {
+    else if (bi.id == "AutoDetect") {
       gdi.fillDown();
-      gdi.addString("", 0, "Söker efter SI-enheter... ");
+      gdi.addString("", 0, "Söker efter enheter... ");
       gdi.refresh();
-      list<int> ports;
-      if (!gSI->autoDetect(ports)) {
-        gdi.addString("SIInfo", 0, "help:5422");
+
+      auto ids = CardDevices::instance().autoDetect(oe->getTimingSystem());
+      if (ids.empty()) {
+        gdi.addString("", 0, "warn:nodevice#" + oe->getTimingSystem()).setColor(GDICOLOR::colorRed);
+        gdi.dropLine(0.5);
         gdi.refresh();
         return 0;
       }
-      wchar_t bf[128];
-      gSI->closeCom(0);
 
-      while (!ports.empty()) {
-        int p = ports.front();
-        swprintf_s(bf, 128, L"COM%d", p);
-        char bfn[128];
-        sprintf_s(bfn, 128, "COM%d", p);
-
-        gdi.addString((string("SIInfo") + bfn).c_str(), 0, L"#" + lang.tl(L"Startar SI på ") + wstring(bf) + L"...");
+      for (int id : ids) {
+        auto device = CardDevices::instance().deviceName(id);
+        gdi.addString("", 0, L"Startar X...#" + device);
         gdi.refresh();
-        if (gSI->openCom(bf)) {
-          gSI->startMonitorThread(bf);
-          gdi.addStringUT(0, lang.tl(L"SI på ") + wstring(bf) + L": " + lang.tl(L"OK"));
-          printSIInfo(gdi, bf);
 
-          const SI_StationInfo* si = gSI->findStation(bf);
-          if (si && !si->extended())
-            gdi.addString("", boldText, "warn:notextended").setColor(colorDarkRed);
+        int devStatus = CardDevices::instance().openConnection(id, false, L"", gdi);
+
+        if (devStatus != 1) {
+          gdi.addString("", 1, "Kunde inte ansluta till enheten.").setColor(colorRed);
+          gdi.dropLine();
+          gdi.refresh();
         }
-        else if (gSI->openCom(bf)) {
-          gSI->startMonitorThread(bf);
-          gdi.addStringUT(0, lang.tl(L"SI på ") + wstring(bf) + L": " + lang.tl(L"OK"));
-          printSIInfo(gdi, bf);
-
-          const SI_StationInfo* si = gSI->findStation(bf);
-          if (si && !si->extended())
-            gdi.addString("", boldText, "warn:notextended").setColor(colorDarkRed);
+        else {          
+          printDeviceInfo(gdi, id);
         }
-        else gdi.addStringUT(0, lang.tl(L"SI på ") + wstring(bf) + L": " + lang.tl(L"FEL, inget svar"));
-
-        gdi.refresh();
-        gdi.popX();
-        gdi.dropLine();
-        ports.pop_front();
       }
-    }
+      gdi.popX();
+      gdi.dropLine();
+      refillComPorts(gdi);
+
+      if (!gdi.hasData("ShowControlMapping") && CardDevices::instance().hasAnyOpenUnknownUnit()) {
+        changeMapping(gdi);
+      }
+      gdi.refresh();
+    } 
     else if (bi.id == "PrinterSetup") {
       if (mode == SIMode::ModeEntry || mode == SIMode::ModeRequestStartTime) {
         printStartInfo = true;
@@ -555,12 +567,12 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       }
     }
     else if (bi.id == "RAW") {
-      vector< pair<wstring, wstring> > ext;
+      vector<pair<wstring, wstring>> ext;
       ext.push_back(make_pair(L"SI Config+ (RAW)", L"*.raw"));
 
       wstring file = gdi.browseForOpen(ext, L"raw");
       if (!file.empty()) 
-        getSI().readRawData(file);
+        CardManager::instance().readRawData(file);
     }
     else if (bi.id == "AutoTie") {
       gEvent->setProperty("AutoTie", gdi.isChecked(bi.id));
@@ -719,7 +731,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       gdi.restore("Help");
       oe->synchronizeList({ oListId::oLCardId, oListId::oLRunnerId });
       for (size_t k = 0; k < cards.size(); k++)
-        insertSICard(gdi, cards[k]);
+        insertCard(gdi, cards[k]);
 
       oe->reEvaluateAll(set<int>(), true);
       cards.clear();
@@ -754,7 +766,9 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       for (int i = 0; i < NC; i++)
         testControls[i] = gdi.getTextNo("C" + itos(i + 1));
 
-      generateTestCard(sic, testControls, c, s, f);
+      auto tcToUse = testControls;
+      tcToUse.resize(NC);
+      generateTestCard(sic, tcToUse, c, s, f);
 
       if (!gdi.isChecked("HasFinish")) {
         sic.FinishPunch.Code = -1;
@@ -782,7 +796,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
           sic.Punch[i].Time %= (12 * timeConstHour);
         }
       }
-      gSI->addCard(sic);
+      CardManager::instance().addCard(sic);
     }
     else if (bi.id == "SaveP") {
       SICard sic(ConvertedTimeStatus::Hour24);
@@ -816,7 +830,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         }
         sic.punchOnly = true;
         sic.convertedTime = ConvertedTimeStatus::Hour24;
-        gSI->addCard(sic);
+        CardManager::instance().addCard(sic);
         return 0;
       }
     }
@@ -909,7 +923,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         //We have a match!
         wstring club = gdi.getText("Club", true);
 
-        if (club.length() == 0 && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+        if (club.length() == 0 && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
           pClub noClub = oe->getClub(oe->getVacantClub(true));
           if (noClub) {
             noClub->synchronize();
@@ -923,7 +937,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         pRunner r = gEvent->addRunner(gdi.getText("Runners"), club,
           classes[0]->getId(), activeSIC.CardNumber, year, true);
         if (oe->isHiredCard(activeSIC.CardNumber)) {
-          r->setRentalCard(true);
+          r->setRentalCard(Card::Primary, true);
         }
         gdi.setData("RunnerId", r->getId());
         TabRunner::saveExtraFields(gdi, *r);
@@ -985,7 +999,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
 
       wstring club = gdi.getText("Club", true);
 
-      if (club.empty() && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs))
+      if (club.empty() && oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs))
         club = lang.tl("Klubblös");
 
       const wstring year;
@@ -993,7 +1007,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         lbi.data, activeSIC.CardNumber, year, true);
 
       if (activeSIC.CardNumber > 0 && oe->isHiredCard(activeSIC.CardNumber)) {
-        r->setRentalCard(true);
+        r->setRentalCard(Card::Primary, true);
       }
 
       TabRunner::saveExtraFields(gdi, *r);
@@ -1038,7 +1052,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
           pc->setName(gdi.getText("ClassName"));
       }
 
-      if (pc == 0 && !gEvent->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
+      if (pc == 0 && !gEvent->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::NoCourses)) {
         pc = gEvent->addCourse(gdi.getText("ClassName"));
         for (unsigned i = 0; i < activeSIC.nPunch; i++)
           pc->addControl(activeSIC.Punch[i].Code);
@@ -1054,7 +1068,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         pclass->getId(), activeSIC.CardNumber, year, true);
 
       if (activeSIC.CardNumber > 0 && oe->isHiredCard(activeSIC.CardNumber)) {
-        r->setRentalCard(true);
+        r->setRentalCard(Card::Primary, true);
       }
       r->setStartTimeS(gdi.getText("StartTime"));
       r->setCardNo(activeSIC.CardNumber, false);
@@ -1154,7 +1168,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       }
       else {
         int clubId = 0;
-        if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+        if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
           wstring cname = gdi.getText("Club", true);
 
           if (!cname.empty()) {
@@ -1179,7 +1193,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
 
       oDataInterface di = r->getDI();
 
-      r->setRentalCard(gdi.isChecked("RentCard"));
+      r->setRentalCard(Card::Primary, gdi.isChecked("RentCard"));
       di.setInt("Fee", lastFeeNum);
       r->setFlag(oRunner::FlagFeeSpecified, true);
 
@@ -1233,7 +1247,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       }
 
       wstring info(bf);
-      if (r->isRentalCard())
+      if (r->isRentalCard(Card::Primary))
         info += lang.tl(L", Hyrbricka");
 
       vector< pair<wstring, size_t> > modes;
@@ -1318,7 +1332,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       sic.statusOK = ok;
       sic.statusDNF = dnf;
 
-      gSI->addCard(sic);
+      CardManager::instance().addCard(sic);
     }
     else if (bi.id == "StatusOK") {
       bool ok = gdi.isChecked(bi.id);
@@ -1363,9 +1377,13 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         oe->getRunners(0, 0, runners);
         if (!runners.empty() && gdi.ask(L"Vill du sätta hyrbricka på befintliga löpare med dessa brickor?")) {
           for (pRunner r : runners) {
-            if (rentCards.count(r->getCardNo()) && !r->isRentalCard()) {
+            if (rentCards.count(r->getCardNo()) && !r->isRentalCard(Card::Primary)) {
               gdi.addStringUT(0, r->getCompleteIdentification(oRunner::IDType::OnlyThis));
-              r->setRentalCard(true);
+              r->setRentalCard(Card::Primary, true);
+            }
+            if (rentCards.count(r->getCardNo2()) && !r->isRentalCard(Card::Secondary)) {
+              gdi.addStringUT(0, r->getCompleteIdentification(oRunner::IDType::OnlyThis));
+              r->setRentalCard(Card::Secondary, true);
             }
           }
         }
@@ -1455,7 +1473,16 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
   else if (type == GUI_LISTBOX) {
     ListBoxInfo bi = *(ListBoxInfo*)data;
 
-    if (bi.id == "Runners") {
+    if (bi.id == "System") {
+      gdi.restore("devicehelp");
+       
+      gdi.setRestorePoint("devicehelp");
+      if (auto res = id2DeviceHelp.find(bi.getDataInt()); res != id2DeviceHelp.end() && !res->second.second.empty())
+        gdi.addString("", 10, res->second.second);
+
+      gdi.refresh();
+    }
+    else if (bi.id == "Runners") {
       pRunner r = gEvent->getRunner(bi.data, 0);
       if (r) {
         gdi.setData("RunnerId", bi.data);
@@ -1471,20 +1498,13 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       bool active = true;
       if (bi.data == 9999) 
         active = showTestingPanel;
-      else {
-        wchar_t bf[64];
-        if (bi.text.substr(0, 3) != L"TCP")
-          swprintf_s(bf, 64, L"COM%d", bi.getDataInt());
-        else
-          wcscpy_s(bf, L"TCP");
-
-        active = gSI->isPortOpen(bf);
-      }
-
+      else 
+        active = CardDevices::instance().isConnected(bi.getDataInt());
+     
       if (active)
-        gdi.setText("StartSI", lang.tl("Koppla ifrån"));
+        gdi.setText("StartDevice", lang.tl("Koppla ifrån"));
       else
-        gdi.setText("StartSI", lang.tl("Aktivera"));
+        gdi.setText("StartDevice", lang.tl("Aktivera"));
     }
     else if (bi.id == "ReadType") {
       gdi.restore("SIPageLoaded");
@@ -1825,7 +1845,7 @@ int TabSI::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       if (r && r->getCardNo() != si) {
         if (si == 0 || !oe->checkCardUsed(gdi, *r, si)) {
           r->setCardNo(si, false);
-          r->setRentalCard(true);
+          r->setRentalCard(Card::Primary, true);
           r->synchronize();
         }
 
@@ -1901,72 +1921,52 @@ void TabSI::writeDefaultHiredCards() {
 }
 
 bool TabSI::anyActivePort() const {
-  if (!gSI) return false;
-
   if (showTestingPanel)
     return true;
 
-  list<int> ports;
-  gSI->EnumrateSerialPorts(ports);
-  for (int port : ports) {
-    wstring s = L"COM" + itow(port);
-    if (gSI->isPortOpen(s))
+  for (auto& [name, id, connected] : CardDevices::instance().enumerateDevices(oe->getTimingSystem())) {
+    if (connected)
       return true;
   }
-  if (gSI->isPortOpen(L"TCP"))
-    return true;
 
   return false;
 }
 
 void TabSI::refillComPorts(gdioutput& gdi) {
-  if (!gSI) return;
-
-  list<int> ports;
-  gSI->EnumrateSerialPorts(ports);
-
-  gdi.clearList("ComPort");
-  ports.sort();
-  wchar_t bf[256];
   int active = 0;
   int inactive = 0;
-  while (!ports.empty()) {
-    int p = ports.front();
-    swprintf_s(bf, 256, L"COM%d", p);
 
-    if (gSI->isPortOpen(bf)) {
-      gdi.addItem("ComPort", wstring(bf) + L" [OK]", p);
-      active = p;
+  gdi.clearList("ComPort");
+
+  for (auto& [name, id, connected] : CardDevices::instance().enumerateDevices(oe->getTimingSystem())) {
+    if (connected) {
+      gdi.addItem("ComPort", name + L" [OK]", id);
+      if (active == 0)
+        active = id;
     }
     else {
-      gdi.addItem("ComPort", bf, p);
-      inactive = p;
+      gdi.addItem("ComPort", name, id);
+      if (inactive == 0)
+        inactive = id;
     }
-
-    ports.pop_front();
   }
-
-  if (gSI->isPortOpen(L"TCP")) {
-    active = 10000;
-    gdi.addItem("ComPort", L"TCP [OK]", active);
-  }
-  else
-    gdi.addItem("ComPort", L"TCP", 0);
 
   gdi.addItem("ComPort", lang.tl("Testning"), 9999);
-  if (showTestingPanel)
+  if (showTestingPanel && active == 0)
     active = 9999;
+  else if (inactive == 0)
+    inactive = 9999;
 
   if (addTestPort)
     gdi.addItem("ComPort", L"TEST");
 
   if (active) {
     gdi.selectItemByData("ComPort", active);
-    gdi.setText("StartSI", lang.tl("Koppla ifrån"));
+    gdi.setText("StartDevice", lang.tl("Koppla ifrån"));
   }
   else {
     gdi.selectItemByData("ComPort", inactive);
-    gdi.setText("StartSI", lang.tl("Aktivera"));
+    gdi.setText("StartDevice", lang.tl("Aktivera"));
   }
 }
 
@@ -2034,22 +2034,14 @@ void TabSI::showReadCards(gdioutput& gdi, vector<SICard>& cards) {
   }
 }
 
-extern HWND hWndMain;
-SportIdent& TabSI::getSI() {
-  if (!gSI) {
-    gSI = new SportIdent(hWndMain, 0, true);
-  }
-  return *gSI;
-}
-
 bool TabSI::loadPage(gdioutput& gdi) {
+  CardDevices::instance();
   gdi.clearPage(true);
   printErrorShown = false;
   gdi.pushX();
   gdi.selectTab(tabId);
   oe->checkDB();
   gdi.setData("SIPageLoaded", 1);
-  getSI();
 
   if (firstLoadedAfterNew) {
     if (oe->getNumRunners() == 0)
@@ -2179,18 +2171,21 @@ bool TabSI::loadPage(gdioutput& gdi) {
   int yb = gdi.getCY();
 
   if (!oe->isKiosk()) {
-    gdi.addString("", boldLarge, "SportIdent");
+    gdi.addString("", boldLarge, "Brickor");
     gdi.dropLine();
 
     gdi.pushX();
     gdi.fillRight();
-    gdi.addSelection("ComPort", 120, 200, SportIdentCB);
-    gdi.addButton("StartSI", "#Aktivera+++", SportIdentCB);
+    gdi.addButton("Devices", "Tidtagningssystem", SportIdentCB);
+    gdi.addSelection("ComPort", 160, 200, SportIdentCB);
+    
+    gdi.addButton("StartDevice", "#Aktivera+++", SportIdentCB);
     gdi.addButton("SIInfo", "Info", SportIdentCB);
 
     refillComPorts(gdi);
 
-    gdi.addButton("AutoDetect", "Sök och starta automatiskt...", SportIdentCB);
+    if (CardDevices::instance().anySupportAutoDetect(oe->getTimingSystem()))
+      gdi.addButton("AutoDetect", "Sök och starta automatiskt...", SportIdentCB);
     gdi.addButton("PrinterSetup", "Skrivarinställningar...", SportIdentCB, "Skrivarinställningar för sträcktider och startbevis");
 
 #ifdef _DEBUG
@@ -2369,7 +2364,7 @@ void TabSI::showReadoutMode(gdioutput& gdi) {
   gdi.addButton("Import", "Importera från fil...", SportIdentCB);
   gdi.addButton("ReadoutWindow", "Öppna avläsningsfönster", SportIdentCB, "info:readoutwindow");
 
-  if (oe->empty() || !getSI().isAnyOpenUnkownUnit())
+  if (oe->empty() || !CardDevices::instance().hasAnyOpenUnknownUnit())
     gdi.dropLine(3);
   else {
     gdi.setRestorePoint("Mapping");
@@ -2384,7 +2379,7 @@ void TabSI::showReadoutMode(gdioutput& gdi) {
     
     gdi.setCX(cx);
     gdi.dropLine(1.1);
-    auto mappings = getSI().getSpecialMappings();
+    auto mappings = CardManager::instance().getSpecialMappings();
     wstring check, start, finish;
     auto add = [](int code, wstring& dst) {
       if (!dst.empty())
@@ -2447,11 +2442,21 @@ void TabSI::showReadoutMode(gdioutput& gdi) {
 
   gdi.setRestorePoint("Help");
   gdi.fillRight();
-  gdi.addString("", 10, "info:readoutbase");
+  gdi.addString("", 10, "info:readoutnew");
   gdi.fillDown();
   gdi.addString("", 10, "info:readoutmore");
   gdi.popX();
   gdi.setCY(gdi.getHeight());
+
+  if (auto [id, selected] = gdi.getSelectedItem("ComPort"); selected && id != 9999) {
+    wstring help = CardDevices::instance().connection(id).deviceHelp();
+    if (!help.empty()) {
+      gdi.dropLine();
+      gdi.addStringUT(fontMediumPlus, CardDevices::instance().connection(id).getName());
+      gdi.addString("", 10, help);
+    }
+  }
+
   gdi.dropLine(0.5);
 
   renderReadCard(gdi, 100);
@@ -2466,13 +2471,7 @@ void TabSI::updateReadoutFunction(gdioutput& gdi) {
   gdi.hideWidget("PlaySound", hide);
 }
 
-void InsertSICard(gdioutput& gdi, SICard& sic) {
-  TabSI& tsi = dynamic_cast<TabSI&>(*gdi.getTabs().get(TSITab));
-  tsi.insertSICard(gdi, sic);
-}
-
-pRunner TabSI::autoMatch(const SICard& sic, pRunner db_r)
-{
+pRunner TabSI::autoMatch(const SICard& sic, pRunner db_r) {
   assert(useDatabase);
   //Look up in database.
   if (!db_r)
@@ -2492,7 +2491,7 @@ pRunner TabSI::autoMatch(const SICard& sic, pRunner db_r)
         r->setCardNo(sic.CardNumber, false);
 
         if (oe->isHiredCard(sic.CardNumber)) {
-          r->setRentalCard(true);
+          r->setRentalCard(Card::Primary, true);
         }
       }
       else r = 0; //Do not assume too much...
@@ -2503,7 +2502,7 @@ pRunner TabSI::autoMatch(const SICard& sic, pRunner db_r)
   else return 0;
 }
 
-void TabSI::insertSICard(gdioutput& gdi, SICard& sic)
+void TabSI::insertCard(gdioutput& gdi, DeviceCard& sic)
 {
   wstring msg;
   try {
@@ -2523,7 +2522,7 @@ void TabSI::insertSICard(gdioutput& gdi, SICard& sic)
     gdi.alert(msg);
 }
 
-void TabSI::insertSICardAux(gdioutput& gdi, SICard& sic)
+void TabSI::insertSICardAux(gdioutput& gdi, DeviceCard& sic)
 {
   if (oe->isReadOnly()) {
     gdi.makeEvent("ReadCard", "insertSICard", sic.CardNumber, 0, true);
@@ -2766,12 +2765,13 @@ void TabSI::insertSICardAux(gdioutput& gdi, SICard& sic)
     //We stop processing of new cards, while working...
     // Thus cannot be in interactive mode
     activeSIC = sic;
-    wchar_t bf[256];
-
+    
     if (interactiveReadout) {
-      swprintf_s(bf, L"SI X är redan inläst. Ska den läsas in igen?#%d", sic.CardNumber);
+      const char *noBtn = nullptr;
+      if (printSplits)
+        noBtn = "Skriv ut sträcktider";
 
-      if (!gdi.ask(bf)) {
+      if (!gdi.ask(L"Bricka X är redan inläst. Ska den läsas in igen?#" +itow(sic.CardNumber), nullptr, noBtn)) {
         if (printSplits) {
           pRunner runner = getRunnerForCardSplitPrint(sic);
           if (runner)
@@ -2793,8 +2793,7 @@ void TabSI::insertSICardAux(gdioutput& gdi, SICard& sic)
       }
 
       gdi.dropLine();
-      swprintf_s(bf, L"SI X är redan inläst. Använd interaktiv inläsning om du vill läsa brickan igen.#%d", sic.CardNumber);
-      gdi.addString("", 0, bf).setColor(colorRed);
+      gdi.addString("", 0, "Bricka X är redan inläst. Använd interaktiv inläsning om du vill läsa den igen.#" + itos(sic.CardNumber)).setColor(colorRed);
       gdi.dropLine();
       gdi.scrollToBottom();
       gdi.refresh();
@@ -2827,7 +2826,7 @@ void TabSI::insertSICardAux(gdioutput& gdi, SICard& sic)
     gdi.addString("", 1, "Skapar saknad klass").setColor(colorGreen);
     gdi.dropLine();
     pCourse pc = nullptr;
-    if (!oe->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
+    if (!oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::NoCourses)) {
       pc = gEvent->addCourse(lang.tl("Okänd klass"));
       for (unsigned i = 0; i < sic.nPunch; i++)
         pc->addControl(sic.Punch[i].Code);
@@ -2885,11 +2884,9 @@ void TabSI::startInteractive(gdioutput& gdi, const SICard& sic, pRunner r, pRunn
     gdi.setRestorePoint();
     gdi.fillDown();
     gdi.dropLine();
-    char bf[256];
-    sprintf_s(bf, 256, "SI X inläst. Brickan är inte knuten till någon löpare (i skogen).#%d", sic.CardNumber);
-
+    
     gdi.dropLine();
-    gdi.addString("", 1, bf);
+    gdi.addString("", 1, "Bricka X inläst. Brickan är inte knuten till någon löpare (i skogen).#" + itos(sic.CardNumber));
     gdi.dropLine();
     gdi.fillRight();
     gdi.pushX();
@@ -2900,10 +2897,10 @@ void TabSI::startInteractive(gdioutput& gdi, const SICard& sic, pRunner r, pRunn
     if (db_r) {
       gdi.setText("Runners", db_r->getName()); //Data from DB
     }
-    else if (sic.firstName[0] || sic.lastName[0]) { //Data from SI-card
+    else if (sic.firstName[0] || sic.lastName[0]) { //Data from card
       gdi.setText("Runners", wstring(sic.lastName) + L", " + sic.firstName);
     }
-    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+    if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
       gdi.addCombo("Club", 200, 300, 0, L"Klubb:").setHandler(&directEntryGUI);
       gEvent->fillClubs(gdi, "Club");
 
@@ -2919,11 +2916,7 @@ void TabSI::startInteractive(gdioutput& gdi, const SICard& sic, pRunner r, pRunn
     int cnt = TabRunner::addExtraFields(*oe, gdi, false, false, 
                                         oEvent::ExtraFieldContext::QuickEntry, {oEvent::ExtraFields::StartTime});
     TabRunner::loadExtraFields(gdi, db_r);
-    /*auto setIf = [&gdi](const string& wg, const wstring& val) {
-      if (gdi.hasWidget(wg))
-        gdi.setText(wg, val);
-      };
-    */
+
     if (gdi.getText("Runners").empty() || !gdi.hasWidget("Club"))
       gdi.setInputFocus("Runners");
     else
@@ -2961,12 +2954,9 @@ void TabSI::startInteractive(gdioutput& gdi, const SICard& sic, pRunner r, pRunn
     //No class. Select...
     gdi.setRestorePoint();
 
-    wchar_t bf[256];
-    swprintf_s(bf, 256, L"SI X inläst. Brickan tillhör Y som saknar klass.#%d#%s",
-      sic.CardNumber, r->getName().c_str());
-
     gdi.dropLine();
-    gdi.addString("", 1, bf);
+    gdi.addString("", 1, L"Bricka X inläst. Brickan tillhör Y som saknar klass.#" +
+                  itow(sic.CardNumber) + L"#" + r->getName());
 
     gdi.fillRight();
     gdi.pushX();
@@ -3023,7 +3013,7 @@ void TabSI::processInsertCard(const SICard& sic)
 
   if (runner) {
     vector<pair<int, pControl>> mp;
-    runner->addCard(card, mp);
+    runner->addCard(*card, runner->getCardNo2() == sic.CardNumber ? Card::Secondary : Card::Primary, mp);
   }
 }
 
@@ -3128,7 +3118,7 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
     }
   }
 
-  if (!runner->getCourse(false) && !csic.isManualInput() && !oe->getMeOSFeatures().hasFeature(MeOSFeatures::NoCourses)) {
+  if (!runner->getCourse(false) && !csic.isManualInput() && !oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::NoCourses)) {
 
     if (pclass && !pclass->hasMultiCourse() && !pclass->hasDirectResult()) {
       pCourse pcourse = gEvent->addCourse(pclass->getName());
@@ -3137,15 +3127,13 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
       for (unsigned i = 0; i < csic.nPunch; i++)
         pcourse->addControl(csic.Punch[i].Code);
 
-      wchar_t msg[256];
-
-      swprintf_s(msg, lang.tl(L"Skapade en bana för klassen %s med %d kontroller från brickdata (SI-%d)").c_str(),
-        pclass->getName().c_str(), csic.nPunch, csic.CardNumber);
+      wstring info = L"Skapade en bana för klassen X med Y kontroller från brickdata (Z).#" + 
+        pclass->getName() + L"#" +itow(csic.nPunch) + L"#" + itow(csic.CardNumber);
 
       if (silent)
-        gdi.addInfoBox("SIINFO", wstring(L"#") + msg, L"", BoxStyle::Header, 15000);
+        gdi.addInfoBox("SIINFO", info, L"", BoxStyle::Header, 15000);
       else
-        gdi.addStringUT(0, msg);
+        gdi.addString("", 0, info);
     }
     else {
       if (!(pclass && pclass->hasDirectResult())) {
@@ -3214,14 +3202,14 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
       rout.warnings += lang.tl(L"Målstämpling saknas.");
 
     card->synchronize();
-    runner->addCard(card, rout.MP);
+    runner->addCard(*card, card->getCardNo() == runner->getCardNo2() ? Card::Secondary : Card::Primary, rout.MP);
     runner->synchronize(true);
     runner->hasManuallyUpdatedTimeStatus();
   }
   else {
     //Manual input
     rout.info = runner->getName() + L",   " + runner->getClub() + L",   " + runner->getClass(true);
-    runner->setCard(0);
+    runner->setCard(0, Card::Primary);
 
     if (csic.statusOK) {
       runner->setStatus(StatusOK, true, oBase::ChangeType::Update);
@@ -3269,7 +3257,7 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
       rout.statusline += lang.tl(L",      Prel. placering: ") + placeS;
     rout.statusline += lang.tl(L",     Prel. bomtid: ") + runner->getMissedTimeS();
 
-    rout.rentCard = runner->isRentalCard() || oe->isHiredCard(sic.CardNumber);
+    rout.rentCard = runner->isRentalCard(sic.CardNumber == runner->getCardNo2() ? Card::Secondary : Card::Primary) || oe->isHiredCard(sic.CardNumber);
     
     if (!silent) {
       rout.render(gdi, rout.computeRC(gdi));
@@ -3280,7 +3268,7 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
         runner->getClub() + L". " + runner->getClass(true) +
         L"\n" + lang.tl("Tid:  ") + runner->getRunningTimeS(true, SubSecond::Auto) + lang.tl(L", Plats  ") + placeS;
 
-      if (runner->isRentalCard())
+      if (runner->isRentalCard(sic.CardNumber == runner->getCardNo2() ? Card::Secondary : Card::Primary))
         gdi.addInfoBox("SIINFO", msg, L"Hyrbricka", BoxStyle::SubLine, 10000);
       else
         gdi.addInfoBox("SIINFO", msg, L"", BoxStyle::SubLine, 10000);
@@ -3306,7 +3294,7 @@ bool TabSI::processCard(gdioutput& gdi, pRunner runner, const SICard& csic, bool
       rout.statusline += L", (" + mpList + +L")";
 
     rout.color = colorLightRed;
-    rout.rentCard = runner->isRentalCard() || oe->isHiredCard(sic.CardNumber);
+    rout.rentCard = runner->isRentalCard(sic.CardNumber == runner->getCardNo2() ? Card::Secondary : Card::Primary) || oe->isHiredCard(sic.CardNumber);
 
     if (!silent) {
       rout.render(gdi, rout.computeRC(gdi));
@@ -3487,18 +3475,13 @@ void TabSI::processPunchOnly(gdioutput& gdi, const SICard& csic)
   if (ofp) {
     pRunner r = ofp->getTiedRunner();
     if (gdi.getData("SIPageLoaded", loaded)) {
-      //gEvent->getRunnerByCard(sic.CardNumber);
-
-      if (r) {
-        wstring str = r->getName() + lang.tl(" stämplade vid ") + ofp->getSimpleString();
-        gdi.addStringUT(0, str);
-        gdi.dropLine();
-      }
-      else {
-        wstring str = itow(sic.CardNumber) + lang.tl(" (okänd) stämplade vid ") + ofp->getSimpleString();
-        gdi.addStringUT(0, str);
-        gdi.dropLine(0.3);
-      }
+      wstring name = r ? r->getCompleteIdentification(oRunner::IDType::OnlyThis, oRunner::NameType::Default) 
+        : itow(sic.CardNumber) + lang.tl(" (Okänd bricka)");
+      
+      wstring str = name+ lang.tl(" stämplade vid ") + ofp->getSimpleString();
+      gdi.addStringUT(0, str);
+      gdi.dropLine(0.2);
+      
       gdi.scrollToBottom();
     }
 
@@ -3508,7 +3491,7 @@ void TabSI::processPunchOnly(gdioutput& gdi, const SICard& csic)
   else if (!accessError.empty()) {
     playReadoutSound(SND::ActionNeeded);
     if (gdi.getData("SIPageLoaded", loaded)) {
-      gdi.addString("", fontLarge, accessError).setColor(colorDarkRed);
+      gdi.addString("", fontLarge, accessError).setColor(colorRed);
       gdi.dropLine(0.3);
       gdi.scrollToBottom();
     }
@@ -3625,7 +3608,7 @@ void TabSI::assignCard(gdioutput& gdi, const SICard& sic)
         gdi.ask(L"Skriv över existerande bricknummer?")) {
 
         r->setCardNo(sic.CardNumber, false);
-        r->setRentalCard(true);
+        r->setRentalCard(Card::Primary, true);
         r->synchronize();
         gdi.setText(ii->id, sicode);
       }
@@ -3653,7 +3636,7 @@ void TabSI::generateEntryLine(gdioutput& gdi, pRunner r) {
   storedInfo.checkAge();
   gdi.addInput("CardNo", storedInfo.storedCardNo, 8, SportIdentCB, L"Bricka:");
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Clubs)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
     gdi.addCombo("Club", 180, 200, 0, L"Klubb:",
       L"Skriv första bokstaven i klubbens namn och tryck pil-ner för att leta efter klubben")
       .setHandler(&directEntryGUI);
@@ -3688,7 +3671,7 @@ void TabSI::generateEntryLine(gdioutput& gdi, pRunner r) {
     gdi.dropLine(-1);
   }
 
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy)) {
     gdi.addCombo("Fee", 60, 150, SportIdentCB, L"Anm. avgift:");
     oe->fillFees(gdi, "Fee", true, false);
 
@@ -3753,7 +3736,7 @@ void TabSI::generateEntryLine(gdioutput& gdi, pRunner r) {
     if (gdi.hasWidget("Bib"))
       gdi.setText("Bib", r->getBib());
     gdi.check("NoTiming", r->hasFlag(oAbstractRunner::TransferFlags::FlagNoTiming));
-    gdi.check("RentCard", r->isRentalCard());
+    gdi.check("RentCard", r->isRentalCard(Card::Primary));
     if (gdi.hasWidget("Paid"))
       gdi.check("Paid", dci.getInt("Paid") > 0);
     else if (gdi.hasWidget("PayMode")) {
@@ -3801,7 +3784,7 @@ void TabSI::updateEntryInfo(gdioutput& gdi)
   }
 
   wstring method;
-  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Economy)) {
+  if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Economy)) {
     bool invoice = true;
     if (gdi.hasWidget("PayMode")) {
       invoice = gdi.getSelectedItem("PayMode").first == 1000;
@@ -3874,7 +3857,7 @@ void TabSI::checkMoreCardsInQueue(gdioutput& gdi) {
     cards.pop_front();
     try {
       gdi.removeFirstInfoBox("SIREAD");
-      insertSICard(gdi, c);
+      insertCard(gdi, c);
     }
     catch (std::exception& ex) {
       fail = true;
@@ -3913,7 +3896,7 @@ void TabSI::showManualInput(gdioutput& gdi) {
   gdi.fillRight();
   gdi.pushX();
   gdi.dropLine();
-  gdi.addInput("Manual", L"", 20, SportIdentCB, L"Nummerlapp, SI eller Namn:");
+  gdi.addInput("Manual", L"", 20, SportIdentCB, L"Nummerlapp, bricknummer eller namn:");
   gdi.addInput("FinishTime", lang.tl("Aktuell tid"), 8, SportIdentCB, L"Måltid:").setFgColor(colorGreyBlue).setExtra(1);
   gdi.dropLine(1.2);
   gdi.addCheckbox("StatusOK", "Godkänd", SportIdentCB, true);
@@ -3959,7 +3942,7 @@ void TabSI::tieCard(gdioutput& gdi) {
 
   r->synchronize();
   r->setCardNo(card, true, false);
-  r->setRentalCard(rent);
+  r->setRentalCard(Card::Primary, rent);
   r->synchronize(true);
 
   gdi.restore("ManualTie");
@@ -4709,7 +4692,7 @@ void TabSI::showCheckCardStatus(gdioutput& gdi, const string& cmd) {
       stable_sort(r.begin(), r.end(), compareCardNo);
       gdi.dropLine();
       string msg = "Brickor markerade som både uthyrda och egna: X#" + itos(count[CNFCheckedRentAndNotRent] + count[CNFRentAndNotRent]);
-      gdi.addString("", 1, msg).setColor(colorDarkRed);
+      gdi.addString("", 1, msg).setColor(colorRed);
       gdi.dropLine(0.5);
       for (size_t k = 0; k < r.size(); k++) {
         int cno = r[k]->getCardNo();
@@ -4720,7 +4703,7 @@ void TabSI::showCheckCardStatus(gdioutput& gdi, const string& cmd) {
           checkedCardFlags[cno] == CNFRentAndNotRent) {
           int yp = gdi.getCY();
           wstring cp = r[k]->getCompleteIdentification(oRunner::IDType::OnlyThis);
-          bool hire = r[k]->isRentalCard();
+          bool hire = r[k]->isRentalCard(Card::Primary);
           wstring info = hire ? (L" (" + lang.tl("Hyrd") + L")") : L"";
           gdi.addStringUT(yp, cx, 0, itow(cno) + info);
           gdi.addStringUT(yp, cx + col2, 0, cp);
@@ -4935,15 +4918,17 @@ bool TabSI::checkpPrintQueue(gdioutput& gdi) {
   return true;
 }
 
-void TabSI::printSIInfo(gdioutput& gdi, const wstring& port) const {
-  vector<pair<bool, wstring>> info;
+void TabSI::printDeviceInfo(gdioutput& gdi, int deviceId) const {
   gdi.fillDown();
-  gSI->getInfoString(port, info);
-  for (size_t j = 0; j < info.size(); j++) {
-    if (info[j].first)
-      gdi.addStringUT(1, info[j].second).setColor(colorDarkRed);
+  DynamicConnection::DeviceStatus status;
+  CardDevices::instance().status(deviceId, status);
+  gdi.addStringUT(1, CardDevices::instance().deviceName(deviceId));
+  gdi.dropLine(0.3);
+  for (auto& [msg, warning] : status.messages) {
+    if (warning)
+      gdi.addStringUT(1, msg).setColor(colorRed);
     else
-      gdi.addStringUT(0, info[j].second);
+      gdi.addStringUT(0, msg);
   }
 }
 
@@ -5249,7 +5234,7 @@ void TabSI::showReadoutStatus(gdioutput& gdi, const oRunner* r,
   GDICOLOR bgColor = GDICOLOR::colorDefault;
 
   if (r != nullptr) {
-    if (r->isRentalCard() || oe->isHiredCard(r->getCardNo()))
+    if (r->isRentalCard(Card::All) || oe->isHiredCard(r->getCardNo()))
       rentalCard = true;
 
     gdi.addStringUT(h / 3, mrg, boldHuge | textCenter, r->getCompleteIdentification(oRunner::IDType::OnlyThis), w - 2 * mrg);
@@ -5474,11 +5459,11 @@ void TabSI::changeMapping(gdioutput& gdi) const {
 }
 
 void TabSI::fillMappings(gdioutput& gdi) const {
-  getSI().clearSpecialMappings(); // Synch with stored
+  CardManager::instance().clearSpecialMappings(); // Synch with stored
   gdi.clearList("Mappings");
   for (auto &[code, type] : oe->getPunchMapping()) {
     if (code > 0 && code < 1024)
-      getSI().addSpecialMapping(code, type); // Synch with stored
+      CardManager::instance().addSpecialMapping(code, type); // Synch with stored
     gdi.addItem("Mappings", itow(code) + L" \u21A6 " + oPunch::getType(type, nullptr), code);
   }
 }
@@ -5842,7 +5827,7 @@ public:
       gdi.fillRight();
       gdi.addString("", textImage, itow(IDI_MEOSWARN));
       gdi.fillDown();
-      gdi.addString("", 0, "Anslut en SI-enhet och aktivera den.");
+      gdi.addString("", 0, "Anslut en enhet (X) och aktivera den.#" + oe->getTimingSystem());
       gdi.popX();
     }
     else {
@@ -6241,6 +6226,10 @@ void TabSI::generateTestCard(SICard &sic, const vector<int> &testControls, int c
     sic.CheckPunch.Code = -1;
   }
 
+  std::mt19937 gen(sic.CardNumber + sic.FinishPunch.Time); // mersenne_twister_engine seeded with rd()
+  std::uniform_int_distribution<> distrib(0, 100);
+
+
   int NC = testControls.size();
   double t = 1.0 / (NC + 1);
   for (sic.nPunch = 0; sic.nPunch<unsigned(NC); sic.nPunch++) {
@@ -6248,7 +6237,7 @@ void TabSI::generateTestCard(SICard &sic, const vector<int> &testControls, int c
     int ct = ((int(finishTime * t + startTime * (1.0 - t)) / timeUnitsPerSecond) % (24 * timeConstSecPerHour)) * timeUnitsPerSecond;
     sic.Punch[sic.nPunch].Time = ct % (24 * timeConstHour);
     double remaining = 1.0 - t;
-    t += (remaining / double(1 + NC - sic.nPunch)) * ((rand() % 100) + 400.0) / 500.0;
+    t += (remaining / double(1 + NC - sic.nPunch)) * (distrib(gen) + 400.0) / 500.0;
 
     if ((sic.nPunch % 11) == 1 || 5 == (sic.nPunch % 8))
       t += min(5 / double(NC), max(0.0, 0.9 - t));
@@ -6269,4 +6258,57 @@ pair<pCourse, pClass> TabSI::getRenderCourse(gdioutput& gdi) const {
   if (!cls)
     return pair(nullptr, nullptr);
   return make_pair(cls->getCourse(false), cls);
+}
+
+void TabSI::showDevices(gdioutput &gdi) {
+  gdi.clearPage(false);
+  gdi.addString("", boldLarge, "Tidtagningssystem");
+  gdi.pushY();
+  gdi.dropLine();
+  string current = oe->getTimingSystem();
+  string defSystem = oe->getPropertyString("TimingSystem", "SI");
+  gdi.addSelection("System", 200, 100, SportIdentCB, L"Välj tidtagningssystem för tävlingen:");
+  auto installed = CardDevices::instance().getConnectors();
+  installed.emplace_back("none", lang.tl("Inget"), L"");
+  int usedSystem = -1;
+  id2DeviceHelp.clear();
+  int ix = 0;
+  for (auto &[tag, name, help] : installed) {
+    if (tag == current)
+      usedSystem = ix;
+    gdi.addItem("System", name, ix);
+    id2DeviceHelp[ix] = make_pair(tag, help);
+    ix++;
+  }
+  if (usedSystem == -1) {
+    gdi.addItem("System", lang.tl("Okänt X#" + current), ix);
+    usedSystem = ix;
+    gdi.pushX();
+    gdi.fillRight();
+    gdi.addString("", textImage, itow(IDI_MEOSWARN));
+    gdi.addString("", 0, "Okänt tidtagningssystem. Installera och lägg till systemet på den här datorn.");
+    gdi.fillDown();
+    gdi.popX();
+    gdi.dropLine();
+  }
+  else {
+    gdi.addCheckbox("Default", "Använd som standard i nya tävlingar", nullptr, current == defSystem);
+  }
+  gdi.selectItemByData("System", usedSystem);
+
+  gdi.dropLine();
+  gdi.fillRight();
+  gdi.pushX();
+  gdi.addButton("SelectDevice", "Spara", SportIdentCB).setDefault();
+  gdi.addButton("Cancel", "Avbryt", SportIdentCB).setCancel();
+  gdi.popX();
+  gdi.dropLine(5);
+  gdi.addButton("InstallDevice", "Installera tidtagningssystem...", SportIdentCB);
+  gdi.newColumn();
+  gdi.popY();
+
+  gdi.setRestorePoint("devicehelp");
+  if (auto res = id2DeviceHelp.find(usedSystem); res != id2DeviceHelp.end() && !res->second.second.empty())
+    gdi.addString("", 10, res->second.second);
+  gdi.refresh();
 }

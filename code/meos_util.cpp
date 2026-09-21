@@ -935,12 +935,15 @@ const wstring &itow(int i) {
   return res;
 }
 
+const wstring &itow(long i) {
+  return itow(int(i));
+}
+
 wstring itow(unsigned long i) {
   wchar_t bf[32];
   _ultow_s(i, bf, 10);
   return bf;
 }
-
 
 wstring itow(unsigned int i) {
   wchar_t bf[32];
@@ -960,8 +963,7 @@ wstring itow(uint64_t i) {
   return bf;
 }
 
-const string &itos(int i)
-{
+const string &itos(int i) {
   char bf[32];
   _itoa_s(i, bf, 10);
   string &res = StringCache::getInstance().get();
@@ -969,8 +971,11 @@ const string &itos(int i)
   return res;
 }
 
-string itos(unsigned int i)
-{
+string itos(long i) {
+  return itos(int(i));
+}
+
+string itos(unsigned int i) {
   char bf[32];
   _ultoa_s(i, bf, 10);
   return bf;
@@ -1323,8 +1328,29 @@ const char *decodeXML(const char *in)
   return out.c_str();
 }
 
-void static setChar(wchar_t *map, wchar_t pos, wchar_t value)
-{
+wchar_t toupperLocale(wchar_t c) {
+  if (c >= 'a' && c <='z')
+    return c - ('a' - 'A');
+  else if (c < 128)
+    return c;
+  // Special treatmeant of characters that actually appear as resource keys
+  switch (c) {
+  case 'å':
+    return 'Å';
+  case 'ä':
+    return 'Ä';
+  case 'ö':
+    return 'Ö';
+  }
+  wchar_t bf[2] = { c, 0 };
+
+  // Windows API locale specific
+  CharUpper(bf);
+  return bf[0];
+}
+
+
+void static setChar(wchar_t *map, wchar_t pos, wchar_t value) {
   map[pos] = value;
 }
 

@@ -86,7 +86,7 @@
     <ClCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>./libharu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4267;4244;4018</DisableSpecificWarnings>
@@ -105,7 +105,7 @@
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <DisableSpecificWarnings>4267;4244;4018</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>./libharu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <DisableSpecificWarnings>4267;4244;4018</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>./libharu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -148,7 +148,7 @@
       <DisableSpecificWarnings>4267;4244;4018</DisableSpecificWarnings>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>./libharu;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <Link>
@@ -168,8 +168,11 @@
     <ClCompile Include="autocomplete.cpp" />
     <ClCompile Include="autotask.cpp" />
     <ClCompile Include="binencoder.cpp" />
+    <ClCompile Include="carddevices.cpp" />
+    <ClCompile Include="cardmanager.cpp" />
     <ClCompile Include="cardsystem.cpp" />
     <ClCompile Include="classconfiginfo.cpp" />
+    <ClCompile Include="connector_interface.cpp" />
     <ClCompile Include="csvparser.cpp" />
     <ClCompile Include="download.cpp" />
     <ClCompile Include="gdioutput.cpp" />
@@ -184,6 +187,7 @@
     <ClCompile Include="localizer.cpp" />
     <ClCompile Include="machinecontainer.cpp" />
     <ClCompile Include="maprenderer.cpp" />
+    <ClCompile Include="md5.cpp" />
     <ClCompile Include="meos.cpp" />
     <ClCompile Include="MeOSFeatures.cpp" />
     <ClCompile Include="MeosSQL.cpp" />
@@ -233,7 +237,6 @@
     <ClCompile Include="RunnerDB.cpp" />
     <ClCompile Include="socket.cpp" />
     <ClCompile Include="speakermonitor.cpp" />
-    <ClCompile Include="SportIdent.cpp" />
     <ClCompile Include="StdAfx.cpp" />
     <ClCompile Include="TabAuto.cpp" />
     <ClCompile Include="TabBase.cpp" />
@@ -263,8 +266,11 @@
     <ClInclude Include="autocompletehandler.h" />
     <ClInclude Include="autotask.h" />
     <ClInclude Include="binencoder.h" />
+    <ClInclude Include="carddevices.h" />
+    <ClInclude Include="cardmanager.h" />
     <ClInclude Include="cardsystem.h" />
     <ClInclude Include="classconfiginfo.h" />
+    <ClInclude Include="connector_interface.h" />
     <ClInclude Include="csvparser.h" />
     <ClInclude Include="datadefiners.h" />
     <ClInclude Include="download.h" />
@@ -288,6 +294,7 @@
     <ClInclude Include="localizer.h" />
     <ClInclude Include="machinecontainer.h" />
     <ClInclude Include="maprenderer.h" />
+    <ClInclude Include="md5.h" />
     <ClInclude Include="meos.h" />
     <ClInclude Include="meosexception.h" />
     <ClInclude Include="MeOSFeatures.h" />
@@ -331,7 +338,6 @@
     <ClInclude Include="RunnerDB.h" />
     <ClInclude Include="socket.h" />
     <ClInclude Include="speakermonitor.h" />
-    <ClInclude Include="SportIdent.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="subcommand.h" />
     <ClInclude Include="TabAuto.h" />

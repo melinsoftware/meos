@@ -1385,7 +1385,7 @@ void TabSpeaker::manualTimePage(gdioutput &gdi) const
   gdi.fillDown();
   gdi.popX();
   gdi.dropLine(3);
-  gdi.addString("", 10, "help:14692");
+  gdi.addString("", 10, "help:manualradio");
 
   gdi.setInputFocus("Runner");
   gdi.refresh();
@@ -1411,25 +1411,27 @@ void TabSpeaker::storeManualTime(gdioutput &gdi) {
 
   pRunner r=oe->getRunnerByBibOrStartNo(r_str, false);
   int r_no = _wtoi(r_str.c_str());
-  if (!r)
-    r=oe->getRunnerByCardNo(r_no, itime, oEvent::CardLookupProperty::Any);
-
-  wstring Name;
-  int sino=r_no;
-  if (r) {
-    Name = r->getName();
-    sino = r->getCardNo();
+  int cno = 0;
+  if (!r) {
+    r = oe->getRunnerByCardNo(r_no, itime, oEvent::CardLookupProperty::Any);
+    cno = r_no;
   }
   else
-    Name = lang.tl("Okänd");
+    cno = r->getCardNo();
 
-  if (sino <= 0) 
-    throw meosException("Ogiltigt bricknummer X#" + itos(sino));
+  wstring name;
+  if (r) 
+    name = r->getName();
+  else
+    name = lang.tl("Okänd");
 
-  oe->addFreePunch(itime, punch, 0, sino, true, false);
+  if (cno <= 0) 
+    throw meosException("Ogiltigt bricknummer X#" + itos(cno));
+
+  oe->addFreePunch(itime, punch, 0, cno, true, false);
 
   gdi.restore("manual", false);
-  gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + Name + L"#" + oPunch::getType(punch, r ? r->getCourse(false) : nullptr) + L"#" +  oe->getAbsTime(itime));
+  gdi.addString("", 0, L"Löpare: X, kontroll: Y, kl Z#" + name + L"#" + oPunch::getType(punch, r ? r->getCourse(false) : nullptr) + L"#" +  oe->getAbsTime(itime));
 
   manualTimePage(gdi);
 }

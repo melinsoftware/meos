@@ -27,10 +27,10 @@
 #include "stdafx.h"
 #include "csvparser.h"
 #include "oEvent.h"
-#include "SportIdent.h"
 #include "meos_util.h"
 #include "localizer.h"
 #include "xmlparser.h"
+#include "cardmanager.h"
 
 #include "meosexception.h"
 
@@ -214,7 +214,7 @@ bool csvparser::importOS_CSV(oEvent &oe, const wstring &file) {
           DI.setString("Nationality", sp[OSnat]);
 
           if (sp[rindex + OSRrentcard].length() > 0)
-            r->setRentalCard(true);
+            r->setRentalCard(Card::Primary, true);
 
           //r->setCardNo(atoi(sp[rindex+OSRcard]), false);
           r->setStartTime(oe.convertAbsoluteTime(sp[rindex + OSRstart]), true, oBase::ChangeType::Update);
@@ -399,7 +399,7 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
       if (sp.size()>=38) {//ECO
         DI.setInt("Fee", wtoi(sp[OEfee]));
         if (wtoi(sp[OErent]))
-          pr->setRentalCard(true);
+          pr->setRentalCard(Card::Primary, true);
 
         DI.setInt("Paid", wtoi(sp[OEpaid]));
       }
@@ -936,7 +936,7 @@ const wchar_t *csvparser::getSIC(SIConfigFields sic, const CSVLineWrapper &sp) c
   return sp[res->second].c_str();
 }
 
-bool csvparser::checkSIConfigLine(const oEvent &oe, const CSVLineWrapper &sp, SICard &card) {
+bool csvparser::checkSIConfigLine(const oEvent &oe, const CSVLineWrapper &sp, DeviceCard &card) {
   if (siconfigmap.empty())
     return false;
 

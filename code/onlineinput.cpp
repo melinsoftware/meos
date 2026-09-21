@@ -36,7 +36,6 @@
 #include "csvparser.h"
 #include "machinecontainer.h"
 
-#include "SportIdent.h"
 #include "TabSI.h"
 #include "restserver.h"
 #include "resource.h"
@@ -916,7 +915,7 @@ void OnlineInput::processCards(oEvent &oe, const xmlList &cards) {
   };
 
   for (size_t k = 0; k < cards.size(); k++) {
-    SICard sic(ConvertedTimeStatus::Hour24);
+    DeviceCard sic(ConvertedTimeStatus::Hour24);
     sic.CardNumber = cards[k].getObjectInt("number");
 
     if (xmlobject fin = cards[k].getObject("finish"); fin) {
@@ -941,7 +940,7 @@ void OnlineInput::processCards(oEvent &oe, const xmlList &cards) {
       sic.Punch[j].Time = transformTime(punches[j].getObjectInt("time"));
     }
     sic.nPunch = punches.size();
-    TabSI::getSI().addCard(sic);
+    CardManager::instance().addCard(sic);
   }
 }
 

@@ -454,18 +454,18 @@ bool oEvent::isInPunchHash(int card, int code, int time) {
   return readPunchHash.count(make_pair(p1, p2)) > 0;
 }
 
-pFreePunch oEvent::addFreePunch(int time, int type, int unit, int card, bool updateStartFinish, bool isOriginal) {
-  if (time > 0 && isInPunchHash(card, type, time))
+pFreePunch oEvent::addFreePunch(int time, int type, int unit, int cardNo, bool updateStartFinish, bool isOriginal) {
+  if (time > 0 && isInPunchHash(cardNo, type, time))
     return 0;
-  oFreePunch ofp(this, card, time, type, unit);
+  oFreePunch ofp(this, cardNo, time, type, unit);
   if (isOriginal)
     ofp.origin = ofp.computeOrigin(time, type);
 
   punches.emplace_back(ofp);
   pFreePunch fp=&punches.back();
   fp->addToEvent(this, &ofp);
-  oFreePunch::rehashPunches(*this, card, fp);
-  insertIntoPunchHash(card, type, time);
+  oFreePunch::rehashPunches(*this, cardNo, fp);
+  insertIntoPunchHash(cardNo, type, time);
 
   if (fp->getTiedRunner() && oe->isClient() && oe->getPropertyInt("UseDirectSocket", true)!=0) {
     SocketPunchInfo pi;
@@ -518,7 +518,7 @@ pFreePunch oEvent::addFreePunch(int time, int type, int unit, int card, bool upd
               card->setupFromRadioPunches(*tr);
               vector<pair<int, pControl>> mp;
               card->synchronize();
-              tr->addCard(card, mp);
+              tr->addCard(*card, tr->getCardNo2() == cardNo ? Card::Secondary : Card::Primary, mp);
             }
           }
 
@@ -651,27 +651,46 @@ void oEvent::getPunchesForRunner(int runnerId, bool doSort, vector<pFreePunch> &
   //Lazy setup
   oFreePunch::rehashPunches(*oe, 0, 0);
 
-  int card = r->getCardNo();
-  if (card == 0)
+  int cardNo = r->getCardNo();
+  if (cardNo == 0)
     return;
 
   for (auto &it1 :punchIndex) {
     const oEvent::PunchIndexType &cIndex = it1.second;
-    pair<oEvent::PunchConstIterator, oEvent::PunchConstIterator> res = cIndex.equal_range(card);
-    oEvent::PunchConstIterator pIter = res.first;
-    while (pIter != res.second) {
-      pFreePunch punch = pIter->second;
-      if (!punch->isRemoved()) {
-        assert(punch && punch->CardNo == card);
-        if (punch->tRunnerId == runnerId || runnerId == 0)
-          runnerPunches.push_back(punch);
+    for (bool primary : {true, false}) {
+      cardNo = primary ? r->getCardNo() : r->getCardNo2();
+      if (cardNo == 0)
+        continue;
+
+      auto res = cIndex.equal_range(cardNo);
+      auto pIter = res.first;
+      while (pIter != res.second) {
+        pFreePunch punch = pIter->second;
+        if (!punch->isRemoved()) {
+          assert(punch && punch->CardNo == cardNo);
+          if (punch->tRunnerId == runnerId || runnerId == 0)
+            runnerPunches.push_back(punch);
+        }
+        ++pIter;
       }
-      ++pIter;
     }
   }
   
   if (doSort) {
     sort(runnerPunches.begin(), runnerPunches.end(), [](const oPunch *p1, const oPunch *p2)->bool {return p1->getTimeInt() < p2->getTimeInt(); });
+
+    // Duplicate punches (<5 seconds between and same type). Set to null and delete
+    for (int i = runnerPunches.size() - 1; i > 0; i--) {
+      if (runnerPunches[i - 1]->type == runnerPunches[i]->type &&
+          (runnerPunches[i]->punchTime - runnerPunches[i-1]->punchTime) < timeConstSecond * 5) {
+        runnerPunches[i] = nullptr;
+      }
+    }
+
+    auto res = remove_if(runnerPunches.begin(), runnerPunches.end(),
+                         [](const pFreePunch &a) {return a == nullptr; });
+
+    runnerPunches.erase(res, runnerPunches.end());
   }
 }
 

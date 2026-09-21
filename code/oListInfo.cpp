@@ -1550,8 +1550,8 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       }
       break;
     case lRunnerCheck:
-      if (r && !invalidClass && r->Card) {
-        oPunch *punch = r->Card->getPunchByType(oPunch::PunchCheck);
+      if (r && !invalidClass && r->cardPtr) {
+        oPunch *punch = r->cardPtr->getPunchByType(oPunch::PunchCheck);
         if (punch && punch->hasTime())
           wsptr = &getAbsTime(punch->getTimeInt());
         else
@@ -2195,7 +2195,7 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       }
       break;
     case lRunnerRentalCard:
-      if (r && r->isRentalCard()) {
+      if (r && r->isRentalCard(Card::Primary)) {
         wsptr = &lang.tl("Hyrd");
       }
       break;
@@ -2889,15 +2889,15 @@ const wstring &oEvent::formatListStringAux(const oPrintPost &pp, const oListPara
       break;
 
     case lRogainingPunch:
-      if (r && r->Card && r->getCourse(false)) {
+      if (r && r->cardPtr && r->getCourse(false)) {
         const pCourse crs = r->getCourse(false);
-        const pPunch punch = r->Card->getPunchByIndex(counter.level3);
+        const pPunch punch = r->cardPtr->getPunchByIndex(r->cardPtr2, counter.level3);
         if (punch && punch->tRogainingIndex>=0) {
           const pControl ctrl = crs->getControl(punch->tRogainingIndex);
           if (ctrl) {
             swprintf_s(wbf, L"%d, %sp, %s (%s)",
                       punch->type, ctrl->getRogainingPointsS().c_str(),
-                      r->Card->getRogainingSplit(counter.level3, r->tStartTime).c_str(),
+                      r->cardPtr->getRogainingSplit(counter.level3, r->tStartTime).c_str(),
                       punch->getRunningTime(r->tStartTime).c_str());
           }
         }
@@ -3121,8 +3121,8 @@ void oEvent::listGeneratePunches(const oListInfo &listInfo, gdioutput &gdi,
 
   int limit = crs ? crs->nControls() + 1 : 1;
 
-  if (r->Card && r->Card->getNumPunches() > limit)
-    limit = r->Card->getNumPunches();
+  if (r->getCardPunches().size() > limit)
+    limit = r->getCardPunches().size();
 
   vector<char> skip(limit, false);
   if (filterNamed && crs) {
@@ -3180,9 +3180,9 @@ void oEvent::listGeneratePunches(const oListInfo &listInfo, gdioutput &gdi,
       finishType = pcrs->getFinishPunchType();
     }
     int prevPunchTime = r->getStartTime();
-    vector<pPunch> punches;
-    if (r->Card) {
-      for (auto &punch : r->Card->punches)
+    vector<const oPunch *> punches;
+    if (r->cardPtr) {
+      for (auto &punch : r->getCardPunches())
         punches.push_back(&punch);
     }
     else {
@@ -3373,7 +3373,7 @@ bool oListInfo::filterRunner(const oRunner &r) const {
       return true;
   }
 
-  if (filter(EFilterRentCard) && !r.isRentalCard())
+  if (filter(EFilterRentCard) && !r.isRentalCard(Card::Primary) && !r.isRentalCard(Card::Secondary))
     return true;
 
   if (filter(EFilterHasCard) && r.getCardNo() == 0)
@@ -5702,7 +5702,7 @@ void oListInfo::setupLinks() const {
 }
 
 void oListInfo::updateParamLegNumber(pair<int, bool> legIndex) {
-  auto &update = [&legIndex](list<oPrintPost> &pp) {
+  auto update = [&legIndex](list<oPrintPost> &pp) {
     for (auto &p : pp)
       p.updateParamLeg(legIndex);
   };
@@ -5711,15 +5711,10 @@ void oListInfo::updateParamLegNumber(pair<int, bool> legIndex) {
   update(subHead);
   update(listPost);
   update(subListPost);
-
-
-
 }
 
-
 void oListInfo::shrinkSize() {
-
-  auto& scale = [](int& format) -> double {
+  auto scale = [](int& format) -> double {
 
     int highFormat = format & ~0xFF;
     format &= 0xFF;

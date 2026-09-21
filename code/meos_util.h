@@ -149,6 +149,7 @@ const wstring &makeDash(const wchar_t *t);
 
 wstring formatRank(int rank);
 const string &itos(int i);
+string itos(long i);
 string itos(unsigned int i);
 string itos(unsigned long i);
 string itos(int64_t i);
@@ -156,6 +157,7 @@ string itos(uint64_t i);
 
 const wstring &itow(int i);
 wstring itow(unsigned int i);
+const wstring &itow(long i);
 wstring itow(unsigned long i);
 wstring itow(int64_t i);
 wstring itow(uint64_t i);
@@ -201,6 +203,9 @@ int getThisYear();
 
 /** Translate a char to lower/stripped of accents etc.*/
 int toLowerStripped(wchar_t c);
+
+/** Convert to upper case, including non-ascii chars*/
+wchar_t toupperLocale(wchar_t c);
 
 /** Canonize a person/club name */
 //const char *canonizeName(const char *name);

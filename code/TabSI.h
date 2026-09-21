@@ -21,16 +21,17 @@
 
 ************************************************************************/
 #include "tabbase.h"
-#include "SportIdent.h"
 #include "Printer.h"
 #include "inthashmap.h"
 #include "autocompletehandler.h"
+#include "cardmanager.h"
+#include "oEvent.h"
 
 struct PunchInfo;
 class csvparser;
 struct AutoCompleteRecord;
 
-class TabSI final :  public TabBase, AutoCompleteHandler {
+class TabSI final :  public TabBase, AutoCompleteHandler, ICardSubscriber {
 public:
   enum class SIMode {
     ModeReadOut,
@@ -111,8 +112,8 @@ private:
   void fillMappings(gdioutput& gdi) const;
   int currentAssignIndex;
 
-  void printSIInfo(gdioutput &gdi, const wstring &port) const;
-
+  void printDeviceInfo(gdioutput &gdi, int deviceId) const;
+  
   void assignCard(gdioutput &gdi, const SICard &sic);
   void entryCard(gdioutput &gdi, const SICard &sic);
   void requestStartTime(gdioutput& gdi, const SICard& sic);
@@ -174,7 +175,7 @@ private:
 
   string insertCardNumberField;
 
-  void insertSICardAux(gdioutput &gdi, SICard &sic);
+  void insertSICardAux(gdioutput &gdi, DeviceCard &sic);
 
   pRunner getRunnerForCardSplitPrint(const SICard &sic) const;
 
@@ -284,9 +285,11 @@ private:
 
   list<StoredReadout> readCards;
   void renderReadCard(gdioutput &gdi, int maxNumber);
-
-
   pair<pCourse, pClass> getRenderCourse(gdioutput& gdi) const;
+
+  map<int, pair<string, wstring>> id2DeviceHelp;
+
+  void showDevices(gdioutput &gdi);
 
 protected:
   void clearCompetitionData() final;
@@ -340,7 +343,6 @@ public:
   void generatePayModeWidget(gdioutput &gdi) const;
   static bool writePayMode(gdioutput &gdi, int amount, oRunner &r);
 
-  static SportIdent &getSI();
   void printerSetup(gdioutput &gdi);
 
   void generateStartInfo(gdioutput &gdi, const oRunner &r, bool includeEconomy);
@@ -362,7 +364,8 @@ public:
   const char * getTypeStr() const {return "TSITab";}
   TabType getType() const {return TSITab;}
 
-  void insertSICard(gdioutput &gdi, SICard &sic);
+  void insertCard(gdioutput &gdi, DeviceCard &card) final;
+
   void clearQueue() { CardQueue.clear(); }
   void refillComPorts(gdioutput &gdi);
   bool anyActivePort() const;

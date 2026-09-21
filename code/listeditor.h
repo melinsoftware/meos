@@ -65,7 +65,7 @@ private:
                        int lineIx, int ix) const;
 
 
-  void ListEditor::editDlgStart(gdioutput& gdi, int id, const char* title, int& x1, int& y1, int& boxY);
+  void editDlgStart(gdioutput& gdi, int id, const char* title, int& x1, int& y1, int& boxY);
 
   void editListPost(gdioutput &gdi, const MetaListPost &mlp, int id);
   void editImage(gdioutput& gdi, const MetaListPost& mlp, int id);

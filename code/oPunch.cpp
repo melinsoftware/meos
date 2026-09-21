@@ -35,25 +35,15 @@
 //////////////////////////////////////////////////////////////////////
 
 oPunch::oPunch(oEvent* poe) : oBase(poe) {
-  type = 0;
-  punchTime = 0;
-  isUsed = false;
-  hasBeenPlayed = false;
-  tMatchControlId = -1;
-  tRogainingIndex = 0;
-  anyRogainingMatchControlId = -1;
-  tIndex = -1;
-}
+ }
 
 oPunch::~oPunch() = default;
 
-wstring oPunch::getInfo() const
-{
+wstring oPunch::getInfo() const {
   return L"Stämpling "+oe->gdiBase().widen(codeString());
 }
 
-string oPunch::codeString() const
-{
+string oPunch::codeString() const {
   char bf[32];
   sprintf_s(bf, 32, "%d-%d;", type, punchTime);
   return bf;
@@ -166,7 +156,7 @@ void oPunch::decodeString(const char *s) {
   }
 }
 
-wstring oPunch::getString() const {
+wstring oPunch::getString(bool allUsed) const {
   wchar_t bf[32];
 
   const wchar_t *ct;
@@ -189,7 +179,7 @@ wstring oPunch::getString() const {
       swprintf_s(bf, L"%s\t%s", tp, ct);
   }
   else {
-    if (isUsed)
+    if (isUsed || allUsed)
       swprintf_s(bf, L"%d\t%s", type, ct);
     else
       swprintf_s(bf, L"  %d*\t%s", type, ct);
@@ -198,8 +188,7 @@ wstring oPunch::getString() const {
   return bf;
 }
 
-wstring oPunch::getSimpleString() const
-{
+wstring oPunch::getSimpleString() const {
   wstring time(getTime(false, SubSecond::Auto));
 
   if (type==oPunch::PunchStart)
@@ -212,8 +201,7 @@ wstring oPunch::getSimpleString() const
     return lang.tl(L"kontroll X (Y)#" + itow(type) + L"#" + time);
 }
 
-wstring oPunch::getTime(bool adjust, SubSecond mode) const
-{
+wstring oPunch::getTime(bool adjust, SubSecond mode) const {
   if (punchTime >= 0) {
     int at = getTimeInt();
     if (adjust)
@@ -230,15 +218,13 @@ int oPunch::getTimeInt() const {
   return punchTime + tTimeAdjust.first; // Adjustment "wrong time" at control
 }
 
-int oPunch::getAdjustedTime() const
-{
+int oPunch::getAdjustedTime() const {
   if (punchTime>=0)
     return getTimeInt() + tTimeAdjust.second;
   else return -1;
 }
 
-void oPunch::setTime(const wstring &t)
-{
+void oPunch::setTime(const wstring &t) {
   if (convertAbsoluteTimeHMS(t, -1) <= 0) {
     setTimeInt(-1, false);
     return;
@@ -274,8 +260,7 @@ oDataContainer &oPunch::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &
   throw std::exception("Unsupported");
 }
 
-wstring oPunch::getRunningTime(int startTime) const
-{
+wstring oPunch::getRunningTime(int startTime) const {
   int t = getAdjustedTime();
   if (startTime>0 && t>0 && t>startTime)
     return formatTime(t-startTime);
@@ -283,13 +268,11 @@ wstring oPunch::getRunningTime(int startTime) const
     return makeDash(L"-");
 }
 
-void oPunch::remove()
-{
+void oPunch::remove() {
   // Not implemented
 }
 
-bool oPunch::canRemove() const
-{
+bool oPunch::canRemove() const {
   return true;
 }
 
@@ -312,6 +295,16 @@ const wstring &oPunch::getType(int t, const oCourse* crs) {
 
 void oPunch::changedObject() {
   // Does nothing
+}
+
+void oPunch::clear() {
+  tRogainingIndex = -1;
+  anyRogainingMatchControlId = -1;
+  tRogainingPoints = 0;
+  isUsed = false;
+  tIndex = -1;
+  tMatchControlId = -1;
+  clearTimeAdjust();
 }
 
 namespace {

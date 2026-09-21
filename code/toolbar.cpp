@@ -29,7 +29,6 @@
 
 #include "gdioutput.h"
 #include "commctrl.h"
-#include "SportIdent.h"
 #include "TabBase.h"
 #include "TabCompetition.h"
 #include "TabAuto.h"

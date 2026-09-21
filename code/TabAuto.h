@@ -26,6 +26,7 @@
 #include <string>
 #include "oListInfo.h"
 #include "importformats.h"
+#include "meosexception.h"
 
 using namespace std;
 
@@ -283,7 +284,7 @@ protected:
   bool fullRadio = false;
   int approxRunningTime = timeConstMinute * 10;
   vector<tuple<int, int, int>> punchesTimeCodeCardNo;
-  vector<pair<int, shared_ptr<SICard>>> cardsByTime;
+  vector<pair<int, shared_ptr<DeviceCard>>> cardsByTime;
 public:
   shared_ptr<AutoMachine> clone() const final { 
     return make_shared<PunchMachine>(*this);
