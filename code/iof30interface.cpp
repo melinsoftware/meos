@@ -2233,6 +2233,18 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   di.setInt("Paid", oe.interpretCurrency(paid, currency));
   di.setInt("Taxable", oe.interpretCurrency(fee, currency));
 
+  // Rental card, as written by writeRentalCardService.
+  // Only set, never cleared: entries are imported again during an event,
+  // and a missing request must not undo a rental card registered in MeOS.
+  xmlList xServices;
+  xo.getObjects("ServiceRequest", xServices);
+  for (size_t j = 0; j < xServices.size(); j++) {
+    xmlobject xService = xServices[j].getObject("Service");
+    string serviceType;
+    if (xService && xService.getObjectString("type", serviceType) == "RentalCard")
+      r->setRentalCard(true);
+  }
+
   // StartTimeAllocationRequest
   xmlobject sar = xo.getObject("StartTimeAllocationRequest");
   if (sar) {
