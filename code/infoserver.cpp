@@ -537,6 +537,10 @@ void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) co
 
   prop.emplace_back("st", itow(startTime));
   prop.emplace_back("rt", itow(runningTime));
+  if (points != -1) {
+    prop.emplace_back("pts", itow(points));
+    prop.emplace_back("pen", itow(penalty));
+  }
   if (course != 0)
     prop.emplace_back("crs", itow(course));
 
@@ -683,7 +687,18 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
     ch = true;
     changeTotalSt = true;
   }
-   
+
+  int pointsInput = r.getRogainingPoints(true, false);
+  int penaltyInput = r.getRogainingReduction(true);
+  if (pointsInput != 0 || penaltyInput != 0 || points != -1) {
+    if (pointsInput != points || penaltyInput != penalty) {
+      points = pointsInput;
+      penalty = penaltyInput;
+      ch = true;
+      changeTotalSt = true;
+    }
+  }
+
   return ch;
 }
 

@@ -181,6 +181,9 @@ class InfoBaseCompetitor : public InfoBase {
     int status;
     int startTime;
     int runningTime;
+    // Score (rogaining) points and penalty, -1 if not applicable
+    int points = -1;
+    int penalty = -1;
 
     bool preliminary;
     void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
