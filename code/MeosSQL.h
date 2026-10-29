@@ -70,6 +70,7 @@ protected:
   string CmpDataBase;
   void alert(const string &s);
   bool writeTime = false;
+  bool bulkMode = false;
 
   vector<oBase *> missingObjects;
 

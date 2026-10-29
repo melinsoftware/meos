@@ -1108,8 +1108,8 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
     if (nRT < expectedCCid.size()) {
       pCourse crs = r.getCourse(true);
       for (auto &p : r.getCardPunches()) {
-        if (p.tIndex >= 0 && p.tIndex < crs->getNumControls()) {
-          int ccId = crs->getCourseControlId(p.tIndex);
+        if (p->tIndex >= 0 && p->tIndex < crs->getNumControls()) {
+          int ccId = crs->getCourseControlId(p->tIndex);
           if (expectedCCid.count(ccId)) {
             bool added = false;
             for (auto &stored : r.tOnCourseResults.res) {
@@ -1119,9 +1119,13 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
               }
             }
             if (!added) {
-              int time = p.getTimeInt() - r.getStartTime(); 
+              int time = p->getTimeInt();
+              if (time > 0)
+                time -= r.getStartTime();
+              else
+                time = -1;
               int teamTotalTime = time + teamTotalOff;
-              r.tOnCourseResults.emplace_back(ccId, p.tIndex, time, teamTotalTime);
+              r.tOnCourseResults.emplace_back(ccId, p->tIndex, time, teamTotalTime);
             }
           }
         }
@@ -1201,7 +1205,7 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
         int numPlace = timeRunnerIx.size();
         for (int i = 0; i < numPlace; i++) {
           int ct = get<0>(timeRunnerIx[i]);
-          if (time != ct) {
+          if (time != ct && ct > 0) {
             time = ct;
             place = i + 1;
             if (leadTime == 0)
@@ -1215,7 +1219,8 @@ void oEvent::computePreliminarySplitResults(const set<int> &classes) const {
           }
           else {
             r->tOnCourseResults.res[locIx].place = place;
-            r->tOnCourseResults.res[locIx].after = time - leadTime;
+            if (time > 0)
+              r->tOnCourseResults.res[locIx].after = time - leadTime;
 
             int& legWithTimeIndexNeg = r->currentControlTime.first;
             if (negLeg < legWithTimeIndexNeg) {

@@ -172,6 +172,8 @@ public:
   bool merge(oBase &destination, const oBase &source, const oBase *base) const;
 
   string generateSQLSet(const oBase *ob, bool forceSetAll) const;
+  string generateSQLColumnList() const;
+  string generateSQLValues(const oBase * ob) const;
 
   void allDataStored(const oBase *ob);
   void getVariableInt(const void *data, list<oVariableInt> &var) const;
@@ -378,6 +380,9 @@ public:
   inline string generateSQLSet(bool forceSetAll) const
     {return oDC->generateSQLSet(oB, forceSetAll);}
 
+  inline string generateSQLValues() const
+    {return oDC->generateSQLValues(oB); }
+  
   // Mark all data as stored in db
   inline void allDataStored()
     {return oDC->allDataStored(oB);}
@@ -492,6 +497,9 @@ public:
 
   inline string generateSQLSet(bool forceSetAll) const
     {return oDC->generateSQLSet(oB, forceSetAll);}
+
+  inline string generateSQLValues() const
+    {return oDC->generateSQLValues(oB); }
 
   inline void getVariableInt(list<oVariableInt> &var) const
     {oDC->getVariableInt(Data, var);}

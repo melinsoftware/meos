@@ -627,6 +627,9 @@ const shared_ptr<Table> &oCard::getTable(oEvent *oe) {
     table->addColumn("Måltid", 70, false);
     table->addColumn("Stämplingar", 70, true);
 
+    table->addColumn("Startenhet", 70, true);
+    table->addColumn("Målenhet", 70, true);
+
     table->setTableProp(Table::CAN_DELETE);
     oe->setTable("cards", table);
   }
@@ -651,13 +654,13 @@ void oEvent::generateCardTableData(Table &table, oCard *addCard)
   }
 }
 
-void oCard::addTableRow(Table &table) const {
+void oCard::addTableRow(Table& table) const {
 
   wstring runner(lang.tl("Oparad"));
   if (getOwner())
     runner = tOwner->getNameAndRace(true);
 
-  oCard &it = *pCard(this);
+  oCard& it = *pCard(this);
   table.addRow(getId(), &it);
 
   int row = 0;
@@ -673,36 +676,61 @@ void oCard::addTableRow(Table &table) const {
   table.set(row++, it, TID_BATTERYDATE, getBatteryDate(), false, cellAction);
 
 
-  oPunch *p=getPunchByType(oPunch::PunchStart);
+  oPunch* pStart = getPunchByType(oPunch::PunchStart);
   wstring time;
-  if (p)
-    time = p->getTime(false, SubSecond::Auto);
+  if (pStart)
+    time = pStart->getTime(false, SubSecond::Auto);
   else
     time = makeDash(L"-");
   table.set(row++, it, TID_START, time, false, cellEdit);
 
-  p = getPunchByType(oPunch::PunchFinish);
-  if (p)
-    time = p->getTime(false, SubSecond::Auto);
+  oPunch* pFinish = getPunchByType(oPunch::PunchFinish);
+  if (pFinish)
+    time = pFinish->getTime(false, SubSecond::Auto);
   else
     time = makeDash(L"-");
-  
+
   table.set(row++, it, TID_FINISH, time, false, cellEdit);
 
   table.set(row++, it, TID_COURSE, itow(getNumPunches()), false, cellEdit);
+    
+  int startId = getStartPunchCode();
+  int finishId = getFinishPunchCode();
+
+  table.set(row++, it, TID_STARTCONTROL, startId > 0 ? itow(startId) : _EmptyWString);
+  table.set(row++, it, TID_FINISHCONTROL, finishId > 0 ? itow(finishId) : _EmptyWString);
+}
+
+pair<int, bool> oCard::inputData(int id, const wstring& input, int inputId, wstring& output, bool noUpdate) {
+  vector<pair<int, pControl>> mp;
+  synchronize(false);
+
+  switch (id) {
+    case TID_FINISHCONTROL: {
+      int finishId = _wtoi(input.c_str());
+      setFinishPunchCode(finishId);
+      output = finishId > 0 ? itow(finishId) : _EmptyWString;
+      break;
+    }
+
+    case TID_STARTCONTROL: {
+      int startId = _wtoi(input.c_str());
+      setStartPunchCode(startId);
+      output = startId > 0 ? itow(startId) : _EmptyWString;
+      break;
+    }
+  }
+
+  return make_pair(0, false);
 }
 
 oDataContainer &oCard::getDataBuffers(pvoid &data, pvoid &olddata, pvectorstr &strData) const {
   throw std::exception("Unsupported");
 }
 
-int oCard::getSplitTime(int startTime, const oPunch *punch) const {
-  return getSplitTime(punches, startTime, punch);
-}
-
-int oCard::getSplitTime(const oPunchList & punches, int startTime, const oPunch * punch) {
-  for (auto it = punches.begin(); it != punches.end(); ++it) {
-    if (&*it == punch) {
+int oCard::getSplitTime(const vector<oPunch *> &punches, int startTime, const oPunch * punch) {
+  for (auto it : punches) {
+    if (it == punch) {
       int t = it->getAdjustedTime();
       if (t<=0)
         return -1;
@@ -902,6 +930,34 @@ int oCard::getStartPunchCode() const {
   return 0;
 }
 
+
+void oCard::setStartPunchCode(int code) {
+  auto it = punches.begin();
+  if (it != punches.end()) {
+    if (it->getTypeCode() == oPunch::SpecialPunch::PunchStart) {
+      if (it->getPunchUnit() != code) {
+        it->setPunchUnit(code);
+        updateChanged();
+        return;
+      }
+
+    }
+      
+    ++it;
+    if (it != punches.end()) {
+      if (it->getTypeCode() == oPunch::SpecialPunch::PunchStart) {
+        if (it->getPunchUnit() != code) {
+          it->setPunchUnit(code);
+          updateChanged();
+          return;
+        }
+      } 
+    }
+  }  
+}
+
+
+
 int oCard::getStartTime(int ptype) const {
   auto it = punches.begin();
   if (ptype == oPunch::SpecialPunch::PunchStart) {
@@ -932,6 +988,18 @@ int oCard::getFinishPunchCode() const {
       return it->getPunchUnit();
   }
   return 0;
+}
+
+void oCard::setFinishPunchCode(int code) {
+  auto it = punches.rbegin();
+  if (it != punches.rend()) {
+    if (it->getTypeCode() == oPunch::SpecialPunch::PunchFinish) {
+      if (code != it->getPunchUnit()) {
+        it->setPunchUnit(code);
+        updateChanged();
+      }
+    }
+  }
 }
 
 pair<int, pControl> oCard::getWrongPunch(const oCourse& crs, const oControl& ctrl) {

@@ -240,6 +240,7 @@
     <ClCompile Include="StdAfx.cpp" />
     <ClCompile Include="TabAuto.cpp" />
     <ClCompile Include="TabBase.cpp" />
+    <ClCompile Include="TabCard.cpp" />
     <ClCompile Include="TabClass.cpp" />
     <ClCompile Include="TabClub.cpp" />
     <ClCompile Include="TabCompetition.cpp" />
@@ -249,7 +250,6 @@
     <ClCompile Include="TabList.cpp" />
     <ClCompile Include="TabMulti.cpp" />
     <ClCompile Include="TabRunner.cpp" />
-    <ClCompile Include="TabSI.cpp" />
     <ClCompile Include="TabSpeaker.cpp" />
     <ClCompile Include="TabTeam.cpp" />
     <ClCompile Include="testmeos.cpp" />
@@ -342,6 +342,7 @@
     <ClInclude Include="subcommand.h" />
     <ClInclude Include="TabAuto.h" />
     <ClInclude Include="TabBase.h" />
+    <ClInclude Include="TabCard.h" />
     <ClInclude Include="TabClass.h" />
     <ClInclude Include="TabClub.h" />
     <ClInclude Include="TabCompetition.h" />
@@ -352,7 +353,6 @@
     <ClInclude Include="TabList.h" />
     <ClInclude Include="TabMulti.h" />
     <ClInclude Include="TabRunner.h" />
-    <ClInclude Include="TabSI.h" />
     <ClInclude Include="TabSpeaker.h" />
     <ClInclude Include="TabTeam.h" />
     <ClInclude Include="testmeos.h" />

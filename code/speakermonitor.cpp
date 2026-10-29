@@ -400,10 +400,10 @@ void getTimeAfterDetail(wstring &detail, int timeAfter, int deltaTime, bool wasA
 wstring getTimeDesc(int t1, int t2) {
   int tb = abs(t1 - t2);
   wstring stime;
-  if (tb == 1)
+  if (tb <= timeConstSecond)
     stime = L"1" + lang.tl(L" sekund");
-  else if (tb <= 60)
-    stime = itow(tb) + lang.tl(L" sekunder");
+  else if (tb <= timeConstMinute)
+    stime = itow(tb/timeConstSecond) + lang.tl(L" sekunder");
   else
     stime = formatTime(tb);
 

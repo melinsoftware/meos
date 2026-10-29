@@ -67,6 +67,8 @@ void CardManager::addCard(const DeviceCard &sic) {
   {
     std::lock_guard lock(cardMutex);
     readCards.push_front(sic);
+    if (!useSubSeconds)
+      readCards.front().clearSubSeconds();
   }
 
   PostMessage(hWndNotify, WM_USER, 0, 0);
@@ -447,7 +449,7 @@ void DeviceCard::analyseHour12Time(int zeroTime) {
   convertedTime = ConvertedTimeStatus::Hour24;
 }
 
-void SIPunch::analyseHour12Time(int zeroTime) {
+void CardPunch::analyseHour12Time(int zeroTime) {
   if (Time == -1)
     return;
   if (Code != -1 && Time >= 0 && Time <= 12 * timeConstHour) {

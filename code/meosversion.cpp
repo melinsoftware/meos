@@ -23,14 +23,14 @@
 #include <vector>
 #include "meos_util.h"
 
-//AB
+//ABCD
 int getMeosBuild() {
-  string revision("$Rev: 1682 $");
+  string revision("$Rev: 1694 $");
   return 174 + atoi(revision.substr(5, string::npos).c_str());
 }
 
 wstring getMeosDate() {
-  wstring date(L"$Date: 2026-09-21 20:13:47 +0200 (mån, 21 sep 2026) $");
+  wstring date(L"$Date: 2026-10-20 17:19:03 +0200 (tis, 20 okt 2026) $");
   return date.substr(7,10);
 }
 

@@ -229,7 +229,8 @@ bool csvparser::importOS_CSV(oEvent &oe, const wstring &file) {
 
           r->addClassDefaultFee(false);
 
-          team->setRunner(runner++, r, true);
+          if (team->canAutoSetRunner(runner))
+            team->setRunner(runner++, r, true, false);
 
           rindex += PostSize;
         }
@@ -699,10 +700,11 @@ bool csvparser::importOCAD_CSV(oEvent &event, const wstring &file, bool addClass
 }
 
 
-bool csvparser::importRAID(oEvent &event, const wstring &file)
-{
-  enum {RAIDid=0, RAIDteam=1, RAIDcity=2, RAIDedate=3, RAIDclass=4,
-        RAIDclassid=5, RAIDrunner1=6, RAIDrunner2=7, RAIDcanoe=8};
+bool csvparser::importRAID(oEvent &event, const wstring &file) {
+  enum {
+    RAIDid = 0, RAIDteam = 1, RAIDcity = 2, RAIDedate = 3, RAIDclass = 4,
+    RAIDclassid = 5, RAIDrunner1 = 6, RAIDrunner2 = 7, RAIDcanoe = 8
+  };
 
   list<vector<wstring>> allLines;
   parse(file, allLines);
@@ -712,31 +714,31 @@ bool csvparser::importRAID(oEvent &event, const wstring &file)
   if (it == allLines.end())
     throw meosException("Invalid CSV file");
 
-  nimport=0;
+  nimport = 0;
   int line = 1;
   while (++it != allLines.end()) {
     CSVLineWrapper sp(++line, *it);
 
-    if (sp.size()>7) {
+    if (sp.size() > 7) {
       nimport++;
 
-      int ClubId=0;
+      int ClubId = 0;
       //Create class with this class number...
-      int ClassId=wtoi(sp[RAIDclassid]);
+      int ClassId = wtoi(sp[RAIDclassid]);
       pClass pc = event.getClassCreate(ClassId, sp[RAIDclass], matchedClasses);
       ClassId = pc->getId();
 
       //Club is autocreated...
-      pTeam team=event.addTeam(sp[RAIDteam], ClubId,  ClassId);
+      pTeam team = event.addTeam(sp[RAIDteam], ClubId, ClassId);
 
       team->setStartNo(wtoi(sp[RAIDid]), oBase::ChangeType::Update);
-      if (sp.size()>8)
+      if (sp.size() > 8)
         team->getDI().setInt("SortIndex", wtoi(sp[RAIDcanoe]));
-      oDataInterface teamDI=team->getDI();
+      oDataInterface teamDI = team->getDI();
       teamDI.setDate("EntryDate", sp[RAIDedate]);
-      
+
       if (pc) {
-        if (pc->getNumStages()<2)
+        if (pc->getNumStages() < 2)
           pc->setNumStages(2);
 
         pc->setLegType(0, LTNormal);
@@ -744,11 +746,13 @@ bool csvparser::importRAID(oEvent &event, const wstring &file)
       }
 
       //Import runners!
-      pRunner r1=event.addRunner(sp[RAIDrunner1], ClubId, ClassId, 0, L"", false);
-      team->setRunner(0, r1, false);
+      pRunner r1 = event.addRunner(sp[RAIDrunner1], ClubId, ClassId, 0, L"", false);
+      if (team->canAutoSetRunner(0))
+        team->setRunner(0, r1, false, false);
 
-      pRunner r2=event.addRunner(sp[RAIDrunner2], ClubId, ClassId, 0, L"", false);
-      team->setRunner(1, r2, false);
+      pRunner r2 = event.addRunner(sp[RAIDrunner2], ClubId, ClassId, 0, L"", false);
+      if (team->canAutoSetRunner(1))
+        team->setRunner(1, r2, false, false);
 
       team->evaluate(oBase::ChangeType::Update);
     }

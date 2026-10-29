@@ -896,9 +896,9 @@ bool oEvent::addXMLTeamEntry(const xmlobject &xentry, int clubId)
 
   for (size_t k = 0; k < teamCmp.size(); k++) {
     int leg = teamCmp[k].getObjectInt("TeamSequence") - 1;
-    if (leg>=0) {
+    if (leg>=0 && t->canAutoSetRunner(leg)) {
       pRunner r = addXMLEntry(teamCmp[k], clubId, false);
-      t->setRunner(leg, r, true);
+      t->setRunner(leg, r, true, false);
     }
   }
 
@@ -1096,12 +1096,12 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
 
         if (t != 0) {
           if (t->getRunner(0) == r2) {
-            t->setRunner(0, r2, true);
-            t->setRunner(1, r, true);
+            t->setRunner(0, r2, true, false);
+            t->setRunner(1, r, true, false);
           }
           else {
-            t->setRunner(0, r, true);
-            t->setRunner(1, r2, true);
+            t->setRunner(0, r, true, false);
+            t->setRunner(1, r2, true, false);
           }
         }
 

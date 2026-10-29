@@ -3404,6 +3404,9 @@ void MetaList::init(oListInfo &li) const {
   li.supportFrom = supportFrom();
   li.supportTo = supportTo();
   li.resType = getResultType();
+
+  li.mainListFont = fontFaces[MLList].font;
+  li.mainListScale = fontFaces[MLList].scale;
 }
 
 oListInfo::EBaseType MetaList::getListType() const {

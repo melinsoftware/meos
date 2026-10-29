@@ -171,11 +171,10 @@ bool TabCompetition::importFile(HWND hWnd, gdioutput &gdi)
   return false;
 }
 
-bool TabCompetition::exportFileAs(HWND hWnd, gdioutput &gdi)
-{
+bool TabCompetition::exportFileAs(HWND hWnd, gdioutput &gdi) {
   int ix = 0;
-  vector< pair<wstring, wstring> > ext;
-  ext.push_back(make_pair(L"MeOS-data", L"*.meosxml"));
+  vector<pair<wstring, wstring>> ext;
+  ext.emplace_back(L"MeOS-data", L"*.meosxml");
   wstring fileName = gdi.browseForSave(ext, L"meosxml", ix);
   if (fileName.empty())
     return false;
@@ -1660,11 +1659,12 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       if (gdi.hasWidget("Cancel"))
         gdi.disableInput("Cancel"); // Disable "cancel" above
       gdi.fillRight();
+
       if (id > 0)
         gdi.addButton("StartIndividual", "Visa startlistan", ListsCB);
       gdi.addButton("Cancel", "Återgå", CompetitionCB);
       gdi.refreshFast();
-
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckFixNotify);
     }
     else if (bi.id == "Cancel"){
       loadPage(gdi);
@@ -1778,7 +1778,6 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
     }
     else if (bi.id=="Startlist") {
       save(gdi, false);
-      oe->sanityCheck(gdi, false);
       selectStartlistOptions(gdi);
     }
     else if (bi.id=="BrowseExport" || bi.id=="BrowseExportResult") {
@@ -1842,7 +1841,6 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
     }
     else if (bi.id=="Splits") {
       save(gdi, false);
-      oe->sanityCheck(gdi, true);
       selectExportSplitOptions(gdi);
     }
     else if (bi.id == "DoSaveSplits") {
@@ -1886,7 +1884,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
       loadPage(gdi);
     }
     else if (bi.id=="SaveAs") {
-      oe->sanityCheck(gdi, false);
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
       save(gdi, true);
       exportFileAs(hWndMain, gdi);
     }
@@ -2055,6 +2053,7 @@ int TabCompetition::competitionCB(gdioutput &gdi, GuiEventType type, BaseInfo *d
 
       gdi.addButton("Cancel", "OK", CompetitionCB);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckFixNotify);
     }
     else if (bi.id=="Courses") {
       if (!save(gdi, false))
@@ -3904,6 +3903,7 @@ void TabCompetition::selectStartlistOptions(gdioutput &gdi) {
   gdi.addButton("Cancel", "Avbryt", CompetitionCB).setCancel();
   gdi.setInputStatus("DoSaveStartlist", !fn.empty());
   gdi.refresh();
+  oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
 }
 
 pair<bool, bool> TabCompetition::hasPersonExtId() const {
@@ -4035,6 +4035,7 @@ void TabCompetition::selectExportSplitOptions(gdioutput& gdi, oEvent* oe, const 
 
   gdi.setInputStatus("DoSaveSplits", !fn.empty());
   gdi.refresh();
+  oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
 }
 
  void TabCompetition::readExportSplitSettings(gdioutput &gdi, oEvent *oe, set<int> &allTransfer, ExportSplitsData &data) {

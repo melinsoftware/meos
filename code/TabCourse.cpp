@@ -506,7 +506,7 @@ int TabCourse::courseCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     }
     else if (bi.id == "ShowMap") {
       pCourse crs = oe->getCourse(courseId);
-      showMap(oe, gdi, crs, crs->getName(), 0.0);
+      showMap(oe, gdi, crs, crs->getName(), "Karta", {}, 0.0);
     }
     else if (bi.id == "LocateMap") {
       locateMap(gdi);
@@ -1659,19 +1659,28 @@ const wstring &TabCourse::formatControl(int id, wstring &bf) const {
     return itow(id);
 }
 
-void TabCourse::showMap(oEvent *oe, gdioutput& gdi, pCourse crs, const wstring &title, double zoomLevel) {
-  if (!crs || !oe->getRenderMaps())
-    return;
+gdioutput *TabCourse::getMapWindow(bool setFocus) {
+  return getExtraWindow("mapwindow", setFocus);
+}
+
+gdioutput *TabCourse::showMap(oEvent *oe,
+                        gdioutput& gdi, 
+                        pCourse crs, 
+                        const wstring &title,
+                        const string &windowTitle,
+                        const vector<tuple<string, wstring, gdiFonts>> &infoLines,
+                        double zoomLevel) {
   bool created = false;
   static int mapWX = -1;
   static int mapWY = -1;
   const double fixedPrec = 100000000.0;
-  gdioutput* mapWindow = getExtraWindow("mapwindow", true);
+  gdioutput* mapWindow = getMapWindow(crs != nullptr);
   if (mapWindow == nullptr) {
-    mapWindow = createExtraWindow("mapwindow", lang.tl("Karta"), gdi.scaleLength(550), gdi.scaleLength(350), true);
+    mapWindow = createExtraWindow("mapwindow", lang.tl(windowTitle), gdi.scaleLength(550), gdi.scaleLength(350), true);
     created = true;
   }
   else {
+    mapWindow->setWindowTitle(lang.tl(windowTitle), false);
     if (zoomLevel == 0 && mapWindow->hasData("mapscale")) {
       double ms = mapWindow->getDataInt("mapscale");
       zoomLevel = double(ms) / fixedPrec;
@@ -1681,84 +1690,116 @@ void TabCourse::showMap(oEvent *oe, gdioutput& gdi, pCourse crs, const wstring &
     zoomLevel = 1.0;
 
   mapWindow->clearPage(false);
+  mapWindow->fillDown();
   mapWindow->setData("mapscale", int(zoomLevel * fixedPrec));
   mapWindow->hideBackground(true);
-  mapWindow->addStringUT(boldLarge, title);
-
+  
   class ZoomMap : public GuiHandler {
     oEvent *oe;
     wstring title;
+    string windowTitle;
+    vector<tuple<string, wstring, gdiFonts>> infoLines;
     int crsId;
     double zoomLevel;
   public: 
-    ZoomMap(oEvent *oe, double zoomLevel, const wstring &title, int crsId) : oe(oe), title(title), 
-                                                                             crsId(crsId), zoomLevel(zoomLevel){}
+    ZoomMap(oEvent *oe, double zoomLevel, const wstring &title,
+            const string &windowTitle,
+            const vector<tuple<string, wstring, gdiFonts>> &infoLines, 
+            int crsId) : oe(oe), title(title), windowTitle(windowTitle),
+              infoLines(infoLines), crsId(crsId), zoomLevel(zoomLevel){}
     void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) override {
       double factor = info.id == "ZoomIn" ? 1.5 : 1.0 / 1.5;
       //gdi.scaleSize(factor);
       pCourse crs = oe->getCourse(crsId);
       if (crs) {
-        showMap(oe, gdi, crs, title, zoomLevel * factor);
+        showMap(oe, gdi, crs, title, windowTitle, infoLines, zoomLevel * factor);
       }
     }
   };
 
-  int dx = 0;
-  int dy = 0;
-  int button_w = mapWindow->scaleLength(130);
-  if (zoomLevel < 6) {
-    mapWindow->addButton(dx, dy, button_w / 6, "ZoomIn", "+", nullptr, "Zooma in (Ctrl + '+')", false, false).
-      fixedCorner().setHandler(make_shared<ZoomMap>(oe, zoomLevel, title, crs->getId()));
-    dx += button_w / 6;
-  }
-  if (zoomLevel > 1.001) {
-    mapWindow->addButton(dx, dy, button_w / 6, "ZoomOut", makeDash(L"-"), nullptr, L"Zooma ut (Ctrl + '-')", false, false).
-      fixedCorner().setHandler(make_shared<ZoomMap>(oe, zoomLevel, title, crs->getId()));
-  }
-  //mapWindow->addButton("Zoom", L"+", nullptr, L"").setHandler(make_shared<ZoomMap>(oe, title, crs->getId(), zoomLevel));
-  auto& renderMaps = *oe->getRenderMaps();
+  if (crs && oe->getRenderMaps()) {
+    // Add map title
+    mapWindow->addStringUT(boldLarge, title);
 
-  vector<tuple<oControl*, wstring, RenderCType>> crsRep;
-
-  int start = crs->getStartId();
-  int finish = crs->getFinishId();
-  int ypMap = mapWindow->getCY();
-
-  if (start)
-    crsRep.emplace_back(oe->getControl(start), L"", RenderCType::Start);
-
-  for (int i = 0; i < crs->getNumControls(); i++) {
-    pControl ctrl = crs->getControl(i);
-    if (ctrl) {
-      crsRep.emplace_back(ctrl, itow(i + 1), RenderCType::CourseControl);
+    int dx = 0;
+    int dy = 0;
+    int button_w = mapWindow->scaleLength(130);
+    if (zoomLevel < 6) {
+      mapWindow->addButton(dx, dy, button_w / 6, "ZoomIn", "+", nullptr, "Zooma in (Ctrl + '+')", false, false).
+        fixedCorner().setHandler(make_shared<ZoomMap>(oe, zoomLevel, title, windowTitle, infoLines, crs->getId()));
+      dx += button_w / 6;
     }
+    if (zoomLevel > 1.001) {
+      mapWindow->addButton(dx, dy, button_w / 6, "ZoomOut", makeDash(L"-"), nullptr, L"Zooma ut (Ctrl + '-')", false, false).
+        fixedCorner().setHandler(make_shared<ZoomMap>(oe, zoomLevel, title, windowTitle, infoLines, crs->getId()));
+    }
+    auto &renderMaps = *oe->getRenderMaps();
+
+    vector<tuple<oControl *, wstring, RenderCType>> crsRep;
+
+    int start = crs->getStartId();
+    int finish = crs->getFinishId();
+    int ypMap = mapWindow->getCY();
+
+    if (start)
+      crsRep.emplace_back(oe->getControl(start), L"", RenderCType::Start);
+
+    for (int i = 0; i < crs->getNumControls(); i++) {
+      pControl ctrl = crs->getControl(i);
+      if (ctrl) {
+        crsRep.emplace_back(ctrl, itow(i + 1), RenderCType::CourseControl);
+      }
+    }
+    if (finish)
+      crsRep.emplace_back(oe->getControl(finish), L"", RenderCType::Finish);
+
+    int xw, yw;
+    mapWindow->getTargetDimension(xw, yw);
+    int maxWidth = max<int>(gdi.scaleLength(600), int(zoomLevel * xw));
+    int maxHeight = max<int>(gdi.scaleLength(600), int(zoomLevel * (yw - ypMap)));
+
+    auto [xpmap, ymap_b] = renderMaps.render(*oe, *mapWindow, gdi.scaleLength(40),
+                                             ypMap, crsRep, false, maxWidth, maxHeight);
+
+
+    RECT rc;
+    bool maximized = mapWindow->getWindowsPosition(rc);
+    int wx = rc.right - rc.left;
+    int wy = rc.bottom - rc.top;
+
+    if (created || (wx == mapWX && wy == mapWY && !maximized)) {
+
+      int extraH = 0;
+      for (auto &[tag, text, style] : infoLines) {
+        extraH += gdi.getLineHeight(style, nullptr);
+      }
+
+      rc.right = rc.left + xpmap + gdi.scaleLength(50);
+      rc.bottom = rc.top + ymap_b + gdi.scaleLength(80) + extraH;
+      mapWindow->setWindowsPosition(rc);
+
+      mapWX = rc.right - rc.left;
+      mapWY = rc.bottom - rc.top;
+    }
+    mapWindow->setData("MapShown", 1);
   }
-  if (finish)
-    crsRep.emplace_back(oe->getControl(finish), L"", RenderCType::Finish);
-
-  int xw, yw;
-  mapWindow->getTargetDimension(xw, yw);
-  int maxWidth = max<int>(gdi.scaleLength(600), int(zoomLevel * xw));
-  int maxHeight = max<int>(gdi.scaleLength(600), int(zoomLevel * (yw-ypMap)));
-
-  auto [xpmap, ymap_b] = renderMaps.render(*oe, *mapWindow, gdi.scaleLength(40),
-                                           ypMap, crsRep, false, maxWidth, maxHeight);
-
-  RECT rc;
-  mapWindow->getWindowsPosition(rc);
-  int wx = rc.right - rc.left;
-  int wy = rc.bottom - rc.top;
-
-  if (created || (wx == mapWX && wy == mapWY)) {
-    rc.right = rc.left + xpmap + gdi.scaleLength(50);
-    rc.bottom = rc.top + ymap_b + gdi.scaleLength(80);
-    mapWindow->setWindowsPosition(rc);
-
+  else if (created) {
+    RECT rc;
+    bool maximized = mapWindow->getWindowsPosition(rc);
     mapWX = rc.right - rc.left;
     mapWY = rc.bottom - rc.top;
   }
 
+  // Show info lines
+  for (auto &[tag, text, style] : infoLines) {
+    if (!text.empty())
+      mapWindow->addString(tag, style, L"#" + text);
+    else
+      mapWindow->addString(tag, style, L"  ");
+  }
+
   mapWindow->refresh();
+  return mapWindow;
 }
 
 bool TabCourse::specifyControl(gdioutput &gdi, int controlId, int x, int y) {

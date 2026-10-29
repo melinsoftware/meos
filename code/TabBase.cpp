@@ -33,7 +33,7 @@
 #include "TabCourse.h"
 #include "TabControl.h"
 #include "TabClub.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "TabCompetition.h"
 #include "TabAuto.h"
 
@@ -162,9 +162,9 @@ TabBase *FixedTabs::get(const TabType tab) {
       return speakerTab;
     break;
 
-    case TSITab:
+    case TCardTab:
       if (!siTab) {
-        siTab = new TabSI(gEvent);
+        siTab = new TabCard(gEvent);
         tabs.push_back(siTab);
       }
       return siTab;

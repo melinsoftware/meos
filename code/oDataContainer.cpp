@@ -1951,3 +1951,53 @@ wstring oDataContainer::encodeArray(const vector<wstring> &input) {
 
 void oDataContainer::decodeArray(const string &input, vector<wstring> &output) {
 }
+
+string oDataContainer::generateSQLColumnList() const {
+  string sql;
+  for (size_t k = 0; k < ordered.size(); k++) {
+    sql += ",`"; sql += ordered[k].Name; sql += "`";    
+  }
+  return sql;  
+}
+
+string oDataContainer::generateSQLValues(const oBase* ob) const {
+  void* data, * oldData;
+  vector< vector<wstring> >* strptr;
+  ob->getDataBuffers(data, oldData, strptr);
+  string sql;
+  int alloc = 256;
+  vector<char> bfData(alloc);
+  char* bf = &bfData[0];
+  for (size_t kk = 0; kk < ordered.size(); kk++) {
+    const oDataInfo& di = ordered[kk];
+    if (di.Type == oDTInt) {
+      LPBYTE vd = LPBYTE(data) + di.Index;
+      if (di.SubType == oIS8U) sprintf_s(bf, alloc, ",%u", (*((int*)vd)) & 0xFF);
+      else if (di.SubType == oIS16U) sprintf_s(bf, alloc, ",%u", (*((int*)vd)) & 0xFFFF);
+      else if (di.SubType == oIS8) { char r = char((*((int*)vd)) & 0xFF); sprintf_s(bf, alloc, ",%d", (int)r); }
+      else if (di.SubType == oIS16) { short r = short((*((int*)vd)) & 0xFFFF); sprintf_s(bf, alloc, ",%d", (int)r); }
+      else if (di.SubType != oIS64) sprintf_s(bf, alloc, ",%d", *((int*)vd));
+      else { char tmp[32]; _i64toa_s(*((__int64*)vd), tmp, 32, 10); sprintf_s(bf, alloc, ",%s", tmp); }
+      sql += bf;
+    }
+    else if (di.Type == oDTString) {
+      LPBYTE vd = LPBYTE(data) + di.Index;
+      bf = ensureCapacity(2 * (int)wcslen((wchar_t*)vd) + 10, bfData, alloc);
+      sprintf_s(bf, alloc, ",'%s'", SQL_quote((wchar_t*)vd).c_str());
+      sql += bf;
+    }
+    else if (di.Type == oDTStringDynamic) {
+      const wstring& str = (*strptr)[0][di.Index];
+      bf = ensureCapacity(2 * (int)str.length() + 10, bfData, alloc);
+      sprintf_s(bf, alloc, ",'%s'", SQL_quote(str.c_str()).c_str());
+      sql += bf;
+    }
+    else if (di.Type == oDTStringArray) {
+      const wstring str = encodeArray((*strptr)[di.Index]);
+      bf = ensureCapacity(2 * (int)str.length() + 10, bfData, alloc);
+      sprintf_s(bf, alloc, ",'%s'", SQL_quote(str.c_str()).c_str());
+      sql += bf;
+    }
+  }
+  return sql;
+}

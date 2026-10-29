@@ -90,6 +90,9 @@ public:
   int getStartPunchCode() const;
   int getFinishPunchCode() const;
 
+  void setStartPunchCode(int code);
+  void setFinishPunchCode(int code);
+
   void setMeasuredVoltage(int miliVolt) { this->miliVolt = miliVolt; }
   wstring getCardVoltage() const;
   static wstring getCardVoltage(int miliVolt);
@@ -124,10 +127,12 @@ public:
 
   void addTableRow(Table &table) const;
 
+  pair<int, bool> inputData(int id, const wstring& input,
+                            int inputId, wstring& output, bool noUpdate) override;
+
   /// Returns the split time from the last used punch
   /// to the current punch, as indicated by evaluateCard
-  int getSplitTime(int startTime, const oPunch *punch) const;
-  static int getSplitTime(const oPunchList &punches, int startTime, const oPunch *punch);
+  static int getSplitTime(const vector<oPunch *> &punches, int startTime, const oPunch *punch);
 
   pRunner getOwner() const;
   int getNumPunches() const {return punches.size();}

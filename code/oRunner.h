@@ -280,7 +280,8 @@ public:
     FlagNoTiming = 512, // No timing requested
     FlagNoDatabase = 1024, // Do not store in databse
     FlagPayBeforeResult = 2048, // Require payment before result
-    FlagUnnamed = 2 << 12
+    FlagUnnamed = 2 << 12,
+    FlagAssignedLeg = 1 << 13 // The leg was manually assigned
   };
 
   bool hasFlag(TransferFlags flag) const;
@@ -803,9 +804,15 @@ protected:
   int getBuiltinAdjustment() const override;
 
   // Used for creating a mergerd result from several cards
-  oPunchList tmpPunchList;
+  mutable vector<oPunch *> tmpPunchList;
 
 public:
+
+  /** Check if readout time can be used instead of a missing finish punch*/
+  bool canUseFinishTimeFromReadout() const;
+
+  /** Use readout time instead of a missing finish punch */
+  void useFinishTimeFromReadout();
 
   /** Return best time in class and expected time on leg for this runner */
   oClass::RogainingAnalysis getRogainingAnalysis(int from, int to) const;
@@ -1140,7 +1147,7 @@ public:
   int getCardId2() const { return cardPtr2 ? cardPtr2->Id : 0; }
 
   /** Common list of punches, possibly a merge from several cards*/
-  const oPunchList &getCardPunches() const;
+  const vector<oPunch *> &getCardPunches() const;
 
   bool operator<(const oRunner &c) const;
   bool static CompareCardNumber(const oRunner &a, const oRunner &b) { return a.cardNumber < b.cardNumber; }

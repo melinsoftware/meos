@@ -591,7 +591,7 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci) {
 
         if (expectedIndex>=0 && expectedIndex != r->getMultiIndex()) {
           int baseLeg = it->Class->getLegRunner(i);
-          it->setRunner(baseLeg, r->getMultiRunner(0), true);
+          it->setRunner(baseLeg, r->getMultiRunner(0), true, false);
           teamCorrected = true;
         }
       }
@@ -634,9 +634,9 @@ bool oEvent::readSynchronize(const CompetitionInfo &ci) {
       if (it->tInTeam && it->Class) {
         pTeam t = it->tInTeam;
         int nr = min(int(it->Class->getNumStages())-1, int(it->multiRunner.size()));
-        t->setRunner(0, &*it, true);
+        t->setRunner(0, &*it, true, false);
         for (int k=0; k<nr; k++)
-          t->setRunner(k+1, it->multiRunner[k], true);
+          t->setRunner(k+1, it->multiRunner[k], true, false);
         t->updateChanged();
         t->synchronize();
       }

@@ -1755,23 +1755,23 @@ void oFreeImport::showEntries(gdioutput &gdi, const vector<oEntryBlock> &entries
 void oFreeImport::addEntries(pEvent oe, const vector<oEntryBlock> &entries)
 {
   map<int, int> teamno; //For automatic name generation Club/Class
-  for (size_t k=0;k<entries.size();k++) {
+  for (size_t k = 0; k < entries.size(); k++) {
     assert(!entries[k].eClass.empty());
-    pClass pc=oe->getClass(entries[k].eClass);
+    pClass pc = oe->getClass(entries[k].eClass);
 
     if (!pc) {
-      pc=oe->addClass(entries[k].eClass);
-      if (entries[k].getNumPersons()>1)
+      pc = oe->addClass(entries[k].eClass);
+      if (entries[k].getNumPersons() > 1)
         pc->setNumStages(entries[k].getNumPersons());
       pc->synchronize();
     }
 
     if (pc) {
-      int nr=pc->getNumDistinctRunners();
-      if (nr==1) {
-        pRunner r=oe->addRunner(entries[k].getName(0),
-                                entries[k].getClub(0), pc->getId(),
-                                entries[k].getCard(0), L"", true);
+      int nr = pc->getNumDistinctRunners();
+      if (nr == 1) {
+        pRunner r = oe->addRunner(entries[k].getName(0),
+                                  entries[k].getClub(0), pc->getId(),
+                                  entries[k].getCard(0), L"", true);
 
         r->setStartTimeS(entries[k].eStartTime);
         r->setCardNo(entries[k].getCard(0), false);
@@ -1780,22 +1780,22 @@ void oFreeImport::addEntries(pEvent oe, const vector<oEntryBlock> &entries)
         r->synchronize();
       }
       else {
-        pClub club=oe->getClubCreate(0, entries[k].eClub);
+        pClub club = oe->getClubCreate(0, entries[k].eClub);
         wstring team = entries[k].getTeamName();
         //int id=pc->getId() + 10000 * (club ? club->getId() : 0);
 
         //char tname[256];
         //sprintf_s(tname, "%s %d", entries[k].eClub.c_str(), ++teamno[id]);
-        pTeam t=oe->addTeam(team, club ? club->getId() : 0, pc->getId());
+        pTeam t = oe->addTeam(team, club ? club->getId() : 0, pc->getId());
         if (t) {
           t->setStartNo(t->getId(), oBase::ChangeType::Update);
 
-          for (int j=0;j<max(nr, entries[k].getNumPersons());j++) {
-            pRunner r=oe->addRunner(entries[k].getName(j), entries[k].getClub(j),
-                                    pc->getId(), entries[k].getCard(j), L"", false);
+          for (int j = 0; j < max(nr, entries[k].getNumPersons()); j++) {
+            pRunner r = oe->addRunner(entries[k].getName(j), entries[k].getClub(j),
+                                      pc->getId(), entries[k].getCard(j), L"", false);
             r->setCardNo(entries[k].getCard(j), false);
             r->addClassDefaultFee(false);
-            t->setRunner(j, r, true);
+            t->setRunner(j, r, true, false);
           }
 
           t->apply(oBase::ChangeType::Update, nullptr);

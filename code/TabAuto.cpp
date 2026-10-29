@@ -31,7 +31,7 @@
 #include "cardmanager.h"
 
 #include "TabAuto.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "TabCompetition.h"
 #include "meos_util.h"
 
@@ -1030,7 +1030,7 @@ void PunchMachine::save(oEvent &oe, gdioutput &gdi, bool doProcess) {
           auto card = make_shared<SICard>(ConvertedTimeStatus::Done);
           card->isDebugCard = true;
           card->CardNumber = cno;
-          TabSI::generateTestCard(*card, punches, -1, st, ft);
+          TabCard::generateTestCard(*card, punches, -1, st, ft);
 
           if (hasStart)
             card->StartPunch.Code = -1;

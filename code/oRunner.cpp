@@ -675,7 +675,7 @@ void oRunner::setClassId(int id, bool isManualUpdate) {
       if (!isTemporaryObject) {
         pTeam t = oe->addTeam(getName(), getClubId(), getClassId(false));
         t->setStartNo(StartNo, ChangeType::Update);
-        t->setRunner(0, this, true);
+        t->setRunner(0, this, true, false);
       }
     }
 
@@ -2850,6 +2850,9 @@ wstring oRunner::getFamilyName() const
 
 void oRunner::setCardNo(int cno, bool matchCard, bool updateFromDatabase) {
   if (cno != getCardNo()) {
+    if (!updateFromDatabase && cno != 0 && cno == getCardNo2())
+      return; // Do not accept duplicate cards
+
     int oldNo = getCardNo();
     cardNumber = cno;
 
@@ -2878,6 +2881,9 @@ void oRunner::setCardNo(int cno, bool matchCard, bool updateFromDatabase) {
 
 void oRunner::setCardNo2(int cno, bool matchCard, bool updateFromDatabase) {
   if (cno != getCardNo2()) {
+    if (!updateFromDatabase && cno != 0 && cno == getCardNo())
+      return; // Do not accept duplicate cards
+
     int oldNo = getCardNo2();
     cardNumber2 = cno;
 
@@ -3062,7 +3068,7 @@ void oRunner::setName(const wstring &in, bool manualUpdate) {
   n.resize(kx);
 
   if (n.empty())
-    throw std::exception("Tomt namn är inte tillåtet.");
+    throw meosException("Tomt namn är inte tillåtet.");
 
   if (n.length() <= 4 || n == lang.tl("N.N."))
     manualUpdate = false; // Never consider default names manual
@@ -3078,9 +3084,11 @@ void oRunner::setName(const wstring &in, bool manualUpdate) {
       sName = n;
       tRealName = newRealName;
 
-      if (manualUpdate)
+      if (manualUpdate) {
         setFlag(FlagUpdateName, true);
-      
+        if (tInTeam)
+          setFlag(TransferFlags::FlagAssignedLeg, true);
+      }
       setFlag(TransferFlags::FlagUnnamed, false);
 
       updateChanged();
@@ -4420,6 +4428,30 @@ pair<int, bool> oRunner::inputData(int id, const wstring &input,
       synchronize(true);
       output = itow(getInputPlace());
       break;
+
+    case TID_FINISHCONTROL: {
+      pCard c = getCard();
+      if (c) {
+        int finishId = _wtoi(input.c_str());
+        c->setFinishPunchCode(finishId);
+        output = finishId > 0 ? itow(finishId) : _EmptyWString;
+      }
+      else
+        output = L"";
+    }
+    break;
+    
+    case TID_STARTCONTROL: {
+      pCard c = getCard();
+      if (c) {
+        int startId = _wtoi(input.c_str());
+        c->setStartPunchCode(startId);
+        output = startId > 0 ? itow(startId) : _EmptyWString;
+      }
+      else
+        output = L"";
+    }
+    break;
   }
 
   return make_pair(0,false);
@@ -5036,39 +5068,6 @@ static int findNextControl(const vector<pControl> &ctrl, int startIndex, int id,
     return index;
 }
 
-static void gotoNextLine(gdioutput &gdi, int &xcol, int &cx, int &cy, int colDeltaX, int numCol, int baseCX) {
-  if (++xcol < numCol) {
-    cx += colDeltaX;
-  }
-  else {
-    xcol = 0;
-    cy += int(gdi.getLineHeight()*1.1);
-    cx = baseCX;
-  }
-}
-
-static void addMissingControl(bool wideFormat, gdioutput &gdi, 
-                              int &xcol, int &cx, int &cy, 
-                              int colDeltaX, int numCol, int baseCX) {
-  int xx = cx;
-  wstring str = makeDash(L"-");
-  int posy = wideFormat ? cy : cy-int(gdi.getLineHeight()*0.4);
-  const int endx = cx + colDeltaX - gdi.scaleLength(27/2);
-
-  while (xx < endx) {
-    gdi.addStringUT(posy, xx, fontSmall, str);
-    xx += gdi.scaleLength(8);
-  }
-
-  // Make a thin line for list format, otherwise, take a full place
-  if (wideFormat) {
-    gotoNextLine(gdi, xcol, cx, cy, colDeltaX, numCol, baseCX);
-  }
-  else
-    cy+=int(gdi.getLineHeight()*0.3);
-}
-
-
 void oRunner::printSplits(gdioutput& gdi) const {
   
   wstring wListId;
@@ -5154,11 +5153,11 @@ void oRunner::printSplits(gdioutput& gdi) const {
   }
 }
 
-void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
+void oRunner::printSplits(gdioutput &gdi, const oListInfo *li) const {
   bool withAnalysis = (oe->getDI().getInt("Analysis") & 1) == 0;
   bool withSpeed = (oe->getDI().getInt("Analysis") & 2) == 0;
   bool withResult = (oe->getDI().getInt("Analysis") & 4) == 0;
-  
+
   bool includeStandardHeading = true;
   bool includeDefaultTitle = true;
   bool includeSplitTimes = true;
@@ -5168,8 +5167,16 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
   bool includeAccLegPlace = false;
   bool includeTimeLoss = false;
 
+  wstring font;
+  const wchar_t *fontPtr = nullptr;
+  if (li) {
+    font = li->encodeMainFont();
+    if (!font.empty())
+      fontPtr = font.c_str();
+  }
+
   if (li && li->isSplitPrintList()) {
-    auto& sp = *li->getSplitPrintInfo();
+    auto &sp = *li->getSplitPrintInfo();
     includeDefaultTitle = !li->hasHead();
     includeStandardHeading = sp.withStandardHeading;
     withSpeed = sp.withSpeed;
@@ -5182,7 +5189,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
     includeAccLegPlace = sp.withAccLegPlace;
     includeTimeLoss = sp.withTimeLoss;
   }
-  
+
   const bool wideFormat = oe->getPropertyInt("WideSplitFormat", 0) == 1;
   const int numCol = 4;
 
@@ -5200,12 +5207,61 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
     normal = normalText;
     bnormal = boldText;
   }
-  
+
+  auto addStringUT = [&gdi, &fontPtr](int format, const wstring &str) {
+    gdi.addStringUT(gdi.getCY(), gdi.getCX(), format, str, 0, nullptr, fontPtr);
+  };
+
+  auto addString = [&gdi, &fontPtr](gdiFonts format, const wstring &str) {
+    gdi.addString("", gdi.getCY(), gdi.getCX(), format, str, 0, nullptr, fontPtr);
+  };
+
+  auto addStringUTyx = [&gdi, &fontPtr](int yp, int xp, int format, const wstring &str) {
+    gdi.addStringUT(yp, xp, format, str, 0, nullptr, fontPtr);
+  };
+
+  auto addStringYX = [&gdi, &fontPtr](int yp, int xp, int format, const string &str) {
+    gdi.addString("", yp, xp, format, str, 0, nullptr, fontPtr);
+  };
+
+  auto gotoNextLine = [&gdi, &fontPtr](int &xcol, int &cx, int &cy, int colDeltaX, int numCol, int baseCX) {
+    if (++xcol < numCol) {
+      cx += colDeltaX;
+    }
+    else {
+      xcol = 0;
+      cy += int(gdi.getLineHeight(gdiFonts::normalText, fontPtr) * 1.1);
+      cx = baseCX;
+    }
+  };
+
+  auto addMissingControl = [&gdi, &fontPtr, 
+                            &gotoNextLine, &addStringUTyx](bool wideFormat,
+                                                           int &xcol, int &cx, int &cy,
+                                                           int colDeltaX, int numCol, int baseCX) {
+    int xx = cx;
+    wstring str = makeDash(L"-");
+    int posy = wideFormat ? cy : cy - int(gdi.getLineHeight(gdiFonts::normalText, fontPtr) * 0.4);
+    const int endx = cx + colDeltaX - gdi.scaleLength(27 / 2);
+
+    while (xx < endx) {
+      addStringUTyx(posy, xx, fontSmall, str);
+      xx += gdi.scaleLength(8);
+    }
+
+    // Make a thin line for list format, otherwise, take a full place
+    if (wideFormat) {
+      gotoNextLine(xcol, cx, cy, colDeltaX, numCol, baseCX);
+    }
+    else
+      cy += int(gdi.getLineHeight(gdiFonts::normalText, fontPtr) * 0.3);
+  };
+
   gdi.fillDown();
   gdi.pushX();
   if (includeDefaultTitle) {
-    gdi.addStringUT(head, oe->getName());
-    gdi.addStringUT(normal, oe->getDate());
+    addStringUT(head, oe->getName());
+    addStringUT(normal, oe->getDate());
     gdi.dropLine(0.5);
   }
   else {
@@ -5217,14 +5273,14 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
   SubSecond mode = oe->useSubSecond() ? SubSecond::On : SubSecond::Auto;
 
   if (includeStandardHeading) {
-    gdi.addStringUT(bnormal, getName() + L", " + getClass(true));
-    gdi.addStringUT(normal, getClub());
+    addStringUT(bnormal, getName() + L", " + getClass(true));
+    addStringUT(normal, getClub());
     gdi.dropLine(0.5);
-    gdi.addStringUT(normal, lang.tl("Start: ") + getStartTimeS() + lang.tl(", Mål: ") + getFinishTimeS(false, mode));
+    addStringUT(normal, lang.tl("Start: ") + getStartTimeS() + lang.tl(", Mål: ") + getFinishTimeS(false, mode));
     if (cls && cls->isRogaining()) {
-      gdi.addStringUT(normal, lang.tl("Poäng: ") +
-        itow(getRogainingPoints(true, false)) +
-        +L" (" + lang.tl("Avdrag: ") + itow(getRogainingReduction(true)) + L")");
+      addStringUT(normal, lang.tl("Poäng: ") +
+                  itow(getRogainingPoints(true, false)) +
+                  +L" (" + lang.tl("Avdrag: ") + itow(getRogainingReduction(true)) + L")");
     }
 
     wstring statInfo = lang.tl("Status: ") + getStatusS(true, true) + lang.tl(", Tid: ") + getRunningTimeS(true, mode);
@@ -5232,15 +5288,15 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
       int kmt = (getRunningTime(false) * 1000) / pc->getLength();
       statInfo += L" (" + formatTime(kmt, SubSecond::Off) + lang.tl(" min/km") + L")";
     }
-    gdi.addStringUT(normal, statInfo);
+    addStringUT(normal, statInfo);
   }
 
   if (pc && withSpeed) {
     if (pc->legLengths.empty() || *max_element(pc->legLengths.begin(), pc->legLengths.end()) <= 0)
       withSpeed = false; // No leg lenghts available
   }
- 
-  int cy = gdi.getCY() + gdi.scaleLength(4/2);
+
+  int cy = gdi.getCY() + gdi.scaleLength(4 / 2);
   int cx = gdi.getCX();
 
   int spMax = 0;
@@ -5254,29 +5310,46 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
   bool moreThanHour = max(totMax, getRunningTime(true)) >= timeConstHour;
   bool moreThanHourSplit = spMax >= timeConstHour;
 
-  const int c1 = gdi.scaleLength(17);
-  const int spW = moreThanHourSplit ? 32 : 27;
-  const int legPlaceW = includeLegPlace ? 18 : 0;
-  // Time on leg, right formatted
-  const int c2_legtime = c1 + gdi.scaleLength(30 + spW + legPlaceW) - (includeControlCode ? 0 : c1);
+
+  auto getWidth = [&gdi, &fontPtr](const wchar_t *str) -> int {
+    TextInfo ti;
+    if (fontPtr)
+      ti.font = fontPtr;
+    ti.text = str;
+    ti.format = gdiFonts::fontSmall;
+    gdi.calcStringSize(ti);
+    return ti.getWidth();
+  };
+
+  const int space = getWidth(L" ");
   
+  const int plegw = getWidth(L"22.");
+  const int c1 = getWidth(L"(100)") + space;// gdi.scaleLength(17);
+  const int spW = space + moreThanHourSplit ? getWidth(L"(1:40:05)") : getWidth(L"(42:05)");//32 : 27;
+  const int legPlaceW = includeLegPlace ? getWidth(L"(99)") + space: 0;// 18 : 0;
+  // Time on leg, right formatted
+  //const int c2_legtime = c1 + gdi.scaleLength(30 + spW + legPlaceW) - (includeControlCode ? 0 : c1);
+  const int c2_legtime = plegw + spW + legPlaceW + (includeControlCode ? c1 : 0);
+
   // Time after on leg, right formatted
-  const int c3_legafter = c2_legtime + (includeTimeLoss ? gdi.scaleLength(34) : 0);
+  const int c3_legafter = c2_legtime + (includeTimeLoss ? getWidth(L"+12:02") : 0);
 
   // Abs time left formatted
-  const int c4_abstime = c3_legafter + gdi.scaleLength(5);
-  
-  const int accLegPlaceW = includeAccLegPlace ? 18 : 0;
-  const int absTimeW = includeAbsTime ? 34 : 0;
+  const int c4_abstime = c3_legafter + space;
+
+  const int accLegPlaceW = includeAccLegPlace ? space + getWidth(L"(22)") : 0;
+  const int absTimeW = includeAbsTime ? space + getWidth(L"07:33:44") : 0;
 
   // Accumulated leg time, right formatted
-  const int c5_accleg = c4_abstime + gdi.scaleLength(absTimeW + accLegPlaceW + (moreThanHour ? 42 : 32));
-  
-  const int c6_speed = withSpeed ? c5_accleg + gdi.scaleLength(40) : c5_accleg;
-  const int baseCX = cx;
-  const int colDeltaX = c6_speed + gdi.scaleLength(16);
+  const int c5_accleg = c4_abstime + absTimeW + accLegPlaceW + space + (moreThanHour ? getWidth(L"1:40:05") : getWidth(L"42:05"));
 
-  char bf[256];
+  const int c6_speed = withSpeed ? c5_accleg + space + getWidth(L"10.11") : c5_accleg;
+  
+  
+  const int colDeltaX = c6_speed + gdi.scaleLength(16);
+  const int baseCX = cx;
+
+  wchar_t bf[256];
   int lastIndex = -1;
   int adjust = 0;
   int offset = 1;
@@ -5297,52 +5370,51 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
 
   std::set<int> headerPos;
   std::set<int> checkedIndex;
-
+  const int lh = int(gdi.getLineHeight(gdiFonts::normalText, fontPtr) * 0.9);
   if (cardPtr && includeSplitTimes) {
     bool hasRogaining = pc ? pc->hasRogaining() : false;
 
     const int cyHead = cy;
-    cy += int(gdi.getLineHeight() * 0.9);
+    cy += lh;
     int xcol = 0;
     int baseY = cy;
 
     if (pc) {
-      const oPunchList &p = getCardPunches();
-      for (auto it = p.begin(); it != p.end(); ++it) {
+      const auto &p = getCardPunches();
+      for (auto it : p) {
         if (headerPos.count(cx) == 0) {
           headerPos.insert(cx);
-          gdi.addString("", cyHead, cx, italicSmall, "Kontroll");
-          gdi.addString("", cyHead, cx + c2_legtime, italicSmall | textRight, "Tid");
+          addStringYX(cyHead, cx, italicSmall, "Kontroll");
+          addStringYX(cyHead, cx + c2_legtime, italicSmall | textRight, "Tid");
           if (withSpeed)
-            gdi.addString("", cyHead, cx + c6_speed, italicSmall | textRight, "min/km");
+            addStringYX(cyHead, cx + c6_speed, italicSmall | textRight, "min/km");
         }
 
         bool any = false;
         if (it->tRogainingIndex >= 0) {
           const pControl c = pc->getControl(it->tRogainingIndex);
-          string point = c ? itos(c->getRogainingPoints()) + "p." : "";
+          wstring point = c ? oe->formatScore(c->getRogainingPoints()) + L"p." : L"";
 
-          gdi.addStringUT(cy, cx + c1 + gdi.scaleLength(10 / 2), fontSmall, point);
+          addStringUTyx(cy, cx + c1 + gdi.scaleLength(10 / 2), fontSmall, point);
           any = true;
 
-          sprintf_s(bf, "%d", it->type);
-          gdi.addStringUT(cy, cx, fontSmall, bf);
+          addStringUTyx(cy, cx, fontSmall, itow(it->type));
           int st = oCard::getSplitTime(p, getStartTime(), &*it);
 
-          if (st > 0) 
-            gdi.addStringUT(cy, cx + c2_legtime, fontSmall | textRight, formatTime(st, SubSecond::Off));
-          
+          if (st > 0)
+            addStringUTyx(cy, cx + c2_legtime, fontSmall | textRight, formatTime(st, SubSecond::Off));
+
           if (includeAbsTime)
-            gdi.addStringUT(cy, cx + c4_abstime, fontSmall, it->getTime(false, SubSecond::Off));
+            addStringUTyx(cy, cx + c4_abstime, fontSmall, it->getTime(false, SubSecond::Off));
 
           int pt = it->getAdjustedTime();
           st = getStartTime();
           if (st > 0 && pt > 0 && pt > st) {
             wstring punchTime = formatTime(pt - st, SubSecond::Off);
-            gdi.addStringUT(cy, cx + c5_accleg, fontSmall | textRight, punchTime);
+            addStringUTyx(cy, cx + c5_accleg, fontSmall | textRight, punchTime);
           }
 
-          cy += int(gdi.getLineHeight() * 0.9);
+          cy += lh;
           continue;
         }
 
@@ -5356,13 +5428,13 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
             pControl ctrl = pc->getControl(j);
             if (ctrl && ctrl->isSingleStatusOK()) {
               if (checkedIndex.count(j) == 0) {
-                addMissingControl(wideFormat, gdi, xcol, cx, cy, colDeltaX, numCol, baseCX);
+                addMissingControl(wideFormat, xcol, cx, cy, colDeltaX, numCol, baseCX);
               }
               break;
             }
           }
 
-          gdi.addString("", cy, cx, fontSmall, "Mål");
+          addStringYX(cy, cx, fontSmall, "Mål");
           sp = getSplitTime(splitTimes.size(), false);
 
           if (sp > 0) {
@@ -5370,24 +5442,25 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
             if (includeLegPlace) {
               int pl = getLegPlace(splitTimes.size());
               if (pl > 0) {
-                legTime += L" (" + itow(pl) + L".)";
+                legTime += L" (" + itow(pl) + L")";
               }
             }
-            gdi.addStringUT(cy, cx + c2_legtime, fontSmall | textRight, legTime);
+            addStringUTyx(cy, cx + c2_legtime, fontSmall | textRight, legTime);
             accLegTime = formatTime(getRunningTime(true), SubSecond::Off);
 
             if (includeAccLegPlace) {
               int pl = getLegPlaceAcc(splitTimes.size(), tLeg > 0);
-              if (pl > 0) {
-                accLegTime += L" (" + itow(pl) + L".)";
-              }
+              if (pl > 0)
+                accLegTime += L" (" + itow(pl) + L")";
+              else
+                accLegTime += L"    ";
             }
           }
           if (includeAbsTime)
-            gdi.addStringUT(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it->getTimeInt() + adjust, SubSecond::Off));
+            addStringUTyx(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it->getTimeInt() + adjust, SubSecond::Off));
           any = true;
           if (sp > 0) {
-            gdi.addStringUT(cy, cx + c5_accleg, fontSmall | textRight, accLegTime);
+            addStringUTyx(cy, cx + c5_accleg, fontSmall | textRight, accLegTime);
           }
           controlLegIndex = pc->getNumControls();
         }
@@ -5398,19 +5471,19 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
             index = findNextControl(ctrl, lastIndex + 1, cid, offset, hasRogaining);
           if (index >= 0) {
             if (index > lastIndex + 1) {
-              addMissingControl(wideFormat, gdi, xcol, cx, cy, colDeltaX, numCol, baseCX);
+              addMissingControl(wideFormat, xcol, cx, cy, colDeltaX, numCol, baseCX);
             }
             lastIndex = index;
 
             if (it->type == startType && (index + offset) == 1)
               continue; // Skip start control
 
-            sprintf_s(bf, "%d.", index + offset + startOffset);
-            gdi.addStringUT(cy, cx, fontSmall, bf);
-            
+            swprintf_s(bf, L"%d.", index + offset + startOffset);
+            addStringUTyx(cy, cx, fontSmall, bf);
+
             if (includeControlCode) {
-              sprintf_s(bf, "(%d)", it->type);
-              gdi.addStringUT(cy, cx + c1, fontSmall, bf);
+              swprintf_s(bf, L"(%d)", it->type);
+              addStringUTyx(cy, cx + c1, fontSmall, bf);
             }
 
             controlLegIndex = it->tIndex;
@@ -5423,25 +5496,26 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
 
               if (includeAccLegPlace) {
                 int pl = getLegPlaceAcc(controlLegIndex, tLeg > 0);
-                if (pl > 0) {
-                  accLegTime += L" (" + itow(pl) + L".)";
-                }
+                if (pl > 0) 
+                  accLegTime += L" (" + itow(pl) + L")";
+                else
+                  accLegTime += L"    ";
               }
 
               if (includeLegPlace) {
                 int pl = getLegPlace(controlLegIndex);
                 if (pl > 0) {
-                  legTime += L" (" + itow(pl) + L".)";
+                  legTime += L" (" + itow(pl) + L")";
                 }
               }
-              
-              gdi.addStringUT(cy, cx + c2_legtime, fontSmall | textRight, legTime);
+
+              addStringUTyx(cy, cx + c2_legtime, fontSmall | textRight, legTime);
 
               if (includeTimeLoss) {
                 int loss = getLegTimeAfter(controlLegIndex);
                 if (loss != 0) {
                   wstring lossS = L"+" + formatTime(loss, SubSecond::Off);
-                  gdi.addStringUT(cy, cx + c3_legafter, fontSmall | textRight, lossS);
+                  addStringUTyx(cy, cx + c3_legafter, fontSmall | textRight, lossS);
                 }
               }
             }
@@ -5449,27 +5523,26 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
           else {
             isExtraPunch = true;
             if (!it->isUsed && includeControlCode) {
-              gdi.addStringUT(cy, cx, fontSmall, makeDash(L"-"));
+              addStringUTyx(cy, cx, fontSmall, makeDash(L"-"));
             }
-            sprintf_s(bf, "(%d)", it->type);
+            swprintf_s(bf, L"(%d)", it->type);
             if (includeControlCode)
-              gdi.addStringUT(cy, cx + c1, fontSmall, bf);
+              addStringUTyx(cy, cx + c1, fontSmall, bf);
             else
-              gdi.addStringUT(cy, cx, fontSmall, bf);
-
+              addStringUTyx(cy, cx, fontSmall, bf);
           }
 
           if (includeAbsTime || isExtraPunch) {
             if (it->punchTime > 0)
-              gdi.addStringUT(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it->getAdjustedTime() + adjust, SubSecond::Off));
+              addStringUTyx(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it->getAdjustedTime() + adjust, SubSecond::Off));
             else {
               wstring str = makeDash(L"-");
-              gdi.addStringUT(cy, cx + c4_abstime, fontSmall, str);
+              addStringUTyx(cy, cx + c4_abstime, fontSmall, str);
             }
           }
 
           if (!accLegTime.empty()) {
-            gdi.addStringUT(cy, cx + c5_accleg, fontSmall | textRight, accLegTime);
+            addStringUTyx(cy, cx + c5_accleg, fontSmall | textRight, accLegTime);
           }
           any = true;
         }
@@ -5478,16 +5551,16 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
           int length = pc->legLengths[controlLegIndex];
           if (length > 0 && sp > 0) {
             int tempo = (sp * 1000) / length;
-            gdi.addStringUT(cy, cx + c6_speed, fontSmall | textRight, formatTime(tempo, SubSecond::Off));
+            addStringUTyx(cy, cx + c6_speed, fontSmall | textRight, formatTime(tempo, SubSecond::Off));
           }
         }
 
         if (any) {
           if (!wideFormat) {
-            cy += int(gdi.getLineHeight() * 0.9);
+            cy += lh;
           }
           else {
-            gotoNextLine(gdi, xcol, cx, cy, colDeltaX, numCol, baseCX);
+            gotoNextLine(xcol, cx, cy, colDeltaX, numCol, baseCX);
           }
         }
       }
@@ -5508,8 +5581,8 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
         if (cls && cls->isRogaining()) {
           int cnt = 0;
           for (auto &p : getCardPunches()) {
-            const oControl *ctrl = p.getRogainingControl(*pc);
-            if (p.isFinish(pc->getFinishId()) || ctrl) {
+            const oControl *ctrl = p->getRogainingControl(*pc);
+            if (p->isFinish(pc->getFinishId()) || ctrl) {
               int missed = getMissedTime(cnt);
               if (missed > 0) {
                 wstring n = ctrl ? itow(ctrl->getFirstNumber()) : lang.tl("Mål").substr(0, 1);
@@ -5542,15 +5615,15 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
           }
 
           if (count < 3)
-            gdi.addString("", normal, "Underlag saknas för bomanalys.");
+            addString(normal, L"Underlag saknas för bomanalys.");
           else
-            gdi.addString("", normal, "Inga bommar registrerade.");
+            addString(normal, L"Inga bommar registrerade.");
         }
         else {
           wstring out = lang.tl("Tidsförluster (kontroll-tid): ");
           for (size_t k = 0; k < misses.size(); k++) {
             if (out.length() > (wideFormat ? 80u : (withSpeed ? 40u : 35u))) {
-              gdi.addStringUT(normal, out);
+              addStringUT(normal, out);
               out.clear();
             }
             out += misses[k];
@@ -5559,7 +5632,7 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
             else
               out += L".";
           }
-          gdi.addStringUT(fontSmall, out);
+          addStringUT(fontSmall, out);
         }
       }
     }
@@ -5567,60 +5640,60 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
       int index = 0;
       int lastTime = 0;
 
-      for (auto& it : getCardPunches()) {
+      for (auto &it : getCardPunches()) {
         if (headerPos.count(cx) == 0) {
           headerPos.insert(cx);
-          gdi.addString("", cyHead, cx, italicSmall, "Kontroll");
-          gdi.addString("", cyHead, cx + c2_legtime - gdi.scaleLength(55 / 2), italicSmall, "Tid");
+          addStringYX(cyHead, cx, italicSmall, "Kontroll");
+          addStringYX(cyHead, cx + c2_legtime - gdi.scaleLength(55 / 2), italicSmall, "Tid");
         }
 
         bool any = false;
         wstring punchTime;
-        if (it.isFinish(finishType)) {
-          gdi.addString("", cy, cx, fontSmall, "Mål");
-          int rt = it.getTimeInt() - tStartTime;
+        if (it->isFinish(finishType)) {
+          addStringYX(cy, cx, fontSmall, "Mål");
+          int rt = it->getTimeInt() - tStartTime;
           if (rt > 0) {
-            gdi.addStringUT(cy, cx + c2_legtime, fontSmall | textRight, formatTime(rt - lastTime, SubSecond::Off));
+            addStringUTyx(cy, cx + c2_legtime, fontSmall | textRight, formatTime(rt - lastTime, SubSecond::Off));
             punchTime = formatTime(getRunningTime(true), SubSecond::Off);
           }
-          gdi.addStringUT(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it.getTimeInt(), SubSecond::Off));
+          addStringUTyx(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it->getTimeInt(), SubSecond::Off));
           any = true;
           if (!punchTime.empty()) {
-            gdi.addStringUT(cy, cx + c5_accleg, fontSmall | textRight, punchTime);
+            addStringUTyx(cy, cx + c5_accleg, fontSmall | textRight, punchTime);
           }
         }
-        else if (it.type > 10 && it.type != startType) { //Filter away check and start
-          sprintf_s(bf, "%d.", ++index);
-          gdi.addStringUT(cy, cx, fontSmall, bf);
-          sprintf_s(bf, "(%d)", it.type);
-          gdi.addStringUT(cy, cx + c1, fontSmall, bf);
+        else if (it->type > 10 && it->type != startType) { //Filter away check and start
+          swprintf_s(bf, L"%d.", ++index);
+          addStringUTyx(cy, cx, fontSmall, bf);
+          swprintf_s(bf, L"(%d)", it->type);
+          addStringUTyx(cy, cx + c1, fontSmall, bf);
 
-          if (it.hasTime()) {
-            int rt = it.getTimeInt() - tStartTime;
+          if (it->hasTime()) {
+            int rt = it->getTimeInt() - tStartTime;
             punchTime = formatTime(rt, SubSecond::Off);
-            gdi.addStringUT(cy, cx + c2_legtime, fontSmall | textRight, formatTime(rt - lastTime, SubSecond::Off));
+            addStringUTyx(cy, cx + c2_legtime, fontSmall | textRight, formatTime(rt - lastTime, SubSecond::Off));
             lastTime = rt;
           }
 
-          if (it.hasTime())
-            gdi.addStringUT(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it.getTimeInt(), SubSecond::Off));
+          if (it->hasTime())
+            addStringUTyx(cy, cx + c4_abstime, fontSmall, oe->getAbsTime(it->getTimeInt(), SubSecond::Off));
           else {
             wstring str = makeDash(L"-");
-            gdi.addStringUT(cy, cx + c4_abstime, fontSmall, str);
+            addStringUTyx(cy, cx + c4_abstime, fontSmall, str);
           }
 
           if (!punchTime.empty()) {
-            gdi.addStringUT(cy, cx + c5_accleg, fontSmall | textRight, punchTime);
+            addStringUTyx(cy, cx + c5_accleg, fontSmall | textRight, punchTime);
           }
           any = true;
         }
 
         if (any) {
           if (!wideFormat) {
-            cy += int(gdi.getLineHeight() * 0.9);
+            cy += lh;
           }
           else {
-            gotoNextLine(gdi, xcol, cx, cy, colDeltaX, numCol, baseCX);
+            gotoNextLine(xcol, cx, cy, colDeltaX, numCol, baseCX);
           }
         }
       }
@@ -5652,11 +5725,11 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
       gdi.fillRight();
       gdi.pushX();
       if (!place.empty())
-        gdi.addString("", bnormal, "Placering:");
+        addString(bnormal, L"Placering:");
       else
-        gdi.addString("", bnormal, "Resultat:");
+        addString(bnormal, L"Resultat:");
       gdi.fillDown();
-      gdi.addString("", normal, place + timestatus + after);
+      addStringUT(normal, place + timestatus + after);
       gdi.popX();
     }
   }
@@ -5673,10 +5746,10 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
       warning = lang.tl("OK");
     gdi.fillRight();
     gdi.pushX();
-    gdi.addString("", fontSmall, L"Batteristatus:");
-    gdi.addStringUT(boldSmall, getCard()->getCardVoltage());
+    addString(fontSmall, L"Batteristatus:");
+    addStringUT(boldSmall, getCard()->getCardVoltage());
     gdi.fillDown();
-    gdi.addStringUT(fontSmall, L"(" + warning + L")");
+    addStringUT(fontSmall, L"(" + warning + L")");
     gdi.popX();
   }
 
@@ -5688,15 +5761,15 @@ void oRunner::printSplits(gdioutput& gdi, const oListInfo* li) const {
     gdi.dropLine(0.7);
   }
 
-  vector< pair<wstring, int> > lines;
+  vector<pair<wstring, int>> lines;
   oe->getExtraLines("SPExtra", lines);
   for (size_t k = 0; k < lines.size(); k++) {
-    gdi.addStringUT(lines[k].second, formatExtraLine(pRunner(this), lines[k].first));
+    addStringUT(lines[k].second, formatExtraLine(pRunner(this), lines[k].first));
   }
-  if (lines.size()>0)
+  if (lines.size() > 0)
     gdi.dropLine(0.5);
 
-  gdi.addString("", fontSmall, "Av MeOS: www.melin.nu/meos");
+  addString(fontSmall, L"Av MeOS: www.melin.nu/meos");
 }
 
 void oRunner::printStartInfo(gdioutput &gdi, bool includeEconomy) const {
@@ -6354,15 +6427,15 @@ int oRunner::getMissedTime(int ctrlNo) const {
       int count = 0;
       int prevP = crs->getStartPunchType();
       int lastTime = getStartTime();
-      for (const oPunch &p : pList) {
-        if (p.getTypeCode() < 30 && !p.isFinish(crs->getFinishPunchType()))
+      for (const oPunch *p : pList) {
+        if (p->getTypeCode() < 30 && !p->isFinish(crs->getFinishPunchType()))
           continue;
-        if (p.isStart(crs->getStartPunchType()))
+        if (p->isStart(crs->getStartPunchType()))
           continue;
-        if (!p.getRogainingControl(*crs))
+        if (!p->getRogainingControl(*crs))
           continue;
-        int nextP = p.getTypeCode();
-        int thisTime = p.getAdjustedTime();
+        int nextP = p->getTypeCode();
+        int thisTime = p->getAdjustedTime();
 
         if (count == ctrlNo) {
           auto res = getRogainingAnalysis(prevP, nextP);
@@ -6390,14 +6463,14 @@ int oRunner::getMissedTime() const {
     if (cardPtr && crs) {
       int prevP = crs->getStartPunchType();
       int lostT = 0;
-      for (const oPunch &p : getCardPunches()) {
-        if (p.getTypeCode() < 30 && !p.isFinish(crs->getFinishPunchType()))
+      for (const oPunch *p : getCardPunches()) {
+        if (p->getTypeCode() < 30 && !p->isFinish(crs->getFinishPunchType()))
           continue;
-        if (p.isStart(crs->getStartPunchType()))
+        if (p->isStart(crs->getStartPunchType()))
           continue;
-        if (!p.getRogainingControl(*crs))
+        if (!p->getRogainingControl(*crs))
           continue;
-        int nextP = p.getTypeCode();
+        int nextP = p->getTypeCode();
         auto res = getRogainingAnalysis(prevP, nextP);
         lostT += res.lostTime;
         prevP = nextP;
@@ -7936,9 +8009,48 @@ oClass::RogainingAnalysis oRunner::getRogainingAnalysis(int from, int to) const 
   return rg;
 }
 
-const oPunchList &oRunner::getCardPunches() const {
-  if (cardPtr)
-    return cardPtr->punches;
-  
+const vector<oPunch *> &oRunner::getCardPunches() const {
+  if (cardPtr) {
+    tmpPunchList = cardPtr->getPunchList(cardPtr2);
+  }
+  else tmpPunchList.clear();
   return tmpPunchList;
+}
+
+/** Check if readout time can be used instead of a missing finish punch*/
+bool oRunner::canUseFinishTimeFromReadout() const {
+  if (!cardPtr || getFinishTime() > 0)
+    return false;
+
+  auto ts = getTimeStamp();
+
+  int slen = ts.length();
+  if (slen >= 8) {
+    wstring timeS = ts.substr(slen - 8);
+    int ft = oe->getRelativeTime(timeS);
+    if (ft > 0 && ft > getStartTime()) {
+      for (auto &p : cardPtr->punches) {
+        if (p.getTimeInt() > ft)
+          return false; // Not compatible with punches (day wrap not taken into account)
+      }
+
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Use readout time instead of a missing finish punch */
+void oRunner::useFinishTimeFromReadout() {
+  if (!cardPtr || getFinishTime() > 0)
+    return;
+
+  auto ts = getTimeStamp();
+
+  int slen = ts.length();
+  if (slen >= 8) {
+    wstring timeS = ts.substr(slen - 8);
+    int ft = oe->getRelativeTime(timeS);
+    setFinishTime(ft);
+  }
 }

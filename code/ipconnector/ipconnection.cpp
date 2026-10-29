@@ -229,10 +229,9 @@ MConWString IPConnection::monitorThread() {
   };
 
   auto assign = [](MConPunch &out, const SIPunch &in) {
-    out.time = in.Time * 1000 / 10;
+    out.time = in.Time * (1000 / 10);
     out.code = in.Code;
   };
-
 
   SOCKET client;
   sockaddr_in from;
@@ -302,7 +301,7 @@ MConWString IPConnection::monitorThread() {
           else {
             MConFreePunch punch;
             punch.cardNo = op.SICardNo;
-            punch.time = (op.CodeTime * 1000) / 10;
+            punch.time = op.CodeTime * (1000 / 10);
             punch.code = op.CodeNo;
             punch.unit = op.CodeNo;
             if (addPunchPtr)

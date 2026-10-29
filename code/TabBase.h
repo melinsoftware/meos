@@ -41,7 +41,7 @@ enum TabType {
   TClassTab,
   TCourseTab,
   TControlTab,
-  TSITab,
+  TCardTab,
   TListTab,
   TCmpTab,
   TSpeakerTab,
@@ -101,7 +101,7 @@ class TabClass;
 class TabCourse;
 class TabControl;
 class TabClub;
-class TabSI;
+class TabCard;
 class TabList;
 class TabCompetition;
 class TabSpeaker;
@@ -114,7 +114,7 @@ class FixedTabs {
   TabClass *classTab;
   TabCourse *courseTab;
   TabControl *controlTab;
-  TabSI *siTab;
+  TabCard *siTab;
   TabList *listTab;
   TabCompetition *cmpTab;
   TabSpeaker *speakerTab;

@@ -219,8 +219,7 @@ void oTeam::importRunners(const vector<pRunner> &rns)
   }
 }
 
-void oEvent::removeTeam(int Id)
-{
+void oEvent::removeTeam(int Id) {
   oTeamList::iterator it;
   for (it = Teams.begin(); it != Teams.end(); ++it) {
     if (it->getId() == Id) {
@@ -236,41 +235,49 @@ void oEvent::removeTeam(int Id)
   }
 }
 
-void oTeam::setRunner(unsigned i, pRunner r, bool sync)
-{
-  if (i>=Runners.size()) {
-    if (i>=0 && i<100)
-      Runners.resize(i+1);
+bool oTeam::canAutoSetRunner(int leg) const {
+  if (leg < Runners.size() && Runners[leg] && Runners[leg]->hasFlag(TransferFlags::FlagAssignedLeg))
+    return false;
+
+  return true;
+}
+
+void oTeam::setRunner(int legIndex, pRunner r, bool sync, bool isManuallySet) {
+  if (legIndex >= Runners.size()) {
+    if (legIndex >= 0 && legIndex < 100)
+      Runners.resize(legIndex + 1);
     else
       throw std::exception("Bad runner index");
   }
 
-  if (Runners[i] == r)
+  if (Runners[legIndex] == r)
     return;
 
   int oldRaceId = 0;
-  pRunner tr = Runners[i];
+  pRunner tr = Runners[legIndex];
   if (tr) {
     oldRaceId = tr->getDCI().getInt("RaceId");
     tr->getDI().setInt("RaceId", 0);
   }
-  setRunnerInternal(i, r);
+  setRunnerInternal(legIndex, r);
 
   if (r) {
     if (tStatus == StatusDNS)
       setStatus(StatusUnknown, true, ChangeType::Update);
     r->getDI().setInt("RaceId", oldRaceId);
-    r->tInTeam=this;
-    r->tLeg=i;
+    r->tInTeam = this;
+    r->tLeg = legIndex;
+    if (isManuallySet)
+      r->setFlag(TransferFlags::FlagAssignedLeg, true);
     r->createMultiRunner(true, sync);
   }
 
   if (Class) {
-    int index=1; //Set multi runners
-    for (unsigned k=i+1;k<Class->getNumStages(); k++) {
-      if (Class->getLegRunner(k)==i) {
-        if (r!=0) {
-          pRunner mr=r->getMultiRunner(index++);
+    int index = 1; //Set multi runners
+    for (unsigned k = legIndex + 1; k < Class->getNumStages(); k++) {
+      if (Class->getLegRunner(k) == legIndex) {
+        if (r != 0) {
+          pRunner mr = r->getMultiRunner(index++);
 
           if (mr) {
             mr->setName(r->getName(), true);
@@ -284,18 +291,17 @@ void oTeam::setRunner(unsigned i, pRunner r, bool sync)
   }
 }
 
-void oTeam::setRunnerInternal(int k, pRunner r)
-{
-  if (r == Runners[k]) {
+void oTeam::setRunnerInternal(int legIndex, pRunner r) {
+  if (r == Runners[legIndex]) {
     if (r) {
       r->tInTeam = this;
-      r->tLeg = k;
+      r->tLeg = legIndex;
     }
     return;
   }
 
   int specifiedCourse = 0;
-  pRunner rOld = Runners[k];
+  pRunner rOld = Runners[legIndex];
   if (rOld) {
     int specifiedCourse = rOld->getCourseId();
     assert(rOld->tInTeam == 0 || rOld->tInTeam == this);
@@ -313,14 +319,14 @@ void oTeam::setRunnerInternal(int k, pRunner r)
     }
   }
 
-  Runners[k] = r;
+  Runners[legIndex] = r;
 
   if (r) {
     if (specifiedCourse)
       r->setCourseId(specifiedCourse);
     r->tInTeam = this;
-    r->tLeg = k;
-    if (Class && (r->Class==nullptr || Class->getLegType(k) != LTGroup))
+    r->tLeg = legIndex;
+    if (Class && (r->Class == nullptr || Class->getLegType(legIndex) != LTGroup))
       r->setClassId(getClassId(false), false);
   }
   updateChanged();
@@ -2188,6 +2194,8 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
           }
           else {
             Runners[ix]->setName(input, true);
+            if (Runners[ix]->isVacant() && Runners[ix]->isChanged())
+              Runners[ix]->setClubId(getClubId());
             Runners[ix]->synchronize(true);
             output = Runners[ix]->getName();
           }
@@ -2201,7 +2209,7 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
       else {
         if (isName && !input.empty() && Class) {
           pRunner r = oe->addRunner(input, getClubId(), getClassId(false), 0, L"", false);
-          setRunner(ix, r, true);
+          setRunner(ix, r, true, true);
           output = r->getName();
         }
       }
@@ -2330,21 +2338,21 @@ void oTeam::fillInput(int id, vector< pair<wstring, size_t> > &out, size_t &sele
   }
 }
 
-void oTeam::removeRunner(gdioutput &gdi, bool askRemoveRunner, int i) {
-  pRunner p_old = getRunner(i);
-  setRunner(i, 0, true);
+void oTeam::removeRunner(gdioutput &gdi, bool askRemoveRunner, int legIndex) {
+  pRunner p_old = getRunner(legIndex);
+  setRunner(legIndex, nullptr, true, false);
 
   //Remove multi runners
   if (Class) {
-    for (unsigned k = i+1;k < Class->getNumStages(); k++) {
-      if (Class->getLegRunner(k)==i)
-        setRunner(k, 0, true);
+    for (unsigned k = legIndex + 1; k < Class->getNumStages(); k++) {
+      if (Class->getLegRunner(k) == legIndex)
+        setRunner(k, 0, true, false);
     }
   }
 
   //No need to delete multi runners. Disappears when parent is gone.
-  if (p_old && !oe->isRunnerUsed(p_old->getId())){
-    if (!askRemoveRunner || gdi.ask(L"Ska X raderas från tävlingen?#" + p_old->getName())){
+  if (p_old && !oe->isRunnerUsed(p_old->getId())) {
+    if (!askRemoveRunner || gdi.ask(L"Ska X raderas från tävlingen?#" + p_old->getName())) {
       vector<int> oldR;
       oldR.push_back(p_old->getId());
       oe->removeRunner(oldR);

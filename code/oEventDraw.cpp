@@ -709,6 +709,12 @@ DrawOptimAlgo::DrawOptimAlgo(oEvent* oe) : oe(oe) {
   oe->getRunners(-1, -1, runners);
 }
 
+void DrawOptimAlgo::refresh() {
+  oe->getClasses(classes, false);
+  oe->getRunners(-1, -1, runners);
+}
+
+
 void DrawOptimAlgo::optimizeStartOrder(DrawInfo& di,
   vector<ClassInfo>& cInfo,
   int nFields,
@@ -1666,8 +1672,8 @@ int oEvent::computeMostCommonStartInterval() const {
       }
       if (r.cardPtr) {
         bool hasStart = false;
-        for (auto& p : r.getCardPunches()) {
-          if (p.isStart()) {
+        for (auto p : r.getCardPunches()) {
+          if (p->isStart()) {
             hasStart = true;
             break;
           }

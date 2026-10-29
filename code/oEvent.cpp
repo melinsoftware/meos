@@ -50,14 +50,13 @@
 #include "oEventDraw.h"
 #include "MeosSQL.h"
 #include "TabAuto.h"
-#include "TabSI.h"
 #include "TabList.h"
 #include "binencoder.h"
 #include "image.h"
 #include "datadefiners.h"
 #include "maprenderer.h"
 #include "xmlparser.h"
-
+#include "cardmanager.h"
 #include <chrono>
 #include <random>
 #include <io.h>
@@ -88,7 +87,6 @@ oEvent::oEvent(gdioutput &gdi) : oBase(nullptr), gdibase(gdi) {
 #else
   throw std::exception();
 #endif
-
 
   tCurrencyFactor = 1;
   tCurrencySymbol = L"kr";
@@ -1851,7 +1849,7 @@ void oEvent::autoAddTeam(pRunner pr)
       if (pr->StartNo == 0)
         pr->StartNo = Teams.size();
       t->setStartNo(pr->StartNo, ChangeType::Update);
-      t->setRunner(0, pr, true);
+      t->setRunner(0, pr, true, false);
     }
   }
 }
@@ -6108,7 +6106,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
         for (int j=0;j<dr;j++) {
           pRunner r=addRunner(gname[rand()%gname.size()]+L" "+fname[rand()%fname.size()], 0, 0, 0, L"", true);
           r->setCardNo(500001+Runners.size()*97+rand()%97, false);
-          t->setRunner(j, r, false);
+          t->setRunner(j, r, false, false);
         }
       }
       nRunners-=nRInClass;
@@ -6492,7 +6490,7 @@ void oEvent::removeVacanies(int classId) {
   removeRunner(toRemove);
 }
 
-void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
+void oEvent::sanityCheck(gdioutput &gdi, CheckType checkType, int onlyThisClass) {
   bool hasResult = false;
   bool warnNoName = false;
   bool warnNoClass = false;
@@ -6500,7 +6498,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
   bool warnNoPatrol = false;
   bool warnIndividualTeam = false;
 
-  for (oRunnerList::iterator it = Runners.begin(); it!=Runners.end(); ++it) {
+  for (auto it = Runners.begin(); it!=Runners.end(); ++it) {
     if (it->isRemoved())
       continue;
     if (onlyThisClass > 0 && it->getClassId(false) != onlyThisClass)
@@ -6508,8 +6506,9 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
     if (it->sName.empty()) {
       if (!warnNoName) {
         warnNoName = true;
-        gdi.alert("Varning: deltagare med blankt namn påträffad. MeOS "
-                  "kräver att alla deltagare har ett namn, och tilldelar namnet 'N.N.'");
+        gdi.addInfoBox("NoName", L"Varning: deltagare med blankt namn påträffad. MeOS "
+                  "kräver att alla deltagare har ett namn, och tilldelar namnet 'N.N.'",
+                       L"", BoxStyle::Header, 10000);
       }
       it->setName(lang.tl("N.N."), false);
       it->synchronize();
@@ -6517,7 +6516,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
 
     if (!it->Class) {
       if (!warnNoClass) {
-        gdi.alert(L"Deltagaren 'X' saknar klass.#" + it->getName());
+        gdi.addInfoBox("NoClass", L"Deltagaren 'X' saknar klass.#" + it->getName(), L"", BoxStyle::HeaderWarning, 10000);
         warnNoClass = true;
       }
       continue;
@@ -6532,7 +6531,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
         it->synchronizeAll();
       }
       else if (type == oClassRelay) {
-        if (!warnNoTeam) {
+        if (!warnNoTeam && checkType != CheckType::CheckFixNotify) {
           gdi.alert(L"Deltagaren 'X' deltar i stafettklassen 'Y' men saknar lag. Klassens start- "
                     L"och resultatlistor kan därmed bli felaktiga.#" + it->getName() +
                      L"#" + it->getClass(false));
@@ -6540,7 +6539,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
         }
       }
       else if (type == oClassPatrol) {
-        if (!warnNoPatrol) {
+        if (!warnNoPatrol && checkType != CheckType::CheckFixNotify) {
           gdi.alert(L"Deltagaren 'X' deltar i patrullklassen 'Y' men saknar patrull. Klassens start- "
                     L"och resultatlistor kan därmed bli felaktiga.#" + it->getName() +
                      + L"#" + it->getClass(false));
@@ -6553,7 +6552,8 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
       hasResult = true;
   }
 
-  for (oTeamList::iterator it = Teams.begin(); it != Teams.end(); ++it) {
+  vector<wstring> correctedTeams;
+  for (auto it = Teams.begin(); it != Teams.end(); ++it) {
     if (it->isRemoved())
       continue;
     
@@ -6563,8 +6563,9 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
     if (it->sName.empty()) {
       if (!warnNoName) {
         warnNoName = true;
-        gdi.alert("Varning: lag utan namn påträffat. "
-                  "MeOS kräver att alla lag har ett namn, och tilldelar namnet 'N.N.'");
+        gdi.addInfoBox("NoNameTeam", L"Varning: lag utan namn påträffat. "
+                       "MeOS kräver att alla lag har ett namn, och tilldelar namnet 'N.N.'",
+                       L"", BoxStyle::Header, 10000);
       }
       it->setName(lang.tl("N.N."), false);
       it->synchronize();
@@ -6572,7 +6573,7 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
 
     if (!it->Class) {
       if (!warnNoClass) {
-        gdi.alert(L"Laget 'X' saknar klass.#" + it->getName());
+        gdi.addInfoBox("NoClsTeam", L"Laget 'X' saknar klass.#" + it->getName(), L"", BoxStyle::HeaderWarning, 10000); 
         warnNoClass = true;
       }
       continue;
@@ -6580,22 +6581,40 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
 
     ClassType type = it->Class->getClassType();
     if (type == oClassIndividual) {
-      if (!warnIndividualTeam) {
+      if (!warnIndividualTeam && checkType != CheckType::CheckFixNotify) {
         gdi.alert(L"Laget 'X' deltar i individuella klassen 'Y'. Klassens start- och resultatlistor "
                   L"kan därmed bli felaktiga.#" + it->getName() + L"#" + it->getClass(true));
         warnIndividualTeam = true;
       }
     }
+
+    if (it->checkValdParSetup()) {
+      it->synchronize();
+      correctedTeams.push_back(it->getClass(false) + L"/" + it->getName());
+    }
   }
 
+  if (correctedTeams.size() > 0) {
+    wstring out = L"Vissa lag hade felaktig laguppställning och har rättats automatiskt (X)#";
+    wstring tout;
+    for (int i = 0; i < correctedTeams.size(); i++) {
+      if (!tout.empty())
+        tout += L", ";
+      tout += correctedTeams[i];
+      if (i >= 10) {
+        tout += L"...";
+        break;
+      }
+    }
+    gdi.addInfoBox("AutoCorrectTeam", out + tout, L"", BoxStyle::Header, 10000);
+  }
 
-  if (expectResult && !hasResult)
+  if (checkType == CheckType::HasResult && !hasResult)
     gdi.alert("Tävlingen innehåller inga resultat.");
-
 
   bool warnBadStart = false;
 
-  for (oClassList::iterator it = Classes.begin(); it != Classes.end(); ++it) {
+  for (auto it = Classes.begin(); it != Classes.end(); ++it) {
     if (it->isRemoved())
       continue;
     if (it->getClassStatus() != oClass::ClassStatus::Normal)
@@ -6611,23 +6630,22 @@ void oEvent::sanityCheck(gdioutput &gdi, bool expectResult, int onlyThisClass) {
       for (unsigned k=0;k<it->getNumStages(); k++) {
         StartTypes st = it->getStartType(k);
         LegTypes lt = it->getLegType(k);
-        if (k==0 && (st == STChange || st == STPursuit) && !warnBadStart) {
+        if (k==0 && (st == STChange || st == STPursuit) && !warnBadStart && checkType != CheckType::CheckFixNotify) {
           warnBadStart = true;
           gdi.alert(L"Klassen 'X' har jaktstart/växling på första sträckan.#" + it->getName());
         }
         if (st == STTime && it->getStartData(k)<=0 && !warnBadStart &&
-              (lt == LTNormal || lt == LTSum)) {
+              (lt == LTNormal || lt == LTSum) && checkType != CheckType::CheckFixNotify) {
           warnBadStart = true;
-          gdi.alert(L"Ogiltig starttid i 'X' på sträcka Y.#" + it->getName() + L"#" + itow(k+1));
+          gdi.addInfoBox("InvalidStart", L"Ogiltig starttid i 'X' på sträcka Y.#" + it->getName() + L"#" + itow(k + 1), 
+                         L"", BoxStyle::HeaderWarning, 10000);
         }
       }
     }
   }
 }
 
-oTimeLine::~oTimeLine() {
-
-}
+oTimeLine::~oTimeLine() = default;
 
 void oEvent::remove() {
   if (isClient())

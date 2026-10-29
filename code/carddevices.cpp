@@ -98,7 +98,7 @@ void __cdecl mconAddCard(const MConCard* card) {
   memcpy(sic.lastName, card->lastName, sizeof(sic.lastName));
   memcpy(sic.club, card->club, sizeof(sic.club));
 
-  auto assign = [](SIPunch& out, const MConPunch& in) {
+  auto assign = [](CardPunch& out, const MConPunch& in) {
     if (in.time >= 0)
       out.Time = in.time / (1000 / timeConstSecond);
     else
@@ -123,7 +123,7 @@ void __cdecl mconAddPunch(const MConFreePunch* punch) {
   SICard sic(ConvertedTimeStatus::Hour24);
   
   sic.CardNumber = punch->cardNo;
-  auto setTime = [](int code, int time, SIPunch& dst) {
+  auto setTime = [](int code, int time, CardPunch& dst) {
     dst.Code = code;
     if (time >= 0)
       dst.Time = time / (1000 / timeConstSecond);

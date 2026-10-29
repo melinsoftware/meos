@@ -678,9 +678,13 @@ public:
   /** Get number of runners */
   int getNumRunners() const {return runnerById.size();}
 
-
+  enum class CheckType {
+    HasResult,
+    CheckAlert,
+    CheckFixNotify
+  };
   // Show an warning dialog if database is not sane
-  void sanityCheck(gdioutput &gdi, bool expectResult, int checkOnlyClass = -1);
+  void sanityCheck(gdioutput &gdi, CheckType checkType, int checkOnlyClass = -1);
 
   // Automatic draw of all classes
   void automaticDrawAll(gdioutput &gdi, const wstring &firstStart,

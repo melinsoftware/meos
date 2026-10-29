@@ -44,7 +44,7 @@
 #include "autocomplete.h"
 #include "iof30interface.h"
 
-#include "TabSI.h"
+#include "TabCard.h"
 
 TabTeam::TabTeam(oEvent *poe):TabBase(poe) {
   clearCompetitionData();
@@ -454,6 +454,8 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                   r->updateFromDB(name, r->getClubId(), r->getClassId(false),
                                   cardNo, 0, false);
                   r->setName(name, true);
+                  if (r->isVacant())
+                    r->setClubId(t->getClubId());
                 }
                 r->setCardNo(cardNo, true);
                 if (gdi.isChecked("RENT" + itos(i)))
@@ -484,7 +486,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
               r->getDI().setInt("CardFee", 0);
 
             r->synchronize();
-            t->setRunner(i, r, true);
+            t->setRunner(i, r, true, true);
           }
         }
       }
@@ -587,7 +589,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         return 0;
       pTeam t = oe->getTeam(teamId);
       if (t && getExtraWindow("comments", true) == nullptr) {
-        gdioutput* settings = createExtraWindow("comments", L"Kommentarer", gdi.scaleLength(550), gdi.scaleLength(350), true);
+        gdioutput* settings = createExtraWindow("comments", lang.tl("Kommentarer"), gdi.scaleLength(550), gdi.scaleLength(350), true);
         
         class TeamComments : public TabRunner::CommentHandler {
         public:
@@ -667,7 +669,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       gdi.addInput("DirName", L"", 16, TeamCB, L"Namn:");
       gdi.addInput("DirCard", L"", 8, TeamCB, L"Bricka:");
 
-      TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+      TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
       tsi.setCardNumberField("DirCard");
       gdi.setPostClearCb("clear_si_link",TeamCB);
       bool rent = false;
@@ -728,7 +730,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
       t->synchronize();
       pRunner oldR = t->getRunner(leg);
-      t->setRunner(leg, 0, false);
+      t->setRunner(leg, 0, false, true);
       t->synchronize(true);
       if (oldR) {
         if (rExists) {
@@ -739,7 +741,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
           vector<pair<int, pControl>> mp;
           oldR->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
           oldR->synchronize(true);
-          t->setRunner(leg, r, true);
+          t->setRunner(leg, r, true, true);
           t->checkValdParSetup();
 
           if (oldR->isAnnonumousTeamMember())
@@ -748,7 +750,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
         }
       }
       else {
-        t->setRunner(leg, r, true);
+        t->setRunner(leg, r, true, true);
         t->checkValdParSetup();
         t->synchronize(true);
       }
@@ -1175,7 +1177,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
           auto &ac = gdi.addAutoComplete(ii.id);
           ac.setAutoCompleteHandler(this);
 
-          ac.setData(TabSI::getRunnerAutoCompelete(db, rw, dbClub));
+          ac.setData(TabCard::getRunnerAutoCompelete(db, rw, dbClub));
           ac.show();
           show = true;
         }
@@ -1279,7 +1281,7 @@ int TabTeam::teamCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   }
   else if (type==GUI_POSTCLEAR) {
     // Clear out CardDevice-link
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
     tsi.setCardNumberField("");
     return true;
   }
@@ -1708,7 +1710,6 @@ void TabTeam::doTeamImport(gdioutput &gdi) {
   wstring file = gdi.getText("FileName");
   bool useExisting = gdi.isChecked("OnlyExisting");
 
-
   csvparser csv;
   map<wstring, int> classNameToNumber;
   vector<pClass> cls;
@@ -1780,16 +1781,32 @@ void TabTeam::doTeamImport(gdioutput &gdi) {
 }
 
 void TabTeam::saveTeamImport(gdioutput &gdi, bool useExisting) {
+  vector<int> toDelete;
   for (size_t k = 0; k < teamLineup.size(); k++) {
     pClub club = !teamLineup[k].teamClub.empty() ? oe->getClubCreate(0, teamLineup[k].teamClub) : 0;
-    pTeam t = oe->addTeam(teamLineup[k].teamName, club ? club->getId() : 0, oe->getClass(teamLineup[k].teamClass)->getId());
+    pTeam t = nullptr;
+    pClass cls = oe->getClass(teamLineup[k].teamClass);
+    if (!cls)
+      continue;
+
+    t = oe->getTeamByName(teamLineup[k].teamName, cls->getId());
+
+    if (t == nullptr)
+      t = oe->addTeam(teamLineup[k].teamName, club ? club->getId() : 0, cls->getId());
 
     for (size_t j = 0; j < teamLineup[k].members.size(); j++) {
+      pRunner oldR = t->getRunner(j);
       TeamLineup::TeamMember &member = teamLineup[k].members[j];
-      if (member.name.empty())
-        continue;
+      if (member.name.empty()) {
+        t->setRunner(j, nullptr, false, false);
 
-      pRunner r = 0;
+        if (oldR && !oldR->getCard())
+          toDelete.push_back(oldR->getId());
+
+        continue;
+      }
+
+      pRunner r = nullptr;
       if (useExisting) {
         r = findRunner(member.name, member.cardNo);
         if (r && !member.course.empty()) {
@@ -1802,7 +1819,16 @@ void TabTeam::saveTeamImport(gdioutput &gdi, bool useExisting) {
         }
       }
       else {
-        r = oe->addRunner(member.name, member.club, 0, member.cardNo, L"", false);
+        if (oldR && oldR->getName() == member.name) {
+          // Keep
+          r = oldR;
+          r->setCardNo(member.cardNo, false, false);
+          oldR = nullptr;
+
+        }
+
+        if (!r)
+          r = oe->addRunner(member.name, member.club, 0, member.cardNo, L"", false);
 
         if (r && !member.course.empty()) {
           pCourse pc = oe->getCourse(member.course);
@@ -1815,15 +1841,20 @@ void TabTeam::saveTeamImport(gdioutput &gdi, bool useExisting) {
         }
       }
 
-      t->setRunner(j, r, false);
+      t->setRunner(j, r, false, false);
       if (r)
         r->synchronize(true);
+      if (oldR && !oldR->getCard())
+        toDelete.push_back(oldR->getId());
     }
 
     t->synchronize();
     gdi.dropLine();
   }
+
+  oe->removeRunner(toDelete);
   loadPage(gdi);
+  oe->sanityCheck(gdi, oEvent::CheckType::CheckFixNotify);
 }
 
 pRunner TabTeam::findRunner(const wstring &name, int cardNo) const {
@@ -1893,7 +1924,7 @@ void TabTeam::doAddTeamMembers(gdioutput &gdi) {
         if (withFee) {
           r = oe->addRunner(nn, mt->getClubId(), 0, 0, L"", false);
           r->synchronize();
-          mt->setRunner(j, r, false);
+          mt->setRunner(j, r, false, false);
           r->addClassDefaultFee(true);
         }
         else {
@@ -1901,7 +1932,7 @@ void TabTeam::doAddTeamMembers(gdioutput &gdi) {
           r->setName(nn, false);
             //oe->addRunner(nn, oe->getVacantClub(), 0, 0, 0, false);
           r->synchronize();
-          mt->setRunner(j, r, false);
+          mt->setRunner(j, r, false, false);
         }
         ch = true;
       }
@@ -2007,7 +2038,7 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   if (r->getTeam()) {
     pTeam otherTeam = r->getTeam();
     int otherLeg = r->getLegNumber();
-    otherTeam->setRunner(otherLeg, oldR, true);
+    otherTeam->setRunner(otherLeg, oldR, true, true);
     if (oldR) {
       oldR->setCourseId(crsIdR);
       oldR->setBib(r->getBib(), 0, false);
@@ -2019,7 +2050,7 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
     otherTeam->synchronize(true);
   }
   else if (oldR) {
-    t->setRunner(leg, 0, false);
+    t->setRunner(leg, 0, false, true);
     t->synchronize(true);
     if (r->getClassRef(false) && r->getClassRef(false)->isTeamClass())
       oldR->setClassId(0, false);
@@ -2035,7 +2066,7 @@ void TabTeam::switchRunners(pTeam t, int leg, pRunner r, pRunner oldR) {
   t = oe->getTeam(tId);
 
   if (t) {
-    t->setRunner(leg, r, true);
+    t->setRunner(leg, r, true, true);
   }
   r->setCourseId(crsIdROld);
   r->setBib(oldBib, 0, false);

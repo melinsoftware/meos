@@ -314,8 +314,7 @@ enum EStdListType {
   EFirstLoadedList = 1000
 };
 
-enum EFilterList
-{
+enum EFilterList {
   EFilterHasResult,
   EFilterHasPrelResult,
   EFilterRentCard,
@@ -360,7 +359,6 @@ struct oPrintPost {
              int style, int dx, int dy,
              int width, int height);
 
-  static string encodeFont(const string &face, int factor);
   static wstring encodeFont(const wstring &face, int factor);
 
   mutable EPostType type;
@@ -586,6 +584,8 @@ public:
       return subHead.empty() && listPost.empty() && subListPost.empty();
   }
 
+  wstring encodeMainFont() const;
+
   enum ResultType {
     Global,
     Classwise,
@@ -628,6 +628,9 @@ protected:
   bool calculateLiveResults;
 
   oListParam lp;
+
+  wstring mainListFont;
+  int mainListScale = 100;
 
   list<oPrintPost> head;
   list<oPrintPost> subHead;

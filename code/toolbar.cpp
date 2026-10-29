@@ -35,7 +35,7 @@
 #include "TabClass.h"
 #include "TabCourse.h"
 #include "TabControl.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "TabList.h"
 #include "TabTeam.h"
 #include "TabSpeaker.h"

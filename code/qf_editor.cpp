@@ -599,7 +599,7 @@ void QFEditor::handle(gdioutput& gdi, BaseInfo& info, GuiEventType type) {
 
       gdioutput* qual_settings = getExtraWindow("qualification", true);
       if (!qual_settings) {
-        qual_settings = createExtraWindow("qualification", L"Qualification", gdi.scaleLength(700), gdi.scaleLength(500), true);
+        qual_settings = createExtraWindow("qualification", lang.tl("Qualification"), gdi.scaleLength(700), gdi.scaleLength(500), true);
         loadQualificationView(*qual_settings, qfc, bi.getExtraInt());
       }
     }

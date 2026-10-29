@@ -755,7 +755,7 @@ void IOF30Interface::assignTeamCourse(gdioutput &gdi, oTeam *team, int iClass, i
               r->setEntrySource(entrySourceId);
               r->flagEntryTouched(true);
             }
-            team->setRunner(legId, r, false);
+            team->setRunner(legId, r, false, false);
             r = team->getRunner(legId);
           }
           if (r) {
@@ -1198,7 +1198,7 @@ void IOF30Interface::readEntryList(gdioutput &gdi, xmlobject &xo, bool removeNon
       if (t) {
         if (minLeg != teamLeg.front().second) {
           pRunner r = t->getRunner(teamLeg.front().second);
-          t->setRunner(minLeg, r, true);
+          t->setRunner(minLeg, r, true, false);
           t->synchronize(true);
         }
 
@@ -2193,16 +2193,18 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
       legindex = getIndexFromLegPos(leg, legorder, res->second);
     }
 
-    if (personId2TeamLeg.find(r->getId()) == personId2TeamLeg.end()) {
-      if (team->getClassRef(false))
-        legindex = team->getClassRef(false)->getLegRunner(legindex);
+    if (team->canAutoSetRunner(legindex)) {
+      if (personId2TeamLeg.find(r->getId()) == personId2TeamLeg.end()) {
+        if (team->getClassRef(false))
+          legindex = team->getClassRef(false)->getLegRunner(legindex);
 
-      // Ensure unique
-      team->setRunner(legindex, r, false);
-      if (r->getClubId() == 0)
-        r->setClubId(team->getClubId());
+        // Ensure unique
+        team->setRunner(legindex, r, false, false);
+        if (r->getClubId() == 0)
+          r->setClubId(team->getClubId());
+      }
+      personId2TeamLeg[r->getId()].push_back(make_pair(team->getId(), legindex));
     }
-    personId2TeamLeg[r->getId()].push_back(make_pair(team->getId(), legindex));
   }
 
   // Card
@@ -2327,29 +2329,28 @@ pRunner IOF30Interface::readPersonStart(gdioutput &gdi, pClass pc, xmlobject &xo
       if (rr)
         rRace = rr;
     }
-    if (rRace) {
-      // Card
-      int cardNo = starts[k].getObjectInt("ControlCard");
-      if (cardNo > 0)
-        rRace->setCardNo(cardNo, false);
+    // Card
+    int cardNo = starts[k].getObjectInt("ControlCard");
+    if (cardNo > 0)
+      rRace->setCardNo(cardNo, false);
 
-      xmlobject startTime = starts[k].getObject("StartTime");
+    xmlobject startTime = starts[k].getObject("StartTime");
 
-      if (team) {
-        int leg = starts[k].getObjectInt("Leg");
-        int legorder = starts[k].getObjectInt("LegOrder");
-        int legindex = max(0, leg - 1);
-        map<int, vector<LegInfo> >::const_iterator res = teamClassConfig.find(team->getClassId(false));
-        if (res != teamClassConfig.end()) {
-          legindex = getIndexFromLegPos(leg, legorder, res->second);
-        }
-        team->setRunner(legindex, rRace, false);
+    if (team) {
+      int leg = starts[k].getObjectInt("Leg");
+      int legorder = starts[k].getObjectInt("LegOrder");
+      int legindex = max(0, leg - 1);
+      auto res = teamClassConfig.find(team->getClassId(false));
+      if (res != teamClassConfig.end()) {
+        legindex = getIndexFromLegPos(leg, legorder, res->second);
+      }
+      if (team->canAutoSetRunner(legindex)) {
+        team->setRunner(legindex, rRace, false, false);
         if (rRace->getClubId() == 0)
           rRace->setClubId(team->getClubId());
 
         if (startTime && pc) {
           pc->setStartType(legindex, STDrawn, false);
-
         }
       }
 

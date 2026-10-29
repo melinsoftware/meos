@@ -5137,7 +5137,7 @@ void oClass::loadQualificationFinalScheme(const QualificationFinal& scheme) {
       if (t == nullptr) {
         t = oe->addTeam(r.getName(), r.getClubId(), getId());
         t->setStartNo(r.getStartNo(), oBase::ChangeType::Update);
-        t->setRunner(0, &r, true);
+        t->setRunner(0, &r, true, false);
       }
       r.synchronizeAll();
     }

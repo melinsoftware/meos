@@ -38,7 +38,7 @@
 #include "TabAuto.h"
 #include "TabCourse.h"
 #include "TabControl.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "TabList.h"
 #include "TabTeam.h"
 #include "TabSpeaker.h"
@@ -1050,7 +1050,7 @@ void createTabs(bool force, bool onlyMain, bool skipTeam, bool skipSpeaker,
   for (list<TabObject>::iterator it=tabList->begin();it!=tabList->end();++it) {
     it->setId(-1);
 
-    if (onlyMain && it->getType() != typeid(TabCompetition) && it->getType() != typeid(TabSI))
+    if (onlyMain && it->getType() != typeid(TabCompetition) && it->getType() != typeid(TabCard))
       continue;
 
     if (skipTeam && it->getType() == typeid(TabTeam))
@@ -1123,7 +1123,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       tabList->emplace_back(gdi_main->getTabs().get(TControlTab), L"Kontroller", 2);
       tabList->emplace_back(gdi_main->getTabs().get(TClubTab), L"Klubbar", 8);
 
-      tabList->emplace_back(gdi_main->getTabs().get(TSITab), L"Brickor", 9);
+      tabList->emplace_back(gdi_main->getTabs().get(TCardTab), L"Brickor", 9);
 
       INITCOMMONCONTROLSEX ic;
 
@@ -1192,7 +1192,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_DEVICECHANGE:
       if (gdi_main && gdi_main->hasData("SIPageLoaded")) {
-        TabSI& tsi = dynamic_cast<TabSI&>(*gdi_main->getTabs().get(TSITab));
+        TabCard& tsi = dynamic_cast<TabCard&>(*gdi_main->getTabs().get(TCardTab));
         tsi.refillComPorts(*gdi_main);
       }
       // TODO: Refresh!

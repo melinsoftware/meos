@@ -31,7 +31,7 @@
 #include "TabList.h"
 #include "TabRunner.h"
 #include "TabTeam.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "TabAuto.h"
 #include "meos_util.h"
 #include "classconfiginfo.h"
@@ -642,7 +642,7 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
         gdi.getTabs().get(TabType(bi.getExtraInt()))->loadPage(gdi);
     }
     else if (bi.id == "PrinterSetup") {
-      ((TabSI *)gdi.getTabs().get(TSITab))->printerSetup(gdi);
+      ((TabCard *)gdi.getTabs().get(TCardTab))->printerSetup(gdi);
     }
     else if (bi.id=="Generate") {
       ListBoxInfo lbi;
@@ -712,7 +712,6 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       gdi.refresh();
     }
     else if (bi.id=="ResultIndividual") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -723,9 +722,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       oe->generateListInfo(gdi, par, currentList);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
      else if (bi.id=="ResultIndSplit") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -739,9 +738,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       oe->generateListInfo(gdi, par, currentList);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id=="StartIndividual") {
-      oe->sanityCheck(gdi, false);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -752,9 +751,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="StartClub") {
-      oe->sanityCheck(gdi, false);
       oListParam par;
       getStartClub(par);
       readSettings(gdi, par, false);
@@ -763,9 +762,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="ResultClub") {
-      oe->sanityCheck(gdi, false);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -778,6 +777,7 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="PreReport") {
       SelectedList=bi.id;
@@ -814,7 +814,6 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       }
     }
     else if (bi.id=="TeamStartList") {
-      oe->sanityCheck(gdi, false);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -825,9 +824,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="RaceNStart") {
-      oe->sanityCheck(gdi, false);
       oListParam par;
       int race = bi.getExtraInt();
       par.setLegNumberCoded(race);
@@ -841,9 +840,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="LegNStart") {
-      oe->sanityCheck(gdi, false);
       oListParam par;
       readSettings(gdi, par, false);
 
@@ -857,9 +856,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="TeamResults") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -868,9 +867,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       oe->generateListInfo(gdi, par, currentList);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id=="MultiResults") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       readSettings(gdi, par, true);
       par.listCode = EStdIndMultiResultListAll;
@@ -880,9 +879,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       oe->generateListInfo(gdi, par, currentList);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id=="RaceNRes") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       readSettings(gdi, par, true);
 
@@ -896,9 +895,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id=="LegNResult") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       readSettings(gdi, par, true); 
       int race = bi.getExtraInt();
@@ -911,9 +910,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id=="RogainingResultList") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
@@ -924,10 +923,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id=="CourseReport") {
-      oe->sanityCheck(gdi, false);
-
       ClassConfigInfo cnf;
       oe->getClassConfigurationInfo(cnf);
       vector<oListParam> par;
@@ -953,6 +951,7 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       oe->generateListInfo(gdi, par, currentList);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="HiredCards") {
       ClassConfigInfo cnf;
@@ -978,10 +977,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       gdi.refresh();
     }
     else if (bi.id=="MinuteStartList") {
-      oe->sanityCheck(gdi, false);
       SelectedList=bi.id;
       gdi.clearPage(false);
-
+      
       gdi.registerEvent("DataUpdate", ListsEventCB);
       gdi.setData("DataSync", 1);
       gdi.registerEvent(bi.id, ListsCB);
@@ -989,6 +987,7 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       oe->generateMinuteStartlist(gdi);
       baseButtons(gdi, 0, ownWindow);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id=="ResultList") {
       settingsResultList(gdi);
@@ -1008,7 +1007,6 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
 
       bool patrol = baseType == AddPatrolClasses;
       bool team = baseType == AddTeamClasses;
-      oe->sanityCheck(gdi, bi.id.substr(0, 7) == "Result:");
       oListParam par;
       par.listCode = oe->getListContainer().getType(bi.id.substr(7));
       readSettings(gdi, par, !isStartList);
@@ -1061,9 +1059,10 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, bi.id.substr(0, 7) == "Result:" ?
+                      oEvent::CheckType::HasResult : oEvent::CheckType::CheckAlert);
     }
     else if (bi.id == "KnockoutTotal") {
-      oe->sanityCheck(gdi, true);
       oListParam par;
       par.listCode = oe->getListContainer().getType("knockout-total");
       readSettings(gdi, par, true);
@@ -1076,9 +1075,9 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id == "LapCount" || bi.id == "LapCountExtra") {
-      oe->sanityCheck(gdi, true);
       bool extra = bi.id == "LapCountExtra";
       oListParam par;
       par.listCode = oe->getListContainer().getType(extra ? "lapcountextra" : "lapcount");
@@ -1096,10 +1095,10 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
     }
     else if (bi.id == "CustomList") {
       oe->synchronize();
-      oe->sanityCheck(gdi, false);
       oListParam par;
       int index = bi.getExtraInt();
       par.listCode = oe->getListContainer().getType(index);
@@ -1120,6 +1119,7 @@ int TabList::listCB(gdioutput &gdi, GuiEventType type, BaseInfo *data) {
       currentList.setCallback(openRunnerTeamCB);
       generateList(gdi);
       gdi.refresh();
+      oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
     }
     else if (bi.id == "ImportCustom") {
 
@@ -1474,9 +1474,7 @@ void TabList::makeClassSelection(gdioutput &gdi) {
   gdi.popX();
 }
 
-void TabList::loadGeneralList(gdioutput &gdi)
-{
-  oe->sanityCheck(gdi, false);
+void TabList::loadGeneralList(gdioutput &gdi) {
   gdi.fillDown();
   gdi.clearPage(false);
   gdi.addString("", boldLarge, "Skapa generell lista");
@@ -1522,7 +1520,6 @@ void TabList::loadGeneralList(gdioutput &gdi)
     selectGeneralList(gdi, EStdListType(oe->getPropertyInt("ListType", 0)));
   }
 
-
   gdi.dropLine(3);
   gdi.addInput("Title", L"", 32, ListsCB, L"Egen listrubrik:");
 
@@ -1532,6 +1529,7 @@ void TabList::loadGeneralList(gdioutput &gdi)
   gdi.addButton("Cancel", "Avbryt", ListsCB).setCancel();
 
   gdi.refresh();
+  oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert);
 }
 
 static int getListIx(const map<string, int> &tag2ListIx, 
@@ -2480,10 +2478,9 @@ void TabList::handleClassSettings(gdioutput &gdi, BaseInfo &info, GuiEventType t
 }
 
 
-void TabList::settingsResultList(gdioutput &gdi)
-{
+void TabList::settingsResultList(gdioutput &gdi) {
   lastFilledResultClassType = -1;
-  oe->sanityCheck(gdi, true);
+
   gdi.fillDown();
   gdi.clearPage(false);
   gdi.addString("", boldLarge, makeDash(L"Resultatlista - inställningar"));
@@ -2613,7 +2610,8 @@ void TabList::settingsResultList(gdioutput &gdi)
   
   if (lastSelectedResultListOK >= 0)
     setResultOptionsFromType(gdi, lastSelectedResultListOK);
-  gdi.refresh(); 
+  gdi.refresh();
+  oe->sanityCheck(gdi, oEvent::CheckType::HasResult);
 }
 
 void TabList::createListButtons(gdioutput &gdi) {
@@ -3149,7 +3147,7 @@ void TabList::splitPrintSettings(oEvent &oe, gdioutput &gdi, bool setupPrinter,
     const bool wideFormat = oe.getPropertyInt("WideSplitFormat", 0) == 1;
     gdi.addCheckbox("WideFormat", "Sträcktider i kolumner (för standardpapper)", ListsCB, wideFormat);
 
-    if (returnMode == TSITab) {
+    if (returnMode == TCardTab) {
       int printLen = oe.getPropertyInt("NumSplitsOnePage", 3);
       vector< pair<wstring, size_t> > nsp;
       for (size_t j = 1; j < 8; j++)

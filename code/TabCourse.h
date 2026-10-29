@@ -89,7 +89,15 @@ public:
                         oEvent *oe);
   static wstring browseForCourse(gdioutput &gdi);
 
-  static void showMap(oEvent* oe, gdioutput& gdi, pCourse crs, const wstring &title, double zoomLevel);
+  static gdioutput *showMap(oEvent *oe, gdioutput &gdi,
+                            pCourse crs,
+                            const wstring &title,
+                            const string &windowTitle,
+                            const vector<tuple<string, wstring, gdiFonts>> &infoLines,
+                            double zoomLevel);
+
+  static gdioutput *getMapWindow(bool setFocus);
+  
   static void setupCourseImport(gdioutput& gdi, GUICALLBACK cb);
   friend int CourseCB(gdioutput *gdi, GuiEventType type, BaseInfo* data);
 };

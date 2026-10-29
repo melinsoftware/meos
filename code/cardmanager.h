@@ -28,6 +28,7 @@
 #include <map>
 
 #include "oPunch.h"
+#include "timeconstants.hpp"
 
 using std::map;
 using std::vector;
@@ -35,9 +36,13 @@ using std::string;
 using std::list;
 class gdioutput;
 
-struct SIPunch {
-  int Code;
-  int Time;
+struct CardPunch {
+  int Code = -1;
+  int Time = 0;
+  void clearSubSeconds() {
+    if (Code != -1 && Time >= 0)
+      Time -= (Time % timeConstSecond);
+  }
   void analyseHour12Time(int zeroTime);
 };
 
@@ -50,36 +55,44 @@ enum class ConvertedTimeStatus {
 
 struct DeviceCard {
   DeviceCard(ConvertedTimeStatus status) {
-    clear(nullptr);
     convertedTime = status;
   }
   // Clears the card if this == condition or condition is 0
   void clear(const DeviceCard *condition) {
     if (this == condition || !condition)
-      memset(this, 0, sizeof(DeviceCard));
+      *this = DeviceCard(ConvertedTimeStatus::Unknown);
   }
 
   void analyseHour12Time(int zeroTime);
 
   bool empty() const { return CardNumber == 0; }
-  int CardNumber;
-  SIPunch StartPunch;
-  SIPunch FinishPunch;
-  SIPunch CheckPunch;
-  int nPunch;
-  SIPunch Punch[192];
-  wchar_t firstName[21];
-  wchar_t lastName[21];
-  wchar_t club[41];
-  int miliVolt; // SIAC voltage
-  char readOutTime[32];
-  bool punchOnly;
-  ConvertedTimeStatus convertedTime;
+  int CardNumber = 0;
+  CardPunch StartPunch;
+  CardPunch FinishPunch;
+  CardPunch CheckPunch;
+  int nPunch = 0;
+  CardPunch Punch[192];
+
+  void clearSubSeconds() {
+    StartPunch.clearSubSeconds();
+    FinishPunch.clearSubSeconds();
+    CheckPunch.clearSubSeconds();
+    for (int i = 0; i < nPunch; i++)
+      Punch[i].clearSubSeconds();
+  }
+
+  wchar_t firstName[21] = { 0 };
+  wchar_t lastName[21] = { 0 };
+  wchar_t club[41] = { 0 };
+  int miliVolt = 0; // SIAC voltage
+  char readOutTime[32] = { 0 };
+  bool punchOnly = false;
+  ConvertedTimeStatus convertedTime = ConvertedTimeStatus::Unknown;
   // Used for manual time input
-  int runnerId;
-  int relativeFinishTime;
-  bool statusOK;
-  bool statusDNF;
+  int runnerId = 0;
+  int relativeFinishTime = 0;
+  bool statusOK = false;
+  bool statusDNF = false;
 
   // 
   bool isDebugCard = false;

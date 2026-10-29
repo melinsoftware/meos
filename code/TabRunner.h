@@ -81,6 +81,7 @@ private:
     InForest,
     Cards,
     Vacancy,
+    DirectEntry,
     Report,
   };
 
@@ -101,6 +102,8 @@ private:
   vector<int> known_dns;
   vector<int> known;
   vector<int> unknown;
+
+  RunnerStatus originalStatus = StatusUnknown;
 
   vector<pRunner> getRunners(const vector<int>& ids) const;
   void clearInForestData();
@@ -127,6 +130,9 @@ private:
   pCourse updateCard(gdioutput &dst, oRunner &r);
 
   void showVacancyList(gdioutput &gdi, const string &method="", int classId=0);
+
+  void showDirectEntry(gdioutput &gdi);
+
   void showCardsList(gdioutput &gdi);
 
   bool canSetStart(pRunner r) const;
@@ -138,7 +144,7 @@ private:
   int numShorteningLevels() const;
 
   void updateNumShort(gdioutput &gdi, pCourse crs, pRunner r);
-  static void updateStatus(gdioutput &gdi, pRunner r);
+  void updateStatus(gdioutput &gdi, pRunner r);
   static void autoGrowCourse(gdioutput &gdi);
 
   void loadEconomy(gdioutput &gdi, oRunner &r, gdioutput *gdiMain, TabRunner *mainTab);

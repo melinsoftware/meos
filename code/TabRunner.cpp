@@ -34,7 +34,7 @@
 #include "Table.h"
 #include <cassert>
 #include "oListInfo.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "meosexception.h"
 #include "MeOSFeatures.h"
 #include "autocomplete.h"
@@ -132,6 +132,7 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
     gdi.setText("Time", makeDash(L"-"));
     gdi.setText("Points", L"");
     gdi.selectItemByData("Status", 0);
+    originalStatus = StatusUnknown;
 
     gdi.clearList("Punches");
     gdi.clearList("Course");
@@ -313,17 +314,9 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
 
   enableControlButtons(gdi, true, r->isVacant());
 
-  //gdi.setText("Start", r->getStartTimeS());
   gdi.setInputStatus("Start", canSetStart(r));
-
-  //gdi.setText("Finish", r->getFinishTimeS());
   gdi.setInputStatus("Finish", canSetFinish(r));
-
-  //gdi.setText("Time", r->getRunningTimeS(true));
-  //gdi.setText("Points", itow(r->getRogainingPoints(false)));
-
-  //gdi.selectItemByData("Status", r->getStatus());
-  //gdi.setText("RunnerInfo", lang.tl(r->getProblemDescription()), true);
+  
   updateStatus(gdi, r);
 
   if (gdi.hasWidget("StatusIn")) {
@@ -354,6 +347,8 @@ void TabRunner::selectRunner(gdioutput &gdi, pRunner r) {
 
   loadExtraFields(gdi, r);
 
+  gdi.hideWidget("SetFinishTime", !r->canUseFinishTimeFromReadout());
+  
   renderComments(gdi, *r, true, true);
 
   gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
@@ -556,15 +551,15 @@ int TabRunner::searchCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
 pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
   oe->synchronizeList(oListId::oLCardId);
-  TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+  TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
   tsi.storedInfo.clear();
 
-  bool create=(runnerId==0);
+  bool create = (runnerId == 0);
 
   if (create)
     return 0;
 
-  wstring name=gdi.getText("Name");
+  wstring name = gdi.getText("Name");
 
   if (name.empty())
     throw std::exception("Alla deltagare måste ha ett namn.");
@@ -581,7 +576,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
   if (!lbi.text.empty()) {
     pClub pc = oe->getClub(lbi.text);
     if (!pc)
-      pc=oe->addClub(lbi.text);
+      pc = oe->addClub(lbi.text);
     pc->synchronize();
 
     clubId = pc->getId();
@@ -590,15 +585,18 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
   gdi.getSelectedItem("RClass", lbi);
 
   int classId = 0;
-  if (signed(lbi.data)<=0 && oe->getNumClasses() == 0) {
+  if (signed(lbi.data) <= 0 && oe->getNumClasses() == 0) {
     if (gdi.ask(L"Vill du skapa en ny klass?")) {
-      pClass pc=oe->addClass(oe->getAutoClassName());
+      pClass pc = oe->addClass(oe->getAutoClassName());
       pc->synchronize();
       classId = pc->getId();
     }
   }
   else
     classId = lbi.data;
+
+  RunnerStatus sIn = (RunnerStatus)gdi.getSelectedItem("Status").first;
+  bool checkStatus = sIn != originalStatus;
 
   const wstring year;
   pRunner r;
@@ -615,7 +613,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
 
     if (!r->isVacant() && !r->matchName(name) && !r->hasFlag(oRunner::TransferFlags::FlagUnnamed)) {
       auto ans = gdi.askCancel(L"Vill du byta namn på X till Y eller lägga till en ny deltagare?#"
-        + r->getName() + L"#" + name, "Byt namn", "Ny deltagare");
+                               + r->getName() + L"#" + name, "Byt namn", "Ny deltagare");
 
       if (ans == gdioutput::AskAnswer::AnswerCancel)
         return 0;
@@ -631,7 +629,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
       r->updateFromDB(name, clubId, classId, cardNo, r->getBirthYear(), false);
   }
 
-  if (cardNoChanged && (cardNo>0 || cardNo2>0)) {
+  if (cardNoChanged && (cardNo > 0 || cardNo2 > 0)) {
     auto [warnCardDupl, warnCardDupl2] = warnDuplicateCard(cardNo, cardNo2, *r);
     if (warnCardDupl) {
       gdi.alert(L"Varning: Brickan X används redan av Y.#" + itow(cardNo) + L"#" + warnCardDupl->getCompleteIdentification(oRunner::IDType::OnlyThis));
@@ -640,210 +638,213 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
       gdi.alert(L"Varning: Brickan X används redan av Y.#" + itow(cardNo2) + L"#" + warnCardDupl2->getCompleteIdentification(oRunner::IDType::OnlyThis));
     }
   }
+  else if (!cardNoChanged && cardNo > 0 && r->getCard() == nullptr) {
+    pCard c = oe->getCardByNumber(cardNo);
 
-  if (r) {
-    runnerId=r->getId();
-    RunnerStatus originalStatus = r->getStatus();
-    r->setName(name, true);
-
-    if (dynamic_cast<InputInfo &>(gdi.getBaseInfo("PTime")).changed()) {
-      savePunchTime(r, gdi);
+    if (c && !c->getOwner()) {
+      if (gdi.ask(L"Vill du knyta en bricka (inläst X) till deltagaren?#" + c->getModified().getStampString())) {
+        vector<pair<int, pControl>> mp;
+        r->addCard(*c, Card::Primary, mp);
+        checkStatus = false; // No double alerts
+      }
     }
+  }
+  runnerId = r->getId();
+  r->setName(name, true);
 
-    bool noSetStatus = false;
-    int askedUnpair = -1;
-    if (cardNo > 0 && r->getCard() &&
+  if (dynamic_cast<InputInfo &>(gdi.getBaseInfo("PTime")).changed()) {
+    savePunchTime(r, gdi);
+  }
+
+  bool noSetStatus = false;
+  int askedUnpair = -1;
+  if (cardNo > 0 && r->getCard() &&
       r->getCard()->getCardNo() != cardNo && r->getCardNo() != cardNo) {
-      if (gdi.ask(L"Vill du koppla isär X från inläst bricka Y?#" + r->getName() +
-        L"#" + r->getCard()->getCardNoString())) {
-        askedUnpair = 1; // Do not ask twice
-        unpairCard(r, false);
-        gdi.setText("Finish", makeDash(L"-"));
-        gdi.setText("Start", r->getStartTimeS());
-
-        noSetStatus = true;
-      }
-      else {
-        askedUnpair = 2; // Do not ask twice
-      }
-         
+    if (gdi.ask(L"Vill du koppla isär X från inläst bricka Y?#" + r->getName() +
+                L"#" + r->getCard()->getCardNoString())) {
+      askedUnpair = 1; // Do not ask twice
+      unpairCard(r, false);
+      gdi.setText("Finish", makeDash(L"-"));
+      gdi.setText("Start", r->getStartTimeS());
+      checkStatus = false; // No double alerts
+      noSetStatus = true;
     }
-
-    if (cardNo2 > 0 && r->getCard2() &&
-        r->getCard2()->getCardNo() != cardNo2 && r->getCardNo2() != cardNo2 && askedUnpair != 2) {
-      if (askedUnpair == 1 || 
-          gdi.ask(L"Vill du koppla isär X från inläst bricka Y?#" + r->getName() +
-                  L"#" + r->getCard2()->getCardNoString())) {
-
-        unpairCard(r, true);
-      }
+    else {
+      askedUnpair = 2; // Do not ask twice
     }
+  }
 
-    if (cardNo > 0 && cardNo != r->getCardNo() && oe->hasNextStage()) {
-      if (gdi.ask(L"Vill du använda den nya brickan till alla etapper?")) {
-        r->setTransferCardNoNextStage(true);
-      }
+  if (cardNo2 > 0 && r->getCard2() &&
+      r->getCard2()->getCardNo() != cardNo2 && r->getCardNo2() != cardNo2 && askedUnpair != 2) {
+    if (askedUnpair == 1 ||
+        gdi.ask(L"Vill du koppla isär X från inläst bricka Y?#" + r->getName() +
+                L"#" + r->getCard2()->getCardNoString())) {
+      checkStatus = false; // No double alerts
+      unpairCard(r, true);
     }
+  }
 
-    if (r->getCardNo() != cardNo) {
-      r->setCardNo(cardNo, true);
+  if (cardNo > 0 && cardNo != r->getCardNo() && oe->hasNextStage()) {
+    if (gdi.ask(L"Vill du använda den nya brickan till alla etapper?")) {
+      r->setTransferCardNoNextStage(true);
     }
+  }
 
-    if (r->getCardNo2() != cardNo2) {
-      r->setCardNo2(cardNo2, true);
+  if (r->getCardNo() != cardNo) {
+    r->setCardNo(cardNo, true);
+  }
+
+  if (r->getCardNo2() != cardNo2) {
+    r->setCardNo2(cardNo2, true);
+  }
+
+  r->setRentalCard(Card::Primary, gdi.isChecked("RentCard"));
+
+  if (gdi.hasWidget("RentCard2"))
+    r->setRentalCard(Card::Secondary, gdi.isChecked("RentCard2"));
+
+  if (gdi.hasWidget("Fee"))
+    r->getDI().setInt("Fee", oe->interpretCurrency(gdi.getText("Fee")));
+
+  gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
+  if (gdi_settings) {
+    EconomyHandler h(*r, nullptr, nullptr);
+    h.save(*gdi_settings);
+  }
+
+  r->setStartTimeS(gdi.getText("Start"));
+  r->setFinishTimeS(gdi.getText("Finish"));
+
+  if (gdi.hasWidget("NumShort")) {
+    r->setNumShortening(gdi.getSelectedItem("NumShort").first);
+  }
+
+  if (gdi.hasWidget("TimeAdjust")) {
+    int t = convertAbsoluteTimeMS(gdi.getText("TimeAdjust"));
+    if (t != NOTIME)
+      r->setTimeAdjustment(t);
+  }
+  if (gdi.hasWidget("PointAdjust")) {
+    r->setPointAdjustment(-oe->convertScore(gdi.getText("PointAdjust")));
+  }
+
+  r->setClubId(clubId);
+
+  if (!willExit) {
+    oe->fillClubs(gdi, "Club");
+    gdi.setText("Club", r->getClub());
+  }
+
+  pClass pNewCls = oe->getClass(classId);
+  if (pNewCls && pNewCls->getClassType() == oClassRelay) {
+    if (!r->getTeam()) {
+      gdi.alert("För att delta i en lagklass måste deltagaren ingå i ett lag.");
+      classId = 0;
     }
-
-    r->setRentalCard(Card::Primary, gdi.isChecked("RentCard"));
-    
-    if (gdi.hasWidget("RentCard2"))
-      r->setRentalCard(Card::Secondary, gdi.isChecked("RentCard2"));
-
-    if (gdi.hasWidget("Fee"))
-      r->getDI().setInt("Fee", oe->interpretCurrency(gdi.getText("Fee")));
-
-    gdioutput *gdi_settings = getExtraWindow("ecosettings", false);
-    if (gdi_settings) {
-      EconomyHandler h(*r, nullptr, nullptr);
-      h.save(*gdi_settings);
+    else if (r->getTeam()->getClassId(true) != classId && r->getClassId(true) != classId) {
+      gdi.alert("Deltagarens klass styrs av laget.");
+      classId = r->getTeam()->getClassId(false);
     }
+  }
 
-    r->setStartTimeS(gdi.getText("Start"));
-    r->setFinishTimeS(gdi.getText("Finish"));
-
-    if (gdi.hasWidget("NumShort")) {
-      r->setNumShortening(gdi.getSelectedItem("NumShort").first);
+  bool readStatusIn = true;
+  if (r->getClassId(true) != classId && r->getInputStatus() != StatusNotCompeting && r->hasInputData()) {
+    if (gdi.ask(L"Vill du sätta resultatet från tidigare etapper till <Deltar ej>?")) {
+      r->resetInputData();
+      readStatusIn = false;
     }
+  }
+  bool classChanged = classId != r->getClassId(false);
+  r->setClassId(classId, true);
 
-    if (gdi.hasWidget("TimeAdjust")) {
-      int t = convertAbsoluteTimeMS(gdi.getText("TimeAdjust"));
-      if (t != NOTIME)
-        r->setTimeAdjustment(t);
-    }
-    if (gdi.hasWidget("PointAdjust")) {
-      r->setPointAdjustment(-oe->convertScore(gdi.getText("PointAdjust")));
-    }
+  if (gdi.hasWidget("Bib")) {
+    const wstring &bib = gdi.getText("Bib");
+    wchar_t pat[32];
+    int num = oClass::extractBibPattern(bib, pat);
+    bool lockedForking = r->getClassRef(true) && r->getClassRef(true)->lockedForking();
 
-    r->setClubId(clubId);
+    r->setBib(bib, num, num > 0 && !lockedForking);
+  }
+  if (gdi.hasWidget("RCourse")) {
+    ListBoxInfo &rcourse = dynamic_cast<ListBoxInfo &>(gdi.getBaseInfo("RCourse"));
+    if (rcourse.changed() || classChanged) {
+      int crsId = gdi.getSelectedItem("RCourse").first;
+      if (crsId > 0 && r->getCourseId() != -1) {
+        pClass cls = r->getClassRef(true);
+        pCourse crs = oe->getCourse(crsId);
+        vector<pCourse> courses;
+        if (cls && crs) {
+          cls->getCourses(r->getLegNumber(), courses);
+          set<int> crsIds;
+          for (auto c : courses)
+            crsIds.insert(c->getId());
 
-    if (!willExit) {
-      oe->fillClubs(gdi, "Club");
-      gdi.setText("Club", r->getClub());
-    }
-
-    pClass pNewCls = oe->getClass(classId);
-    if (pNewCls && pNewCls->getClassType() == oClassRelay) {
-      if (!r->getTeam()) {
-        gdi.alert("För att delta i en lagklass måste deltagaren ingå i ett lag.");
-        classId = 0;
-      }
-      else if (r->getTeam()->getClassId(true) != classId && r->getClassId(true) != classId) {
-        gdi.alert("Deltagarens klass styrs av laget.");
-        classId = r->getTeam()->getClassId(false);
-      }
-    }
-    
-    bool readStatusIn = true;
-    if (r->getClassId(true) != classId && r->getInputStatus() != StatusNotCompeting && r->hasInputData()) {
-      if (gdi.ask(L"Vill du sätta resultatet från tidigare etapper till <Deltar ej>?")) {
-        r->resetInputData();
-        readStatusIn = false;
-      }
-    }
-    bool classChanged = classId != r->getClassId(false);
-    r->setClassId(classId, true);
-
-    if (gdi.hasWidget("Bib")) {
-      const wstring &bib = gdi.getText("Bib");
-      wchar_t pat[32];
-      int num = oClass::extractBibPattern(bib, pat);
-      bool lockedForking = r->getClassRef(true) && r->getClassRef(true)->lockedForking();
-
-      r->setBib(bib, num, num>0 && !lockedForking);
-    }
-    if (gdi.hasWidget("RCourse")) {
-      ListBoxInfo& rcourse = dynamic_cast<ListBoxInfo&>(gdi.getBaseInfo("RCourse"));
-      if (rcourse.changed() || classChanged) {
-        int crsId = gdi.getSelectedItem("RCourse").first;
-        if (crsId > 0 && r->getCourseId() != -1) {
-          pClass cls = r->getClassRef(true);
-          pCourse crs = oe->getCourse(crsId);
-          vector<pCourse> courses;
-          if (cls && crs) {
-            cls->getCourses(r->getLegNumber(), courses);
-            set<int> crsIds;
-            for (auto c : courses)
-              crsIds.insert(c->getId());
-
-            if (crsIds.count(crsId) == 0) {
-              vector<pRunner> clsRunner;
-              oe->getRunners(cls->getId(), -1, clsRunner, false);
-              bool ok = clsRunner.size() < 2;
-              for (auto cr : clsRunner) {
-                if (cr->getCourseId() > 0 && !crsIds.count(cr->getCourseId())) {
-                  ok = true;
-                  break;
-                }
+          if (crsIds.count(crsId) == 0) {
+            vector<pRunner> clsRunner;
+            oe->getRunners(cls->getId(), -1, clsRunner, false);
+            bool ok = clsRunner.size() < 2;
+            for (auto cr : clsRunner) {
+              if (cr->getCourseId() > 0 && !crsIds.count(cr->getCourseId())) {
+                ok = true;
+                break;
               }
+            }
 
-              if (!ok) {
-                if (!gdi.ask(L"ask:usecourseinclass"))
-                  crsId = 0;
-              }
+            if (!ok) {
+              if (!gdi.ask(L"ask:usecourseinclass"))
+                crsId = 0;
             }
           }
         }
-        r->setCourseId(crsId);
       }
+      r->setCourseId(crsId);
     }
-
-    if (r->getCard() && r->useCoursePool() && r->getCourseId() == 0) {
-      SICard card(ConvertedTimeStatus::Unknown);
-      r->getCard()->getDeviceCard(r->getCard2(), card);
-      pClass vcls = r->getClassRef(true);
-      pCourse crs = vcls->selectCourseFromPool(vcls->getId() == classId ? r->getLegNumber() : 0, card);
-      if (crs)
-        r->setCourseId(crs->getId());
-    }
-
-    RunnerStatus sIn = (RunnerStatus)gdi.getSelectedItem("Status").first;
-    bool checkStatus = sIn != originalStatus;
-    if (r->getStatus() != sIn && !noSetStatus) {
-      r->setStatus(sIn, true, oBase::ChangeType::Update);
-    }
-    r->addClassDefaultFee(false);
-    vector<pair<int, pControl>> mp;
-    r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
-
-    if (r->getClassId(true) != classId && r->getClassId(false) != classId) {
-      gdi.alert("Deltagarens klass styrs av laget.");
-    }
-
-    if (checkStatus && sIn != r->getStatus())
-      gdi.alert("Status matchar inte data i löparbrickan.");
-
-    if (gdi.hasWidget("StatusIn") && readStatusIn) {
-      r->setInputStatus(RunnerStatus(gdi.getSelectedItem("StatusIn").first));
-      r->setInputPlace(gdi.getTextNo("PlaceIn"));
-      r->setInputTime(gdi.getText("TimeIn"));
-      if (gdi.hasWidget("PointIn"))
-        r->setInputPoints(oe->convertScore(gdi.getText("PointIn")));
-    }
-
-    r->synchronizeAll();
-    
-    if (r->getClassRef(false) && r->getClassRef(false)->hasClassGlobalDependence()) {
-      set<int> cls;
-      cls.insert(r->getClassId(false));
-      oe->reEvaluateAll(cls, false);
-    }
-
-    if (r->getClassRef(false))
-      r->getClassRef(false)->updateFinalClasses(r, false);
-
-    saveExtraFields(gdi, *r);
   }
-  else
-    runnerId=0;
+
+  if (r->getCard() && r->useCoursePool() && r->getCourseId() == 0) {
+    SICard card(ConvertedTimeStatus::Unknown);
+    r->getCard()->getDeviceCard(r->getCard2(), card);
+    pClass vcls = r->getClassRef(true);
+    pCourse crs = vcls->selectCourseFromPool(vcls->getId() == classId ? r->getLegNumber() : 0, card);
+    if (crs)
+      r->setCourseId(crs->getId());
+  }
+
+  if (r->getStatus() != sIn && !noSetStatus) {
+    r->setStatus(sIn, true, oBase::ChangeType::Update);
+  }
+  r->addClassDefaultFee(false);
+  vector<pair<int, pControl>> mp;
+  r->evaluateCard(true, mp, 0, oBase::ChangeType::Update);
+
+  if (r->getClassId(true) != classId && r->getClassId(false) != classId) {
+    gdi.alert("Deltagarens klass styrs av laget.");
+    checkStatus = false; // No double alerts
+  }
+  
+  if (gdi.hasWidget("StatusIn") && readStatusIn) {
+    r->setInputStatus(RunnerStatus(gdi.getSelectedItem("StatusIn").first));
+    r->setInputPlace(gdi.getTextNo("PlaceIn"));
+    r->setInputTime(gdi.getText("TimeIn"));
+    if (gdi.hasWidget("PointIn"))
+      r->setInputPoints(oe->convertScore(gdi.getText("PointIn")));
+  }
+
+  saveExtraFields(gdi, *r);
+
+  r->synchronizeAll();
+
+  if (r->getClassRef(false) && r->getClassRef(false)->hasClassGlobalDependence()) {
+    set<int> cls;
+    cls.insert(r->getClassId(false));
+    oe->reEvaluateAll(cls, false);
+  }
+
+  if (r->getClassRef(false))
+    r->getClassRef(false)->updateFinalClasses(r, false);
+
+  if (checkStatus && sIn != r->getStatus())
+    gdi.alert("Status matchar inte data i löparbrickan.");
 
   if (!willExit) {
     fillRunnerList(gdi);
@@ -888,6 +889,16 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     }
     else if (bi.id == "ShowAll") {
       fillRunnerList(gdi);
+    }
+    else if (bi.id == "SetFinishTime") {
+      if (pRunner r = oe->getRunner(runnerId, 0); r != nullptr) {
+        if (r->canUseFinishTimeFromReadout()) {
+          save(gdi, runnerId, true);
+          r->useFinishTimeFromReadout();
+          r->synchronize();
+        }
+        selectRunner(gdi, r);
+      } 
     }
     else if (bi.id=="Pair") {
       ListBoxInfo lbi;
@@ -977,6 +988,12 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
       if (currentMode != Mode::Vacancy) {
         gdi.canClear();
         showVacancyList(gdi, "add");
+      }
+    }
+    else if (bi.id == "DirectEntry") {
+      if (currentMode != Mode::DirectEntry) {
+        gdi.canClear();
+        showDirectEntry(gdi);
       }
     }
     else if (bi.id == "ReportMode") {
@@ -1355,7 +1372,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
           auto &ac = gdi.addAutoComplete(ii.id);
           ac.setAutoCompleteHandler(this);
 
-          ac.setData(TabSI::getRunnerAutoCompelete(db, rw, dbClub));
+          ac.setData(TabCard::getRunnerAutoCompelete(db, rw, dbClub));
           ac.show();
           show = true;
         }
@@ -1722,7 +1739,7 @@ void TabRunner::showCardsList(gdioutput& gdi) {
 int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   if (type == GUI_BUTTON) {
     ButtonInfo bi = dynamic_cast<ButtonInfo &>(*data);
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
 
     if (bi.id == "VacancyAdd") {
       showVacancyList(gdi, "add");
@@ -1795,7 +1812,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     int cardFee = r->getRentalCardFee(true);
     fee = r->getDCI().getInt("Fee");
     
-    TabSI::writePayMode(gdi, fee + cardFee, *r);  
+    TabCard::writePayMode(gdi, fee + cardFee, *r);  
 
     if (gdi.hasWidget("AllStages")) {
       r->setFlag(oRunner::FlagTransferSpecified, true);
@@ -1809,7 +1826,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
 
     r->synchronizeAll();
     
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
     
     // Print start certificate
     tsi.generateStartInfo(gdi, *r, true);
@@ -1827,13 +1844,13 @@ int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
   }
   else if (type==GUI_POSTCLEAR) {
     // Clear out CardDevice-link
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
     tsi.setCardNumberField("");
 
     return true;
   }
   else if (type == GUI_CLEAR) {
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
     tsi.storedInfo.clear();
     tsi.storedInfo.storedName = gdi.getText("Name");
     tsi.storedInfo.storedCardNo = gdi.getText("CardNo");
@@ -2461,8 +2478,7 @@ void TabRunner::runnerReport(oEvent &oe, gdioutput &gdi,
       const int startTime = r->getStartTime();
       int prevTime = startTime;
 
-      for (oPunch &pp : punches) {
-        auto p = &pp;
+      for (const oPunch *p : punches) {
         if (p->getTypeCode() < 30 && !p->isFinish(crs->getFinishPunchType()))
           continue;
         
@@ -2723,7 +2739,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     gdi.dropLine(0.5);
     gdi.addString("", boldLarge, "Tillsatte vakans");
     addToolbar(gdi);
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
     tsi.storedInfo.clear();
 
     gdi.dropLine();
@@ -2763,7 +2779,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     gdi.setCY(by + gdi.scaleLength(10));
     gdi.pushX();
 
-    TabSI &tsi = dynamic_cast<TabSI &>(*gdi.getTabs().get(TSITab));
+    TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
     tsi.storedInfo.checkAge();
     
     gdi.addInput("CardNo", tsi.storedInfo.storedCardNo, 8, VacancyCB, L"Bricka:");
@@ -2834,6 +2850,40 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
   else if (method == "move") {
 
   }
+}
+
+void TabRunner::showDirectEntry(gdioutput &gdi) {
+  gdi.clearPage(true);
+  currentMode = Mode::DirectEntry;
+  addToolbar(gdi);
+
+  gdi.dropLine(0.5);
+  gdi.addString("", boldLarge, "Direktanmälan");
+  
+  int ypEntry = gdi.getCY();
+  
+  TabCard &tc = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
+  gdi.setData("EntryFormReverse", 1);
+  gdi.setData("EntryFormCY", ypEntry);
+  gdi.setData("EntryCY", 1);
+
+  tc.generateEntryLine(gdi, nullptr);
+
+  gdi.dropLine(2);
+  int yp = gdi.getCY();
+
+  gdi.restore("EntryLine", false);
+  gdi.setData("EntryCY", yp);
+  gdi.setCY(yp);
+
+  tc.showDirectEntryLog(gdi, true);
+
+  gdi.setRestorePoint("EntryLine");
+  gdi.setCY(ypEntry);
+
+  tc.generateEntryLine(gdi, nullptr);
+
+  gdi.refresh();
 }
 
 vector<pRunner> TabRunner::getRunners(const vector<int>& ids) const {
@@ -3093,6 +3143,8 @@ void TabRunner::updateStatus(gdioutput &gdi, pRunner r) {
   gdi.setText("Points", r->getEvent()->formatScore(r->getRogainingPoints(false, false)));
 
   gdi.selectItemByData("Status", r->getStatus());
+  originalStatus = r->getStatus();
+
   auto ri = r->getRaceInfo();
   BaseInfo *bi = gdi.setText("RunnerInfo", ri.first, true);
   TextInfo *ti = dynamic_cast<TextInfo*>(bi);
@@ -3337,6 +3389,10 @@ bool TabRunner::loadPage(gdioutput &gdi)
     showVacancyList(gdi, "add");
     return true;
   }
+  else if (currentMode == Mode::DirectEntry) {
+    showDirectEntry(gdi);
+    return true;
+  }
   else if (currentMode == Mode::Report) {
     showRunnerReport(gdi);
     return true;
@@ -3576,6 +3632,11 @@ bool TabRunner::loadPage(gdioutput &gdi)
   gdi.popX();
   gdi.dropLine(2.2);
   gdi.addButton("EditAnnotation", L"Kommentar >>", RunnerCB, L"Lägg till eller redigera kommentarer om deltagaren.");
+
+  gdi.dropLine(2.2);
+  gdi.popX();
+  gdi.addButton("SetFinishTime", "Skapa måltid", RunnerCB, "Definiera måltid från brickans avläsningstid");
+  gdi.hideWidget("SetFinishTime", true);
 
   enableControlButtons(gdi, false, false);
   gdi.fillDown();
@@ -3888,6 +3949,14 @@ void TabRunner::addToolbar(gdioutput &gdi) {
     gdi.addButton(dx, 2 ,button_w, "Vacancy",
               "Vakanser", RunnerCB, "", false, true).fixedCorner();
     gdi.check("Vacancy", currentMode == Mode::Vacancy);
+    dx += button_w;
+  }
+
+  bool anyDirectEntry = true;
+  if (anyDirectEntry) {
+    gdi.addButton(dx, 2, button_w, "DirectEntry",
+                  "Direktanmälan", RunnerCB, "", false, true).fixedCorner();
+    gdi.check("DirectEntry", currentMode == Mode::DirectEntry);
     dx += button_w;
   }
 
@@ -4231,7 +4300,7 @@ void TabRunner::loadEconomy(gdioutput &gdi, oRunner &r, gdioutput *gdiMain, TabR
 
   gdi.fillRight();
   gdi.addInput("Fee", oe->formatCurrency(r.getDCI().getInt("Fee")), 6, 0, L"Avgift:").setHandler(h);
-  int cf = r.getDCI().getInt("CardFee");
+  int cf = r.getRentalCardFee(false);
   if (cf == -1) // Borrowed, zero fee
     cf = 0;
   gdi.addInput("Card", oe->formatCurrency(cf), 6, 0, L"Brickhyra:").setHandler(h);

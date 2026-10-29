@@ -3865,6 +3865,7 @@ void TabClass::legSetup(gdioutput &gdi) {
   gdi.dropLine();
   gdi.addSelection("Predefined", 150, 200, MultiCB, L"Fördefinierade tävlingsformer:").ignore(true);
   oe->fillPredefinedCmp(gdi, "Predefined");
+  gdi.autoGrow("Predefined");
   if (storedPredefined == oEvent::PredefinedTypes(-1)) {
     bool hasPatrol = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Patrol);
     bool hasRelay = oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Relay);
@@ -4335,7 +4336,7 @@ void TabClass::save(gdioutput &gdi, bool skipReload)
     vector<int> b;
     vector<wstring> s;
     oe->getStartBlocks(b, s);
-    oe->sanityCheck(gdi, false, pc->getId());
+    oe->sanityCheck(gdi, oEvent::CheckType::CheckAlert, pc->getId());
   }
 }
 
@@ -6650,6 +6651,8 @@ void TabClass::dynamicStart(gdioutput& gdi) {
 void TabClass::drawInputChanged(gdioutput& gdi) {
   if (!drawAnalysis)
     drawAnalysis = make_shared<DrawOptimAlgo>(oe);
+  else
+    drawAnalysis->refresh();
 
   if (readClassSettings(gdi, false)) {
     auto warnings = drawAnalysis->checkDrawSettings(drawInfo, cInfo);

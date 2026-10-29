@@ -219,6 +219,9 @@ public:
 
   DrawOptimAlgo(oEvent* oe);
 
+  /** Update internal data form oevent */
+  void refresh();
+
   void optimizeStartOrder(DrawInfo& di,
     vector<ClassInfo>& cInfo,
     int nFields,

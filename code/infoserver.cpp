@@ -119,6 +119,10 @@ bool InfoCompetition::synchronize(oEvent &oe, const wstring &cmpName,
 
   const wstring& tmpName = cmpName.empty() ? oe.getName() : cmpName;
 
+  if (tmpName.empty()) {
+    throw meosException("Tomt namn är inte tillåtet.");
+  }
+
   if (tmpName != name) {
     name = tmpName;
     changed = true;

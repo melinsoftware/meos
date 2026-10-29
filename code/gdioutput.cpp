@@ -338,7 +338,7 @@ double getLocalScale(const wstring &fontName, wstring &faceName) {
 
 const GDIImplFontSet & gdioutput::loadFont(const wstring &font) {
   currentFontSet = 0;
-  vector< pair<wstring, size_t> > fontIx;
+  vector<pair<wstring, size_t>> fontIx;
   getEnumeratedFonts(fontIx);
   double relScale = 1.0;
   for (size_t k = 0; k < fontIx.size(); k++) {
@@ -1281,24 +1281,7 @@ ButtonInfo& gdioutput::addButton(int x, int y, const string& id, const wstring& 
     width = size.cx + 4;
   }
   else {
-    SIZE size;
-    HDC hDC = GetDC(hWndTarget);
-    SelectObject(hDC, getGUIFont());
-    wstring ttext = lang.tl(text);
-    int tts = ttext.size();
-    if (tts > 2 && ttext[0] == '<' && ttext[1] == '<') {
-      ttext = L"◀" + ttext.substr(2);
-    }
-    else if (tts > 2 && ttext[tts - 1] == '>' && ttext[tts - 2] == '>') {
-      ttext = ttext.substr(0, tts - 2) + L"▶";
-    }
-    if (lang.capitalizeWords())
-      capitalizeWords(ttext);
-    GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
-    ReleaseDC(hWndTarget, hDC);
-    width = size.cx + scaleLength(30);
-    if (text != L"...")
-      width = max<int>(width, scaleLength(75));
+    width = getButtonWidth(text);
   }
 
   ButtonInfo& bi = addButton(x, y, width, id, text, cb, tooltip, false, false);
@@ -1637,6 +1620,28 @@ int gdioutput::getButtonHeight() const {
   return int(getInputDimension(0).second * 1.2);//int(scale * 24) + 0;
 }
 
+int gdioutput::getButtonWidth(const wstring &text) const {
+  SIZE size;
+  HDC hDC = GetDC(hWndTarget);
+  SelectObject(hDC, getGUIFont());
+  wstring ttext = lang.tl(text);
+  int tts = ttext.size();
+  if (tts > 2 && ttext[0] == '<' && ttext[1] == '<') {
+    ttext = L"◀" + ttext.substr(2);
+  }
+  else if (tts > 2 && ttext[tts - 1] == '>' && ttext[tts - 2] == '>') {
+    ttext = ttext.substr(0, tts - 2) + L"▶";
+  }
+  if (lang.capitalizeWords())
+    capitalizeWords(ttext);
+  GetTextExtentPoint32(hDC, ttext.c_str(), ttext.length(), &size);
+  ReleaseDC(hWndTarget, hDC);
+  int width = size.cx + scaleLength(30);
+  if (text != L"...")
+    width = max<int>(width, scaleLength(75));
+
+  return width;
+}
 
 InputInfo &gdioutput::addInput(int x, int y, const string &id, const wstring &text,
                                int length, GUICALLBACK cb,
@@ -1888,7 +1893,7 @@ ListBoxInfo &gdioutput::addSelection(int x, int y, const string &id, int width, 
     x-ox, y-oy, int(scale*width), int(scale*height), hWndTarget, NULL,
     (HINSTANCE)GetWindowLongPtr(hWndTarget, GWLP_HINSTANCE), NULL);
 
-  updatePos(x, y, int(scale*(width+5)), int(scale*30));
+  updatePos(x, y, int(scale*(width+5)), getButtonHeight() + scaleLength(5));
 
   SendMessage(lbi.hWnd, WM_SETFONT, (WPARAM) getGUIFont(), 0);
 
@@ -4616,11 +4621,15 @@ bool gdioutput::selectFirstItem(const string& id) {
   return false;
 }
 
-void gdioutput::setWindowTitle(const wstring &title)
-{
+void gdioutput::setWindowTitle(const wstring &title, bool addMeOS) {
   if (title.length()>0) {
-    wstring titlew = title + makeDash(L" - MeOS");
-    SetWindowText(hWndAppMain, titlew.c_str());
+    if (addMeOS) {
+      wstring titlew = title + makeDash(L" - MeOS");
+      SetWindowText(hWndAppMain, titlew.c_str());
+    }
+    else {
+      SetWindowText(hWndAppMain, title.c_str());
+    }
   }
   else SetWindowText(hWndAppMain, L"MeOS");
 }
@@ -5549,13 +5558,19 @@ void gdioutput::CheckInterfaceTimeouts(uint64_t T)
   }
 }
 
-bool gdioutput::removeWidget(const string &id)
-{
-  {
+bool gdioutput::removeWidget(const string &id, int extra) {
+  bool useExtra = extra != numeric_limits<int>::min();
+
+  auto matchExtra = [&](const BaseInfo &bi) {
+    return !useExtra || extra == bi.getExtraInt();
+  };
+
+ {
+ 
     auto it = BI.begin();
     int cnt = 0;
     while (it != BI.end()) {
-      if (it->id == id) {
+      if (it->id == id && matchExtra(*it)) {
         DestroyWindow(it->hWnd);
         biByHwnd.erase(it->hWnd);
 
@@ -5577,7 +5592,7 @@ bool gdioutput::removeWidget(const string &id)
     auto lit = LBI.begin();
     int cnt = 0;
     while (lit != LBI.end()) {
-      if (lit->id == id) {
+      if (lit->id == id && matchExtra(*lit)) {
         DestroyWindow(lit->hWnd);
         lbiByHwnd.erase(lit->hWnd);
         removeString(id + "_label");
@@ -5600,7 +5615,7 @@ bool gdioutput::removeWidget(const string &id)
     auto iit = II.begin();
     int cnt = 0;
     while (iit != II.end()) {
-      if (iit->id == id) {
+      if (iit->id == id && matchExtra(*iit)) {
         DestroyWindow(iit->hWnd);
         iiByHwnd.erase(iit->hWnd);
         II.erase(iit);
@@ -5968,7 +5983,13 @@ RECT gdioutput::getDimensionSince(const string& restorePointId) const {
 
   int lbiRemove = LBI.size() - ri.nLBI;
   for (auto it = LBI.rbegin(); lbiRemove > 0; lbiRemove--, ++it) {
-    grow(it->getX(), it->getY(), it->getWidth(), it->getHeight());
+    int h;
+    if (it->IsCombo)
+      h = getButtonHeight() + scaleLength(5); // Dropdown
+    else
+      h = it->getHeight();
+
+    grow(it->getX(), it->getY(), it->getWidth(), h);
   }
   
   int tlRemove = TL.size() - ri.nTL;
@@ -8018,12 +8039,13 @@ void gdioutput::runSubCommand() {
   }
 }
 
-void gdioutput::getWindowsPosition(RECT &rc) const {
+bool gdioutput::getWindowsPosition(RECT &rc) const {
   WINDOWPLACEMENT wpl;
   memset(&wpl, 0, sizeof(WINDOWPLACEMENT));
   wpl.length = sizeof(WINDOWPLACEMENT);
   GetWindowPlacement(hWndAppMain, &wpl);
   rc = wpl.rcNormalPosition;
+  return wpl.showCmd == SW_SHOWMAXIMIZED;
 }
 
 void gdioutput::setWindowsPosition(const RECT &rc) {
@@ -8216,4 +8238,20 @@ int gdioutput::popupMenu(int x, int y, const vector<pair<wstring, int>> &menuIte
 
   DestroyMenu(hm);
   return res;
+}
+
+
+void gdioutput::moveText(int leftOf, int below, int deltaX, int deltaY) {
+  for (auto &t : TL) {
+    if (t.xp >= leftOf && t.yp >= below) {
+      t.xp += deltaX;
+      t.yp += deltaY;
+      t.textRect.left += deltaX;
+      t.textRect.right += deltaX;
+      t.textRect.top += deltaY;
+      t.textRect.bottom += deltaY;
+
+      adjustDimension(max(MaxX, t.xp + t.realWidth), max(MaxY, t.yp + t.getHeight()));
+    }
+  }
 }

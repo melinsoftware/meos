@@ -29,6 +29,7 @@
 #include <set>
 #include <map>
 #include <vector>
+#include <limits>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -325,7 +326,8 @@ public:
   // Return the bounding dimension of the desktop
   void getVirtualScreenSize(RECT& rc);
 
-  void getWindowsPosition(RECT& rc) const;
+  /** Get position. Returns true if window is maximized. */
+  bool getWindowsPosition(RECT& rc) const;
   void setWindowsPosition(const RECT& rc);
 
 
@@ -423,11 +425,15 @@ public:
   double getScale() const { return scale; }
   void enableEditControls(bool enable, bool processAll = false);
 
+  void moveText(int leftOf, int below, int deltaX, int deltaY);
+
   bool hasEditControl() const;
 
   void setFont(int size, const wstring& font);
 
   int getButtonHeight() const;
+  int getButtonWidth(const wstring &text) const;
+
   int scaleLength(int input) const { return int(scale * input + 0.5); }
   int scaleLength(double input) const { return int(scale * input + 0.5); }
 
@@ -539,7 +545,8 @@ public:
   void setRestorePoint();
   void setRestorePoint(const string& id);
 
-  bool removeWidget(const string& id);
+  bool removeWidget(const string &id, int extra = numeric_limits<int>::min());
+ 
   bool hideWidget(const string& id, bool hide = true);
 
   // Get and set restore point presence for a widget
@@ -583,7 +590,7 @@ public:
 
   void fadeOut(string Id, int ms);
   void setWaitCursor(bool wait);
-  void setWindowTitle(const wstring& title);
+  void setWindowTitle(const wstring& title, bool addMeOS = true);
   bool selectFirstItem(const string& name);
   void removeString(string Id);
   void refresh() const;

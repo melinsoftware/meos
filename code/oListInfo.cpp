@@ -3183,7 +3183,7 @@ void oEvent::listGeneratePunches(const oListInfo &listInfo, gdioutput &gdi,
     vector<const oPunch *> punches;
     if (r->cardPtr) {
       for (auto &punch : r->getCardPunches())
-        punches.push_back(&punch);
+        punches.push_back(punch);
     }
     else {
       vector<pFreePunch> fPunches;
@@ -5666,14 +5666,14 @@ void oEvent::generateListInfoAux(const gdioutput& target, oListParam &par, oList
         throw meosException("Could not load list 'X'#L" + itos(par.listCode));
   }
 }
-
+/*
 string oPrintPost::encodeFont(const string &face, int factor) {
   string out(face);
   if (factor > 0 && factor != 100) {
     out += ";" + itos(factor/100) + "." + itos(factor%100);
   }
   return out;
-}
+}*/
 
 wstring oPrintPost::encodeFont(const wstring &face, int factor) {
   wstring out(face);
@@ -5681,6 +5681,13 @@ wstring oPrintPost::encodeFont(const wstring &face, int factor) {
     out += L";" + itow(factor/100) + L"." + itow(factor%100);
   }
   return out;
+}
+
+wstring oListInfo::encodeMainFont() const {
+  if (mainListFont.empty())
+    return L"";
+  else
+    return oPrintPost::encodeFont(mainListFont, mainListScale);
 }
 
 void oListInfo::setupLinks(const list<oPrintPost> &lst) const {

@@ -832,8 +832,8 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
 
         if (it->getTeam() == 0) {          
           pTeam patrol = oe.addTeam(pname, it->getClubId(), cls->getId());
-          patrol->setRunner(0, it, false);
-          patrol->setRunner(1, it->getReference(), false);
+          patrol->setRunner(0, it, false, false);
+          patrol->setRunner(1, it->getReference(), false, false);
           patrol->synchronize();
         }
         else {
@@ -843,11 +843,11 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
 
           if (!hasOther) {
             patrol->setName(pname, false);
-            patrol->setRunner(0, it, false);
-            patrol->setRunner(1, it->getReference(), false);
+            patrol->setRunner(0, it, false, false);
+            patrol->setRunner(1, it->getReference(), false, false);
             patrol->synchronize();
           }
-        }        
+        }
       }
     }
   }

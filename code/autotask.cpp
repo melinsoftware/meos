@@ -26,7 +26,7 @@
 #include "oEvent.h"
 #include "autotask.h"
 #include "TabAuto.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "meos_util.h"
 #include "socket.h"
 #include "meosexception.h"
@@ -89,7 +89,7 @@ void AutoTask::setTimers() {
 
 void AutoTask::interfaceTimeout(const vector<gdioutput *> &windows) {
   TabAuto *tabAuto = dynamic_cast<TabAuto *>(gdi.getTabs().get(TAutoTab));
-  TabSI *tabSI = dynamic_cast<TabSI *>(gdi.getTabs().get(TSITab));
+  TabCard *tabCard = dynamic_cast<TabCard *>(gdi.getTabs().get(TCardTab));
 
   if (lock)
     return;
@@ -106,8 +106,8 @@ void AutoTask::interfaceTimeout(const vector<gdioutput *> &windows) {
     if (tabAuto)
       tabAuto->timerCallback(gdi);
 
-    if (tabSI)
-      while(tabSI->checkpPrintQueue(gdi));
+    if (tabCard)
+      while(tabCard->checkpPrintQueue(gdi));
   }
   catch (meosException &ex) {
     msg = ex.wwhat();

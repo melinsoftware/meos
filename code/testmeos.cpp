@@ -30,7 +30,7 @@
 #include "meos_util.h"
 #include "localizer.h"
 #include "oEvent.h"
-#include "TabSI.h"
+#include "TabCard.h"
 #include "metalist.h"
 #include "Table.h"
 #include "generalresult.h"
@@ -137,8 +137,8 @@ void TestMeOS::runProtected(bool protect) const {
   oe_main->getPropertyInt("UseEventor", 1);  
   oe_main->setProperty("Interactive", 0);
   oe_main->backupRunnerDatabase();
-  TabSI *tsi = dynamic_cast<TabSI*>(gdi_main->getTabs().get(TabType::TSITab));
-  tsi->setMode(TabSI::SIMode::ModeReadOut);
+  TabCard *tsi = dynamic_cast<TabCard*>(gdi_main->getTabs().get(TabType::TCardTab));
+  tsi->setMode(TabCard::SIMode::ModeReadOut);
   tsi->clearQueue();
   CardManager::instance().resetPunchMap();
 

@@ -319,7 +319,7 @@ int TabSpeaker::processButton(gdioutput &gdi, const ButtonInfo &bu) {
     if (speakerSettings.empty())
       throw meosException("Inställningarna är ogiltiga");
     for (size_t k = 1; k < speakerSettings.size(); k++) {
-      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(L"MeOS - Speakerstöd"), gdi.getWidth() + 64 + gdi.scaleLength(baseButtonWidth));
+      gdioutput *gdi_new = createExtraWindow(uniqueTag("speaker"), makeDash(lang.tl(L"Speakerstöd") + L" - MeOS"), gdi.getWidth() + 64 + gdi.scaleLength(baseButtonWidth));
       if (gdi_new) {
         TabSpeaker &tl = dynamic_cast<TabSpeaker &>(*gdi_new->getTabs().get(TSpeakerTab));
         tl.ownWindow = true;

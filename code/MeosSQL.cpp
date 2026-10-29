@@ -974,6 +974,31 @@ OpFailStatus MeosSQL::SyncUpdate(oEvent *oe)
   }
   writeTime = true;
   try {
+    struct BulkUploadGuard {
+      MeosSQL * sql;
+      bool committed = false;
+      BulkUploadGuard(MeosSQL * s) : sql(s) {
+        sql->con->query().exec("START TRANSACTION");
+        sql->bulkMode = true;        
+      }
+      void commit() {
+        sql->con->query().exec("COMMIT");
+        sql->con->query().exec("UPDATE oCounter SET "
+           "oCard=1,oClub=1,oControl=1,oCourse=1,oClass=1,"
+           "oRunner=1,oTeam=1,oPunch=1,oEvent=1");
+        committed = true;        
+      }
+      ~BulkUploadGuard() {
+        sql->bulkMode = false;
+        if (!committed) {
+          try { sql->con->query().exec("ROLLBACK"); }
+          catch (...) {}
+        }
+      }
+      
+    } 
+    bulkGuard(this);
+    
     con->query().exec("DELETE FROM oCard");
     {
       list<oCard>::iterator it = oe->Cards.begin();
@@ -1080,8 +1105,8 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe) {
     int s2 = tz > 0 ? (1000 * rdb.size())/tz : 0;
 
     // Reset databases
-    con->query().exec("DELETE FROM dbClub");
-    con->query().exec("DELETE FROM dbRunner");
+    con->query().exec("TRUNCATE TABLE dbClub");
+    con->query().exec("TRUNCATE TABLE dbRunner");
 
     string cardType = oe->runnerDB->getCurrentCardType();
 
@@ -1089,7 +1114,35 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe) {
     qs << "ALTER TABLE `dbRunner` COMMENT = " << quote << cardType;
     qs.execute();
 
-    for (size_t k = 0; k<size; k++) {
+    {
+      auto query = con->query();
+      const size_t CLUB_BATCH = 200;
+      string header = "INSERT INTO dbClub (Id,Name" + oe->oClubData->generateSQLColumnList() + ") VALUES ";
+      size_t rowsInBatch = 0;
+      for (size_t k = 0; k < size; k++) {
+        if (cdb[k].isRemoved()) continue;
+        if (rowsInBatch == 0)
+          query << header;
+        else
+          query << ",";
+
+        query << "(" << cdb[k].Id << "," << quote << toString(cdb[k].name) 
+          << cdb[k].getDCI().generateSQLValues() << ")";
+
+        if (++rowsInBatch >= CLUB_BATCH) {
+          query.execute();
+          query.reset();
+          rowsInBatch = 0;
+        }
+        if (k % 200 == 150)
+          pw.setProgress((k * s1) / size);
+      }
+
+      if (rowsInBatch > 0)
+        query.execute();
+    }
+
+/*    for (size_t k = 0; k<size; k++) {
       if (cdb[k].isRemoved())
         continue;
 
@@ -1111,17 +1164,42 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe) {
 
       if (k%200 == 150)
         pw.setProgress((k*s1)/size);
-    }
+    }*/
 
-    size = rdb.size();
-    for (size_t k = 0; k<size; k++) {
-      if (rdb[k].isRemoved())
-        continue;
-      if (!rdb[k].isUTF()) {
-        rwdb[k].recode(rdb[k]);
+      {
+        size = rdb.size();
+        /*for (size_t k = 0; k<size; k++) {
+          if (rdb[k].isRemoved())
+            continue;
+          if (!rdb[k].isUTF()) {
+            rwdb[k].recode(rdb[k]);
+          }*/
+        const size_t BATCH = 2000;
+        size_t rowsInBatch = 0;
+        auto query = con->query();
+        for (size_t k = 0; k < size; k++) {
+          if (rdb[k].isRemoved()) continue;
+          if (!rdb[k].isUTF()) rwdb[k].recode(rdb[k]);
+          if (rowsInBatch == 0)
+            query << "INSERT INTO dbRunner (Name,ExtId,Club,CardNo,Sex,Nation,BirthYear) VALUES ";
+          else query << ",";
+          query << "(" << quote << rdb[k].name
+            << "," << (int64_t)rdb[k].getExtId() << "," << rdb[k].clubNo
+            << "," << rdb[k].cardNo << "," << quote << rdb[k].getSex()
+            << "," << quote << rdb[k].getNationality() << "," << rdb[k].getBirthDateInt() << ")";
+          if (++rowsInBatch >= BATCH) {
+            query.execute();
+            query.reset();
+            rowsInBatch = 0;
+          }
+          if (k % 200 == 150) 
+            pw.setProgress(s1 + (k * s2) / size);
+        }
+
+        if (rowsInBatch > 0) 
+          query.execute();
       }
-
-      auto query = con->query();
+      /*auto query = con->query();
       query << "INSERT INTO dbRunner SET " <<
         "Name=" << quote << rdb[k].name <<
         ", ExtId=" << rdb[k].getExtId() << ", Club=" << rdb[k].clubNo <<
@@ -1137,11 +1215,11 @@ OpFailStatus MeosSQL::uploadRunnerDB(oEvent *oe) {
         errorMessage = ex.what();
         if (++errorCount > 5)
           throw;
-      }
+      }*/
 
-      if (k%200 == 150)
-        pw.setProgress(s1 + (k*s2)/size);
-    }
+      //if (k%200 == 150)
+      //  pw.setProgress(s1 + (k*s2)/size);
+    //}
 
     auto cnt = con->query().store("SELECT DATE_FORMAT(NOW(),'%Y-%m-%d %H:%i:%s')");
     string dateTime = cnt.at(0).at(0).get_string();
@@ -1926,6 +2004,9 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
   
   if (!r.cardWasSet)
     r.setCardNo(row["CardNo"], false, true);
+  if (!r.cardWasSet2)
+    r.setCardNo2(row["CardNo2"], false, true);
+
   r.StartNo = row["StartNo"];
   r.tStartTime = r.startTime = row["StartTime"];
   if (!r.finishTimeWasSet)
@@ -2284,6 +2365,7 @@ OpFailStatus MeosSQL::syncUpdate(oRunner *r, bool forceWriteAll) {
   auto queryset = con->query();
   queryset << " Name=" << quote << toString(r->sName) << ", "
       << " CardNo=" << r->cardNumber << ", "
+      << " CardNo2=" << r->cardNumber2 << ", "
       << " StartNo=" << r->StartNo << ", "
       << " StartTime=" << r->startTime << ", "
       << " FinishTime=" << r->FinishTime << ", "
@@ -3247,7 +3329,8 @@ ResNSel MeosSQL::updateCounter(const char *oTable, int id, QueryWrapper *updateq
     query << "SELECT MAX(Counter) FROM " << oTable;
     int counter;
     {
-      const auto c = query.store().at(0).at(0);
+      auto res = query.store();
+      const auto c = res.at(0).at(0);
       bool null = c.is_null();
       counter = null ? 1 : int(c) + 1;
     }
@@ -3299,6 +3382,28 @@ OpFailStatus MeosSQL::syncUpdate(QueryWrapper &updateqry,
     return opStatusFail;
   }
 
+  if (bulkMode) {
+    auto q = con->query();
+    q << "INSERT INTO " << oTable << " SET " << updateqry.str() << ", Counter=1";
+    if (ob->Id > 0)
+      q << ", Id=" << ob->Id;
+    if (writeTime)
+      q << ", Modified='" << ob->getTimeStampN() << "'";
+    ResNSel res = q.execute();
+    if (res) {
+      if (ob->Id != (int)res.insert_id)
+         ob->changeId((int)res.insert_id);
+      ob->counter = 1;
+      ob->sqlUpdated = ob->getTimeStampN();
+      ob->changed = false;
+      if (ob->getDISize() >= 0)
+        ob->getDI().allDataStored();
+      ob->oe->updateFreeId(ob);
+      return opStatusOK;      
+    }
+    return opStatusFail;    
+  }
+  
   auto query = con->query();
   try{
     if (!ob->existInDB()) {

@@ -2221,7 +2221,7 @@ void SportIdent::addCard(const SICard& sic) {
   memcpy(card.club, sic.club, sizeof(sic.club));
 
   auto assign = [](const SIPunch& in, MConPunch& out) {
-    out.time = in.Time * 1000 / timeConstSecond;
+    out.time = in.Time * (1000 / timeConstSecond);
     out.code = in.Code;
   };
 
@@ -2243,7 +2243,7 @@ void SportIdent::addPunch(DWORD Time, int Station, int Card, int Mode) {
 
   MConFreePunch punch;
   punch.cardNo = Card;
-  punch.time = (Time * 1000) / timeConstSecond;
+  punch.time = Time * (1000 / timeConstSecond);
   /*SICard sic(ConvertedTimeStatus::Hour24);
   sic.CardNumber = Card;
   sic.StartPunch.Code = -1;

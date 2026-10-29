@@ -24,7 +24,6 @@
 
 #include <vector>
 #include <set>
-#include <cassert>
 #include <algorithm>
 #include <deque>
 
@@ -34,20 +33,10 @@
 
 #include "oDataContainer.h"
 
-#include "random.h"
-
-#include "oFreeImport.h"
-
 #include "meos.h"
 #include "meos_util.h"
-#include "RunnerDB.h"
 #include "MeOSFeatures.h"
 #include "cardsystem.h"
-
-#include <io.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <deque>
 
 #include "Localizer.h"
 

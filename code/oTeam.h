@@ -225,7 +225,9 @@ public:
                          bool totalResult, oSpeakerObject &spk) const;
 
   bool isRunnerUsed(int Id) const;
-  void setRunner(unsigned i, pRunner r, bool syncRunner);
+  void setRunner(int leg, pRunner r, bool syncRunner, bool manuallySet);
+  // Returns true unless the runner of this leg is manually set in MeOS and should not be auto updated
+  bool canAutoSetRunner(int leg) const; 
 
   pRunner getRunner(unsigned leg) const;
   int getNumRunners() const {return Runners.size();}

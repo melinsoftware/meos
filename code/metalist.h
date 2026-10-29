@@ -216,7 +216,7 @@ private:
 
     FontInfo() : scale(0), extraSpaceAbove(0) {}
 
-    const vector< pair<string, wstring> > &serialize(vector< pair<string, wstring> > &props) const {
+    const vector<pair<string, wstring>> &serialize(vector<pair<string, wstring>> &props) const {
       props[0].first = "scale";
       props[0].second = itow(scale);
       props[1].first = "above";

@@ -298,10 +298,15 @@ void ListEditor::renderListPreview(gdioutput &gdi) {
       gdi.setCX(gdi.getCX() + gdi.scaleLength(10));
       gdi.dropLine();
 
+      gdi.setRestorePoint("Splits");
+
       splitPrintR->printSplits(gdi, &li);
 
       gdi.dropLine();
-      rc.right = rc.left + gdi.scaleLength(250);
+
+
+      RECT rcSp = gdi.getDimensionSince("Splits");
+      rc.right = rcSp.right;
       rc.bottom = gdi.getHeight();
       gdi.addRectangle(rc, GDICOLOR::colorLightYellow);
       gdi.refresh();

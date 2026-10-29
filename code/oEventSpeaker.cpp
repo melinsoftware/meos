@@ -1045,8 +1045,10 @@ void oEvent::speakerList(gdioutput& gdi,
     while (it != Teams.end()) {
       if (it->getClassId(true) == classId && !it->skip()) {
         auto s = it->getStatus();
-        if (s == StatusCANCEL || s == StatusNotCompeting) // Allow DNS for incomplete teams
+        if (s == StatusCANCEL || s == StatusNotCompeting) {// Allow DNS for incomplete teams
+          ++it;
           continue;
+        }
         oSpeakerObject& so = speakerList.emplace_back();
         it->fillSpeakerObject(leg, previousControlId, controlId, totalResults, so);
         if (!so.owner)
@@ -1209,7 +1211,7 @@ void oEvent::speakerList(gdioutput& gdi,
   int lh = gdi.getLineHeight();
 
   if (compactView) {
-    gdi.setWindowTitle(makeDash(L"Speakerstöd - " + cname));
+    gdi.setWindowTitle(makeDash(lang.tl(L"Speakerstöd - ") + cname));
     y -= lh / 2;
   }
   else {
