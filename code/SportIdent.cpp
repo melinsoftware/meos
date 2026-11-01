@@ -1256,9 +1256,9 @@ void SportIdent::getSI5DataExt(HANDLE hComm)
   c[5]=ETX;
 
   DWORD written=0;
-  WriteFile(hComm, c, 5, &written, NULL);
+  WriteFile(hComm, c, 6, &written, NULL);
 
-  if (written==5)
+  if (written==6)
   {
     Sleep(150);
     BYTE bf[256];
