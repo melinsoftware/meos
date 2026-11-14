@@ -1167,7 +1167,7 @@ void OnlineInput::processEntries(oEvent &oe, const xmlList &entries, vector<MipE
       if (!birthyear.empty())
         r->setBirthDate(birthyear);
       if (cardNo != 0)
-        r->setCardNo(cardNo, false, false);
+        r->setCardNo(cardNo, oRunner::UpdateType::Automatic, false, false);
       if (cls != nullptr)
         r->setClassId(cls->getId(), true);
       status.emplace_back(id, r->getId(), MipEntryStatus::UpdatedOK, L"Updated");

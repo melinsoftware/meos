@@ -1016,7 +1016,8 @@ pRunner oEvent::addXMLEntry(const xmlobject &xentry, int clubId, bool setClass) 
       xmlobject psys = card.getObject("PunchingUnitType");
       if (!psys || psys.getObjectString("value", tmp) == timingSystem) {
         int cardno = card.getObjectInt("CCardId");
-        r->setCardNo(cardno, false);
+        if (cardno > 0 && (r->getCardNo() == 0 || !r->hasFlag(oAbstractRunner::FlagManualCardNo)))
+          r->setCardNo(cardno, oRunner::UpdateType::Automatic, false);
         break;
       }
     }
@@ -1165,15 +1166,17 @@ pRunner oEvent::addXMLStart(const xmlobject &xstart, pClass cls) {
         xmlobject psys = card.getObject("PunchingUnitType");
         if (!psys || psys.getObjectString("value", tmp) == timingSystem) {
           int cardno = card.getObjectInt("CCardId");
-          r->setCardNo(cardno, false);
+          if (cardno > 0 && (r->getCardNo() == 0 || !r->hasFlag(oAbstractRunner::FlagManualCardNo)))
+            r->setCardNo(cardno, oRunner::UpdateType::Automatic, false);
           break;
         }
       }
     }
   }
-  else
-    r->setCardNo(cardno, false);
-
+  else {
+    if (cardno > 0 && (r->getCardNo() == 0 || !r->hasFlag(oAbstractRunner::FlagManualCardNo)))
+      r->setCardNo(cardno, oRunner::UpdateType::Automatic, false);
+  }
   wstring tmp;
   xmlobject xstarttime = xstrt.getObject("StartTime");
   if (xstarttime)

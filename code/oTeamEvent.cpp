@@ -815,7 +815,7 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
         cls->setNumStages(2);
 
         if (crs) { // Preserve courses
-          vector< vector<int> > mc(2);
+          vector<vector<int>> mc(2);
           mc[0].push_back(crs->getId());
           mc[1].push_back(crs->getId());
           cls->importCourses(mc);
@@ -830,7 +830,7 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
         if (it->getReference())
           pname += L"/" + it->getReference()->getName();
 
-        if (it->getTeam() == 0) {          
+        if (it->getTeam() == nullptr) {          
           pTeam patrol = oe.addTeam(pname, it->getClubId(), cls->getId());
           patrol->setRunner(0, it, false, false);
           patrol->setRunner(1, it->getReference(), false, false);
@@ -839,14 +839,22 @@ void oTeam::convertClassWithReferenceToPatrol(oEvent &oe, const std::set<int> &c
         else {
           pTeam patrol = it->getTeam();
 
-          bool hasOther = it->getReference() == 0 || patrol->getRunner(0) == it->getReference() || patrol->getRunner(1) == it->getReference();
-
-          if (!hasOther) {
-            patrol->setName(pname, false);
-            patrol->setRunner(0, it, false, false);
-            patrol->setRunner(1, it->getReference(), false, false);
-            patrol->synchronize();
+          if (!patrol->hasFlag(TransferFlags::FlagUpdateClass)) {
+            patrol->setClassId(cls->getId(), false);
           }
+
+          if (patrol->canAutoSetRunner(0) && patrol->canAutoSetRunner(1)) {
+            bool hasOther = it->getReference() == 0 || patrol->getRunner(0) == it->getReference() || patrol->getRunner(1) == it->getReference();
+
+            if (!hasOther) {
+              if (!patrol->hasFlag(TransferFlags::FlagUpdateName))
+                patrol->setName(pname, false);
+              
+              patrol->setRunner(0, it, false, false);
+              patrol->setRunner(1, it->getReference(), false, false);
+            }
+          }
+          patrol->synchronize(true);
         }
       }
     }

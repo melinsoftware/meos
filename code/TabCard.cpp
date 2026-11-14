@@ -1037,7 +1037,7 @@ int TabCard::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
 
       TabRunner::saveExtraFields(gdi, *r);
       r->setStartTimeS(gdi.getText("StartTime"));
-      r->setCardNo(activeSIC.CardNumber, false);
+      r->setCardNo(activeSIC.CardNumber, oRunner::UpdateType::Manual, false);
 
       gdi.restore();
       SICard copy = activeSIC;
@@ -1096,7 +1096,7 @@ int TabCard::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
         r->setRentalCard(Card::Primary, true);
       }
       r->setStartTimeS(gdi.getText("StartTime"));
-      r->setCardNo(activeSIC.CardNumber, false);
+      r->setCardNo(activeSIC.CardNumber, oRunner::UpdateType::Manual, false);
 
       TabRunner::saveExtraFields(gdi, *r);
       gdi.restore();
@@ -1189,7 +1189,7 @@ int TabCard::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
 
       if (r == 0) {
         r = oe->addRunner(name, gdi.getText("Club", true), lbi.data, cardNo, year, true);
-        r->setCardNo(0, false, false); // Clear to match below
+        r->setCardNo(0, oRunner::UpdateType::Automatic, false, false); // Clear to match below
       }
       else {
         int clubId = 0;
@@ -1214,7 +1214,7 @@ int TabCard::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
       lastFee = gdi.getText("Fee", true);
       int lastFeeNum = oe->interpretCurrency(lastFee);
 
-      r->setCardNo(cardNo, true);//XXX
+      r->setCardNo(cardNo, oRunner::UpdateType::Automatic, true);//XXX
 
       oDataInterface di = r->getDI();
 
@@ -1341,6 +1341,9 @@ int TabCard::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
     else if (bi.id == "EntryCancel") {
       storedInfo.clear();
       reloadEntryForm(gdi, nullptr);
+      auto infow = TabCourse::getMapWindow(false);
+      if (infow)
+        updateEntryInfoExtWindow(gdi, *infow, false);
     }
     else if (bi.id == "RentCard" || bi.id == "Paid" || bi.id == "AllStages") {
       updateEntryInfo(gdi);
@@ -1892,7 +1895,7 @@ int TabCard::siCB(gdioutput& gdi, GuiEventType type, BaseInfo * data) {
 
       if (r && r->getCardNo() != si) {
         if (si == 0 || !oe->checkCardUsed(gdi, *r, si)) {
-          r->setCardNo(si, false);
+          r->setCardNo(si, oRunner::UpdateType::Manual, false);
           r->setRentalCard(Card::Primary, true);
           r->synchronize();
         }
@@ -2547,7 +2550,7 @@ pRunner TabCard::autoMatch(const SICard& sic, pRunner db_r) {
 
       if (classes.size() == 1 && dist >= -1 && dist <= 1) { //Almost perfect match found. Assume it is it!
         r = gEvent->addRunnerFromDB(db_r, classes[0]->getId(), true);
-        r->setCardNo(sic.CardNumber, false);
+        r->setCardNo(sic.CardNumber, oRunner::UpdateType::Manual, false);
 
         if (oe->isHiredCard(sic.CardNumber)) {
           r->setRentalCard(Card::Primary, true);
@@ -3679,7 +3682,7 @@ void TabCard::assignCard(gdioutput& gdi, const SICard& sic)
       if (r->getCardNo() == 0 ||
         gdi.ask(L"Skriv över existerande bricknummer?")) {
 
-        r->setCardNo(sic.CardNumber, false);
+        r->setCardNo(sic.CardNumber, oRunner::UpdateType::Manual, false);
         r->setRentalCard(Card::Primary, true);
         r->synchronize();
         gdi.setText(ii->id, sicode);
@@ -3744,21 +3747,38 @@ vector<tuple<string, wstring, gdiFonts>> TabCard::getEntryInfo(gdioutput &gdi, b
     else
       out.emplace_back("pay", L"", gdiFonts::fontLarge);
   }
-  /*
   
-  auto setIf = [&gdi](const string& wg, const wstring& val) {
-    if (gdi.hasWidget(wg))
-      gdi.setText(wg, val);
+  map<oEvent::ExtraFields, wstring> extraFields;
+
+  auto setIf = [this, &gdi, &info, &out, &extraFields](const string& wg) {
+    if (extraFields.empty())
+      extraFields = oe->getExtraFields(oEvent::ExtraFieldContext::QuickEntry);
+
+    if (gdi.hasWidget(wg)) {
+      int type = gdi.getExtraInt(wg.c_str());
+      wstring t = gdi.getText(wg);
+      if (t.empty() || info.empty()) {
+        out.emplace_back(wg, L"", gdiFonts::fontMediumPlus);
+        return;
+      }
+
+      auto res = extraFields.find(oEvent::ExtraFields(type));
+      if (res != extraFields.end())
+        out.emplace_back(wg, ensureEndingColon(lang.tl(res->second)) + L" " + t, gdiFonts::fontMediumPlus);
+      else
+        out.emplace_back(wg, t, gdiFonts::fontMediumPlus);
+    }
   };
-  setIf("StartTime", storedInfo.storedStartTime);
-  setIf("Phone", storedInfo.storedPhone);
-  setIf("DataA", storedInfo.dataA);
-  setIf("DataB", storedInfo.dataB);
-  setIf("TextA", storedInfo.textA);
-  setIf("Nationality", storedInfo.nationality);
-  setIf("BirthDate", storedInfo.birthDate);
-  setIf("Rank", storedInfo.rank);
-  */
+
+  setIf("StartTime");
+  setIf("Sex");
+  setIf("Phone");
+  setIf("DataA");
+  setIf("DataB");
+  setIf("TextA");
+  setIf("Nationality");
+  setIf("BirthDate");
+  setIf("Rank");
 
   return out;
 }
@@ -3813,7 +3833,10 @@ void TabCard::generateEntryLine(gdioutput& gdi, pRunner r) {
     vector<pair<wstring, size_t>> d;
     oe->fillClasses(d, oEvent::extraNumMaps, oEvent::filterOnlyDirect);
     if (d.empty() && oe->getNumClasses() > 0) {
-      gdi.alert(L"Inga klasser tillåter direktanmälan. På sidan klasser kan du ändra denna egenskap.");
+      gdi.removeFirstInfoBox("nodirect");
+      gdi.addInfoBox("nodirect",
+                     L"Inga klasser tillåter direktanmälan. På sidan klasser kan du ändra denna egenskap.", 
+                     L"Direktanmälan", BoxStyle::HeaderWarning, 10000);
     }
     gdi.setItems("Class", d);
   }
@@ -3847,7 +3870,21 @@ void TabCard::generateEntryLine(gdioutput& gdi, pRunner r) {
   gdi.popX();
   gdi.dropLine(3.1);
 
-  int cnt = TabRunner::addExtraFields(*oe, gdi, true, true, oEvent::ExtraFieldContext::QuickEntry);
+  class UpdateInfo : public GuiHandler {
+    TabCard *crd;
+  public :
+    UpdateInfo(TabCard *crd) : GuiHandler(), crd(crd) {}
+
+    void handle(gdioutput &gdi, BaseInfo &info, GuiEventType type) final {
+      auto infow = TabCourse::getMapWindow(false);
+      if (infow)
+        crd->updateEntryInfoExtWindow(gdi, *infow, false);
+    };
+  };
+
+  int cnt = TabRunner::addExtraFields(*oe, gdi, true, true, 
+                                      oEvent::ExtraFieldContext::QuickEntry, {}, make_shared<UpdateInfo>(this));
+
   auto setIf = [&gdi](const string& wg, const wstring& val) {
     if (gdi.hasWidget(wg))
       gdi.setText(wg, val);
@@ -4127,7 +4164,7 @@ void TabCard::tieCard(gdioutput& gdi) {
     rent = oe->isHiredCard(card);
 
   r->synchronize();
-  r->setCardNo(card, true, false);
+  r->setCardNo(card, oRunner::UpdateType::Manual, true, false);
   r->setRentalCard(Card::Primary, rent);
   r->synchronize(true);
 
@@ -6641,7 +6678,6 @@ void TabCard::showDirectEntryLog(gdioutput &gdi, bool reverse) {
   }
   gdi.setRestorePoint("EntryLine");
 }
-
 
 void TabCard::updateReadoutStatus(const oRunner &r) {
   for (auto it = readCards.rbegin(); it != readCards.rend(); ++it) {

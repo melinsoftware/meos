@@ -2181,9 +2181,16 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   map<int, vector<LegInfo> > localTeamClassConfig;
   pClass pc = readClass(xo.getObject("Class"), localTeamClassConfig);
 
-  if (pc && (r->getClassId(false) == 0 || !r->hasFlag(oAbstractRunner::FlagUpdateClass)) )
-    r->setClassId(pc->getId(), false);
-
+  if (pc && (r->getClassId(false) == 0 || !r->hasFlag(oAbstractRunner::FlagUpdateClass))) {
+    if (r->getClassRef(false) && r->getTeam() &&
+        (r->isPatrolMember() ||
+         r->getClassRef(false)->isSingleRunnerMultiStage() ||
+         r->getClassRef(false)->isQualificationFinalBaseClass()) &&
+        !r->getTeam()->hasFlag(oAbstractRunner::FlagUpdateClass))
+      r->getTeam()->setClassId(pc->getId(), false);
+    else
+      r->setClassId(pc->getId(), false);
+  }
   if (team) {
     int leg = xo.getObjectInt("Leg");
     int legorder = xo.getObjectInt("LegOrder");
@@ -2208,8 +2215,8 @@ pRunner IOF30Interface::readPersonEntry(gdioutput &gdi, xmlobject &xo, pTeam tea
   }
 
   // Card
-  if (cardNo > 0)
-    r->setCardNo(cardNo, false);
+  if (cardNo > 0 && (r->getCardNo() == 0 || !r->hasFlag(oAbstractRunner::FlagManualCardNo)))
+    r->setCardNo(cardNo, oRunner::UpdateType::Automatic, false);
 
   oDataInterface di = r->getDI();
 
@@ -2331,8 +2338,8 @@ pRunner IOF30Interface::readPersonStart(gdioutput &gdi, pClass pc, xmlobject &xo
     }
     // Card
     int cardNo = starts[k].getObjectInt("ControlCard");
-    if (cardNo > 0)
-      rRace->setCardNo(cardNo, false);
+    if (cardNo > 0 && (rRace->getCardNo() == 0 || !rRace->hasFlag(oAbstractRunner::FlagManualCardNo)))
+      rRace->setCardNo(cardNo, oRunner::UpdateType::Automatic, false);
 
     xmlobject startTime = starts[k].getObject("StartTime");
 
@@ -2466,8 +2473,8 @@ pRunner IOF30Interface::readPersonResult(gdioutput &gdi, pClass pc, xmlobject &x
     if (rRace) {
       // Card
       int cardNo = results[k].getObjectInt("ControlCard");
-      if (cardNo > 0)
-        rRace->setCardNo(cardNo, false);
+      if (cardNo > 0 && (rRace->getCardNo() == 0 || !rRace->hasFlag(oAbstractRunner::FlagManualCardNo)))
+        rRace->setCardNo(cardNo, oRunner::UpdateType::Automatic, false);
 
       wstring bib;
       results[k].getObjectString("BibNumber", bib);

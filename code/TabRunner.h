@@ -150,6 +150,8 @@ private:
   void loadEconomy(gdioutput &gdi, oRunner &r, gdioutput *gdiMain, TabRunner *mainTab);
   static void unpairCard(pRunner r, bool secondaryCard);
 
+  void entrySettings(const string &title, gdioutput &gdi);
+
   class EconomyHandler : public GuiHandler {
     int runnerId;
     oEvent *oe;
@@ -205,7 +207,8 @@ public:
 
   static int addExtraFields(const oEvent &oe, gdioutput& gdi, bool startNewLine, 
                             bool oneLine, oEvent::ExtraFieldContext context,
-                            const vector<oEvent::ExtraFields>& exclude = {});
+                            const vector<oEvent::ExtraFields>& exclude = {},
+                            const shared_ptr<GuiHandler> &handler = nullptr);
 
   static void saveExtraFields(gdioutput& gdi, oBase &r);
   static void loadExtraFields(gdioutput& gdi, const oBase* r);

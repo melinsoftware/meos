@@ -965,7 +965,7 @@ int oRunner::setCard(int cardId, Card target) {
       if (target == Card::Secondary)
         setCardNo2(newCardPtr->cardNo, false, true);
       else
-        setCardNo(newCardPtr->cardNo, false, true);
+        setCardNo(newCardPtr->cardNo, oRunner::UpdateType::Automatic, false, true);
     }
     else {
       clearRG(this);
@@ -2848,13 +2848,16 @@ wstring oRunner::getFamilyName() const
   return ::getFamilyName(sName);
 }
 
-void oRunner::setCardNo(int cno, bool matchCard, bool updateFromDatabase) {
+void oRunner::setCardNo(int cno, UpdateType utype, bool matchCard, bool updateFromDatabase) {
   if (cno != getCardNo()) {
     if (!updateFromDatabase && cno != 0 && cno == getCardNo2())
       return; // Do not accept duplicate cards
 
     int oldNo = getCardNo();
     cardNumber = cno;
+
+    if (utype == UpdateType::Manual)
+      setFlag(TransferFlags::FlagManualCardNo, true);
 
     if (oe->cardToRunnerHash && cno != 0 && isAddedToEvent() && !isTemporaryObject) {
       oe->cardToRunnerHash->emplace(cno, this);
@@ -4306,7 +4309,7 @@ pair<int, bool> oRunner::inputData(int id, const wstring &input,
 
   switch(id) {
     case TID_CARD:
-      setCardNo(_wtoi(input.c_str()), true);
+      setCardNo(_wtoi(input.c_str()), oRunner::UpdateType::Manual, true);
       synchronizeAll();
       output = itow(getCardNo());
       break;
@@ -6851,7 +6854,7 @@ void oRunner::setInputData(const oRunner &r) {
       setClub(r.getClub());
       
     if (!cardPtr && r.isTransferCardNoNextStage()) {
-      setCardNo(r.getCardNo(), false);
+      setCardNo(r.getCardNo(), UpdateType::Manual, false);
       dest.setInt("CardFee", src.getInt("CardFee"));
       setTransferCardNoNextStage(true);
     }
@@ -7136,7 +7139,7 @@ int oRunner::getRogainingPointsGross(bool computed) const {
   if (computed) {
     int cmp = getRogainingPoints(computed, false);
     if (cmp > 0)
-      return cmp + tReduction; // This formula only holds when something remains. If tRediction > collected points, the result is wrong
+      return cmp + tReduction; // This formula only holds when something remains. If tReduction > collected points, the result is wrong
     else
       return tRogainingPointsGross;
   }
@@ -7259,11 +7262,11 @@ void oAbstractRunner::resetInputData() {
 }
 
 bool oRunner::isTransferCardNoNextStage() const {
-  return hasFlag(FlagUpdateCard);
+  return hasFlag(FlagUpdateCardMultiStage);
 }
 
 void oRunner::setTransferCardNoNextStage(bool state) {
-  setFlag(FlagUpdateCard, state);
+  setFlag(FlagUpdateCardMultiStage, state);
 }
 
 bool oAbstractRunner::hasFlag(TransferFlags flag) const {
@@ -8053,4 +8056,16 @@ void oRunner::useFinishTimeFromReadout() {
     int ft = oe->getRelativeTime(timeS);
     setFinishTime(ft);
   }
+}
+
+vector<pair<int, int>> oAbstractRunner::getExtraFees() const {
+  return {};
+}
+
+void oAbstractRunner::setExtraFee(int feeId, int amount) {
+
+}
+
+void oAbstractRunner::clearExtraFees() {
+
 }

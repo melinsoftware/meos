@@ -1052,9 +1052,9 @@ void SportIdent::getSI5DataExt(SI_StationInfo& si)
   setCRC(c + 1);
   c[5] = ETX;
 
-  DWORD written = writeBytes(c, 5, si);
+  DWORD written = writeBytes(c, 6, si);
 
-  if (written == 5)
+  if (written == 6)
   {
     Sleep(150);
     BYTE bf[256];

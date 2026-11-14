@@ -457,7 +457,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
                   if (r->isVacant())
                     r->setClubId(t->getClubId());
                 }
-                r->setCardNo(cardNo, true);
+                r->setCardNo(cardNo, oRunner::UpdateType::Manual, true);
                 if (gdi.isChecked("RENT" + itos(i)))
                   r->getDI().setInt("CardFee", oe->getBaseCardFee());
                 else
@@ -479,7 +479,7 @@ bool TabTeam::save(gdioutput &gdi, bool dontReloadTeams) {
               r = oe->addRunner(name, t->getClubId(), t->getClassId(false), cardNo, L"", false);
 
             r->setName(name, true);
-            r->setCardNo(cardNo, true);
+            r->setCardNo(cardNo, oRunner::UpdateType::Manual, true);
             if (gdi.isChecked("RENT" + itos(i)))
               r->getDI().setInt("CardFee", oe->getBaseCardFee());
             else
@@ -1822,7 +1822,8 @@ void TabTeam::saveTeamImport(gdioutput &gdi, bool useExisting) {
         if (oldR && oldR->getName() == member.name) {
           // Keep
           r = oldR;
-          r->setCardNo(member.cardNo, false, false);
+          if (r->getCardNo() == 0 || !r->hasFlag(oAbstractRunner::FlagManualCardNo))
+            r->setCardNo(member.cardNo, oRunner::UpdateType::Automatic, false, false);
           oldR = nullptr;
 
         }

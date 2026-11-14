@@ -349,7 +349,8 @@ bool csvparser::importOE_CSV(oEvent &event, const wstring &file) {
         pr->setName(name, false);
       }
       pr->setClubId(pclub ? pclub->getId():0);
-      pr->setCardNo( wtoi(sp[OEcard]), false );
+      if (pr->getCardNo() == 0 || !pr->hasFlag(oAbstractRunner::FlagManualCardNo))
+        pr->setCardNo(wtoi(sp[OEcard]), oRunner::UpdateType::Automatic, false);
 
       pr->setStartTime(event.convertAbsoluteTime(sp[OEstart]), true, oBase::ChangeType::Update);
       pr->storeDefaultStartTime();

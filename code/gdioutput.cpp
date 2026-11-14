@@ -8240,7 +8240,6 @@ int gdioutput::popupMenu(int x, int y, const vector<pair<wstring, int>> &menuIte
   return res;
 }
 
-
 void gdioutput::moveText(int leftOf, int below, int deltaX, int deltaY) {
   for (auto &t : TL) {
     if (t.xp >= leftOf && t.yp >= below) {

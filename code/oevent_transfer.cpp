@@ -1149,7 +1149,7 @@ void oEvent::transferResult(oEvent &ce,
     if (targetVacant && targetVacant->isVacant() && compareClassName(targetVacant->getClass(false), src->getClass(false))) {
       targetVacant->setName(src->sName, false);
       targetVacant->setClub(src->getClub());
-      targetVacant->setCardNo(src->getCardNo(), false);
+      targetVacant->setCardNo(src->getCardNo(), oRunner::UpdateType::Automatic, false);
       targetVacant->cloneData(src);
       assignedVacant.push_back(targetVacant);
     }
@@ -1435,7 +1435,7 @@ void oRunner::merge(const oBase &input, const oBase *baseIn) {
     setCard(src.getCardId(), Card::Secondary);
 
   if (base == nullptr || base->getCardNo() != src.getCardNo())
-    setCardNo(src.getCardNo(), false);
+    setCardNo(src.getCardNo(), oRunner::UpdateType::Automatic, false);
 
   if (base == nullptr || base->getCardNo2() != src.getCardNo2())
     setCardNo2(src.getCardNo2(), false);

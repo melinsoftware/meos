@@ -1145,7 +1145,6 @@ vector<const oPunch*> oCard::getPunchList(const oCard *secondaryCard) const{
   return out;
 }
 
-
 void oCard::insert(const oPunch &position, const oPunch toInsert) {
   // Insert by exact position
   for (auto it = punches.begin(); it != punches.end(); ++it) {

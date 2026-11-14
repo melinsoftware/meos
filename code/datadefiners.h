@@ -524,7 +524,10 @@ public:
       fieldOrder.emplace_back(oAbstractRunner::FlagPayBeforeResult, true);
 
       table->addColumn("Ändrad bricka", max(minWidth, 90), false);
-      fieldOrder.emplace_back(oAbstractRunner::FlagUpdateCard, false);
+      fieldOrder.emplace_back(oAbstractRunner::FlagManualCardNo, false);
+
+      table->addColumn("Permanent brickändring", max(minWidth, 90), false);
+      fieldOrder.emplace_back(oAbstractRunner::FlagUpdateCardMultiStage, false);
 
       table->addColumn("Ändrad avgift", max(minWidth, 90), false);
       fieldOrder.emplace_back(oAbstractRunner::FlagFeeSpecified, false);

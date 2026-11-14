@@ -269,7 +269,7 @@ public:
 
   enum TransferFlags {
     FlagTransferNew = 1,
-    FlagUpdateCard = 2,
+    FlagUpdateCardMultiStage = 2,
     FlagTransferSpecified = 4,
     FlagFeeSpecified = 8,
     FlagUpdateClass = 16,
@@ -281,7 +281,8 @@ public:
     FlagNoDatabase = 1024, // Do not store in databse
     FlagPayBeforeResult = 2048, // Require payment before result
     FlagUnnamed = 2 << 12,
-    FlagAssignedLeg = 1 << 13 // The leg was manually assigned
+    FlagAssignedLeg = 1 << 13, // The leg was manually assigned
+    FlagManualCardNo = 1 << 14 // Card number manually set
   };
 
   bool hasFlag(TransferFlags flag) const;
@@ -1216,7 +1217,12 @@ public:
     return target==Card::Secondary ? getCardNo2() : getCardNo();
   }
 
-  void setCardNo(int card, bool matchCard, bool updateFromDatabase = false);
+  enum class UpdateType {
+    Manual, 
+    Automatic,
+  };
+
+  void setCardNo(int card, UpdateType utype, bool matchCard, bool updateFromDatabase = false);
   void setCardNo2(int card, bool matchCard, bool updateFromDatabase = false);
 
   void set(const xmlobject &xo);

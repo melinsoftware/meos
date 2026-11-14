@@ -1774,7 +1774,7 @@ void oFreeImport::addEntries(pEvent oe, const vector<oEntryBlock> &entries)
                                   entries[k].getCard(0), L"", true);
 
         r->setStartTimeS(entries[k].eStartTime);
-        r->setCardNo(entries[k].getCard(0), false);
+        r->setCardNo(entries[k].getCard(0), oRunner::UpdateType::Automatic, false);
 
         r->addClassDefaultFee(false);
         r->synchronize();
@@ -1793,7 +1793,7 @@ void oFreeImport::addEntries(pEvent oe, const vector<oEntryBlock> &entries)
           for (int j = 0; j < max(nr, entries[k].getNumPersons()); j++) {
             pRunner r = oe->addRunner(entries[k].getName(j), entries[k].getClub(j),
                                       pc->getId(), entries[k].getCard(j), L"", false);
-            r->setCardNo(entries[k].getCard(j), false);
+            r->setCardNo(entries[k].getCard(j), oRunner::UpdateType::Automatic, false);
             r->addClassDefaultFee(false);
             t->setRunner(j, r, true, false);
           }

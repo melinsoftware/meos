@@ -536,7 +536,12 @@ public:
   void getStartRange(int leg, int &firstStart, int &lastStart) const;
 
   /** Return true if pure rogaining class, with time limit (sort results by points) */
-  bool isRogaining() const;
+  bool isRogaining(int &timeLimit) const;
+
+  bool isRogaining() const {
+    int tl;
+    return isRogaining(tl);
+  }
 
   /** Get the place for the specified leg (CommonControl of course == start/finish) and time. 0 if not found */
   int getLegPlace(int from, int to, int time) const;
@@ -722,6 +727,9 @@ public:
   bool isForked(int leg) const;
 
   pCourse getCourse(int leg, unsigned fork=0, bool getSampleFromRunner = false) const;
+
+  vector<int> getOrderedCourseControlsIdForLeg(int leg) const;
+
   int getCourseId() const {if (Course) return Course->getId(); else return 0;}
   void setCourse(pCourse c);
 

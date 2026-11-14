@@ -2201,7 +2201,7 @@ pair<int, bool> oTeam::inputData(int id, const wstring &input,
           }
         }
         else {
-          Runners[ix]->setCardNo(_wtoi(input.c_str()), true);
+          Runners[ix]->setCardNo(_wtoi(input.c_str()), oRunner::UpdateType::Manual, true);
           Runners[ix]->synchronize(true);
           output = itow(Runners[ix]->getCardNo());
         }

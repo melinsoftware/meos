@@ -1662,6 +1662,64 @@ pCourse oClass::getCourse(int leg, unsigned fork, bool getSampleFromRunner) cons
   }
 }
 
+vector<int> oClass::getOrderedCourseControlsIdForLeg(int leg) const {
+  leg = mapLeg(leg);
+  vector<int> out;
+  vector<pair<int, int>> ccIdIndex;
+  set<int> usedCCID;
+  
+  if (size_t(leg) < MultiCourse.size()) {    
+    for (auto& pc : MultiCourse[leg]) {
+      int offStart = pc->useFirstAsStart() ? 1 : 0;
+      int offEnd = pc->useLastAsFinish() ? 1 : 0;
+      for (int k = offStart; k < pc->getNumControls() - offEnd; k++) {
+        int id = pc->getCourseControlId(k);
+        if (usedCCID.insert(id).second) {
+          ccIdIndex.emplace_back(k, id);
+        }
+      }
+    }
+  }
+  else if (leg == 0 && Course) {
+    int offStart = Course->useFirstAsStart() ? 1 : 0;
+    int offEnd = Course->useLastAsFinish() ? 1 : 0;
+    for (int k = offStart; k < Course->getNumControls() - offEnd; k++) {
+      int id = Course->getCourseControlId(k);
+      ccIdIndex.emplace_back(k, id);      
+    }
+  }
+
+  if (ccIdIndex.empty()) {
+    vector<pRunner> rr;
+    oe->getRunners(getId(), -1, rr, false);
+    sort(rr.begin(), rr.end(), [](const pRunner& a, const pRunner& b) {return a->Id < b->Id; }); // Make stable for forkings
+    set<int> usedC;
+    for (pRunner r : rr) {
+      int cid = r->getCourseId();
+      if (!usedC.insert(cid).second)
+        continue;
+      pCourse pc = r->getCourse(false);
+      if (!pc)
+        continue;
+      int offStart = pc->useFirstAsStart() ? 1 : 0;
+      int offEnd = pc->useLastAsFinish() ? 1 : 0;
+      for (int k = offStart; k < pc->getNumControls() - offEnd; k++) {
+        int id = pc->getCourseControlId(k);
+        if (usedCCID.insert(id).second) {
+          ccIdIndex.emplace_back(k, id);
+        }
+      }
+    }
+  }
+
+  sort(ccIdIndex.begin(), ccIdIndex.end());
+
+  for (auto& [order, id] : ccIdIndex) {
+    out.push_back(id);
+  }
+  return out;
+}
+
 pCourse oClass::getCourse(bool getSampleFromRunner) const {
   pCourse res;
   if (MultiCourse.size() == 1 && MultiCourse[0].size() == 1)
@@ -3834,13 +3892,17 @@ void oClass::calculateSplits() {
   }
 }
 
-bool oClass::isRogaining() const {
-  if (Course &&  Course->getMaximumRogainingTime() > 0)
+bool oClass::isRogaining(int &timeLimit) const {
+  timeLimit = 0;
+  if (Course && Course->getMaximumRogainingTime() > 0) {
+    timeLimit = Course->getMaximumRogainingTime();
     return true;
-
-  if (MultiCourse.size() > 0 && MultiCourse[0].size() > 0 && 
-      MultiCourse[0][0] && MultiCourse[0][0]->getMaximumRogainingTime() > 0)
+  }
+  if (MultiCourse.size() > 0 && MultiCourse[0].size() > 0 &&
+    MultiCourse[0][0] && MultiCourse[0][0]->getMaximumRogainingTime() > 0) {
+    timeLimit = MultiCourse[0][0]->getMaximumRogainingTime();
     return true;
+  }
   GeneralResult *gr = getResultModule();
 
   // Return true if result module makes point calculations and
@@ -3856,8 +3918,7 @@ bool oClass::isRogaining() const {
   return false;
 }
 
-void oClass::remove()
-{
+void oClass::remove() {
   if (oe)
     oe->removeClass(Id);
 }

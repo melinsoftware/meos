@@ -2003,7 +2003,7 @@ OpFailStatus MeosSQL::storeRunner(const RowWrapper &row, oRunner &r,
   r.getRealName(r.sName, r.tRealName);
   
   if (!r.cardWasSet)
-    r.setCardNo(row["CardNo"], false, true);
+    r.setCardNo(row["CardNo"], oRunner::UpdateType::Automatic, false, true);
   if (!r.cardWasSet2)
     r.setCardNo2(row["CardNo2"], false, true);
 

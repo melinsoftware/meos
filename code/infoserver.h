@@ -103,6 +103,7 @@ class InfoRadioControl : public InfoBase {
   protected:
     wstring name;
     bool trueRadio = false;
+    wstring points;
     bool synchronize(oControl &c, bool trueRadio, int number);
     void serialize(xmlbuffer &xml, bool diffOnly) const;
   public:
@@ -115,13 +116,14 @@ class InfoRadioControl : public InfoBase {
 class InfoClass : public InfoBase {
   protected:
     wstring name;
-    vector< vector<int> > radioControls;
+    vector<vector<int>> radioControls;
     vector<int> linearLegNumberToActual;
     vector<int> courses;
     int sortOrder = 0;
     int numMaps = 0;
     int length = 0;
     int climb = 0;
+    pair<int, bool> rogainingMaxTime;
 
   public:
     bool synchronize(bool includeCourses, oClass &c, const set<int> &ctrls);
@@ -175,14 +177,16 @@ class InfoBaseCompetitor : public InfoBase {
     wstring name;
     wstring bib;
     wstring nationality;
+    wstring score;
+    wstring reduction;
 
-    int organizationId;
-    int classId;
-    int status;
-    int startTime;
-    int runningTime;
+    int organizationId = 0;
+    int classId = 0;
+    int status = 0;
+    int startTime = 0;
+    int runningTime = 0;
 
-    bool preliminary;
+    bool preliminary = false;
     void serialize(xmlbuffer &xml, bool diffOnly, int course) const;
     bool synchronizeBase(oAbstractRunner &bc);
   public:
@@ -193,9 +197,9 @@ class InfoBaseCompetitor : public InfoBase {
 class InfoCompetitor : public InfoBaseCompetitor {
   protected:
     vector<RadioTime> radioTimes;
-    int inputTime;
-    int totalStatus;
-    int course;
+    int inputTime = 0;
+    int totalStatus = 0;
+    int course = 0;
     int cardNo = 0;
     bool isRunning = false;
     bool synchronize(const InfoCompetition &cmp, oRunner &c);

@@ -71,6 +71,8 @@ static const winrt::guid UUID_CARD_DATA_CHAR     { 0xbd510013, 0x6aec, 0x4628, {
 static const winrt::guid UUID_SESSIONS_SERVICE   { 0xbd510031, 0x6aec, 0x4628, {0xa1, 0x46, 0xf3, 0xe9, 0x5b, 0xc4, 0x9e, 0x62} };
 static const winrt::guid UUID_SESSIONS_CHAR      { 0xbd510032, 0x6aec, 0x4628, {0xa1, 0x46, 0xf3, 0xe9, 0x5b, 0xc4, 0x9e, 0x62} };
 
+BluetoothCacheMode cacheMode = BluetoothCacheMode::Cached;
+
 // Helper: read uint16 little-endian
 static uint16_t readU16(const uint8_t *p) {
   return uint16_t(p[0]) | (uint16_t(p[1]) << 8);
@@ -159,15 +161,16 @@ bool ReaderBT::connect(ReaderBTDevice &device) {
       return false;
 
     // Get card readout service
-    auto cardServiceResult = bleDevice.GetGattServicesForUuidAsync(UUID_CARD_SERVICE).get();
-    if (cardServiceResult.Status() != GattCommunicationStatus::Success ||
+    auto cardServiceResult = bleDevice.GetGattServicesForUuidAsync(UUID_CARD_SERVICE, cacheMode).get();
+    auto stat = cardServiceResult.Status();
+    if (stat != GattCommunicationStatus::Success ||
         cardServiceResult.Services().Size() == 0)
       return false;
 
     auto cardService = cardServiceResult.Services().GetAt(0);
 
     // Get card state characteristic
-    auto cardStateResult = cardService.GetCharacteristicsForUuidAsync(UUID_CARD_STATE_CHAR).get();
+    auto cardStateResult = cardService.GetCharacteristicsForUuidAsync(UUID_CARD_STATE_CHAR, cacheMode).get();
     if (cardStateResult.Status() != GattCommunicationStatus::Success ||
         cardStateResult.Characteristics().Size() == 0)
       return false;
@@ -175,7 +178,7 @@ bool ReaderBT::connect(ReaderBTDevice &device) {
     auto cardStateChar = cardStateResult.Characteristics().GetAt(0);
 
     // Get card data characteristic
-    auto cardDataResult = cardService.GetCharacteristicsForUuidAsync(UUID_CARD_DATA_CHAR).get();
+    auto cardDataResult = cardService.GetCharacteristicsForUuidAsync(UUID_CARD_DATA_CHAR, cacheMode).get();
     if (cardDataResult.Status() != GattCommunicationStatus::Success ||
         cardDataResult.Characteristics().Size() == 0)
       return false;
@@ -227,11 +230,11 @@ bool ReaderBT::connect(ReaderBTDevice &device) {
     device.connected.store(true);
     
     // Optionally get settings service
-    auto settingsResult = bleDevice.GetGattServicesForUuidAsync(UUID_SETTINGS_SERVICE).get();
+    auto settingsResult = bleDevice.GetGattServicesForUuidAsync(UUID_SETTINGS_SERVICE, cacheMode).get();
     if (settingsResult.Status() == GattCommunicationStatus::Success &&
         settingsResult.Services().Size() > 0) {
       auto settingsService = settingsResult.Services().GetAt(0);
-      auto readCharResult = settingsService.GetCharacteristicsForUuidAsync(UUID_SETTINGS_READ_CHAR).get();
+      auto readCharResult = settingsService.GetCharacteristicsForUuidAsync(UUID_SETTINGS_READ_CHAR, cacheMode).get();
       if (readCharResult.Status() == GattCommunicationStatus::Success &&
           readCharResult.Characteristics().Size() > 0) {
         internal->settingsReadChar = readCharResult.Characteristics().GetAt(0);
@@ -635,30 +638,43 @@ MConWString ReaderBT::monitorThread(int deviceIndex) {
   return nullptr;
 }
 
-ReaderBT si_bt;
+ReaderBT *si_bt = nullptr;
+
+ReaderBT &getReader() {
+  if (!si_bt) {
+    try {
+      si_bt = new ReaderBT();
+    }
+    catch (...) {
+      throw std::exception("Error accessing SportIdent BT");
+    }
+  }
+  return *si_bt;
+}
+
 
 EXPORT int __cdecl autoDetect(int maxNumEntries, int* deviceIx) {
-  return si_bt.autoDetectToOpen(maxNumEntries, deviceIx);
+  return getReader().autoDetectToOpen(maxNumEntries, deviceIx);
 }
 
 EXPORT int __cdecl enumerateDevices(int maxNumEntries, MConWString* unitVectorDescr, bool* unitVectorConnected) {
-  return si_bt.enumerateDevices(maxNumEntries, unitVectorDescr, unitVectorConnected);
+  return getReader().enumerateDevices(maxNumEntries, unitVectorDescr, unitVectorConnected);
 }
 
 EXPORT void __cdecl status(int deviceIndex, MConDeviceStatus* status) {
-  si_bt.status(deviceIndex, status);
+  getReader().status(deviceIndex, status);
 }
 
 EXPORT int __cdecl openConnection(int deviceIndex, bool listenOnly, MConWString parameter, MConLogMessage logger) {
-  return si_bt.openConnection(deviceIndex, logger);
+  return getReader().openConnection(deviceIndex, logger);
 }
 
 EXPORT void __cdecl closeConnection(int deviceIndex) {
-  si_bt.closeConnection(deviceIndex);
+  getReader().closeConnection(deviceIndex);
 }
 
 EXPORT MConWString __cdecl monitorThread(int deviceIndex) {
-  return si_bt.monitorThread(deviceIndex);
+  return getReader().monitorThread(deviceIndex);
 }
 
 EXPORT void __cdecl init(MConDeviceProps* deviceProps,
@@ -670,10 +686,10 @@ EXPORT void __cdecl init(MConDeviceProps* deviceProps,
   *startParameterName = nullptr; // No parameter
   static const wchar_t* sihelp = L"info:si_btsystem";
   *deviceHelp = sihelp;
-  si_bt.init(deviceProps->useSubSecond, addCard);
+  getReader().init(deviceProps->useSubSecond, addCard);
 }
 
 EXPORT void __cdecl unload() {
-  si_bt.unload();
+  getReader().unload();
 }
 

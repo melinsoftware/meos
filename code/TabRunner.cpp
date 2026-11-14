@@ -604,7 +604,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
   if (runnerId == 0) {
     cardNoChanged = true;
     r = oe->addRunner(name, clubId, classId, cardNo, year, true);
-    r->setCardNo(0, false, false); // Reset to get auto card match
+    r->setCardNo(0, oRunner::UpdateType::Automatic, false, false); // Reset to get auto card match
   }
   else {
     r = oe->getRunner(runnerId, 0);
@@ -620,7 +620,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
 
       if (ans == gdioutput::AskAnswer::AnswerNo) {
         r = oe->addRunner(L"N.N.", clubId, classId, 0, year, true);
-        r->setCardNo(0, false, false); // Reset to get auto card match
+        r->setCardNo(0, oRunner::UpdateType::Automatic, false, false); // Reset to get auto card match
       }
     }
 
@@ -691,7 +691,7 @@ pRunner TabRunner::save(gdioutput &gdi, int runnerId, bool willExit) {
   }
 
   if (r->getCardNo() != cardNo) {
-    r->setCardNo(cardNo, true);
+    r->setCardNo(cardNo, oRunner::UpdateType::Manual, true);
   }
 
   if (r->getCardNo2() != cardNo2) {
@@ -1307,7 +1307,7 @@ int TabRunner::runnerCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
           if (rr) {
             rr->setStartTime(0, true, oBase::ChangeType::Update);
             rr->setStatus(StatusCANCEL, true, oBase::ChangeType::Update);
-            rr->setCardNo(0, false);
+            rr->setCardNo(0, oRunner::UpdateType::Automatic, false);
           }
         }
         r->synchronizeAll();
@@ -1786,7 +1786,7 @@ int TabRunner::vacancyCB(gdioutput &gdi, GuiEventType type, BaseInfo* data) {
     }
     r->updateFromDB(name, clubId, r->getClassId(false), cardNo, birthYear, false);
     r->setName(name, true);
-    r->setCardNo(cardNo, true);
+    r->setCardNo(cardNo, oRunner::UpdateType::Manual, true);
     r->setClub(club);
 
     int fee = 0;
@@ -2764,19 +2764,17 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     }
   }
   else if (method == "add") {
-    gdi.dropLine(0.5);
-    gdi.addString("", boldLarge, "Tillsätt vakans");
     addToolbar(gdi);
 
-    gdi.dropLine();
-
+    entrySettings("Tillsätt vakans", gdi);
+    
     gdi.fillRight();
 
     int bx = gdi.getCX();
     int by = gdi.getCY();
 
     gdi.setCX(bx + gdi.scaleLength(10));
-    gdi.setCY(by + gdi.scaleLength(10));
+    gdi.dropLine();
     gdi.pushX();
 
     TabCard &tsi = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
@@ -2789,12 +2787,8 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
     gdi.setPostClearCb("vac", VacancyCB);
     gdi.setOnClearCb("vac", VacancyCB);
 
-    gdi.dropLine(1.2);
-    gdi.addCheckbox("RentCard", "Hyrd", 0, tsi.storedInfo.rentState);
-    gdi.dropLine(-1.2);
-
     if (oe->getMeOSFeatures().hasFeature(MeOSFeatures::Feature::Clubs)) {
-      gdi.addCombo("Club", 220, 300, RunnerCB, L"Klubb:");
+      gdi.addCombo("Club", 180, 200, RunnerCB, L"Klubb:");
       oe->fillClubs(gdi, "Club");
       gdi.setText("Club", tsi.storedInfo.storedClub);
     }
@@ -2805,7 +2799,7 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
       if (!tsi.storedInfo.storedFee.empty())
         lastFee = tsi.storedInfo.storedFee;
 
-      gdi.addCombo("Fee", 60, 150, 0, L"Avgift:");
+      gdi.addCombo("Fee", 60, 150, 0, L"Anm. avgift:");
       oe->fillFees(gdi, "Fee", false, true);
       gdi.autoGrow("Fee");
 
@@ -2822,20 +2816,19 @@ void TabRunner::showVacancyList(gdioutput &gdi, const string &method, int classI
       gdi.dropLine();
     }
     
-    gdi.dropLine(2.8);
+    gdi.dropLine(2.1);
     gdi.popX();
-    gdi.addCheckbox("StartInfo", "Skriv ut startbevis", SportIdentCB, tsi.hasPrintStartInfo(), "Skriv ut startbevis för deltagaren");
+    gdi.addCheckbox("RentCard", "Hyrdbricka", 0, tsi.storedInfo.rentState);
     
     if (oe->hasNextStage())
-      gdi.addCheckbox("AllStages", "Anmäl till efterföljande etapper", 0, tsi.storedInfo.allStages);
-    
-    gdi.dropLine(-0.2);
-    gdi.addButton("PrinterSetup", "Skrivarinställningar...", VacancyCB, "Skrivarinställningar för sträcktider och startbevis");
-    gdi.setCX(gdi.getCX() + gdi.scaleLength(40));
+      gdi.addCheckbox("AllStages", "Anmäl till efterföljande etapper", SportIdentCB, tsi.storedInfo.allStages);
+
+    gdi.popX();
+    gdi.dropLine(2);
     gdi.addButton("CancelVacant", "Avbryt", VacancyCB);
 
     gdi.fillDown();
-    gdi.dropLine(2.5);
+    gdi.dropLine(2);
     RECT rc = {bx, by, gdi.getWidth(), gdi.getCY() + gdi.scaleLength(20)};
     gdi.addRectangle(rc, colorLightCyan);
 
@@ -2857,9 +2850,8 @@ void TabRunner::showDirectEntry(gdioutput &gdi) {
   currentMode = Mode::DirectEntry;
   addToolbar(gdi);
 
-  gdi.dropLine(0.5);
-  gdi.addString("", boldLarge, "Direktanmälan");
-  
+  entrySettings("Direktanmälan", gdi);
+
   int ypEntry = gdi.getCY();
   
   TabCard &tc = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
@@ -3453,11 +3445,12 @@ bool TabRunner::loadPage(gdioutput &gdi)
 
   if (oe->hasTeam()) {
     gdi.fillRight();
-    gdi.addInput("Team", L"", 16, 0, L"Lag:").isEdit(false);
+    gdi.addInput("Team", L"", 18, 0, L"Lag:").isEdit(false);
     gdi.disableInput("Team");
     gdi.fillDown();
     gdi.dropLine(0.9);
-    gdi.addButton("EditTeam", L"\u21BA", RunnerCB, L"Hantera laget");
+    gdi.addButton(gdi.getCX(), gdi.getCY(), gdi.scaleLength(28), 
+                  "EditTeam", L"\u21BA", RunnerCB, L"Hantera laget", false, false);
     gdi.popX();
   }
 
@@ -3720,7 +3713,8 @@ bool TabRunner::loadPage(gdioutput &gdi)
 int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi, 
                               bool startNewLine, bool oneLine,
                               oEvent::ExtraFieldContext context,
-                              const vector<oEvent::ExtraFields>& exclude) {
+                              const vector<oEvent::ExtraFields>& exclude,
+                              const shared_ptr<GuiHandler> &handler) {
   map<oEvent::ExtraFields, wstring> extraFields = oe.getExtraFields(context);
 
   for (oEvent::ExtraFields f : exclude)
@@ -3771,9 +3765,9 @@ int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi,
     }
   };
 
-  if (extraFields.count(oEvent::ExtraFields::Sex)) {
-    addLabel(L"Kön:");
-    gdi.addSelection("Sex", 100, 100);
+  if (auto it = extraFields.find(oEvent::ExtraFields::Sex); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addSelection("Sex", 100, 100).setExtra(int(it->first)).setHandler(handler);
     gdi.addItem("Sex", lang.tl("Man"), PersonSex::sMale);
     gdi.addItem("Sex", lang.tl("Kvinna"), PersonSex::sFemale);
     gdi.addItem("Sex", makeDash(L"-"), PersonSex::sUnknown);
@@ -3781,58 +3775,57 @@ int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi,
     newLine();
   }
 
-  if (extraFields.count(oEvent::ExtraFields::BirthDate)) {
-    addLabel(L"Födelsedatum:");
-    gdi.addInput("BirthDate", L"", 8);
+  if (auto it = extraFields.find(oEvent::ExtraFields::BirthDate); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addInput("BirthDate", L"", 8).setExtra(int(it->first)).setHandler(handler);
     colCount++;
     newLine();
   }
 
-
-  if (extraFields.count(oEvent::ExtraFields::StartTime)) {
-    addLabel(L"Starttid:");
-    gdi.addInput("StartTime", L"", 5);
+  if (auto it = extraFields.find(oEvent::ExtraFields::StartTime); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addInput("StartTime", L"", 5).setExtra(int(it->first)).setHandler(handler);
     colCount++;
   }
 
-  if (extraFields.count(oEvent::ExtraFields::Bib)) {
-    addLabel(L"Nummerlapp:");
-    gdi.addInput("Bib", L"", 5);
+  if (auto it = extraFields.find(oEvent::ExtraFields::Bib); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addInput("Bib", L"", 5).setExtra(int(it->first)).setHandler(handler);
     colCount++;
     newLine();
   }
 
-  if (extraFields.count(oEvent::ExtraFields::Phone)) {
-    addLabel(L"Telefon:");
-    gdi.addInput("Phone", L"", 12);
+  if (auto it = extraFields.find(oEvent::ExtraFields::Phone); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addInput("Phone", L"", 12).setExtra(int(it->first)).setHandler(handler);
     colCount++;
     newLine();
   }
 
   if (auto res = extraFields.find(oEvent::ExtraFields::DataA); res != extraFields.end()) {
     addLabel(L"#" + ensureEndingColon(res->second));
-    gdi.addInput("DataA", L"", 8);
+    gdi.addInput("DataA", L"", 8).setExtra(int(res->first)).setHandler(handler);
     colCount++;
     newLine();
   }
 
   if (auto res = extraFields.find(oEvent::ExtraFields::DataB); res != extraFields.end()) {
     addLabel(L"#" + ensureEndingColon(res->second));
-    gdi.addInput("DataB", L"", 8, nullptr);
+    gdi.addInput("DataB", L"", 8, nullptr).setExtra(int(res->first)).setHandler(handler);
     colCount++;
     newLine();
   }
   
-  if (extraFields.count(oEvent::ExtraFields::Nationality)) {
-    addLabel(L"Nationalitet:");
-    gdi.addInput("Nationality", L"", 8);
+  if (auto it = extraFields.find(oEvent::ExtraFields::Nationality); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addInput("Nationality", L"", 8).setExtra(int(it->first)).setHandler(handler);
     colCount++;
     newLine();
   }
 
-  if (extraFields.count(oEvent::ExtraFields::Rank)) {
-    addLabel(L"Ranking:");
-    gdi.addInput("Rank", L"", 8);
+  if (auto it = extraFields.find(oEvent::ExtraFields::Rank); it != extraFields.end()) {
+    addLabel(ensureEndingColon(it->second));
+    gdi.addInput("Rank", L"", 8).setExtra(int(it->first)).setHandler(handler);
     colCount++;
     newLine();
   }
@@ -3842,9 +3835,8 @@ int TabRunner::addExtraFields(const oEvent &oe, gdioutput& gdi,
       colCount++;
 
     newLine();
-
     addLabel(L"#" + ensureEndingColon(res->second));
-    gdi.addInput("TextA", L"", 20);
+    gdi.addInput("TextA", L"", 20).setExtra(int(res->first)).setHandler(handler);
     colCount = 2;
   }
 
@@ -4619,6 +4611,27 @@ pCourse TabRunner::updateCard(gdioutput &gdi, oRunner &r) {
     gdi.clearList("Punches");
     gdi.setText("CardStatus", L"", true);
   }
-
   return pcourse;
+}
+
+void TabRunner::entrySettings(const string &title, gdioutput &gdi) {
+  gdi.dropLine(0.5);
+  gdi.pushX();
+  gdi.fillRight();
+  gdi.addString("", boldLarge, title);
+
+  TabCard &tcard = dynamic_cast<TabCard &>(*gdi.getTabs().get(TCardTab));
+
+  gdi.setCX(max(gdi.getCX(), gdi.scaleLength(400)));
+  
+  gdi.dropLine(0.3);
+  gdi.fillRight();
+  
+  gdi.addCheckbox("StartInfo", "Skriv ut startbevis", SportIdentCB, tcard.hasPrintStartInfo(), "Skriv ut startbevis för deltagaren");
+  gdi.dropLine(-0.3);
+  gdi.addButton("PrinterSetup", "Skrivarinställningar...", VacancyCB, "Skrivarinställningar för sträcktider och startbevis");
+  gdi.setCX(gdi.getCX() + gdi.scaleLength(40));
+  gdi.fillDown();
+  gdi.popX();
+  gdi.dropLine(2.5);
 }

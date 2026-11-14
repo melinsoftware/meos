@@ -92,23 +92,13 @@ InfoOrganization::InfoOrganization(int id) : InfoBase(id) {
 }
 
 InfoBaseCompetitor::InfoBaseCompetitor(int id) : InfoBase(id) {
-  organizationId = 0;
-  classId = 0;
-  status = 0;
-  startTime = 0;
-  runningTime = 0;
-  preliminary = false;
 }
 
 InfoCompetitor::InfoCompetitor(int id) : InfoBaseCompetitor(id) {
-  totalStatus = 0;
-  inputTime = 0;
-  course = 0;
 }
 
 InfoTeam::InfoTeam(int id) : InfoBaseCompetitor(id) {
 }
-
 
 bool InfoCompetition::synchronize(oEvent &oe, const wstring &cmpName, 
                                   SynchType whatSynch, const set<int> &includeCls,
@@ -341,11 +331,17 @@ bool InfoRadioControl::synchronize(oControl &c, bool trueRadio, int number) {
   wstring n = c.hasName() ? c.getName() : c.getString();
   if (number > 0)
     n = n + L"-" + itow(number);
-  if (n == name && this->trueRadio == trueRadio)
+  int p = c.getRogainingPoints();
+  wstring wp;
+  if (p > 0)
+    wp = c.getEvent()->formatScore(p);
+
+  if (n == name && this->trueRadio == trueRadio && points == wp)
     return false;
   else {
     this->trueRadio = trueRadio;
     name = n;
+    points = wp;
     modified();
   }
   return true;
@@ -354,6 +350,8 @@ bool InfoRadioControl::synchronize(oControl &c, bool trueRadio, int number) {
 void InfoRadioControl::serialize(xmlbuffer &xml, bool diffOnly) const {
   vector<pair<string, wstring>> prop;
   prop.emplace_back("id", itow(getId()));
+  if (!points.empty())
+    prop.emplace_back("rgp", points);
   if (!trueRadio)
     prop.emplace_back("offline", L"true");
   xml.write("ctrl", prop, name);
@@ -407,40 +405,27 @@ bool InfoClass::synchronize(bool includeCourses, oClass &c, const set<int> &ctrl
 
     for (size_t k = 0; k < s; k++) {
       if (!c.isParallel(k) && !c.isOptional(k)) {
-        pCourse pc = c.getCourse(k, 0, true); // Get a course representative for the leg.
-
-        rc.push_back(vector<int>());
-        if (pc) {
-          vector<pControl> ctrl;
-          pc->getControls(ctrl);
-          for (size_t j = 0; j < ctrl.size(); j++) {
-            if (ctrls.count(pc->getCourseControlId(j))) {
-              rc.back().push_back(pc->getCourseControlId(j));
-            }
-          }
+        vector<int> cid = c.getOrderedCourseControlsIdForLeg(k);
+        rc.emplace_back();
+        for (int c : cid) {
+          if (ctrls.count(c)) 
+            rc.back().push_back(c);
         }
       }
       // Setup transformation map (flat to 2D)
       linearLegNumberToActual.push_back(max<int>(0, rc.size()-1));
-
     }
   }
   else {
     // Single stage
     linearLegNumberToActual.resize(1, 0);
-    pCourse pc = c.getCourse(true); // Get a course representative for the leg.
-    rc.push_back(vector<int>());
-    if (pc) {
-      int offStart = pc->useFirstAsStart() ? 1 : 0;
-      int offEnd = pc->useLastAsFinish() ? 1 : 0;
-      vector<pControl> ctrl;
-      pc->getControls(ctrl);
-      for (size_t j = offStart; j < ctrl.size() - offEnd; j++) {
-        if (ctrls.count(pc->getCourseControlId(j))) {
-          rc.back().push_back(pc->getCourseControlId(j));
-        }
+    vector<int> cid = c.getOrderedCourseControlsIdForLeg(0);
+    rc.emplace_back();
+    for (int c : cid) {
+      if (ctrls.count(c)) {
+        rc.back().push_back(c);
       }
-    }
+    }    
   }
 
   if (radioControls != rc) {
@@ -451,6 +436,20 @@ bool InfoClass::synchronize(bool includeCourses, oClass &c, const set<int> &ctrl
   if (n != name || no != sortOrder) {
     name = n;
     sortOrder = no;
+    mod = true;
+  }
+
+  int timeLimit;
+  if (c.isRogaining(timeLimit)) {
+    if (timeLimit <= 0)
+      timeLimit = -1; // RG, but no time limit
+    else
+      timeLimit /= (timeConstSecond / 10);
+  }
+
+  if (rogainingMaxTime.first != timeLimit) {
+    rogainingMaxTime.first = timeLimit;
+    rogainingMaxTime.second = true; // Need to write
     mod = true;
   }
 
@@ -477,6 +476,11 @@ void InfoClass::serialize(xmlbuffer &xml, bool diffOnly) const {
   if (climb > 0)
     prop.emplace_back("climb", itow(climb));
 
+  if (rogainingMaxTime.second) {
+    prop.emplace_back("usescore", rogainingMaxTime.first != 0 ? L"true" : L"false");
+    if (rogainingMaxTime.first > 0)
+    prop.emplace_back("tlimit", itow(rogainingMaxTime.first));
+  }
   xml.write("cls", prop, name);
 }
 
@@ -530,7 +534,7 @@ void InfoCompetition::serialize(xmlbuffer &xml, bool diffOnly) const {
 }
 
 void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) const {
-  vector< pair<string, wstring> > prop;
+  vector<pair<string, wstring>> prop;
   prop.reserve(10);
   prop.emplace_back("org", itow(organizationId));
   prop.emplace_back("cls", itow(classId));
@@ -543,6 +547,12 @@ void InfoBaseCompetitor::serialize(xmlbuffer &xml, bool diffOnly, int course) co
   prop.emplace_back("rt", itow(runningTime));
   if (course != 0)
     prop.emplace_back("crs", itow(course));
+
+  if (!score.empty())
+    prop.emplace_back("score", score);
+
+  if (!reduction.empty())
+    prop.emplace_back("penalty", reduction);
 
   if (!bib.empty()) 
     prop.emplace_back("bib", bib);
@@ -581,7 +591,7 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
 
   RunnerStatus s = bc.getStatusComputed(true);
   bool prel = false;
-  int rt = bc.getRunningTime(true) * (10/timeConstSecond);
+  int rt = bc.getRunningTime(true) / (timeConstSecond/10);
   if (rt > 0) {
     if (s == RunnerStatus::StatusUnknown) {
       s = RunnerStatus::StatusOK;
@@ -607,7 +617,7 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
 
   int st = -1;
   if (bc.startTimeAvailable())
-    st = convertRelativeTime(bc, bc.getStartTime()) * (10 / timeConstSecond);
+    st = convertRelativeTime(bc, bc.getStartTime()) / (timeConstSecond / 10);
   
   if (st != startTime) {
     startTime = st;
@@ -625,6 +635,25 @@ bool InfoBaseCompetitor::synchronizeBase(oAbstractRunner &bc) {
     ch = true;
   }
 
+  wstring newScore;
+  wstring newReduction;
+  if (bc.getClassRef(false) && bc.getClassRef(false)->isRogaining()) {
+    int numScore = bc.getRogainingPoints(true, false);
+    newScore = bc.getEvent()->formatScore(numScore);
+    if (newScore.empty())
+      newScore = L"0";
+    newReduction = bc.getEvent()->formatScore(bc.getRogainingPointsGross(true) - numScore);
+    if (newReduction.empty())
+      newReduction = L"0";
+  }
+  if (newScore != score) {
+    score = newScore;
+    ch = true;
+  }
+  if (newReduction != reduction) {
+    reduction = newReduction;
+    ch = true;
+  }
   return ch;
 }
 
@@ -652,7 +681,7 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
 
   pTeam t = r.getTeam();
   if (useTotalResults && !singleStage) {
-    legInput = r.getTotalTimeInput() * (10 / timeConstSecond);
+    legInput = r.getTotalTimeInput() / (timeConstSecond / 10);
     s = r.getTotalStatusInput();
   }
   else if (t && !isQF && r.getLegNumber() > 0) {
@@ -666,7 +695,7 @@ bool InfoCompetitor::synchronize(bool useTotalResults, bool useCourse, oRunner &
       }
     }
     if (ltu > 0) {
-      legInput = t->getLegRunningTime(ltu - 1, true, false) * (10 / timeConstSecond);
+      legInput = t->getLegRunningTime(ltu - 1, true, false) / (timeConstSecond / 10);
       s = t->getLegStatus(ltu - 1, true, false);
     }
   }
@@ -727,7 +756,7 @@ bool InfoCompetitor::synchronize(const InfoCompetition &cmp, oRunner &r) {
       r.getSplitTime(radioTime.radioId, s_split, radioTime.runningTime);
 
       if (radioTime.runningTime > 0) {
-        radioTime.runningTime *= (10 / timeConstSecond);
+        radioTime.runningTime /= (timeConstSecond / 10);
         newRT.push_back(radioTime);
       }
     }

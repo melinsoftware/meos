@@ -6085,7 +6085,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
           rand()%nClubs+1, cls->getId(), 0, L"", true);
 
         r->setStartNo(startno++, ChangeType::Update);
-        r->setCardNo(500001+Runners.size()*97+rand()%97, false);
+        r->setCardNo(500001+Runners.size()*97+rand()%97, oRunner::UpdateType::Automatic, false);
         r->apply(ChangeType::Update, nullptr);
       }
       nRunners-=nRInClass;
@@ -6105,7 +6105,7 @@ void oEvent::generateTestCompetition(int nClasses, int nRunners,
 
         for (int j=0;j<dr;j++) {
           pRunner r=addRunner(gname[rand()%gname.size()]+L" "+fname[rand()%fname.size()], 0, 0, 0, L"", true);
-          r->setCardNo(500001+Runners.size()*97+rand()%97, false);
+          r->setCardNo(500001+Runners.size()*97+rand()%97, oRunner::UpdateType::Automatic, false);
           t->setRunner(j, r, false, false);
         }
       }
